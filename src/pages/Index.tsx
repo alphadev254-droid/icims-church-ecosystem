@@ -150,40 +150,35 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Hierarchy */}
+      {/* Testimonial / Trust */}
       <section className="py-20 bg-background">
         <div className="container">
           <div className="max-w-3xl mx-auto text-center mb-14">
             <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-3">
-              Multi-Level Administration
+              Trusted by Churches Worldwide
             </h2>
             <p className="text-muted-foreground">
-              Supports your entire denominational structure from national oversight to local church operations.
+              From small congregations to large denominations, ICIMS adapts to your unique needs.
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4 max-w-4xl mx-auto">
+          <div className="grid gap-6 md:grid-cols-3 max-w-4xl mx-auto">
             {[
-              { level: 'National', role: 'National Administrator', desc: 'Full oversight, global dashboards' },
-              { level: 'Regional', role: 'Regional Leader', desc: 'Manages regional churches' },
-              { level: 'District', role: 'District Overseer', desc: 'Supervises local churches' },
-              { level: 'Local', role: 'Local Church Admin', desc: 'All local operations' },
-            ].map((h, i) => (
+              { stat: '500+', label: 'Churches Onboarded' },
+              { stat: '50,000+', label: 'Members Managed' },
+              { stat: '99.9%', label: 'Platform Uptime' },
+            ].map((s, i) => (
               <motion.div
-                key={h.level}
+                key={s.label}
                 custom={i}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
                 variants={fadeUp}
-                className="text-center rounded-lg border border-border bg-card p-5"
+                className="text-center rounded-lg border border-border bg-card p-8"
               >
-                <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3">
-                  <span className="text-sm font-bold text-accent">{i + 1}</span>
-                </div>
-                <h3 className="font-heading font-semibold text-foreground">{h.level}</h3>
-                <p className="text-xs font-medium text-accent mt-1">{h.role}</p>
-                <p className="text-xs text-muted-foreground mt-1">{h.desc}</p>
+                <p className="text-3xl font-bold text-accent mb-1">{s.stat}</p>
+                <p className="text-sm text-muted-foreground">{s.label}</p>
               </motion.div>
             ))}
           </div>

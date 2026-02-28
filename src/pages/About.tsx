@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Target, Eye, Heart } from 'lucide-react';
+import churchCommunity from '@/assets/church-community.jpg';
 
 export default function AboutPage() {
   return (
@@ -13,9 +14,46 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* Image + Story */}
       <section className="py-20 bg-background">
-        <div className="container max-w-4xl">
-          <div className="grid gap-8 md:grid-cols-3 mb-16">
+        <div className="container max-w-5xl">
+          <div className="grid md:grid-cols-2 gap-10 items-center mb-20">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="rounded-xl overflow-hidden"
+            >
+              <img
+                src={churchCommunity}
+                alt="Church community worshipping together"
+                className="w-full h-auto object-cover rounded-xl"
+              />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-4">
+                The Story Behind ICIMS
+              </h2>
+              <div className="space-y-4 text-muted-foreground text-sm leading-relaxed">
+                <p>
+                  The Integrated Church Information Management System was born from a simple observation: churches across all denominations struggle with fragmented tools and manual processes.
+                </p>
+                <p>
+                  ICIMS brings together 12 functional modules into a single, unified platform that supports the entire denominational hierarchy — from national headquarters to local congregations.
+                </p>
+                <p>
+                  Whether you're a small local church or a national denomination with thousands of congregations, ICIMS scales to meet your needs with cloud-hosted infrastructure that supports 5,000+ concurrent users.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Mission / Vision / Values */}
+          <div className="grid gap-8 md:grid-cols-3">
             {[
               { icon: Target, title: 'Our Mission', desc: 'To provide churches with an accessible, integrated platform that simplifies administration and empowers data-driven decisions.' },
               { icon: Eye, title: 'Our Vision', desc: 'A world where every church, regardless of size, has the tools to operate efficiently and focus on what matters — ministry.' },
@@ -36,19 +74,6 @@ export default function AboutPage() {
                 <p className="text-sm text-muted-foreground">{item.desc}</p>
               </motion.div>
             ))}
-          </div>
-
-          <div className="prose prose-sm max-w-none text-muted-foreground">
-            <h2 className="font-heading text-2xl font-bold text-foreground">The Story Behind ICIMS</h2>
-            <p>
-              The Integrated Church Information Management System was born from a simple observation: churches across all denominations struggle with fragmented tools and manual processes. From tracking membership to managing finances, most churches rely on spreadsheets, paper records, and disconnected software.
-            </p>
-            <p>
-              ICIMS brings together 12 functional modules into a single, unified platform that supports the entire denominational hierarchy — from national headquarters to local congregations. Our system is designed to be intuitive enough for volunteers yet powerful enough for full-time administrators.
-            </p>
-            <p>
-              Whether you're a small local church or a national denomination with thousands of congregations, ICIMS scales to meet your needs with cloud-hosted infrastructure that supports 5,000+ concurrent users.
-            </p>
           </div>
         </div>
       </section>
