@@ -1,9 +1,26 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Sun, Moon, Menu, X, Church } from 'lucide-react';
+import { Sun, Moon, Menu, X, Church, Mail, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+
+const IconFacebook = () => (
+  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+  </svg>
+);
+const IconX = () => (
+  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+const IconLinkedin = () => (
+  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" />
+    <circle cx="4" cy="4" r="2" />
+  </svg>
+);
 
 export default function PublicHeader() {
   const { theme, toggleTheme } = useTheme();
@@ -22,6 +39,31 @@ export default function PublicHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {/* Top bar */}
+      <div className="bg-accent dark:bg-card">
+        <div className="container flex h-8 items-center justify-between">
+          <div className="hidden sm:flex items-center gap-5 text-foreground/70 dark:text-foreground/60">
+            <a href="mailto:info@icims.org" className="flex items-center gap-1.5 text-xs hover:text-foreground dark:hover:text-foreground transition-colors">
+              <Mail className="h-3 w-3" /> info@icims.org
+            </a>
+            <a href="tel:+254700000000" className="flex items-center gap-1.5 text-xs hover:text-foreground dark:hover:text-foreground transition-colors">
+              <Phone className="h-3 w-3" /> +254 700 000 000
+            </a>
+          </div>
+          <div className="flex items-center gap-3 ml-auto text-foreground/60 dark:text-foreground/50">
+            {[
+              { icon: IconFacebook, label: 'Facebook' },
+              { icon: IconX, label: 'X / Twitter' },
+              { icon: IconLinkedin, label: 'LinkedIn' },
+            ].map(s => (
+              <a key={s.label} href="#" aria-label={s.label} className="hover:text-foreground dark:hover:text-foreground transition-colors">
+                <s.icon />
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <Church className="h-7 w-7 text-accent" />

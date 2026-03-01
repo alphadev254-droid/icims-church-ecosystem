@@ -71,7 +71,7 @@ export default function LandingPage() {
                 </Button>
               </Link>
               <Link to="/features">
-                <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                <Button size="lg" variant="outline" className="border-foreground/30 dark:border-white/30 text-foreground dark:text-white hover:bg-foreground/10 dark:hover:bg-white/10">
                   Explore Features
                 </Button>
               </Link>
@@ -186,8 +186,12 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-primary">
-        <div className="container text-center">
+      <section className="relative overflow-hidden py-20">
+        <div className="absolute inset-0">
+          <img src="/cta.png" alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-primary/75" />
+        </div>
+        <div className="container relative z-10 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -206,7 +210,7 @@ export default function LandingPage() {
                 </Button>
               </Link>
               <Link to="/contact">
-                <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                <Button size="lg" variant="outline" className="border-foreground/30 dark:border-white/30 text-foreground dark:text-white hover:bg-foreground/10 dark:hover:bg-white/10">
                   Contact Sales
                 </Button>
               </Link>

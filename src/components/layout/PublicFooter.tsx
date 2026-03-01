@@ -5,8 +5,8 @@ export default function PublicFooter() {
   return (
     <footer className="border-t border-border bg-card">
       <div className="container py-12">
-        <div className="grid gap-8 md:grid-cols-4">
-          <div>
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+          <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
               <Church className="h-6 w-6 text-accent" />
               <span className="font-heading text-lg font-bold">ICIMS</span>
@@ -16,7 +16,7 @@ export default function PublicFooter() {
             </p>
           </div>
 
-          <div>
+          <div className="col-span-2 md:col-span-1">
             <h4 className="font-heading font-semibold mb-3 text-foreground">Platform</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link to="/features" className="hover:text-foreground transition-colors">Features</Link></li>

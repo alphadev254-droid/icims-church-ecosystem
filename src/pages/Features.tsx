@@ -37,11 +37,16 @@ const fadeUp = {
 export default function FeaturesPage() {
   return (
     <div>
-      <section className="py-20 bg-primary">
-        <div className="container text-center">
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          <img src="/features.png" alt="ICIMS Features" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-primary/80" />
+        </div>
+        <div className="container relative z-10 py-24 md:py-36 text-center">
           <h1 className="font-heading text-4xl md:text-5xl font-bold text-primary-foreground mb-4">
             12 Integrated Modules
           </h1>
+          <p className="text-primary-foreground/80 text-xl font-medium mb-2">Faith for Every Generation.</p>
           <p className="text-primary-foreground/70 max-w-2xl mx-auto">
             Every aspect of church operations unified in one powerful, easy-to-use platform.
           </p>

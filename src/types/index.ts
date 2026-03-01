@@ -1,12 +1,8 @@
-export type UserRole = 
+export type UserRole =
   | 'national_admin'
   | 'regional_leader'
   | 'district_overseer'
   | 'local_admin'
-  | 'ministry_leader'
-  | 'finance_officer'
-  | 'event_coordinator'
-  | 'volunteer'
   | 'member';
 
 export interface User {

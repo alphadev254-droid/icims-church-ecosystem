@@ -1,23 +1,32 @@
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Church } from 'lucide-react';
+import { Church, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { useState } from 'react';
+
+const schema = z.object({
+  email: z.string().email('Enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+type FormValues = z.infer<typeof schema>;
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
-    const form = new FormData(e.currentTarget);
-    const result = await login(form.get('email') as string, form.get('password') as string);
-    setLoading(false);
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+  });
+
+  const onSubmit = async (values: FormValues) => {
+    const result = await login(values.email, values.password);
     if (result.success) {
       toast.success('Welcome back!');
       navigate('/dashboard');
@@ -29,36 +38,69 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
+        {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
             <Church className="h-8 w-8 text-accent" />
             <span className="font-heading text-2xl font-bold">ICIMS</span>
           </Link>
           <h1 className="font-heading text-2xl font-bold text-foreground">Welcome back</h1>
-          <p className="text-sm text-muted-foreground mt-1">Sign in to your account</p>
+          <p className="text-sm text-muted-foreground mt-1">Sign in to your church account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required defaultValue="admin@icims.org" />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-1">
+            <Label htmlFor="email">Email address</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@church.org"
+              {...register('email')}
+              className={errors.email ? 'border-destructive' : ''}
+            />
+            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
           </div>
-          <div>
+
+          <div className="space-y-1">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required defaultValue="admin123" />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                {...register('password')}
+                className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                onClick={() => setShowPassword(v => !v)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-            {loading ? 'Signing in...' : 'Sign In'}
+
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+          >
+            {isSubmitting ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Don't have an account?{' '}
-          <Link to="/register" className="text-accent hover:underline">Create one</Link>
+          <Link to="/register" className="text-accent hover:underline font-medium">Get started free</Link>
         </p>
 
-        <div className="mt-4 p-3 rounded-md bg-muted text-xs text-muted-foreground">
-          <strong>Demo:</strong> admin@icims.org / any password (4+ chars)
+        {/* Demo credentials */}
+        <div className="mt-4 p-3 rounded-md bg-muted text-xs text-muted-foreground space-y-1">
+          <p className="font-semibold text-foreground">Demo accounts:</p>
+          <p>National Admin: <span className="font-mono">admin@icims.org</span> / <span className="font-mono">Admin@1234</span></p>
+         
         </div>
       </div>
     </div>

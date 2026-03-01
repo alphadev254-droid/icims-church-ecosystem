@@ -1,30 +1,50 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Church } from 'lucide-react';
+import { Church, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function RegisterPage() {
-  const { register } = useAuth();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+const schema = z.object({
+  firstName: z.string().min(2, 'First name must be at least 2 characters'),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
+  email: z.string().email('Enter a valid email address'),
+  phone: z.string().optional(),
+  password: z.string().min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Must contain at least one number'),
+  confirmPassword: z.string(),
+}).refine(d => d.password === d.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
-    const form = new FormData(e.currentTarget);
-    const result = await register({
-      email: form.get('email') as string,
-      password: form.get('password') as string,
-      firstName: form.get('firstName') as string,
-      lastName: form.get('lastName') as string,
+type FormValues = z.infer<typeof schema>;
+
+export default function RegisterPage() {
+  const { register: authRegister } = useAuth();
+  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+  });
+
+  const onSubmit = async (values: FormValues) => {
+    const result = await authRegister({
+      firstName: values.firstName,
+      lastName: values.lastName,
+      email: values.email,
+      phone: values.phone,
+      password: values.password,
     });
-    setLoading(false);
     if (result.success) {
-      toast.success('Account created successfully!');
+      toast.success('Account created! Welcome to ICIMS.');
       navigate('/dashboard');
     } else {
       toast.error(result.message || 'Registration failed');
@@ -32,44 +52,78 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-md">
+        {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-4">
-            <Church className="h-8 w-8 text-accent" />
-            <span className="font-heading text-2xl font-bold">ICIMS</span>
+          <Link to="/" className="inline-flex items-center gap-2 mb-3">
+            <Church className="h-7 w-7 text-accent" />
+            <span className="font-heading text-xl font-bold">ICIMS</span>
           </Link>
           <h1 className="font-heading text-2xl font-bold text-foreground">Create your account</h1>
-          <p className="text-sm text-muted-foreground mt-1">Start managing your church today</p>
+          <p className="text-sm text-muted-foreground mt-1">Start managing your churches from day one</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="firstName">First Name</Label>
-              <Input id="firstName" name="firstName" required />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>First Name</Label>
+              <Input {...register('firstName')} placeholder="James"
+                className={errors.firstName ? 'border-destructive' : ''} />
+              {errors.firstName && <p className="text-xs text-destructive">{errors.firstName.message}</p>}
             </div>
-            <div>
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input id="lastName" name="lastName" required />
+            <div className="space-y-1">
+              <Label>Last Name</Label>
+              <Input {...register('lastName')} placeholder="Banda"
+                className={errors.lastName ? 'border-destructive' : ''} />
+              {errors.lastName && <p className="text-xs text-destructive">{errors.lastName.message}</p>}
             </div>
           </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required />
+
+          <div className="space-y-1">
+            <Label>Email Address</Label>
+            <Input type="email" {...register('email')} placeholder="admin@church.org"
+              className={errors.email ? 'border-destructive' : ''} />
+            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
           </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required minLength={4} />
+
+          <div className="space-y-1">
+            <Label>Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+            <Input {...register('phone')} placeholder="+265 ..." />
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-            {loading ? 'Creating account...' : 'Create Account'}
+
+          <div className="space-y-1">
+            <Label>Password</Label>
+            <div className="relative">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                {...register('password')}
+                placeholder="Min 8 chars, 1 uppercase, 1 number"
+                className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
+              />
+              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                onClick={() => setShowPassword(v => !v)}>
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label>Confirm Password</Label>
+            <Input type="password" {...register('confirmPassword')} placeholder="Repeat password"
+              className={errors.confirmPassword ? 'border-destructive' : ''} />
+            {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
+          </div>
+
+          <Button type="submit" disabled={isSubmitting} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+            {isSubmitting ? 'Creating account...' : 'Create Account'}
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
-          <Link to="/login" className="text-accent hover:underline">Sign in</Link>
+          <Link to="/login" className="text-accent hover:underline font-medium">Sign in</Link>
         </p>
       </div>
     </div>

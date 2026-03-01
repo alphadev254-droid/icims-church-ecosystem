@@ -15,10 +15,18 @@ import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import Members from "./pages/Members";
 import Events from "./pages/Events";
 import Giving from "./pages/Giving";
-import PlaceholderPage from "./pages/PlaceholderPage";
+import Attendance from "./pages/Attendance";
+import Communication from "./pages/Communication";
+import Resources from "./pages/Resources";
+import Churches from "./pages/Churches";
+import Performance from "./pages/Performance";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
+import UsersManagement from "./pages/UsersManagement";
+import RolesManagement from "./pages/RolesManagement";
+import Packages from "./pages/Packages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,16 +55,18 @@ const App = () => (
               {/* Dashboard routes */}
               <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
-                <Route path="members" element={<Members />} />
                 <Route path="events" element={<Events />} />
                 <Route path="giving" element={<Giving />} />
-                <Route path="attendance" element={<PlaceholderPage title="Attendance" description="Track service attendance, view demographics, and monitor trends. Coming soon." />} />
-                <Route path="communication" element={<PlaceholderPage title="Communication" description="Send announcements, newsletters, and manage prayer requests. Coming soon." />} />
-                <Route path="resources" element={<PlaceholderPage title="Bible Study Resources" description="Access digital Bible, devotionals, study plans, and sermon library. Coming soon." />} />
-                <Route path="churches" element={<PlaceholderPage title="Church Administration" description="Manage multi-level church hierarchy and profiles. Coming soon." />} />
-                <Route path="performance" element={<PlaceholderPage title="Performance" description="Track KPIs, set targets, and view automated performance reports. Coming soon." />} />
-                <Route path="reports" element={<PlaceholderPage title="Reports" description="Generate and export comprehensive reports across all modules. Coming soon." />} />
-                <Route path="settings" element={<PlaceholderPage title="Settings" description="Manage your account, preferences, and system configuration. Coming soon." />} />
+                <Route path="attendance" element={<Attendance />} />
+                <Route path="communication" element={<Communication />} />
+                <Route path="resources" element={<Resources />} />
+                <Route path="churches" element={<Churches />} />
+                <Route path="performance" element={<Performance />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="users" element={<UsersManagement />} />
+                <Route path="roles" element={<RolesManagement />} />
+                <Route path="packages" element={<Packages />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

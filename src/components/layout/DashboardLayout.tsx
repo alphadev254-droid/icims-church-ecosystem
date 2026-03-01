@@ -1,37 +1,21 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import {
-  Church, Users, Calendar, HandCoins, BarChart3, Settings,
-  LogOut, Sun, Moon, Menu, X, Home, MessageSquare, BookOpen,
-  Building2, ClipboardList, TrendingUp
-} from 'lucide-react';
+import { Church, LogOut, Sun, Moon, Menu } from 'lucide-react';
 import { useState } from 'react';
-
-const sidebarLinks = [
-  { to: '/dashboard', icon: Home, label: 'Dashboard' },
-  { to: '/dashboard/members', icon: Users, label: 'Members' },
-  { to: '/dashboard/events', icon: Calendar, label: 'Events' },
-  { to: '/dashboard/giving', icon: HandCoins, label: 'Giving' },
-  { to: '/dashboard/attendance', icon: ClipboardList, label: 'Attendance' },
-  { to: '/dashboard/communication', icon: MessageSquare, label: 'Communication' },
-  { to: '/dashboard/resources', icon: BookOpen, label: 'Resources' },
-  { to: '/dashboard/churches', icon: Building2, label: 'Churches' },
-  { to: '/dashboard/performance', icon: TrendingUp, label: 'Performance' },
-  { to: '/dashboard/reports', icon: BarChart3, label: 'Reports' },
-  { to: '/dashboard/settings', icon: Settings, label: 'Settings' },
-];
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
+  const navItems = useAuthStore(s => s.navItems);
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -48,19 +32,19 @@ export default function DashboardLayout() {
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {sidebarLinks.map(link => (
+        {navItems.map(item => (
           <Link
-            key={link.to}
-            to={link.to}
+            key={item.to}
+            to={item.to}
             onClick={() => setSidebarOpen(false)}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-              isActive(link.to)
+              isActive(item.to)
                 ? 'bg-sidebar-accent text-sidebar-primary'
                 : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
             }`}
           >
-            <link.icon className="h-4 w-4 flex-shrink-0" />
-            {link.label}
+            <item.icon className="h-4 w-4 flex-shrink-0" />
+            {item.label}
           </Link>
         ))}
       </nav>
@@ -68,7 +52,10 @@ export default function DashboardLayout() {
       <div className="p-3 border-t border-sidebar-border space-y-2">
         <div className="px-3 py-2 text-sm text-sidebar-foreground/70">
           <div className="font-medium text-sidebar-foreground">{user?.firstName} {user?.lastName}</div>
-          <div className="text-xs capitalize">{user?.role?.replace('_', ' ')}</div>
+          <div className="text-xs capitalize">{user?.roleName?.replace(/_/g, ' ')}</div>
+          {user?.church && (
+            <div className="text-xs text-sidebar-foreground/50 mt-0.5 truncate">{user.church.name}</div>
+          )}
         </div>
         <button
           onClick={handleLogout}
@@ -106,7 +93,9 @@ export default function DashboardLayout() {
               <Menu className="h-5 w-5" />
             </Button>
             <h2 className="font-heading text-lg font-semibold capitalize">
-              {location.pathname === '/dashboard' ? 'Dashboard' : location.pathname.split('/').pop()?.replace('-', ' ')}
+              {location.pathname === '/dashboard'
+                ? 'Dashboard'
+                : location.pathname.split('/').pop()?.replace(/-/g, ' ')}
             </h2>
           </div>
           <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground">

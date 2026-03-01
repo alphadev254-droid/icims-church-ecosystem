@@ -1,0 +1,343 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { churchesService, type Church } from '@/services/churches';
+import { useRole } from '@/hooks/useRole';
+import { LocationSelect, type LocationValue } from '@/components/LocationSelect';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Building2, Users, MapPin, Globe, Landmark, Plus, Pencil, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+
+const LEVEL_ICON: Record<string, typeof Globe> = {
+  national: Globe, regional: MapPin, district: Landmark, local: Building2,
+};
+
+// ─── Form schema ──────────────────────────────────────────────────────────────
+const schema = z.object({
+  name: z.string().min(2, 'Name required (min 2 characters)'),
+  phone: z.string().optional().default(''),
+  email: z.string().email().optional().or(z.literal('')).default(''),
+  website: z.string().optional().default(''),
+  address: z.string().optional().default(''),
+  region: z.string().min(1, 'Region is required'),
+  district: z.string().min(1, 'District is required'),
+  traditionalAuthority: z.string().min(1, 'Traditional Authority is required'),
+  village: z.string().optional().default(''),
+});
+type FormValues = z.infer<typeof schema>;
+
+// ─── Church Form ──────────────────────────────────────────────────────────────
+function ChurchForm({ defaultValues, defaultLocation, onSubmit, isPending, submitLabel }: {
+  defaultValues?: Partial<FormValues>;
+  defaultLocation?: LocationValue;
+  onSubmit: (v: FormValues) => void;
+  isPending: boolean;
+  submitLabel: string;
+}) {
+  const { register, handleSubmit, formState: { errors }, setValue } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      phone: '', email: '', website: '', address: '', village: '',
+      region: defaultLocation?.region || '',
+      district: defaultLocation?.district || '',
+      traditionalAuthority: defaultLocation?.traditionalAuthority || '',
+      ...defaultValues
+    },
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <Label>Church Name</Label>
+        <Input {...register('name')} />
+        {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
+      </div>
+
+      {/* Cascading location — level auto-derived from depth selected */}
+      <div className="rounded-lg border p-3 space-y-3 bg-muted/30">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Location</p>
+        <LocationSelect
+          defaultValues={defaultLocation}
+          onChange={(loc) => {
+            setValue('region', loc.region || '');
+            setValue('district', loc.district || '');
+            setValue('traditionalAuthority', loc.traditionalAuthority || '');
+            setValue('village', loc.village || '');
+          }}
+          required={{ region: true, district: true, traditionalAuthority: true }}
+          errors={{
+            region: errors.region?.message,
+            district: errors.district?.message,
+            traditionalAuthority: errors.traditionalAuthority?.message,
+          }}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+          <Input {...register('phone')} />
+        </div>
+        <div>
+          <Label>Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
+          <Input {...register('email')} type="email" />
+        </div>
+      </div>
+      <div>
+        <Label>Address <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Input {...register('address')} />
+      </div>
+      <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+        {isPending ? 'Saving...' : submitLabel}
+      </Button>
+    </form>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function ChurchesPage() {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editChurch, setEditChurch] = useState<Church | null>(null);
+  const [deleteChurch, setDeleteChurch] = useState<Church | null>(null);
+  const { hasPermission } = useRole();
+  const qc = useQueryClient();
+
+  const canCreate = hasPermission('churches:create');
+  const canUpdate = hasPermission('churches:update');
+  const canDelete = hasPermission('churches:delete');
+
+  const { data: churches = [], isLoading } = useQuery({
+    queryKey: ['churches'],
+    queryFn: churchesService.getAll,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (dto: FormValues) => churchesService.create(buildDto(dto)),
+    onSuccess: () => {
+      toast.success('Church created');
+      qc.invalidateQueries({ queryKey: ['churches'] });
+      setCreateOpen(false);
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create church'),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: ReturnType<typeof buildDto> }) => churchesService.update(id, dto),
+    onSuccess: () => {
+      toast.success('Church updated');
+      qc.invalidateQueries({ queryKey: ['churches'] });
+      setEditChurch(null);
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update church'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => churchesService.delete(id),
+    onSuccess: () => {
+      toast.success('Church deleted');
+      qc.invalidateQueries({ queryKey: ['churches'] });
+      setDeleteChurch(null);
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete church'),
+  });
+
+  function buildDto(v: FormValues) {
+    // Build a human-readable location string for display
+    const locParts = [v.traditionalAuthority, v.district, v.region].filter(Boolean);
+    const locationStr = locParts.join(', ') || 'Malawi';
+    return {
+      name: v.name,
+      location: locationStr,
+      country: 'Malawi',
+      region: v.region,
+      district: v.district,
+      traditionalAuthority: v.traditionalAuthority,
+      village: v.village || undefined,
+      phone: v.phone || undefined,
+      email: v.email || undefined,
+      website: v.website || undefined,
+      address: v.address || undefined,
+    };
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Churches</h1>
+          <p className="text-sm text-muted-foreground">
+            {churches.length} congregation{churches.length !== 1 ? 's' : ''} in your network
+          </p>
+        </div>
+        {canCreate && (
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
+                <Plus className="h-4 w-4" /> Add Church
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogHeader><DialogTitle className="font-heading">Add Church</DialogTitle></DialogHeader>
+              <ChurchForm
+                onSubmit={(v) => createMutation.mutate(v)}
+                isPending={createMutation.isPending}
+                submitLabel="Create Church"
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+        </div>
+      ) : churches.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <Building2 className="h-12 w-12 mx-auto mb-3 opacity-40" />
+          <p className="font-medium">No congregation data available</p>
+          {canCreate && <p className="text-sm mt-1">Add your first church branch.</p>}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {churches.map(church => {
+            const ChurchIcon = LEVEL_ICON[church.level] ?? Building2;
+            return (
+              <Card key={church.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="p-2 bg-accent/10 rounded-md flex-shrink-0">
+                        <ChurchIcon className="h-4 w-4 text-accent" />
+                      </div>
+                      <div className="min-w-0">
+                        <CardTitle className="text-sm font-semibold leading-tight truncate">{church.name}</CardTitle>
+                        {church.branchCode && <p className="text-xs text-muted-foreground">{church.branchCode}</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                      {canUpdate && (
+                        <button onClick={() => setEditChurch(church)} className="p-1 text-muted-foreground hover:text-foreground">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button onClick={() => setDeleteChurch(church)} className="p-1 text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-2">
+                  {/* Location breadcrumb */}
+                  <div className="flex flex-wrap gap-1">
+                    {church.region && (
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{church.region}</span>
+                    )}
+                    {church.district && (
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{church.district}</span>
+                    )}
+                    {(church as any).traditionalAuthority && (
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{(church as any).traditionalAuthority}</span>
+                    )}
+                    {(church as any).village && (
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{(church as any).village}</span>
+                    )}
+                  </div>
+                  {church.location && !church.region && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3" />{church.location}
+                    </div>
+                  )}
+                  {church._count?.members !== undefined && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Users className="h-3 w-3" />{church._count.members} members
+                    </div>
+                  )}
+                  {church.email && <p className="text-xs text-muted-foreground truncate">{church.email}</p>}
+                  {church.phone && <p className="text-xs text-muted-foreground">{church.phone}</p>}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Edit dialog */}
+      <Dialog open={!!editChurch} onOpenChange={open => !open && setEditChurch(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="font-heading">Edit Church</DialogTitle></DialogHeader>
+          {editChurch && (
+            <ChurchForm
+              defaultValues={{
+                name: editChurch.name,
+                phone: editChurch.phone ?? '',
+                email: editChurch.email ?? '',
+                website: editChurch.website ?? '',
+                address: editChurch.address ?? '',
+                region: editChurch.region ?? '',
+                district: editChurch.district ?? '',
+                traditionalAuthority: (editChurch as any).traditionalAuthority ?? '',
+                village: (editChurch as any).village ?? '',
+              }}
+              defaultLocation={{
+                region: editChurch.region ?? undefined,
+                district: editChurch.district ?? undefined,
+                traditionalAuthority: (editChurch as any).traditionalAuthority ?? undefined,
+                village: (editChurch as any).village ?? undefined,
+              }}
+              onSubmit={(v) => updateMutation.mutate({ id: editChurch.id, dto: buildDto(v) })}
+              isPending={updateMutation.isPending}
+              submitLabel="Save Changes"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteChurch} onOpenChange={open => !open && setDeleteChurch(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Church - Data Loss Warning</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>You are about to permanently delete <strong>{deleteChurch?.name}</strong>.</p>
+              <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                <p className="font-medium text-destructive mb-2">⚠️ This will permanently delete ALL data associated with this church:</p>
+                <ul className="text-sm space-y-1 text-muted-foreground">
+                  <li>• All church members and their records</li>
+                  <li>• All events and attendance records</li>
+                  <li>• All giving and donation records</li>
+                  <li>• All announcements and communications</li>
+                  <li>• All resources and documents</li>
+                  <li>• All user accounts linked to this church</li>
+                  <li>• All roles and permissions for this church</li>
+                </ul>
+              </div>
+              <p className="font-medium">This action cannot be undone. Are you absolutely sure?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteChurch && deleteMutation.mutate(deleteChurch.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Yes, Delete Everything
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

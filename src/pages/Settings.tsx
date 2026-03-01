@@ -1,0 +1,240 @@
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import apiClient from '@/lib/api-client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/stores/authStore';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { User, Lock, Bell, Sun, Moon, Building2, Shield } from 'lucide-react';
+import { toast } from 'sonner';
+
+const profileSchema = z.object({
+  firstName: z.string().min(1, 'First name required'),
+  lastName: z.string().min(1, 'Last name required'),
+  phone: z.string().optional(),
+});
+type ProfileValues = z.infer<typeof profileSchema>;
+
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password required'),
+  newPassword: z.string().min(8, 'Minimum 8 characters'),
+  confirmPassword: z.string(),
+}).refine(d => d.newPassword === d.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
+type PasswordValues = z.infer<typeof passwordSchema>;
+
+export default function SettingsPage() {
+  const { user } = useAuth();
+  const fetchMe = useAuthStore(s => s.fetchMe);
+  const { theme, toggleTheme } = useTheme();
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const profileForm = useForm<ProfileValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      firstName: user?.firstName ?? '',
+      lastName: user?.lastName ?? '',
+      phone: user?.phone ?? '',
+    },
+  });
+
+  const passwordForm = useForm<PasswordValues>({
+    resolver: zodResolver(passwordSchema),
+  });
+
+  const onSaveProfile = async (values: ProfileValues) => {
+    setProfileLoading(true);
+    try {
+      await apiClient.put('/auth/profile', values);
+      await fetchMe();
+      toast.success('Profile updated');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const onChangePassword = async (values: PasswordValues) => {
+    setPasswordLoading(true);
+    try {
+      await apiClient.put('/auth/profile', {
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword,
+      });
+      toast.success('Password changed successfully');
+      passwordForm.reset();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to change password');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h1 className="font-heading text-2xl font-bold">Settings</h1>
+        <p className="text-sm text-muted-foreground">Manage your account, preferences, and system configuration</p>
+      </div>
+
+      {/* Profile */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <User className="h-4 w-4" /> Profile Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={profileForm.handleSubmit(onSaveProfile)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>First Name</Label>
+                <Input {...profileForm.register('firstName')} />
+                {profileForm.formState.errors.firstName && (
+                  <p className="text-xs text-destructive mt-1">{profileForm.formState.errors.firstName.message}</p>
+                )}
+              </div>
+              <div>
+                <Label>Last Name</Label>
+                <Input {...profileForm.register('lastName')} />
+                {profileForm.formState.errors.lastName && (
+                  <p className="text-xs text-destructive mt-1">{profileForm.formState.errors.lastName.message}</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <Label>Email <span className="text-muted-foreground text-xs">(cannot be changed)</span></Label>
+              <Input value={user?.email ?? ''} disabled className="opacity-60" />
+            </div>
+            <div>
+              <Label>Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input {...profileForm.register('phone')} placeholder="+265 ..." />
+            </div>
+            <Button type="submit" disabled={profileLoading} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              {profileLoading ? 'Saving...' : 'Save Profile'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Role & Church info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Shield className="h-4 w-4" /> Role & Access
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="text-sm font-medium">Role</p>
+              <p className="text-xs text-muted-foreground">Your assigned role in the system</p>
+            </div>
+            <span className="text-sm font-semibold capitalize bg-muted px-3 py-1 rounded-full">
+              {user?.roleName?.replace(/_/g, ' ') ?? 'member'}
+            </span>
+          </div>
+          {user?.church && (
+            <>
+              <Separator />
+              <div className="flex items-center gap-3 py-2">
+                <div className="p-2 bg-accent/10 rounded-md">
+                  <Building2 className="h-4 w-4 text-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{user.church.name}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{user.church.level} · {user.church.package} package · {user.church.location}</p>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Password */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Lock className="h-4 w-4" /> Change Password
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={passwordForm.handleSubmit(onChangePassword)} className="space-y-4">
+            <div>
+              <Label>Current Password</Label>
+              <Input type="password" {...passwordForm.register('currentPassword')} />
+              {passwordForm.formState.errors.currentPassword && (
+                <p className="text-xs text-destructive mt-1">{passwordForm.formState.errors.currentPassword.message}</p>
+              )}
+            </div>
+            <div>
+              <Label>New Password</Label>
+              <Input type="password" {...passwordForm.register('newPassword')} />
+              {passwordForm.formState.errors.newPassword && (
+                <p className="text-xs text-destructive mt-1">{passwordForm.formState.errors.newPassword.message}</p>
+              )}
+            </div>
+            <div>
+              <Label>Confirm New Password</Label>
+              <Input type="password" {...passwordForm.register('confirmPassword')} />
+              {passwordForm.formState.errors.confirmPassword && (
+                <p className="text-xs text-destructive mt-1">{passwordForm.formState.errors.confirmPassword.message}</p>
+              )}
+            </div>
+            <Button type="submit" disabled={passwordLoading} variant="outline">
+              {passwordLoading ? 'Changing...' : 'Change Password'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Preferences */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Bell className="h-4 w-4" /> Preferences
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium flex items-center gap-2">
+                {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+              </p>
+              <p className="text-xs text-muted-foreground">Toggle between light and dark appearance</p>
+            </div>
+            <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Email Notifications</p>
+              <p className="text-xs text-muted-foreground">Receive email alerts for important updates</p>
+            </div>
+            <Switch defaultChecked />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Giving Reminders</p>
+              <p className="text-xs text-muted-foreground">Monthly giving summary in your inbox</p>
+            </div>
+            <Switch defaultChecked />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
