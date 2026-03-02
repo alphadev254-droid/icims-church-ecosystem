@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://13.221.93.123.nip.io/api/:path*" },
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
