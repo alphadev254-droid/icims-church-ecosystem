@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { subaccountsService } from '@/services/subaccounts';
 import { churchesService } from '@/services/churches';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,8 +29,25 @@ export default function SubaccountPage() {
   const { churchId } = useParams<{ churchId: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const { hasPermission } = useRole();
   const [isEditing, setIsEditing] = useState(false);
+
+  // Block access for non-Kenya accounts
+  if (user?.accountCountry !== 'Kenya') {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-xl font-semibold mb-2">Not Available</h2>
+            <p className="text-muted-foreground mb-4">Subaccounts are only available for Kenya accounts.</p>
+            <Button onClick={() => navigate('/dashboard/churches')}>Back to Branches</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const canUpdate = hasPermission('subaccounts:update');
 

@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { churchesService, type Church } from '@/services/churches';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature, useCheckLimit } from '@/hooks/usePackageFeatures';
 import { STALE_TIME } from '@/lib/query-config';
@@ -120,6 +121,7 @@ export default function ChurchesPage() {
   const [deleteChurch, setDeleteChurch] = useState<Church | null>(null);
   const [inviteLinkChurch, setInviteLinkChurch] = useState<Church | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { user } = useAuth();
   const { hasPermission } = useRole();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -129,6 +131,7 @@ export default function ChurchesPage() {
   const canUpdate = hasPermission('churches:update');
   const canDelete = hasPermission('churches:delete');
   const canInvite = hasPermission('churches:invite');
+  const isKenyaAccount = user?.accountCountry === 'Kenya';
 
   const { data: churches = [], isLoading } = useQuery({
     queryKey: ['churches'],
@@ -335,7 +338,7 @@ export default function ChurchesPage() {
                   )}
                   {church.email && <p className="text-xs text-muted-foreground truncate">{church.email}</p>}
                   {church.phone && <p className="text-xs text-muted-foreground">{church.phone}</p>}
-                  {hasPermission('subaccounts:view') && (
+                  {hasPermission('subaccounts:view') && isKenyaAccount && (
                     <Button 
                       size="sm" 
                       variant="outline" 
