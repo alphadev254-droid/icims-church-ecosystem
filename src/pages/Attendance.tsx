@@ -1,63 +1,46 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useNavigate } from 'react-router-dom';
 import { attendanceService } from '@/services/attendance';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChurchSelect } from '@/components/ChurchSelect';
-import { Plus, ClipboardList, TrendingUp, Users, Trash2 } from 'lucide-react';
+import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock } from 'lucide-react';
+import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
-import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-} from 'recharts';
-
-const schema = z.object({
-  date: z.string().min(1, 'Date required'),
-  serviceType: z.string().min(1, 'Service type required'),
-  totalAttendees: z.coerce.number().int().positive('Must be a positive number'),
-  newVisitors: z.coerce.number().int().min(0).default(0),
-  notes: z.string().optional(),
-  churchId: z.string().min(1, 'Church selection required'),
-});
-type FormValues = z.infer<typeof schema>;
+import { Link } from 'react-router-dom';
+import { STALE_TIME } from '@/lib/query-config';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 export default function AttendancePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
   const { hasPermission } = useRole();
+  const hasAttendanceFeature = useHasFeature('attendance_tracking');
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ['attendance'],
     queryFn: attendanceService.getAll,
+    staleTime: STALE_TIME.DEFAULT,
   });
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { serviceType: 'Sunday Service', newVisitors: 0 },
-  });
-
-  const churchId = watch('churchId');
-
-  const createMutation = useMutation({
+  const createAttendanceMutation = useMutation({
     mutationFn: attendanceService.create,
     onSuccess: () => {
       toast.success('Attendance recorded');
       qc.invalidateQueries({ queryKey: ['attendance'] });
       setDialogOpen(false);
-      reset();
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to record attendance'),
   });
@@ -72,16 +55,33 @@ export default function AttendancePage() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete'),
   });
 
-  const canCreate = hasPermission('attendance:create');
-  const canDelete = hasPermission('attendance:update');
+  const canCreate = hasPermission('attendance:create') && hasAttendanceFeature;
+  const canDelete = hasPermission('attendance:update') && hasAttendanceFeature;
 
-  // Summary stats
+  if (!hasAttendanceFeature) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Attendance</h1>
+          <p className="text-sm text-muted-foreground">Track service attendance</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Attendance Tracking is not available in your current package.{' '}
+            <Link to="/dashboard/packages" className="font-medium underline">Upgrade now</Link>
+            {' '}to unlock attendance tracking features.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const totalServices = records.length;
   const totalAttendees = records.reduce((s, r) => s + r.totalAttendees, 0);
   const totalVisitors = records.reduce((s, r) => s + (r.newVisitors ?? 0), 0);
   const avgAttendance = totalServices ? Math.round(totalAttendees / totalServices) : 0;
 
-  // Chart data — last 8 records reversed to show oldest first
   const chartData = [...records].reverse().slice(-8).map(r => ({
     date: new Date(r.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
     attendees: r.totalAttendees,
@@ -95,69 +95,66 @@ export default function AttendancePage() {
           <h1 className="font-heading text-2xl font-bold">Attendance</h1>
           <p className="text-sm text-muted-foreground">{totalServices} service records</p>
         </div>
-        {canCreate && (
+        <div className="flex gap-2">
+          <ExportImportButtons
+            data={records.map(r => ({
+              date: new Date(r.date).toLocaleDateString(),
+              church: (r as any).church?.name || '',
+              serviceType: r.serviceType,
+              totalAttendees: r.totalAttendees,
+              newVisitors: r.newVisitors ?? 0,
+              notes: r.notes || '',
+            }))}
+            filename="attendance"
+            headers={[
+              { label: 'Date', key: 'date' },
+              { label: 'Church', key: 'church' },
+              { label: 'Service Type', key: 'serviceType' },
+              { label: 'Total Attendees', key: 'totalAttendees' },
+              { label: 'New Visitors', key: 'newVisitors' },
+              { label: 'Notes', key: 'notes' },
+            ]}
+            pdfTitle="Attendance Report"
+          />
+          {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
                 <Plus className="h-4 w-4" /> Record Attendance
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-heading">Record Attendance</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit(v => createMutation.mutate(v))} className="space-y-4">
-                <ChurchSelect 
-                  value={churchId} 
-                  onValueChange={value => setValue('churchId', value)}
-                />
-                {errors.churchId && <p className="text-xs text-destructive mt-1">{errors.churchId.message}</p>}
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Date</Label>
-                    <Input type="date" {...register('date')} />
-                    {errors.date && <p className="text-xs text-destructive mt-1">{errors.date.message}</p>}
-                  </div>
-                  <div>
-                    <Label>Service Type</Label>
-                    <Select defaultValue="Sunday Service" onValueChange={v => setValue('serviceType', v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Sunday Service">Sunday Service</SelectItem>
-                        <SelectItem value="Midweek Service">Midweek Service</SelectItem>
-                        <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
-                        <SelectItem value="Youth Service">Youth Service</SelectItem>
-                        <SelectItem value="Special Service">Special Service</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Total Attendees</Label>
-                    <Input type="number" min={1} {...register('totalAttendees')} />
-                    {errors.totalAttendees && <p className="text-xs text-destructive mt-1">{errors.totalAttendees.message}</p>}
-                  </div>
-                  <div>
-                    <Label>New Visitors</Label>
-                    <Input type="number" min={0} {...register('newVisitors')} />
-                  </div>
-                </div>
+              <div className="space-y-4">
                 <div>
-                  <Label>Notes <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input {...register('notes')} />
+                  <Label>Attendance Type</Label>
+                  <Select defaultValue="service" onValueChange={(v: any) => {
+                    if (v === 'event') {
+                      navigate('/dashboard/event-attendance');
+                      setDialogOpen(false);
+                    }
+                  }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="service">Regular Service</SelectItem>
+                      <SelectItem value="event">Event</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Button type="submit" disabled={createMutation.isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-                  {createMutation.isPending ? 'Saving...' : 'Save Record'}
-                </Button>
-              </form>
+
+                <RegularServiceForm
+                  onSubmit={(data) => createAttendanceMutation.mutate(data)}
+                  isPending={createAttendanceMutation.isPending}
+                />
+              </div>
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
 
-      {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -182,7 +179,6 @@ export default function AttendancePage() {
         </Card>
       </div>
 
-      {/* Chart */}
       {chartData.length > 0 && (
         <Card>
           <CardHeader>
@@ -203,7 +199,6 @@ export default function AttendancePage() {
         </Card>
       )}
 
-      {/* Records table */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -215,6 +210,7 @@ export default function AttendancePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>Church</TableHead>
                   <TableHead>Service Type</TableHead>
                   <TableHead className="text-right">Attendees</TableHead>
                   <TableHead className="text-right hidden sm:table-cell">New Visitors</TableHead>
@@ -226,6 +222,7 @@ export default function AttendancePage() {
                 {records.map(r => (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{new Date(r.date).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-sm">{(r as any).church?.name || '—'}</TableCell>
                     <TableCell>{r.serviceType}</TableCell>
                     <TableCell className="text-right font-semibold">{r.totalAttendees}</TableCell>
                     <TableCell className="text-right hidden sm:table-cell text-muted-foreground">{r.newVisitors ?? 0}</TableCell>
@@ -244,7 +241,7 @@ export default function AttendancePage() {
                 ))}
                 {records.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={canDelete ? 6 : 5} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={canDelete ? 7 : 6} className="text-center py-10 text-muted-foreground">
                       <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       {canCreate ? 'No records yet. Record your first service attendance.' : 'No attendance records.'}
                     </TableCell>
@@ -256,7 +253,6 @@ export default function AttendancePage() {
         </CardContent>
       </Card>
 
-      {/* Delete confirmation */}
       <AlertDialog open={!!deleteRecord} onOpenChange={open => !open && setDeleteRecord(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -277,5 +273,72 @@ export default function AttendancePage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function RegularServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; isPending: boolean }) {
+  const [churchId, setChurchId] = useState('');
+  const [date, setDate] = useState('');
+  const [serviceType, setServiceType] = useState('Sunday Service');
+  const [totalAttendees, setTotalAttendees] = useState('');
+  const [newVisitors, setNewVisitors] = useState('0');
+  const [notes, setNotes] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      churchId,
+      date,
+      serviceType,
+      totalAttendees: parseInt(totalAttendees),
+      newVisitors: parseInt(newVisitors),
+      notes,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <ChurchSelect value={churchId} onValueChange={setChurchId} />
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Date</Label>
+          <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
+        </div>
+        <div>
+          <Label>Service Type</Label>
+          <Select value={serviceType} onValueChange={setServiceType}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Sunday Service">Sunday Service</SelectItem>
+              <SelectItem value="Midweek Service">Midweek Service</SelectItem>
+              <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
+              <SelectItem value="Youth Service">Youth Service</SelectItem>
+              <SelectItem value="Special Service">Special Service</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Total Attendees</Label>
+          <Input type="number" min={1} value={totalAttendees} onChange={e => setTotalAttendees(e.target.value)} required />
+        </div>
+        <div>
+          <Label>New Visitors</Label>
+          <Input type="number" min={0} value={newVisitors} onChange={e => setNewVisitors(e.target.value)} />
+        </div>
+      </div>
+      
+      <div>
+        <Label>Notes <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Input value={notes} onChange={e => setNotes(e.target.value)} />
+      </div>
+      
+      <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+        {isPending ? 'Saving...' : 'Save Record'}
+      </Button>
+    </form>
   );
 }

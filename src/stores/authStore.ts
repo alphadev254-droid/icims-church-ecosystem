@@ -8,12 +8,13 @@ export interface AuthUser {
   email: string;
   firstName: string;
   lastName: string;
-  roleName: string;      // convenience role name string
-  role?: string;         // fallback for backend compatibility
+  roleName: string;
+  role?: string;
   roleId?: string | null;
   phone?: string | null;
   avatar?: string | null;
   churchId?: string | null;
+  accountCountry?: string | null;
   church?: {
     id: string;
     name: string;
@@ -22,8 +23,20 @@ export interface AuthUser {
     location: string;
   } | null;
   createdAt: string;
-  // Permissions from DB — authoritative source of truth
   permissions: string[];
+  package?: {
+    id: string;
+    name: string;
+    displayName: string;
+    features: Array<{
+      limitValue: number | null;
+      feature: {
+        name: string;
+        displayName: string;
+        category: string;
+      };
+    }>;
+  } | null;
 }
 
 interface AuthState {
@@ -46,6 +59,7 @@ export interface RegisterData {
   email: string;
   password: string;
   phone?: string;
+  inviteToken?: string;
 }
 
 function applyPermissions(permissions: string[]) {

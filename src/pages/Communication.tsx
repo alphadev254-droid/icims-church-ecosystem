@@ -4,7 +4,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { communicationService, type Announcement } from '@/services/communication';
+import { uploadService } from '@/services/upload';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,8 +16,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChurchSelect } from '@/components/ChurchSelect';
-import { Plus, MessageSquare, Bell, Trash2, HandHeart, Pencil } from 'lucide-react';
+import { Plus, MessageSquare, Bell, Trash2, HandHeart, Pencil, Eye, Paperclip, X, FileText, Image as ImageIcon, Download, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const schema = z.object({
@@ -41,41 +45,98 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export default function CommunicationPage() {
+  const hasCommunication = useHasFeature('communication');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<Announcement | null>(null);
+  const [viewItem, setViewItem] = useState<Announcement | null>(null);
   const [formType, setFormType] = useState<'announcement' | 'prayer_request' | 'newsletter'>('announcement');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [existingFiles, setExistingFiles] = useState<any[]>([]);
   const { hasPermission } = useRole();
   const qc = useQueryClient();
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['announcements'],
     queryFn: communicationService.getAll,
+    enabled: hasCommunication,
   });
+
+  if (!hasCommunication) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Communication</h1>
+          <p className="text-sm text-muted-foreground">Announcements, newsletters, and prayer requests</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Communication & Announcements is not available in your current package.{' '}
+            <Link to="/dashboard/packages" className="font-medium underline">
+              Upgrade now
+            </Link>{' '}
+            to unlock communication features.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { type: 'announcement', priority: 'normal' },
+  });
+
+  const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, setValue: setValueEdit, formState: { errors: errorsEdit } } = useForm<FormValues>({
+    resolver: zodResolver(schema),
   });
 
   const churchId = watch('churchId');
 
   const createMutation = useMutation({
-    mutationFn: communicationService.create,
+    mutationFn: async (data: any) => {
+      // Upload files first if any
+      let uploadedFiles: any[] = [];
+      if (selectedFiles.length > 0) {
+        uploadedFiles = await uploadService.uploadCommunicationFiles(selectedFiles);
+      }
+      // Create announcement with uploaded files
+      return communicationService.create({
+        ...data,
+        attachments: uploadedFiles.length > 0 ? JSON.stringify(uploadedFiles) : undefined,
+      });
+    },
     onSuccess: () => {
       toast.success('Posted successfully');
       qc.invalidateQueries({ queryKey: ['announcements'] });
       setDialogOpen(false);
+      setSelectedFiles([]);
       reset();
+      setFormType('announcement');
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to post'),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: any }) => communicationService.update(id, dto),
+    mutationFn: async ({ id, dto }: { id: string; dto: any }) => {
+      // Upload new files if any
+      let uploadedFiles: any[] = [];
+      if (selectedFiles.length > 0) {
+        uploadedFiles = await uploadService.uploadCommunicationFiles(selectedFiles);
+      }
+      // Merge existing and new files
+      const allFiles = [...existingFiles, ...uploadedFiles];
+      return communicationService.update(id, {
+        ...dto,
+        attachments: allFiles.length > 0 ? JSON.stringify(allFiles) : undefined,
+      });
+    },
     onSuccess: () => {
       toast.success('Updated successfully');
       qc.invalidateQueries({ queryKey: ['announcements'] });
       setEditItem(null);
+      setSelectedFiles([]);
+      setExistingFiles([]);
+      resetEdit();
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update'),
   });
@@ -93,10 +154,38 @@ export default function CommunicationPage() {
   const canUpdate = hasPermission('communication:update');
   const canDelete = hasPermission('communication:delete');
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const totalFiles = selectedFiles.length + existingFiles.length + files.length;
+    if (totalFiles > 5) {
+      toast.error('Maximum 5 files allowed');
+      return;
+    }
+
+    setSelectedFiles(prev => [...prev, ...Array.from(files)]);
+    e.target.value = '';
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingFile = async (index: number, fileUrl: string) => {
+    try {
+      await uploadService.deleteFile(fileUrl);
+      setExistingFiles(prev => prev.filter((_, i) => i !== index));
+    } catch (err) {
+      toast.error('Failed to delete file');
+    }
+  };
+
   const filterByType = (type: string) => items.filter((i: any) => i.type === type);
 
   const ItemCard = ({ item }: { item: any }) => {
     const Icon = TYPE_ICON[item.type] ?? Bell;
+    const attachments = item.attachments ? JSON.parse(item.attachments) : [];
     return (
       <Card className="hover:shadow-md transition-shadow">
         <CardContent className="p-5">
@@ -109,18 +198,38 @@ export default function CommunicationPage() {
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <span className="font-heading font-semibold text-foreground">{item.title}</span>
                   {item.priority === 'urgent' && <Badge variant="destructive" className="text-xs">Urgent</Badge>}
+                  {attachments.length > 0 && <Paperclip className="h-3 w-3 text-muted-foreground" />}
                 </div>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{item.content}</p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-3">{item.content}</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                  <button
+                    onClick={() => setViewItem(item)}
+                    className="text-xs text-accent hover:underline flex items-center gap-1"
+                  >
+                    <Eye className="h-3 w-3" /> View
+                  </button>
+                </div>
               </div>
             </div>
             {(canUpdate || canDelete) && (
               <div className="flex items-center gap-1 flex-shrink-0">
                 {canUpdate && (
                   <button
-                    onClick={() => setEditItem(item)}
+                    onClick={() => {
+                      setEditItem(item);
+                      setExistingFiles(item.attachments ? JSON.parse(item.attachments) : []);
+                      setSelectedFiles([]);
+                      resetEdit({
+                        churchId: item.churchId,
+                        title: item.title,
+                        content: item.content,
+                        type: item.type,
+                        priority: item.priority,
+                      });
+                    }}
                     className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -212,6 +321,35 @@ export default function CommunicationPage() {
                   <Textarea {...register('content')} rows={4} />
                   {errors.content && <p className="text-xs text-destructive mt-1">{errors.content.message}</p>}
                 </div>
+                
+                <div>
+                  <Label>Attachments <span className="text-xs text-muted-foreground">(Max 5 files)</span></Label>
+                  <div className="space-y-2">
+                    <Input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={handleFileSelect}
+                      disabled={selectedFiles.length >= 5}
+                      className="cursor-pointer"
+                    />
+                    {selectedFiles.length > 0 && (
+                      <div className="space-y-1">
+                        {selectedFiles.map((file, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs bg-muted p-2 rounded">
+                            {file.type?.startsWith('image/') ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                            <span className="flex-1 truncate">{file.name}</span>
+                            <span className="text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</span>
+                            <button type="button" onClick={() => removeSelectedFile(i)} className="text-destructive hover:text-destructive/80">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
                 <Button type="submit" disabled={createMutation.isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
                   {createMutation.isPending ? 'Posting...' : 'Post'}
                 </Button>
@@ -252,27 +390,92 @@ export default function CommunicationPage() {
         </Tabs>
       )}
 
+      {/* View Dialog */}
+      <Dialog open={!!viewItem} onOpenChange={open => !open && setViewItem(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading flex items-center gap-2">
+              {viewItem && (() => {
+                const Icon = TYPE_ICON[viewItem.type] ?? Bell;
+                return <Icon className="h-5 w-5 text-accent" />;
+              })()}
+              {viewItem?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {viewItem && (() => {
+            const attachments = viewItem.attachments ? JSON.parse(viewItem.attachments) : [];
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="capitalize">{TYPE_LABEL[viewItem.type]}</Badge>
+                  {viewItem.priority === 'urgent' && <Badge variant="destructive">Urgent</Badge>}
+                </div>
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{viewItem.content}</p>
+                </div>
+                {attachments.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Attachments</Label>
+                    <div className="grid gap-2">
+                      {attachments.map((file: any, i: number) => (
+                        <a
+                          key={i}
+                          href={`${import.meta.env.VITE_STATIC_URL}${file.url}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 bg-muted rounded hover:bg-muted/80 transition-colors"
+                        >
+                          {file.mimeType?.startsWith('image/') ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                          <span className="flex-1 text-sm truncate">{file.name}</span>
+                          <Download className="h-3 w-3" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Posted on {new Date(viewItem.createdAt).toLocaleDateString('en-GB', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Dialog */}
-      <Dialog open={!!editItem} onOpenChange={open => !open && setEditItem(null)}>
+      <Dialog open={!!editItem} onOpenChange={open => {
+        if (!open) {
+          setEditItem(null);
+          setSelectedFiles([]);
+          setExistingFiles([]);
+          resetEdit();
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-heading">Edit Post</DialogTitle>
           </DialogHeader>
           {editItem && (
-            <form onSubmit={handleSubmit(v => updateMutation.mutate({ id: editItem.id, dto: v }))} className="space-y-4">
+            <form onSubmit={handleSubmitEdit(v => updateMutation.mutate({ id: editItem.id, dto: v }))} className="space-y-4">
               <ChurchSelect 
                 value={editItem.churchId} 
-                onValueChange={value => setValue('churchId', value)}
+                onValueChange={value => setValueEdit('churchId', value)}
               />
               
               <div>
                 <Label>Type</Label>
                 <Select
-                  defaultValue={editItem.type}
+                  value={editItem.type}
                   onValueChange={v => {
                     const t = v as typeof formType;
                     setFormType(t);
-                    setValue('type', t);
+                    setValueEdit('type', t);
                   }}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -285,7 +488,7 @@ export default function CommunicationPage() {
               </div>
               <div>
                 <Label>Priority</Label>
-                <Select defaultValue={editItem.priority} onValueChange={v => setValue('priority', v as 'normal' | 'urgent')}>
+                <Select value={editItem.priority} onValueChange={v => setValueEdit('priority', v as 'normal' | 'urgent')}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="normal">Normal</SelectItem>
@@ -295,14 +498,58 @@ export default function CommunicationPage() {
               </div>
               <div>
                 <Label>Title</Label>
-                <Input {...register('title')} defaultValue={editItem.title} />
-                {errors.title && <p className="text-xs text-destructive mt-1">{errors.title.message}</p>}
+                <Input {...registerEdit('title')} />
+                {errorsEdit.title && <p className="text-xs text-destructive mt-1">{errorsEdit.title.message}</p>}
               </div>
               <div>
                 <Label>Content</Label>
-                <Textarea {...register('content')} rows={4} defaultValue={editItem.content} />
-                {errors.content && <p className="text-xs text-destructive mt-1">{errors.content.message}</p>}
+                <Textarea {...registerEdit('content')} rows={4} />
+                {errorsEdit.content && <p className="text-xs text-destructive mt-1">{errorsEdit.content.message}</p>}
               </div>
+              
+              <div>
+                <Label>Attachments <span className="text-xs text-muted-foreground">(Max 5 files)</span></Label>
+                <div className="space-y-2">
+                  {existingFiles.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Existing files:</p>
+                      {existingFiles.map((file, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs bg-muted p-2 rounded">
+                          {file.mimeType?.startsWith('image/') ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                          <span className="flex-1 truncate">{file.name}</span>
+                          <button type="button" onClick={() => removeExistingFile(i, file.url)} className="text-destructive hover:text-destructive/80">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={handleFileSelect}
+                    disabled={(existingFiles.length + selectedFiles.length) >= 5}
+                    className="cursor-pointer"
+                  />
+                  {selectedFiles.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">New files:</p>
+                      {selectedFiles.map((file, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs bg-muted p-2 rounded">
+                          {file.type?.startsWith('image/') ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                          <span className="flex-1 truncate">{file.name}</span>
+                          <span className="text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</span>
+                          <button type="button" onClick={() => removeSelectedFile(i)} className="text-destructive hover:text-destructive/80">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
               <Button type="submit" disabled={updateMutation.isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
                 {updateMutation.isPending ? 'Updating...' : 'Update'}
               </Button>

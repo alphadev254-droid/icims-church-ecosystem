@@ -10,6 +10,13 @@ export interface ChurchEvent {
   type: 'service' | 'meeting' | 'conference' | 'outreach' | 'fellowship';
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   attendeeCount: number;
+  requiresTicket: boolean;
+  isFree: boolean;
+  ticketPrice?: number;
+  currency?: 'MWK' | 'KSH';
+  totalTickets?: number;
+  ticketsSold: number;
+  imageUrl?: string;
   churchId: string;
   createdById: string;
   createdAt: string;
@@ -25,6 +32,12 @@ export interface CreateEventDto {
   type: ChurchEvent['type'];
   status?: ChurchEvent['status'];
   attendeeCount?: number;
+  requiresTicket?: boolean;
+  isFree?: boolean;
+  ticketPrice?: number;
+  currency?: 'MWK' | 'KSH';
+  totalTickets?: number;
+  imageUrl?: string;
   churchId: string;
 }
 
@@ -49,5 +62,33 @@ export const eventsService = {
   },
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/events/${id}`);
+  },
+  bookTicket: async (dto: { eventId: string; memberId?: string; paymentMethod?: string; reference?: string }) => {
+    const { data } = await apiClient.post('/events/book-ticket', dto);
+    return data.data;
+  },
+  getMyTickets: async () => {
+    const { data } = await apiClient.get('/events/my-tickets');
+    return data.data;
+  },
+  getEventTickets: async (eventId: string) => {
+    const { data } = await apiClient.get(`/events/${eventId}/tickets`);
+    return data.data;
+  },
+  getTicketTransaction: async (ticketId: string) => {
+    const { data } = await apiClient.get(`/events/tickets/${ticketId}/transaction`);
+    return data.data;
+  },
+  createManualTicket: async (eventId: string, dto: { memberId: string; paymentMethod: string; reference?: string; amount: number; currency: string; transactionStatus: string; ticketStatus: string; notes?: string }) => {
+    const { data } = await apiClient.post(`/events/${eventId}/manual-ticket`, dto);
+    return data.data;
+  },
+  getUnallocatedTransactions: async (eventId: string) => {
+    const { data } = await apiClient.get(`/events/${eventId}/unallocated-transactions`);
+    return data.data;
+  },
+  markAttendance: async (ticketId: string, attended: boolean) => {
+    const { data } = await apiClient.patch(`/events/tickets/${ticketId}/attendance`, { attended });
+    return data.data;
   },
 };

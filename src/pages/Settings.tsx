@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { User, Lock, Bell, Sun, Moon, Building2, Shield } from 'lucide-react';
+import { User, Lock, Bell, Sun, Moon, Building2, Shield, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 const profileSchema = z.object({
@@ -38,6 +38,9 @@ export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -173,21 +176,60 @@ export default function SettingsPage() {
           <form onSubmit={passwordForm.handleSubmit(onChangePassword)} className="space-y-4">
             <div>
               <Label>Current Password</Label>
-              <Input type="password" {...passwordForm.register('currentPassword')} />
+              <div className="relative">
+                <Input 
+                  type={showCurrentPassword ? 'text' : 'password'} 
+                  {...passwordForm.register('currentPassword')} 
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {passwordForm.formState.errors.currentPassword && (
                 <p className="text-xs text-destructive mt-1">{passwordForm.formState.errors.currentPassword.message}</p>
               )}
             </div>
             <div>
               <Label>New Password</Label>
-              <Input type="password" {...passwordForm.register('newPassword')} />
+              <div className="relative">
+                <Input 
+                  type={showNewPassword ? 'text' : 'password'} 
+                  {...passwordForm.register('newPassword')} 
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {passwordForm.formState.errors.newPassword && (
                 <p className="text-xs text-destructive mt-1">{passwordForm.formState.errors.newPassword.message}</p>
               )}
             </div>
             <div>
               <Label>Confirm New Password</Label>
-              <Input type="password" {...passwordForm.register('confirmPassword')} />
+              <div className="relative">
+                <Input 
+                  type={showConfirmPassword ? 'text' : 'password'} 
+                  {...passwordForm.register('confirmPassword')} 
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {passwordForm.formState.errors.confirmPassword && (
                 <p className="text-xs text-destructive mt-1">{passwordForm.formState.errors.confirmPassword.message}</p>
               )}

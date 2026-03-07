@@ -22,9 +22,9 @@ const milestones = [
   { year: '2019', title: 'Founded', desc: 'ICIMS was conceived after observing fragmented administration challenges in local churches across East Africa.' },
   { year: '2020', title: 'First Module', desc: 'Launched membership management and giving modules, onboarding our first 10 pilot churches.' },
   { year: '2021', title: 'Platform Expansion', desc: 'Added 8 additional modules including attendance, event management, and communication portals.' },
-  { year: '2022', title: 'National Rollout', desc: 'Scaled to support full denominational hierarchies — national, regional, district, and local church levels.' },
+  { year: '2022', title: 'National Rollout', desc: 'Scaled to support full ministries hierarchies — national, regional, district, and local church levels.' },
   { year: '2023', title: 'Cloud Infrastructure', desc: 'Migrated to enterprise cloud infrastructure supporting 5,000+ concurrent users with 99.5% uptime.' },
-  { year: '2024', title: 'Growing Community', desc: 'Now serving 500+ churches and continuing to expand across multiple countries and denominations.' },
+  { year: '2024', title: 'Growing Community', desc: 'Now serving 500+ churches and continuing to expand across multiple countries and ministries.' },
 ];
 
 const team = [
@@ -105,17 +105,24 @@ export default function AboutPage() {
               </h2>
               <div className="space-y-4 text-muted-foreground text-sm leading-relaxed">
                 <p>
-                  The Integrated Church Information Management System was born from a simple observation: churches across all denominations struggle with fragmented tools and manual processes that drain time and resources from what truly matters — ministry.
+                  The Integrated Church Management Information System is part of a bouquet of resources developed by the Strategy Led Church Academy under{' '}
+                  <a href="http://www.thestrategy-ledchurch.com/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-medium">
+                    "The Strategy Led Church"
+                  </a>{' '}
+                  that seeks Equipping Church Leaders for Effective Ministry. ICMIS provides a one stop solution for performance management and stakeholder engagement. While ICMIS can be used by any church, it is optimal when combined with the other aspects of{' '}
+                  <a href="http://www.thestrategy-ledchurch.com/SLC-Academy" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline font-medium">
+                    "The Strategy Led Church"
+                  </a>.
                 </p>
                 <p>
-                  ICIMS brings together 12 functional modules into a single, unified platform that supports the entire denominational hierarchy — from national headquarters down to local congregations. No more spreadsheets, no more disconnected software.
+                  ICIMS brings together 12 functional modules into a single, unified platform that supports the entire ministries hierarchy — from national headquarters down to local branches. No more spreadsheets, no more disconnected software.
                 </p>
                 <p>
-                  Whether you're a small local church or a national denomination with thousands of congregations, ICIMS scales to meet your needs with cloud-hosted infrastructure that supports 5,000+ concurrent users.
+                  Whether you're a small local church or a national ministry with thousands of branches, ICIMS scales to meet your needs with cloud-hosted infrastructure that supports 5,000+ concurrent users.
                 </p>
               </div>
               <ul className="mt-6 space-y-2">
-                {['Built specifically for denominational structures', 'Secure, cloud-based with 99.5% uptime', 'Supported by a dedicated customer success team'].map(item => (
+                {['Built specifically for ministries structures', 'Secure, cloud-based with 99.5% uptime', 'Supported by a dedicated customer success team'].map(item => (
                   <li key={item} className="flex items-center gap-2 text-sm text-foreground">
                     <CheckCircle2 className="h-4 w-4 text-accent flex-shrink-0" />
                     {item}
@@ -141,8 +148,8 @@ export default function AboutPage() {
           </motion.div>
           <div className="grid gap-6 md:grid-cols-3 mb-12">
             {[
-              { icon: Target, title: 'Our Mission', desc: 'To provide churches with an accessible, integrated platform that simplifies administration and empowers data-driven decisions.' },
-              { icon: Eye, title: 'Our Vision', desc: 'A world where every church, regardless of size, has the tools to operate efficiently and focus on what matters — ministry.' },
+              { icon: Target, title: 'Our Mission', desc: 'To provide ministries with an accessible, integrated platform that simplifies administration and empowers data-driven decisions.' },
+              { icon: Eye, title: 'Our Vision', desc: 'A world where every ministry, regardless of size, has the tools to operate efficiently and focus on what matters — ministry.' },
               { icon: Heart, title: 'Our Values', desc: 'Transparency, accountability, servant leadership, and stewardship guide everything we build and support.' },
             ].map((item, i) => (
               <motion.div
@@ -205,7 +212,7 @@ export default function AboutPage() {
               </h2>
               <div className="space-y-5">
                 {[
-                  { icon: Church, title: 'Denomination-Aware', desc: 'Designed around real church hierarchies — national, regional, district, and local congregation levels.' },
+                  { icon: Church, title: 'Denomination-Aware', desc: 'Designed around real church hierarchies — national, regional, district, and local branch levels.' },
                   { icon: Users, title: 'People-First Design', desc: 'Intuitive interfaces that church staff and volunteers can learn in minutes, not weeks.' },
                   { icon: Globe, title: 'Scalable for Any Size', desc: 'From 50 to 50,000 members, ICIMS grows with your ministry without extra configuration.' },
                   { icon: ShieldCheck, title: 'Secure & Compliant', desc: 'Role-based access control, PCI-compliant giving, and encrypted data at rest and in transit.' },

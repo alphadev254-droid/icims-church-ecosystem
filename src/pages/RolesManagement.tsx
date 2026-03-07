@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rolesService } from '@/services/roles';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Shield, Users, CheckSquare, Square, Save } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Shield, Users, CheckSquare, Square, Save, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 // Group permissions by resource for display
 function groupPermissions(perms: { id: string; name: string; resource: string; action: string }[]) {
@@ -27,6 +30,7 @@ const RESOURCE_LABEL: Record<string, string> = {
 
 export default function RolesManagementPage() {
   const { hasPermission } = useRole();
+  const hasRoles = useHasFeature('roles_permissions');
   const qc = useQueryClient();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [pendingPerms, setPendingPerms] = useState<Set<string>>(new Set());
@@ -35,11 +39,13 @@ export default function RolesManagementPage() {
   const { data: roles = [], isLoading: rolesLoading } = useQuery({
     queryKey: ['roles'],
     queryFn: rolesService.getRoles,
+    enabled: hasRoles,
   });
 
   const { data: allPermissions = [], isLoading: permsLoading } = useQuery({
     queryKey: ['all-permissions'],
     queryFn: rolesService.getAllPermissions,
+    enabled: hasRoles,
   });
 
   const updateMutation = useMutation({
@@ -57,6 +63,24 @@ export default function RolesManagementPage() {
 
   const currentRole = roles.find(r => r.id === selectedRole);
   const grouped = groupPermissions(allPermissions);
+
+  if (!hasRoles) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Roles & Permissions</h1>
+          <p className="text-sm text-muted-foreground">Manage role permissions</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Roles & Permissions is not available in your current package.{' '}
+            <Link to="/dashboard/packages" className="font-medium underline">Upgrade now</Link>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   function handleSelectRole(roleId: string) {
     const role = roles.find(r => r.id === roleId);

@@ -5,18 +5,22 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { churchesService, type Church } from '@/services/churches';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature, useCheckLimit } from '@/hooks/usePackageFeatures';
+import { STALE_TIME } from '@/lib/query-config';
 import { LocationSelect, type LocationValue } from '@/components/LocationSelect';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Building2, Users, MapPin, Globe, Landmark, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Building2, Users, MapPin, Globe, Landmark, Plus, Pencil, Trash2, Lock, Link2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate, Link } from 'react-router-dom';
 
 const LEVEL_ICON: Record<string, typeof Globe> = {
   national: Globe, regional: MapPin, district: Landmark, local: Building2,
@@ -29,6 +33,7 @@ const schema = z.object({
   email: z.string().email().optional().or(z.literal('')).default(''),
   website: z.string().optional().default(''),
   address: z.string().optional().default(''),
+  pastorName: z.string().optional().default(''),
   region: z.string().min(1, 'Region is required'),
   district: z.string().min(1, 'District is required'),
   traditionalAuthority: z.string().min(1, 'Traditional Authority is required'),
@@ -47,7 +52,7 @@ function ChurchForm({ defaultValues, defaultLocation, onSubmit, isPending, submi
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      phone: '', email: '', website: '', address: '', village: '',
+      phone: '', email: '', website: '', address: '', village: '', pastorName: '',
       region: defaultLocation?.region || '',
       district: defaultLocation?.district || '',
       traditionalAuthority: defaultLocation?.traditionalAuthority || '',
@@ -58,7 +63,7 @@ function ChurchForm({ defaultValues, defaultLocation, onSubmit, isPending, submi
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
-        <Label>Church Name</Label>
+        <Label>Branch Name</Label>
         <Input {...register('name')} />
         {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
       </div>
@@ -94,6 +99,10 @@ function ChurchForm({ defaultValues, defaultLocation, onSubmit, isPending, submi
         </div>
       </div>
       <div>
+        <Label>Pastor/Minister Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Input {...register('pastorName')} placeholder="e.g. Rev. John Banda" />
+      </div>
+      <div>
         <Label>Address <span className="text-muted-foreground text-xs">(optional)</span></Label>
         <Input {...register('address')} />
       </div>
@@ -109,47 +118,100 @@ export default function ChurchesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editChurch, setEditChurch] = useState<Church | null>(null);
   const [deleteChurch, setDeleteChurch] = useState<Church | null>(null);
+  const [inviteLinkChurch, setInviteLinkChurch] = useState<Church | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const { hasPermission } = useRole();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const hasChurches = useHasFeature('churches_management');
 
   const canCreate = hasPermission('churches:create');
   const canUpdate = hasPermission('churches:update');
   const canDelete = hasPermission('churches:delete');
+  const canInvite = hasPermission('churches:invite');
 
   const { data: churches = [], isLoading } = useQuery({
     queryKey: ['churches'],
     queryFn: churchesService.getAll,
+    staleTime: STALE_TIME.DEFAULT,
+    enabled: hasChurches,
   });
 
+  const churchLimit = useCheckLimit('max_churches', churches.length);
+
+  if (!hasChurches) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Branches</h1>
+          <p className="text-sm text-muted-foreground">Manage your church branches</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Church Management is not available in your current package.{' '}
+            <Link to="/dashboard/packages" className="font-medium underline">Upgrade now</Link>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const createMutation = useMutation({
-    mutationFn: (dto: FormValues) => churchesService.create(buildDto(dto)),
+    mutationFn: (dto: FormValues) => {
+      if (!churchLimit.allowed) {
+        throw new Error(churchLimit.message);
+      }
+      return churchesService.create(buildDto(dto));
+    },
     onSuccess: () => {
-      toast.success('Church created');
+      toast.success('Branch created');
       qc.invalidateQueries({ queryKey: ['churches'] });
       setCreateOpen(false);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create church'),
+    onError: (err: any) => toast.error(err.response?.data?.message || err.message || 'Failed to create branch'),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, dto }: { id: string; dto: ReturnType<typeof buildDto> }) => churchesService.update(id, dto),
     onSuccess: () => {
-      toast.success('Church updated');
+      toast.success('Branch updated');
       qc.invalidateQueries({ queryKey: ['churches'] });
       setEditChurch(null);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update church'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update branch'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => churchesService.delete(id),
     onSuccess: () => {
-      toast.success('Church deleted');
+      toast.success('Branch deleted');
       qc.invalidateQueries({ queryKey: ['churches'] });
       setDeleteChurch(null);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete church'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete branch'),
   });
+
+  const generateInviteMutation = useMutation({
+    mutationFn: (id: string) => churchesService.generateInviteLink(id),
+    onSuccess: (data) => {
+      qc.setQueryData(['churches'], (old: Church[] | undefined) => 
+        old?.map(c => c.id === data.id ? { ...c, inviteToken: data.inviteToken } : c)
+      );
+      setInviteLinkChurch(prev => prev ? { ...prev, inviteToken: data.inviteToken } : null);
+      toast.success('Invite link generated');
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to generate invite link'),
+  });
+
+  const copyInviteLink = (token: string, churchId: string) => {
+    const baseUrl = window.location.origin;
+    const inviteUrl = `${baseUrl}/register/member?invite=${token}`;
+    navigator.clipboard.writeText(inviteUrl);
+    setCopiedId(churchId);
+    toast.success('Invite link copied to clipboard');
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   function buildDto(v: FormValues) {
     // Build a human-readable location string for display
@@ -167,6 +229,7 @@ export default function ChurchesPage() {
       email: v.email || undefined,
       website: v.website || undefined,
       address: v.address || undefined,
+      pastorName: v.pastorName || undefined,
     };
   }
 
@@ -174,24 +237,24 @@ export default function ChurchesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Churches</h1>
+          <h1 className="font-heading text-2xl font-bold">Branches</h1>
           <p className="text-sm text-muted-foreground">
-            {churches.length} congregation{churches.length !== 1 ? 's' : ''} in your network
+            {churches.length} branch{churches.length !== 1 ? 'es' : ''} in your network
           </p>
         </div>
         {canCreate && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
-                <Plus className="h-4 w-4" /> Add Church
+                <Plus className="h-4 w-4" /> Add Branch
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle className="font-heading">Add Church</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle className="font-heading">Add Branch</DialogTitle></DialogHeader>
               <ChurchForm
                 onSubmit={(v) => createMutation.mutate(v)}
                 isPending={createMutation.isPending}
-                submitLabel="Create Church"
+                submitLabel="Create Branch"
               />
             </DialogContent>
           </Dialog>
@@ -205,8 +268,8 @@ export default function ChurchesPage() {
       ) : churches.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Building2 className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">No congregation data available</p>
-          {canCreate && <p className="text-sm mt-1">Add your first church branch.</p>}
+          <p className="font-medium">No branch data available</p>
+          {canCreate && <p className="text-sm mt-1">Add your first branch.</p>}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -226,6 +289,11 @@ export default function ChurchesPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                      {canInvite && (
+                        <button onClick={() => setInviteLinkChurch(church)} className="p-1 text-muted-foreground hover:text-accent" title="Generate invite link">
+                          <Link2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       {canUpdate && (
                         <button onClick={() => setEditChurch(church)} className="p-1 text-muted-foreground hover:text-foreground">
                           <Pencil className="h-3.5 w-3.5" />
@@ -267,6 +335,16 @@ export default function ChurchesPage() {
                   )}
                   {church.email && <p className="text-xs text-muted-foreground truncate">{church.email}</p>}
                   {church.phone && <p className="text-xs text-muted-foreground">{church.phone}</p>}
+                  {hasPermission('subaccounts:view') && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="w-full mt-2"
+                      onClick={() => navigate(`/dashboard/subaccount/${church.id}`)}
+                    >
+                      Manage finance account
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -277,7 +355,7 @@ export default function ChurchesPage() {
       {/* Edit dialog */}
       <Dialog open={!!editChurch} onOpenChange={open => !open && setEditChurch(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle className="font-heading">Edit Church</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-heading">Edit Branch</DialogTitle></DialogHeader>
           {editChurch && (
             <ChurchForm
               defaultValues={{
@@ -286,6 +364,7 @@ export default function ChurchesPage() {
                 email: editChurch.email ?? '',
                 website: editChurch.website ?? '',
                 address: editChurch.address ?? '',
+                pastorName: (editChurch as any).pastorName ?? '',
                 region: editChurch.region ?? '',
                 district: editChurch.district ?? '',
                 traditionalAuthority: (editChurch as any).traditionalAuthority ?? '',
@@ -305,23 +384,69 @@ export default function ChurchesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Invite Link Dialog */}
+      <Dialog open={!!inviteLinkChurch} onOpenChange={open => !open && setInviteLinkChurch(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="font-heading">Church Invite Link</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Share this link with members to join <strong>{inviteLinkChurch?.name}</strong>. 
+              Anyone who registers using this link will automatically become a member of this church.
+            </p>
+            {inviteLinkChurch?.inviteToken ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                  <code className="flex-1 text-xs break-all">
+                    {window.location.origin}/register/member?invite={inviteLinkChurch.inviteToken}
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => copyInviteLink(inviteLinkChurch.inviteToken!, inviteLinkChurch.id)}
+                  >
+                    {copiedId === inviteLinkChurch.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => inviteLinkChurch && generateInviteMutation.mutate(inviteLinkChurch.id)}
+                  disabled={generateInviteMutation.isPending}
+                >
+                  {generateInviteMutation.isPending ? 'Generating...' : 'Regenerate Link'}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                className="w-full"
+                onClick={() => inviteLinkChurch && generateInviteMutation.mutate(inviteLinkChurch.id)}
+                disabled={generateInviteMutation.isPending}
+              >
+                {generateInviteMutation.isPending ? 'Generating...' : 'Generate Invite Link'}
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteChurch} onOpenChange={open => !open && setDeleteChurch(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Church - Data Loss Warning</AlertDialogTitle>
+            <AlertDialogTitle>Delete Branch - Data Loss Warning</AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>You are about to permanently delete <strong>{deleteChurch?.name}</strong>.</p>
               <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
-                <p className="font-medium text-destructive mb-2">⚠️ This will permanently delete ALL data associated with this church:</p>
+                <p className="font-medium text-destructive mb-2">⚠️ This will permanently delete ALL data associated with this branch:</p>
                 <ul className="text-sm space-y-1 text-muted-foreground">
-                  <li>• All church members and their records</li>
+                  <li>• All branch members and their records</li>
                   <li>• All events and attendance records</li>
                   <li>• All giving and donation records</li>
                   <li>• All announcements and communications</li>
                   <li>• All resources and documents</li>
-                  <li>• All user accounts linked to this church</li>
-                  <li>• All roles and permissions for this church</li>
+                  <li>• All user accounts linked to this branch</li>
+                  <li>• All roles and permissions for this branch</li>
                 </ul>
               </div>
               <p className="font-medium">This action cannot be undone. Are you absolutely sure?</p>

@@ -129,13 +129,13 @@ export function LocationSelect({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label>
-            Region{required.region
+            Region/Province/County{required.region
               ? <span className="text-destructive">*</span>
               : <span className="text-muted-foreground text-xs"> (optional)</span>}
           </Label>
           <Select value={selectedRegion} onValueChange={handleRegionChange}>
             <SelectTrigger className={errors.region ? 'border-destructive' : ''}>
-              <SelectValue placeholder={loading.regions ? 'Loading...' : 'Select region'} />
+              <SelectValue placeholder={loading.regions ? 'Loading...' : 'Select region/province/county'} />
               {loading.regions && <Loader2 className="h-4 w-4 animate-spin" />}
             </SelectTrigger>
             <SelectContent>

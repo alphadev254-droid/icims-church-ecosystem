@@ -35,7 +35,7 @@ export function ChurchSelect({
         <SelectContent>
           {churches.map(church => (
             <SelectItem key={church.id} value={church.id}>
-              {church.name} ({church.level})
+              {church.name} 
             </SelectItem>
           ))}
         </SelectContent>

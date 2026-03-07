@@ -20,6 +20,7 @@ export interface Church {
   parentId?: string | null;
   leaderId?: string | null;
   branchCode?: string | null;
+  inviteToken?: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: { members: number; users: number; events?: number };
@@ -63,5 +64,9 @@ export const churchesService = {
   },
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/churches/${id}`);
+  },
+  generateInviteLink: async (id: string): Promise<{ id: string; name: string; inviteToken: string }> => {
+    const { data } = await apiClient.post(`/churches/${id}/generate-invite`);
+    return data.data;
   },
 };

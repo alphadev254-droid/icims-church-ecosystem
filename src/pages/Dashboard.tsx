@@ -2,27 +2,27 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import apiClient from '@/lib/api-client';
-import { Users, Building2, HandCoins, Calendar, TrendingUp, Globe, MapPin, Landmark } from 'lucide-react';
+import { Users, Building2, HandCoins, Calendar, TrendingUp, Globe, MapPin, Landmark, DollarSign, Ticket, Bell, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line,
 } from 'recharts';
 
-// Fetch stats from real backend
 async function fetchStats(churchId?: string | null) {
   const params = churchId ? `?churchId=${churchId}` : '';
   const { data } = await apiClient.get(`/dashboard/stats${params}`);
   return data.data;
 }
 
-// Role-specific header text
 const ROLE_LABELS: Record<string, { scope: string; icon: typeof Globe }> = {
   national_admin:    { scope: 'Entire Denomination', icon: Globe },
   regional_leader:   { scope: 'Your Region',         icon: MapPin },
-  district_overseer: { scope: 'Your District',        icon: Landmark },
-  local_admin:       { scope: 'Your Congregation',    icon: Building2 },
+  district_overseer: { scope: 'Your District',       icon: Landmark },
+  local_admin:       { scope: 'Your Branch',         icon: Building2 },
+  member:            { scope: 'Your Church',         icon: Building2 },
 };
+
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -34,7 +34,29 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const roleLabel = ROLE_LABELS[role ?? 'local_admin'];
+    const isMember = role === 'member';
+
+  
+
+  const { data: urgentComms = [] } = useQuery({
+    queryKey: ['urgent-communications', user?.churchId],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/announcements?priority=urgent');
+      return data.data.slice(0, 3);
+    },
+    enabled: !!user && isMember,
+  });
+
+  const { data: recentResources = [] } = useQuery({
+    queryKey: ['recent-resources', user?.churchId],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/resources');
+      return data.data.slice(0, 3);
+    },
+    enabled: !!user && isMember,
+  });
+
+  const roleLabel = ROLE_LABELS[role ?? 'member'];
   const ScopeIcon = roleLabel?.icon ?? Building2;
 
   if (isLoading || !stats) {
@@ -45,8 +67,16 @@ export default function DashboardPage() {
     );
   }
 
-  // Stat cards — shown based on DB permissions, not hardcoded role names
-  const statCards = [
+  // Member-specific stats
+  const memberStats = [
+    { title: 'My Total Giving', value: `MWK ${Number(stats.myTotalDonations ?? 0).toLocaleString()}`, icon: HandCoins, change: 0 },
+    { title: 'My Donations', value: stats.myDonationRecords ?? 0, icon: DollarSign, change: 0 },
+    { title: 'Upcoming Events', value: stats.upcomingEvents ?? 0, icon: Calendar, change: 0 },
+    { title: 'Total Events', value: stats.totalEvents ?? 0, icon: Ticket, change: 0 },
+  ];
+
+  // Admin stat cards
+  const adminStats = [
     {
       title: 'Total Members',
       value: stats.totalMembers,
@@ -55,7 +85,7 @@ export default function DashboardPage() {
       show: hasPermission('members:read'),
     },
     {
-      title: isLocal ? 'Active Members' : 'Congregations',
+      title: isLocal ? 'Active Members' : 'Churches',
       value: isLocal ? stats.activeMembers : stats.totalChurches,
       icon: Building2,
       change: 0,
@@ -84,10 +114,10 @@ export default function DashboardPage() {
     },
   ].filter(s => s.show);
 
+  const statCards = isMember ? memberStats : adminStats;
+
   return (
     <div className="space-y-6">
-
-      {/* Welcome header — shows scope based on role */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-foreground">
@@ -106,7 +136,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map(s => (
           <Card key={s.title}>
@@ -127,10 +156,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Charts — only show if the role has access to this data */}
       <div className="grid gap-6 lg:grid-cols-2">
-
-        {/* Attendance chart — shown if user has attendance:read permission */}
         {hasPermission('attendance:read') && (
           <Card>
             <CardHeader>
@@ -155,7 +181,6 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Giving chart — shown if user has giving:read permission */}
         {hasPermission('giving:read') && (
           <Card>
             <CardHeader>
@@ -182,7 +207,6 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Cross-church overview — shown if user can read churches */}
         {hasPermission('churches:read') && (
           <Card className="lg:col-span-2">
             <CardHeader>
@@ -194,7 +218,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-3 gap-6 text-center">
                 <div>
                   <p className="text-3xl font-bold font-heading text-accent">{stats.totalChurches}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Congregations</p>
+                  <p className="text-xs text-muted-foreground mt-1">Churches</p>
                 </div>
                 <div>
                   <p className="text-3xl font-bold font-heading text-accent">{stats.totalMembers}</p>
@@ -211,6 +235,49 @@ export default function DashboardPage() {
           </Card>
         )}
 
+        {isMember && urgentComms.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Bell className="h-4 w-4 text-destructive" />
+                Urgent Communications
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {urgentComms.map((comm: any) => (
+                <div key={comm.id} className="border-l-2 border-destructive pl-3 py-1">
+                  <p className="text-sm font-medium">{comm.title}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{comm.content}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(comm.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {isMember && recentResources.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                This Week's Resources
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {recentResources.map((resource: any) => (
+                <div key={resource.id} className="border-l-2 border-accent pl-3 py-1">
+                  <p className="text-sm font-medium">{resource.title}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{resource.category} • {resource.type}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(resource.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

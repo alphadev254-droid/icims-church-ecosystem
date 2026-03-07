@@ -6,19 +6,23 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface AdminScopeSelectorProps {
-  role: 'district_overseer' | 'local_admin';
+  role: 'district_overseer' | 'local_admin' | 'regional_leader';
   districts: string[];
   tas: string[];
+  regions: string[];
   onDistrictsChange: (v: string[]) => void;
   onTAsChange: (v: string[]) => void;
+  onRegionsChange: (v: string[]) => void;
 }
 
 export function AdminScopeSelector({
   role,
   districts,
   tas,
+  regions,
   onDistrictsChange,
   onTAsChange,
+  onRegionsChange,
 }: AdminScopeSelectorProps) {
   const [selectedDistrict, setSelectedDistrict] = useState(districts[0] || '');
 
@@ -27,6 +31,11 @@ export function AdminScopeSelector({
       setSelectedDistrict(districts[0]);
     }
   }, [districts]);
+
+  const { data: allRegions = [] } = useQuery({
+    queryKey: ['all-regions'],
+    queryFn: locationsService.getRegions,
+  });
 
   const { data: allDistricts = [] } = useQuery({
     queryKey: ['all-districts'],
@@ -47,8 +56,48 @@ export function AdminScopeSelector({
     enabled: role === 'local_admin' && !!selectedDistrict,
   });
 
+  const isRegionAll = regions.includes('__all__');
   const isDistrictAll = districts.includes('__all__');
   const isTAAll = tas.includes('__all__');
+
+  if (role === 'regional_leader') {
+    return (
+      <div className="space-y-2">
+        <Label>Regions <span className="text-destructive">*</span></Label>
+        <div className="rounded-md border p-3 space-y-2 max-h-44 overflow-y-auto bg-muted/20">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="region-all"
+              checked={isRegionAll}
+              onCheckedChange={c => onRegionsChange(c ? ['__all__'] : [])}
+            />
+            <label htmlFor="region-all" className="text-sm font-medium cursor-pointer">
+              All Regions
+            </label>
+          </div>
+          <div className="border-t pt-2 space-y-1.5">
+            {allRegions.map(reg => (
+              <div key={reg} className="flex items-center gap-2">
+                <Checkbox
+                  id={`reg-${reg}`}
+                  checked={!isRegionAll && regions.includes(reg)}
+                  onCheckedChange={c => {
+                    if (isRegionAll) {
+                      onRegionsChange(c ? [reg] : []);
+                    } else {
+                      onRegionsChange(c ? [...regions, reg] : regions.filter(r => r !== reg));
+                    }
+                  }}
+                  disabled={isRegionAll}
+                />
+                <label htmlFor={`reg-${reg}`} className="text-sm cursor-pointer">{reg}</label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (role === 'district_overseer') {
     return (

@@ -158,7 +158,7 @@ export default function LandingPage() {
               Trusted by Churches Worldwide
             </h2>
             <p className="text-muted-foreground">
-              From small congregations to large denominations, ICIMS adapts to your unique needs.
+              From small branches to large denominations, ICIMS adapts to your unique needs.
             </p>
           </div>
 

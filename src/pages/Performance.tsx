@@ -2,8 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '@/services/dashboard';
 import { attendanceService } from '@/services/attendance';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, Minus, Users, HandCoins, ClipboardList, Calendar } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { TrendingUp, TrendingDown, Minus, Users, HandCoins, ClipboardList, Calendar, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -36,19 +39,42 @@ interface KPI {
 
 export default function PerformancePage() {
   const { user } = useAuth();
+  const hasPerformance = useHasFeature('performance_dashboard');
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats', user?.churchId],
     queryFn: () => dashboardService.getStats(user?.churchId),
-    enabled: !!user,
+    enabled: !!user && hasPerformance,
   });
 
   const { data: attendanceRaw = [], isLoading: attLoading } = useQuery({
     queryKey: ['attendance'],
     queryFn: attendanceService.getAll,
+    enabled: hasPerformance,
   });
-  const attendance = attendanceRaw.slice(0, 12).reverse();
 
+  if (!hasPerformance) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Performance</h1>
+          <p className="text-sm text-muted-foreground">KPI tracking and ministry performance overview</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Performance Dashboard is not available in your current package.{' '}
+            <Link to="/dashboard/packages" className="font-medium underline">
+              Upgrade now
+            </Link>{' '}
+            to unlock advanced performance tracking.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const attendance = attendanceRaw.slice(0, 12).reverse();
   const isLoading = statsLoading || attLoading;
 
   if (isLoading || !stats) {

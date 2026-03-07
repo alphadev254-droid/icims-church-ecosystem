@@ -14,10 +14,15 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import MemberRegister from "./pages/MemberRegister";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
 import Giving from "./pages/Giving";
+import Donations from "./pages/Donations";
 import Attendance from "./pages/Attendance";
+import EventAttendance from "./pages/EventAttendance";
 import Communication from "./pages/Communication";
 import Resources from "./pages/Resources";
 import Churches from "./pages/Churches";
@@ -27,6 +32,13 @@ import Settings from "./pages/Settings";
 import UsersManagement from "./pages/UsersManagement";
 import RolesManagement from "./pages/RolesManagement";
 import Packages from "./pages/Packages";
+import Transactions from "./pages/Transactions";
+import Withdrawals from "./pages/Withdrawals";
+import RequestWithdrawal from "./pages/RequestWithdrawal";
+import EventTickets from "./pages/EventTickets";
+import PaymentCallback from "./pages/PaymentCallback";
+import MyTickets from "./pages/MyTickets";
+import Subaccount from "./pages/Subaccount";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,22 +63,34 @@ const App = () => (
               {/* Auth routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/register/member" element={<MemberRegister />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/payment/callback" element={<PaymentCallback />} />
 
               {/* Dashboard routes */}
               <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
                 <Route path="events" element={<Events />} />
+                <Route path="events/:id/tickets" element={<EventTickets />} />
+                <Route path="my-tickets" element={<MyTickets />} />
                 <Route path="giving" element={<Giving />} />
+                <Route path="donations" element={<Donations />} />
                 <Route path="attendance" element={<Attendance />} />
+                <Route path="event-attendance" element={<EventAttendance />} />
                 <Route path="communication" element={<Communication />} />
                 <Route path="resources" element={<Resources />} />
                 <Route path="churches" element={<Churches />} />
+                <Route path="subaccount/:churchId" element={<Subaccount />} />
                 <Route path="performance" element={<Performance />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="users" element={<UsersManagement />} />
                 <Route path="roles" element={<RolesManagement />} />
                 <Route path="packages" element={<Packages />} />
+                <Route path="transactions" element={<Transactions />} />
+                <Route path="withdrawals" element={<Withdrawals />} />
+                <Route path="withdrawals/request" element={<RequestWithdrawal />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

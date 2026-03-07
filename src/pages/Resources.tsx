@@ -5,9 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { resourcesService, parseResourceFiles, type Resource, type ResourceFile } from '@/services/resources';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,9 +22,10 @@ import {
 import { ChurchSelect } from '@/components/ChurchSelect';
 import {
   BookOpen, Search, BookMarked, Video, FileText, Music, ExternalLink,
-  Plus, Pencil, Trash2, Upload, Link, X, Youtube, Eye, ImageIcon,
+  Plus, Pencil, Trash2, Upload, Link, X, Youtube, Eye, ImageIcon, Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Link as RouterLink } from 'react-router-dom';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -406,11 +409,13 @@ export default function ResourcesPage() {
   const [deleteResource, setDeleteResource] = useState<Resource | null>(null);
   const [viewResource, setViewResource] = useState<Resource | null>(null);
   const { hasPermission } = useRole();
+  const hasResources = useHasFeature('resources_library');
   const qc = useQueryClient();
 
   const { data: resources = [], isLoading } = useQuery({
     queryKey: ['resources'],
     queryFn: resourcesService.getAll,
+    enabled: hasResources,
   });
 
   const createMutation = useMutation({
@@ -444,6 +449,24 @@ export default function ResourcesPage() {
 
   const canCreate = hasPermission('resources:create');
 
+  if (!hasResources) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Bible Study Resources</h1>
+          <p className="text-sm text-muted-foreground">Devotionals, study plans, sermons, and worship materials</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Resources Library is not available in your current package.{' '}
+            <RouterLink to="/dashboard/packages" className="font-medium underline">Upgrade now</RouterLink>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const filtered = resources.filter(r => {
     const matchSearch = search === '' ||
       r.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -452,7 +475,7 @@ export default function ResourcesPage() {
     return matchSearch && matchCat;
   });
 
-  const backendBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api').replace('/api', '');
+  const backendBase = import.meta.env.VITE_STATIC_URL ?? 'http://localhost:5000';
 
   const resolveUrl = (url?: string | null) =>
     url?.startsWith('/uploads/') ? `${backendBase}${url}` : (url ?? null);

@@ -9,6 +9,7 @@ import { churchesService } from '@/services/churches';
 import { locationsService } from '@/services/locations';
 import { AdminScopeSelector } from '@/components/AdminScopeSelector';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -23,8 +25,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, Users, Pencil, Trash2, Eye, EyeOff, Info } from 'lucide-react';
+import { Plus, Search, Users, Pencil, Trash2, Eye, EyeOff, Info, Lock } from 'lucide-react';
+import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 // ─── Role display helpers ─────────────────────────────────────────────────────
 const ROLE_DISPLAY: Record<string, string> = {
@@ -89,12 +93,13 @@ type EditValues = z.infer<typeof editSchema>;
 
 // ─── Create form ──────────────────────────────────────────────────────────────
 function CreateUserForm({ onSubmit, isPending }: {
-  onSubmit: (v: CreateValues, districts: string[], tas: string[]) => void;
+  onSubmit: (v: CreateValues, districts: string[], tas: string[], regions: string[]) => void;
   isPending: boolean;
 }) {
   const [role, setRole] = useState('member');
   const [districts, setDistricts] = useState<string[]>([]);
   const [tas, setTas] = useState<string[]>([]);
+  const [regions, setRegions] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const currentUser = useAuthStore(s => s.user);
 
@@ -118,10 +123,11 @@ function CreateUserForm({ onSubmit, isPending }: {
     setValue('roleName', v);
     setDistricts([]);
     setTas([]);
+    setRegions([]);
   }
 
   // Determine what fields are needed based on selected role
-  const showAdminScope = (role === 'district_overseer' || role === 'local_admin') && currentUserRole === 'national_admin';
+  const showAdminScope = (role === 'district_overseer' || role === 'local_admin' || role === 'regional_leader') && currentUserRole === 'national_admin';
   const needsChurchSelection = role === 'member';
 
   return (
@@ -172,14 +178,16 @@ function CreateUserForm({ onSubmit, isPending }: {
         <RoleSelect value={role} onChange={handleRoleChange} />
       </div>
       
-      {/* Admin scope for district_overseer / local_admin */}
+      {/* Admin scope for district_overseer / local_admin / regional_leader */}
       {showAdminScope && (
         <AdminScopeSelector
-          role={role as 'district_overseer' | 'local_admin'}
+          role={role as 'district_overseer' | 'local_admin' | 'regional_leader'}
           districts={districts}
           tas={tas}
+          regions={regions}
           onDistrictsChange={setDistricts}
           onTAsChange={setTas}
+          onRegionsChange={setRegions}
         />
       )}
       
@@ -194,7 +202,7 @@ function CreateUserForm({ onSubmit, isPending }: {
             <SelectContent>
               {churches.map((church: any) => (
                 <SelectItem key={church.id} value={church.id}>
-                  {church.name} ({church.level})
+                  {church.name} 
                 </SelectItem>
               ))}
             </SelectContent>
@@ -212,12 +220,13 @@ function CreateUserForm({ onSubmit, isPending }: {
 // ─── Edit form ────────────────────────────────────────────────────────────────
 function EditUserForm({ user, onSubmit, isPending }: {
   user: AppUser;
-  onSubmit: (v: EditValues, districts: string[], tas: string[]) => void;
+  onSubmit: (v: EditValues, districts: string[], tas: string[], regions: string[]) => void;
   isPending: boolean;
 }) {
   const [role, setRole] = useState(user.roleName ?? 'member');
   const [districts, setDistricts] = useState<string[]>(user.districts ?? []);
   const [tas, setTas] = useState<string[]>(user.traditionalAuthorities ?? []);
+  const [regions, setRegions] = useState<string[]>(user.regions ?? []);
   const [showPassword, setShowPassword] = useState(false);
   const currentUser = useAuthStore(s => s.user);
 
@@ -247,9 +256,10 @@ function EditUserForm({ user, onSubmit, isPending }: {
     setValue('roleName', v);
     if (v !== 'district_overseer') setDistricts([]);
     if (v !== 'local_admin') setTas([]);
+    if (v !== 'regional_leader') setRegions([]);
   }
 
-  const showAdminScope = (role === 'district_overseer' || role === 'local_admin') && currentUserRole === 'national_admin';
+  const showAdminScope = (role === 'district_overseer' || role === 'local_admin' || role === 'regional_leader') && currentUserRole === 'national_admin';
   const needsChurchSelection = role === 'member' && currentUserRole === 'national_admin';
 
   return (
@@ -301,11 +311,13 @@ function EditUserForm({ user, onSubmit, isPending }: {
       </div>
       {showAdminScope && (
         <AdminScopeSelector
-          role={role as 'district_overseer' | 'local_admin'}
+          role={role as 'district_overseer' | 'local_admin' | 'regional_leader'}
           districts={districts}
           tas={tas}
+          regions={regions}
           onDistrictsChange={setDistricts}
           onTAsChange={setTas}
+          onRegionsChange={setRegions}
         />
       )}
       {needsChurchSelection && (
@@ -318,7 +330,7 @@ function EditUserForm({ user, onSubmit, isPending }: {
             <SelectContent>
               {churches.map((church: any) => (
                 <SelectItem key={church.id} value={church.id}>
-                  {church.name} ({church.level})
+                  {church.name} 
                 </SelectItem>
               ))}
             </SelectContent>
@@ -335,17 +347,53 @@ function EditUserForm({ user, onSubmit, isPending }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function UsersManagement() {
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(100);
+  const [churchFilter, setChurchFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [viewUser, setViewUser] = useState<AppUser | null>(null);
   const [deleteUser, setDeleteUser] = useState<AppUser | null>(null);
   const { hasPermission } = useRole();
+  const hasUsers = useHasFeature('users_management');
   const currentUser = useAuthStore(s => s.user);
   const qc = useQueryClient();
 
-  const { data: users = [], isLoading } = useQuery({
-    queryKey: ['users'],
-    queryFn: usersService.getAll,
+  const { data, isLoading } = useQuery({
+    queryKey: ['users', page, limit, search, churchFilter],
+    queryFn: () => usersService.getAll({ 
+      page, 
+      limit, 
+      search: search || undefined,
+      churchId: churchFilter !== 'all' ? churchFilter : undefined
+    }),
+    enabled: hasUsers,
+  });
+
+  if (!hasUsers) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Users</h1>
+          <p className="text-sm text-muted-foreground">Manage system users</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            User Management is not available in your current package.{' '}
+            <Link to="/dashboard/packages" className="font-medium underline">Upgrade now</Link>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const users = data?.data || [];
+  const pagination = data?.pagination;
+
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches-for-filter'],
+    queryFn: churchesService.getAll,
   });
 
   const createMutation = useMutation({
@@ -368,6 +416,15 @@ export default function UsersManagement() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update user'),
   });
 
+  const toggleStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => usersService.update(id, { status }),
+    onSuccess: () => {
+      toast.success('User status updated');
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update status'),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => usersService.delete(id),
     onSuccess: () => {
@@ -382,22 +439,12 @@ export default function UsersManagement() {
   const canUpdate = hasPermission('users:update');
   const canDelete = hasPermission('users:delete');
 
-  const filtered = users.filter(u => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      u.firstName.toLowerCase().includes(q) ||
-      u.lastName.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      (u.roleName ?? '').toLowerCase().includes(q)
-    );
-  });
-
-  function handleCreate(v: CreateValues, districts: string[], tas: string[]) {
+  function handleCreate(v: CreateValues, districts: string[], tas: string[], regions: string[]) {
     createMutation.mutate({
       ...v,
       districts: (v.roleName === 'district_overseer' || v.roleName === 'local_admin') ? districts : undefined,
       traditionalAuthorities: v.roleName === 'local_admin' ? tas : undefined,
+      regions: v.roleName === 'regional_leader' ? regions : undefined,
       // Pass location data for church assignment
       region: v.region,
       district: v.district,
@@ -407,7 +454,7 @@ export default function UsersManagement() {
     });
   }
 
-  function handleEdit(v: EditValues, districts: string[], tas: string[]) {
+  function handleEdit(v: EditValues, districts: string[], tas: string[], regions: string[]) {
     if (!editUser) return;
     const payload: any = {
       firstName: v.firstName,
@@ -418,6 +465,7 @@ export default function UsersManagement() {
       churchId: v.churchId,
       districts: (v.roleName === 'district_overseer' || v.roleName === 'local_admin') ? districts : [],
       traditionalAuthorities: v.roleName === 'local_admin' ? tas : [],
+      regions: v.roleName === 'regional_leader' ? regions : [],
     };
     if (v.password && v.password.trim()) {
       payload.password = v.password;
@@ -431,9 +479,32 @@ export default function UsersManagement() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl font-bold">Users</h1>
-          <p className="text-sm text-muted-foreground">{users.length} user{users.length !== 1 ? 's' : ''} in your church</p>
+          <p className="text-sm text-muted-foreground">{pagination?.total || 0} total users</p>
         </div>
-        {canCreate && (
+        <div className="flex gap-2">
+          <ExportImportButtons
+            data={users.map(u => ({
+              firstName: u.firstName,
+              lastName: u.lastName,
+              email: u.email,
+              phone: u.phone || '',
+              role: ROLE_DISPLAY[u.roleName] || u.roleName,
+              status: u.status,
+              joined: new Date(u.createdAt).toLocaleDateString(),
+            }))}
+            filename="users"
+            headers={[
+              { label: 'First Name', key: 'firstName' },
+              { label: 'Last Name', key: 'lastName' },
+              { label: 'Email', key: 'email' },
+              { label: 'Phone', key: 'phone' },
+              { label: 'Role', key: 'role' },
+              { label: 'Status', key: 'status' },
+              { label: 'Joined', key: 'joined' },
+            ]}
+            pdfTitle="Users Report"
+          />
+          {canCreate && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
@@ -446,12 +517,41 @@ export default function UsersManagement() {
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search users..." className="pl-9" />
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            value={search} 
+            onChange={e => { setSearch(e.target.value); setPage(1); }} 
+            placeholder="Search by name or email..." 
+            className="pl-9" 
+          />
+        </div>
+        <Select value={churchFilter} onValueChange={(v) => { setChurchFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Churches</SelectItem>
+            {churches.map((church: any) => (
+              <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={String(limit)} onValueChange={(v) => { setLimit(Math.max(100, parseInt(v))); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="100">100</SelectItem>
+            <SelectItem value="200">200</SelectItem>
+            <SelectItem value="500">500</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
@@ -475,7 +575,7 @@ export default function UsersManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map(user => {
+                {users.map(user => {
                   const isSelf = user.id === currentUser?.id;
                   const scopeItems = user.roleName === 'district_overseer'
                     ? user.districts
@@ -493,6 +593,7 @@ export default function UsersManagement() {
                       <TableCell className="font-medium">
                         {user.firstName} {user.lastName}
                         {isSelf && <span className="ml-1.5 text-xs text-muted-foreground font-normal">(you)</span>}
+                        {user.status === 'inactive' && <Badge variant="destructive" className="ml-2 text-xs">Inactive</Badge>}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{user.email}</TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">{user.phone ?? '—'}</TableCell>
@@ -514,9 +615,20 @@ export default function UsersManagement() {
                               <Info className="h-3.5 w-3.5" />
                             </button>
                             {canUpdate && (
-                              <button onClick={() => setEditUser(user)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
+                              <>
+                                <button onClick={() => setEditUser(user)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => toggleStatusMutation.mutate({ id: user.id, status: user.status === 'active' ? 'inactive' : 'active' })}
+                                  disabled={isSelf}
+                                >
+                                  {user.status === 'active' ? 'Deactivate' : 'Activate'}
+                                </Button>
+                              </>
                             )}
                             {canDelete && !isSelf && (
                               <button onClick={() => setDeleteUser(user)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
@@ -529,7 +641,7 @@ export default function UsersManagement() {
                     </TableRow>
                   );
                 })}
-                {filtered.length === 0 && (
+                {users.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                       <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -542,6 +654,33 @@ export default function UsersManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, pagination.total)} of {pagination.total}
+          </p>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={page === 1}
+              onClick={() => setPage(p => p - 1)}
+            >
+              Previous
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={page === pagination.totalPages}
+              onClick={() => setPage(p => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* View dialog */}
       <Dialog open={!!viewUser} onOpenChange={open => !open && setViewUser(null)}>

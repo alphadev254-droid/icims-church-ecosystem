@@ -4,9 +4,12 @@ import { membersService } from '@/services/members';
 import { givingService } from '@/services/giving';
 import { attendanceService } from '@/services/attendance';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, HandCoins, ClipboardList, Calendar, Download, FileText } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, Legend,
@@ -27,11 +30,33 @@ function downloadCSV(filename: string, rows: string[][], headers: string[]) {
 
 export default function ReportsPage() {
   const { user } = useAuth();
+  const hasReports = useHasFeature('reports_analytics');
 
-  const { data: stats } = useQuery({ queryKey: ['dashboard-stats', user?.churchId], queryFn: () => dashboardService.getStats(user?.churchId), enabled: !!user });
-  const { data: members = [], isLoading: ml } = useQuery({ queryKey: ['members'], queryFn: membersService.getAll });
-  const { data: donations = [], isLoading: dl } = useQuery({ queryKey: ['giving'], queryFn: givingService.getAll });
-  const { data: attendance = [], isLoading: al } = useQuery({ queryKey: ['attendance'], queryFn: attendanceService.getAll });
+  const { data: stats } = useQuery({ queryKey: ['dashboard-stats', user?.churchId], queryFn: () => dashboardService.getStats(user?.churchId), enabled: !!user && hasReports });
+  const { data: members = [], isLoading: ml } = useQuery({ queryKey: ['members'], queryFn: membersService.getAll, enabled: hasReports });
+  const { data: donations = [], isLoading: dl } = useQuery({ queryKey: ['giving'], queryFn: givingService.getAll, enabled: hasReports });
+  const { data: attendance = [], isLoading: al } = useQuery({ queryKey: ['attendance'], queryFn: attendanceService.getAll, enabled: hasReports });
+
+  if (!hasReports) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Reports</h1>
+          <p className="text-sm text-muted-foreground">Generate and export comprehensive reports across all modules</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Reports & Analytics is not available in your current package.{' '}
+            <Link to="/dashboard/packages" className="font-medium underline">
+              Upgrade now
+            </Link>{' '}
+            to unlock advanced reporting features.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   const isLoading = ml || dl || al;
 
