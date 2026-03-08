@@ -272,7 +272,7 @@ export default function CommunicationPage() {
                 <Plus className="h-4 w-4" /> New Post
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-heading">Create Post</DialogTitle>
               </DialogHeader>
@@ -457,7 +457,7 @@ export default function CommunicationPage() {
           resetEdit();
         }
       }}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading">Edit Post</DialogTitle>
           </DialogHeader>
