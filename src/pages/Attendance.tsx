@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ChurchSelect } from '@/components/ChurchSelect';
-import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock } from 'lucide-react';
+import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -23,6 +23,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 
 export default function AttendancePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editRecord, setEditRecord] = useState<any | null>(null);
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
   const { hasPermission } = useRole();
   const hasAttendanceFeature = useHasFeature('attendance_tracking');
@@ -45,6 +46,16 @@ export default function AttendancePage() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to record attendance'),
   });
 
+  const updateAttendanceMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => attendanceService.update(id, data),
+    onSuccess: () => {
+      toast.success('Attendance updated');
+      qc.invalidateQueries({ queryKey: ['attendance'] });
+      setEditRecord(null);
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update attendance'),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: attendanceService.delete,
     onSuccess: () => {
@@ -56,6 +67,7 @@ export default function AttendancePage() {
   });
 
   const canCreate = hasPermission('attendance:create') && hasAttendanceFeature;
+  const canUpdate = hasPermission('attendance:update') && hasAttendanceFeature;
   const canDelete = hasPermission('attendance:update') && hasAttendanceFeature;
 
   if (!hasAttendanceFeature) {
@@ -235,7 +247,7 @@ export default function AttendancePage() {
                   <TableHead className="text-right hidden lg:table-cell">Adults</TableHead>
                   <TableHead className="text-right hidden lg:table-cell">Seniors</TableHead>
                   <TableHead className="text-right hidden xl:table-cell">Visitors</TableHead>
-                  {canDelete && <TableHead className="w-16">Actions</TableHead>}
+                  {(canUpdate || canDelete) && <TableHead className="w-20">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -253,21 +265,34 @@ export default function AttendancePage() {
                     <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).adults ?? 0}</TableCell>
                     <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).seniors ?? 0}</TableCell>
                     <TableCell className="text-right hidden xl:table-cell text-muted-foreground">{r.newVisitors ?? 0}</TableCell>
-                    {canDelete && (
+                    {(canUpdate || canDelete) && (
                       <TableCell>
-                        <button
-                          onClick={() => setDeleteRecord({ id: r.id, date: new Date(r.date).toLocaleDateString(), serviceType: r.serviceType })}
-                          className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          {canUpdate && (
+                            <button
+                              onClick={() => setEditRecord(r)}
+                              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                              title="Edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => setDeleteRecord({ id: r.id, date: new Date(r.date).toLocaleDateString(), serviceType: r.serviceType })}
+                              className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
                 ))}
                 {records.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={canDelete ? 14 : 13} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={(canUpdate || canDelete) ? 14 : 13} className="text-center py-10 text-muted-foreground">
                       <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       {canCreate ? 'No records yet. Record your first service attendance.' : 'No attendance records.'}
                     </TableCell>
@@ -278,6 +303,37 @@ export default function AttendancePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editRecord} onOpenChange={open => !open && setEditRecord(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Edit Attendance</DialogTitle>
+          </DialogHeader>
+          {editRecord && (
+            <RegularServiceForm
+              key={editRecord.id}
+              defaultValues={{
+                churchId: editRecord.churchId,
+                date: new Date(editRecord.date).toISOString().split('T')[0],
+                serviceType: editRecord.serviceType,
+                maleCount: (editRecord as any).maleCount ?? 0,
+                femaleCount: (editRecord as any).femaleCount ?? 0,
+                children: (editRecord as any).children ?? 0,
+                youth: (editRecord as any).youth ?? 0,
+                youngAdults: (editRecord as any).youngAdults ?? 0,
+                adults: (editRecord as any).adults ?? 0,
+                seniors: (editRecord as any).seniors ?? 0,
+                newVisitors: editRecord.newVisitors ?? 0,
+                notes: editRecord.notes ?? '',
+              }}
+              onSubmit={(data) => updateAttendanceMutation.mutate({ id: editRecord.id, data })}
+              isPending={updateAttendanceMutation.isPending}
+              submitLabel="Update Record"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteRecord} onOpenChange={open => !open && setDeleteRecord(null)}>
         <AlertDialogContent>
@@ -302,19 +358,24 @@ export default function AttendancePage() {
   );
 }
 
-function RegularServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; isPending: boolean }) {
-  const [churchId, setChurchId] = useState('');
-  const [date, setDate] = useState('');
-  const [serviceType, setServiceType] = useState('Sunday Service');
-  const [maleCount, setMaleCount] = useState('');
-  const [femaleCount, setFemaleCount] = useState('');
-  const [children, setChildren] = useState('');
-  const [youth, setYouth] = useState('');
-  const [youngAdults, setYoungAdults] = useState('');
-  const [adults, setAdults] = useState('');
-  const [seniors, setSeniors] = useState('');
-  const [newVisitors, setNewVisitors] = useState('0');
-  const [notes, setNotes] = useState('');
+function RegularServiceForm({ onSubmit, isPending, defaultValues, submitLabel = 'Save Record' }: { 
+  onSubmit: (data: any) => void; 
+  isPending: boolean;
+  defaultValues?: any;
+  submitLabel?: string;
+}) {
+  const [churchId, setChurchId] = useState(defaultValues?.churchId ?? '');
+  const [date, setDate] = useState(defaultValues?.date ?? '');
+  const [serviceType, setServiceType] = useState(defaultValues?.serviceType ?? 'Sunday Service');
+  const [maleCount, setMaleCount] = useState(defaultValues?.maleCount?.toString() ?? '');
+  const [femaleCount, setFemaleCount] = useState(defaultValues?.femaleCount?.toString() ?? '');
+  const [children, setChildren] = useState(defaultValues?.children?.toString() ?? '');
+  const [youth, setYouth] = useState(defaultValues?.youth?.toString() ?? '');
+  const [youngAdults, setYoungAdults] = useState(defaultValues?.youngAdults?.toString() ?? '');
+  const [adults, setAdults] = useState(defaultValues?.adults?.toString() ?? '');
+  const [seniors, setSeniors] = useState(defaultValues?.seniors?.toString() ?? '');
+  const [newVisitors, setNewVisitors] = useState(defaultValues?.newVisitors?.toString() ?? '0');
+  const [notes, setNotes] = useState(defaultValues?.notes ?? '');
 
   const totalAttendees = (parseInt(maleCount) || 0) + (parseInt(femaleCount) || 0);
   const ageGroupTotal = (parseInt(children) || 0) + (parseInt(youth) || 0) + (parseInt(youngAdults) || 0) + (parseInt(adults) || 0) + (parseInt(seniors) || 0);
@@ -428,7 +489,7 @@ function RegularServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => 
       </div>
       
       <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-        {isPending ? 'Saving...' : 'Save Record'}
+        {isPending ? 'Saving...' : submitLabel}
       </Button>
     </form>
   );

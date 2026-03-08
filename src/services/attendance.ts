@@ -31,6 +31,10 @@ export const attendanceService = {
     const { data } = await apiClient.post('/attendance', dto);
     return data.data;
   },
+  update: async (id: string, dto: CreateAttendanceDto): Promise<AttendanceRecord> => {
+    const { data } = await apiClient.put(`/attendance/${id}`, dto);
+    return data.data;
+  },
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/attendance/${id}`);
   },
