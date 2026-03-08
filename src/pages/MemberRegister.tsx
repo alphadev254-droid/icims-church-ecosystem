@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Church, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ const schema = z.object({
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Enter a valid email address'),
   phone: z.string().min(1, 'Phone number is required'),
+  gender: z.enum(['male', 'female'], { required_error: 'Gender is required' }),
   password: z.string().min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
     .regex(/[0-9]/, 'Must contain at least one number'),
@@ -32,9 +34,10 @@ export default function MemberRegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
+  const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const inviteToken = searchParams.get('invite');
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
   });
 
@@ -56,6 +59,7 @@ export default function MemberRegisterPage() {
       lastName: values.lastName,
       email: values.email,
       phone: values.phone,
+      gender: values.gender,
       password: values.password,
       inviteToken,
     });
@@ -119,6 +123,20 @@ export default function MemberRegisterPage() {
             <Input {...register('phone')} placeholder="+265 ..."
               className={errors.phone ? 'border-destructive' : ''} />
             {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label>Gender</Label>
+            <Select value={gender} onValueChange={(v: 'male' | 'female') => { setGender(v); setValue('gender', v); }}>
+              <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.gender && <p className="text-xs text-destructive">{errors.gender.message}</p>}
           </div>
 
           <div className="space-y-1">

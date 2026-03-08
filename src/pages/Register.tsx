@@ -16,6 +16,7 @@ const schema = z.object({
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Enter a valid email address'),
   phone: z.string().min(1, 'Phone number is required'),
+  gender: z.enum(['male', 'female'], { required_error: 'Gender is required' }),
   accountCountry: z.enum(['Malawi', 'Kenya'], { required_error: 'Country is required' }),
   password: z.string().min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
@@ -34,6 +35,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [accountCountry, setAccountCountry] = useState<'Malawi' | 'Kenya' | ''>('');
+  const [gender, setGender] = useState<'male' | 'female' | ''>('');
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -45,6 +47,7 @@ export default function RegisterPage() {
       lastName: values.lastName,
       email: values.email,
       phone: values.phone,
+      gender: values.gender,
       accountCountry: values.accountCountry,
       password: values.password,
     });
@@ -111,6 +114,20 @@ export default function RegisterPage() {
             <Input {...register('phone')} placeholder={accountCountry === 'Kenya' ? '+254 ...' : '+265 ...'}
               className={errors.phone ? 'border-destructive' : ''} />
             {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label>Gender</Label>
+            <Select value={gender} onValueChange={(v: 'male' | 'female') => { setGender(v); setValue('gender', v); }}>
+              <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.gender && <p className="text-xs text-destructive">{errors.gender.message}</p>}
           </div>
 
           <div className="space-y-1">

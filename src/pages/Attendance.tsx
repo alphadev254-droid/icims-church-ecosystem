@@ -102,6 +102,13 @@ export default function AttendancePage() {
               church: (r as any).church?.name || '',
               serviceType: r.serviceType,
               totalAttendees: r.totalAttendees,
+              male: (r as any).maleCount ?? 0,
+              female: (r as any).femaleCount ?? 0,
+              children: (r as any).children ?? 0,
+              youth: (r as any).youth ?? 0,
+              youngAdults: (r as any).youngAdults ?? 0,
+              adults: (r as any).adults ?? 0,
+              seniors: (r as any).seniors ?? 0,
               newVisitors: r.newVisitors ?? 0,
               notes: r.notes || '',
             }))}
@@ -111,6 +118,13 @@ export default function AttendancePage() {
               { label: 'Church', key: 'church' },
               { label: 'Service Type', key: 'serviceType' },
               { label: 'Total Attendees', key: 'totalAttendees' },
+              { label: 'Male', key: 'male' },
+              { label: 'Female', key: 'female' },
+              { label: 'Children (0-12)', key: 'children' },
+              { label: 'Youth (13-17)', key: 'youth' },
+              { label: 'Young Adults (18-35)', key: 'youngAdults' },
+              { label: 'Adults (36-59)', key: 'adults' },
+              { label: 'Seniors (60+)', key: 'seniors' },
               { label: 'New Visitors', key: 'newVisitors' },
               { label: 'Notes', key: 'notes' },
             ]}
@@ -212,9 +226,15 @@ export default function AttendancePage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Church</TableHead>
                   <TableHead>Service Type</TableHead>
-                  <TableHead className="text-right">Attendees</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">New Visitors</TableHead>
-                  <TableHead className="hidden md:table-cell">Notes</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Male</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Female</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Children</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Youth</TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">Young Adults</TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">Adults</TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">Seniors</TableHead>
+                  <TableHead className="text-right hidden xl:table-cell">Visitors</TableHead>
                   {canDelete && <TableHead className="w-16">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -225,8 +245,14 @@ export default function AttendancePage() {
                     <TableCell className="text-sm">{(r as any).church?.name || '—'}</TableCell>
                     <TableCell>{r.serviceType}</TableCell>
                     <TableCell className="text-right font-semibold">{r.totalAttendees}</TableCell>
-                    <TableCell className="text-right hidden sm:table-cell text-muted-foreground">{r.newVisitors ?? 0}</TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">{r.notes ?? '—'}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell text-muted-foreground">{(r as any).maleCount ?? 0}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell text-muted-foreground">{(r as any).femaleCount ?? 0}</TableCell>
+                    <TableCell className="text-right hidden md:table-cell text-muted-foreground">{(r as any).children ?? 0}</TableCell>
+                    <TableCell className="text-right hidden md:table-cell text-muted-foreground">{(r as any).youth ?? 0}</TableCell>
+                    <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).youngAdults ?? 0}</TableCell>
+                    <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).adults ?? 0}</TableCell>
+                    <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).seniors ?? 0}</TableCell>
+                    <TableCell className="text-right hidden xl:table-cell text-muted-foreground">{r.newVisitors ?? 0}</TableCell>
                     {canDelete && (
                       <TableCell>
                         <button
@@ -241,7 +267,7 @@ export default function AttendancePage() {
                 ))}
                 {records.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={canDelete ? 7 : 6} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={canDelete ? 14 : 13} className="text-center py-10 text-muted-foreground">
                       <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       {canCreate ? 'No records yet. Record your first service attendance.' : 'No attendance records.'}
                     </TableCell>
@@ -280,17 +306,38 @@ function RegularServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => 
   const [churchId, setChurchId] = useState('');
   const [date, setDate] = useState('');
   const [serviceType, setServiceType] = useState('Sunday Service');
-  const [totalAttendees, setTotalAttendees] = useState('');
+  const [maleCount, setMaleCount] = useState('');
+  const [femaleCount, setFemaleCount] = useState('');
+  const [children, setChildren] = useState('');
+  const [youth, setYouth] = useState('');
+  const [youngAdults, setYoungAdults] = useState('');
+  const [adults, setAdults] = useState('');
+  const [seniors, setSeniors] = useState('');
   const [newVisitors, setNewVisitors] = useState('0');
   const [notes, setNotes] = useState('');
 
+  const totalAttendees = (parseInt(maleCount) || 0) + (parseInt(femaleCount) || 0);
+  const ageGroupTotal = (parseInt(children) || 0) + (parseInt(youth) || 0) + (parseInt(youngAdults) || 0) + (parseInt(adults) || 0) + (parseInt(seniors) || 0);
+  const ageGroupMismatch = ageGroupTotal > 0 && ageGroupTotal !== totalAttendees;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (ageGroupMismatch) {
+      toast.error(`Age groups total (${ageGroupTotal}) must equal total attendees (${totalAttendees})`);
+      return;
+    }
     onSubmit({
       churchId,
       date,
       serviceType,
-      totalAttendees: parseInt(totalAttendees),
+      totalAttendees,
+      maleCount: parseInt(maleCount) || 0,
+      femaleCount: parseInt(femaleCount) || 0,
+      children: parseInt(children) || 0,
+      youth: parseInt(youth) || 0,
+      youngAdults: parseInt(youngAdults) || 0,
+      adults: parseInt(adults) || 0,
+      seniors: parseInt(seniors) || 0,
       newVisitors: parseInt(newVisitors),
       notes,
     });
@@ -320,15 +367,59 @@ function RegularServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => 
         </div>
       </div>
       
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Total Attendees</Label>
-          <Input type="number" min={1} value={totalAttendees} onChange={e => setTotalAttendees(e.target.value)} required />
+      <div>
+        <Label className="text-sm font-medium">Gender Breakdown</Label>
+        <div className="grid grid-cols-2 gap-4 mt-2">
+          <div>
+            <Label className="text-xs">Male</Label>
+            <Input type="number" min={0} value={maleCount} onChange={e => setMaleCount(e.target.value)} required />
+          </div>
+          <div>
+            <Label className="text-xs">Female</Label>
+            <Input type="number" min={0} value={femaleCount} onChange={e => setFemaleCount(e.target.value)} required />
+          </div>
         </div>
-        <div>
-          <Label>New Visitors</Label>
-          <Input type="number" min={0} value={newVisitors} onChange={e => setNewVisitors(e.target.value)} />
+      </div>
+
+      <div className="p-3 bg-muted rounded-md">
+        <Label className="text-sm text-muted-foreground">Total Attendees (Auto-calculated)</Label>
+        <div className="text-2xl font-bold">{totalAttendees}</div>
+      </div>
+
+      <div>
+        <Label className="text-sm font-medium">Age Groups (Optional)</Label>
+        <div className="grid grid-cols-3 gap-3 mt-2">
+          <div>
+            <Label className="text-xs">Children (0-12)</Label>
+            <Input type="number" min={0} value={children} onChange={e => setChildren(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Youth (13-17)</Label>
+            <Input type="number" min={0} value={youth} onChange={e => setYouth(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Young Adults (18-35)</Label>
+            <Input type="number" min={0} value={youngAdults} onChange={e => setYoungAdults(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Adults (36-59)</Label>
+            <Input type="number" min={0} value={adults} onChange={e => setAdults(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Seniors (60+)</Label>
+            <Input type="number" min={0} value={seniors} onChange={e => setSeniors(e.target.value)} />
+          </div>
         </div>
+        {ageGroupMismatch && (
+          <p className="text-xs text-destructive mt-2">
+            Age groups total ({ageGroupTotal}) must equal total attendees ({totalAttendees})
+          </p>
+        )}
+      </div>
+      
+      <div>
+        <Label>New Visitors</Label>
+        <Input type="number" min={0} value={newVisitors} onChange={e => setNewVisitors(e.target.value)} />
       </div>
       
       <div>

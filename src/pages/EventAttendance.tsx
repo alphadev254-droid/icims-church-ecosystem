@@ -60,12 +60,38 @@ export default function EventAttendancePage() {
       toast.error('Please select a church');
       return;
     }
-    const attendedCount = eventTickets.filter((t: any) => t.attended).length;
+    const attendedTickets = eventTickets.filter((t: any) => t.attended);
+    const attendedCount = attendedTickets.length;
+    const maleCount = attendedTickets.filter((t: any) => t.user?.gender === 'male').length;
+    const femaleCount = attendedTickets.filter((t: any) => t.user?.gender === 'female').length;
+    
+    // Calculate age groups
+    const now = new Date();
+    let children = 0, youth = 0, youngAdults = 0, adults = 0, seniors = 0;
+    
+    attendedTickets.forEach((t: any) => {
+      if (t.user?.dateOfBirth) {
+        const age = now.getFullYear() - new Date(t.user.dateOfBirth).getFullYear();
+        if (age <= 12) children++;
+        else if (age <= 17) youth++;
+        else if (age <= 35) youngAdults++;
+        else if (age <= 59) adults++;
+        else seniors++;
+      }
+    });
+    
     createAttendanceMutation.mutate({
       churchId: selectedChurchId,
       eventId: selectedEventId,
       date: new Date().toISOString().split('T')[0],
       totalAttendees: attendedCount,
+      maleCount,
+      femaleCount,
+      children,
+      youth,
+      youngAdults,
+      adults,
+      seniors,
       newVisitors: 0,
       serviceType: 'Event',
     });

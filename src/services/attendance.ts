@@ -23,8 +23,8 @@ export interface CreateAttendanceDto {
 }
 
 export const attendanceService = {
-  getAll: async (): Promise<AttendanceRecord[]> => {
-    const { data } = await apiClient.get('/attendance');
+  getAll: async (params?: { serviceType?: string }): Promise<AttendanceRecord[]> => {
+    const { data } = await apiClient.get('/attendance', { params });
     return data.data;
   },
   create: async (dto: CreateAttendanceDto): Promise<AttendanceRecord> => {
