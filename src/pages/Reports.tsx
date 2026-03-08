@@ -297,7 +297,7 @@ export default function ReportsPage() {
                     <Plus className="h-3.5 w-3.5 mr-1.5" /> New KPI
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Create KPI Target</DialogTitle>
                   </DialogHeader>
