@@ -163,19 +163,89 @@ function ResourceForm({ defaultValues, onSubmit, isPending, submitLabel }: {
         </div>
       </div>
 
-      {isUrlType ? (
+      {resourceType === 'link' ? (
         <div>
-          <Label>
-            URL{resourceType === 'video' && (
-              <span className="text-muted-foreground text-xs ml-1">(YouTube link or direct video URL)</span>
-            )}
-          </Label>
+          <Label>URL</Label>
+          <Input {...register('fileUrl')} placeholder="https://..." />
+        </div>
+      ) : resourceType === 'video' ? (
+        <div className="space-y-3">
+          <div>
+            <Label>
+              YouTube URL <span className="text-muted-foreground text-xs">(optional - or upload video below)</span>
+            </Label>
+            <div className="relative">
+              <Input {...register('fileUrl')} placeholder="https://youtube.com/..." disabled={newFiles.length > 0} />
+              {showYouTubeBadge && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-red-500 font-medium">
+                  <Youtube className="h-3.5 w-3.5" /> YouTube
+                </span>
+              )}
+            </div>
+          </div>
           <div className="relative">
-            <Input {...register('fileUrl')} placeholder="https://..." />
-            {showYouTubeBadge && (
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-red-500 font-medium">
-                <Youtube className="h-3.5 w-3.5" /> YouTube
-              </span>
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center">
+              <div className="flex-1 border-t border-muted" />
+              <span className="px-2 text-xs text-muted-foreground">OR</span>
+              <div className="flex-1 border-t border-muted" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>
+              Upload Video
+              <span className="text-muted-foreground text-xs ml-1">(MP4, WebM, MOV — max 500 MB)</span>
+            </Label>
+
+            {keptFiles.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Current file:</p>
+                <ul className="space-y-1">
+                  {keptFiles.map(f => (
+                    <li key={f.url} className="flex items-center justify-between text-xs bg-muted rounded px-2 py-1.5">
+                      <span className="truncate max-w-[230px]">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setKeptFiles(prev => prev.filter(x => x.url !== f.url))}
+                        className="ml-2 flex-shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Remove this file"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div
+              className="border-2 border-dashed border-muted rounded-md p-4 text-center cursor-pointer hover:border-accent transition-colors"
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Click to browse or drop video here</p>
+            </div>
+            <input
+              ref={fileRef} type="file" className="hidden"
+              accept=".mp4,.webm,.mov,.avi,.mkv"
+              onChange={handleFileChange}
+              disabled={!!fileUrlValue}
+            />
+
+            {newFiles.length > 0 && (
+              <ul className="space-y-1">
+                {newFiles.map((f, i) => (
+                  <li key={i} className="flex items-center justify-between text-xs bg-accent/10 rounded px-2 py-1.5">
+                    <span className="truncate max-w-[230px]">{f.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewFiles(prev => prev.filter((_, idx) => idx !== i))}
+                      className="ml-2 flex-shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>
@@ -218,7 +288,7 @@ function ResourceForm({ defaultValues, onSubmit, isPending, submitLabel }: {
           </div>
           <input
             ref={fileRef} type="file" className="hidden" multiple
-            accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.webp,.mp3,.wav,.m4a,.aac,.ogg,.mp4,.webm,.mov,.avi"
+            accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.webp,.mp3,.wav,.m4a,.aac,.ogg"
             onChange={handleFileChange}
           />
 

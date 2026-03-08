@@ -323,12 +323,12 @@ export default function CommunicationPage() {
                 </div>
                 
                 <div>
-                  <Label>Attachments <span className="text-xs text-muted-foreground">(Max 5 files)</span></Label>
+                  <Label>Attachments <span className="text-xs text-muted-foreground">(Max 5 files - Images, PDFs, Documents, Videos)</span></Label>
                   <div className="space-y-2">
                     <Input
                       type="file"
                       multiple
-                      accept="image/*,.pdf,.doc,.docx"
+                      accept="image/*,.pdf,.doc,.docx,.mp4,.webm,.mov,.avi"
                       onChange={handleFileSelect}
                       disabled={selectedFiles.length >= 5}
                       className="cursor-pointer"
@@ -417,19 +417,26 @@ export default function CommunicationPage() {
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">Attachments</Label>
                     <div className="grid gap-2">
-                      {attachments.map((file: any, i: number) => (
-                        <a
-                          key={i}
-                          href={`${import.meta.env.VITE_STATIC_URL}${file.url}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 p-2 bg-muted rounded hover:bg-muted/80 transition-colors"
-                        >
-                          {file.mimeType?.startsWith('image/') ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                          <span className="flex-1 text-sm truncate">{file.name}</span>
-                          <Download className="h-3 w-3" />
-                        </a>
-                      ))}
+                      {attachments.map((file: any, i: number) => {
+                        const isVideo = file.mimeType?.startsWith('video/');
+                        return isVideo ? (
+                          <div key={i} className="rounded-lg overflow-hidden bg-black">
+                            <video src={`${import.meta.env.VITE_STATIC_URL}${file.url}`} controls className="w-full" />
+                          </div>
+                        ) : (
+                          <a
+                            key={i}
+                            href={`${import.meta.env.VITE_STATIC_URL}${file.url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-2 bg-muted rounded hover:bg-muted/80 transition-colors"
+                          >
+                            {file.mimeType?.startsWith('image/') ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                            <span className="flex-1 text-sm truncate">{file.name}</span>
+                            <Download className="h-3 w-3" />
+                          </a>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -508,7 +515,7 @@ export default function CommunicationPage() {
               </div>
               
               <div>
-                <Label>Attachments <span className="text-xs text-muted-foreground">(Max 5 files)</span></Label>
+                <Label>Attachments <span className="text-xs text-muted-foreground">(Max 5 files - Images, PDFs, Documents, Videos)</span></Label>
                 <div className="space-y-2">
                   {existingFiles.length > 0 && (
                     <div className="space-y-1">
@@ -527,7 +534,7 @@ export default function CommunicationPage() {
                   <Input
                     type="file"
                     multiple
-                    accept="image/*,.pdf,.doc,.docx"
+                    accept="image/*,.pdf,.doc,.docx,.mp4,.webm,.mov,.avi"
                     onChange={handleFileSelect}
                     disabled={(existingFiles.length + selectedFiles.length) >= 5}
                     className="cursor-pointer"
