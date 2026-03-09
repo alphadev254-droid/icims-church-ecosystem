@@ -350,6 +350,7 @@ export default function UsersManagement() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(100);
   const [churchFilter, setChurchFilter] = useState<string>('all');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [viewUser, setViewUser] = useState<AppUser | null>(null);
@@ -360,12 +361,13 @@ export default function UsersManagement() {
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', page, limit, search, churchFilter],
+    queryKey: ['users', page, limit, search, churchFilter, roleFilter],
     queryFn: () => usersService.getAll({ 
       page, 
       limit, 
       search: search || undefined,
-      churchId: churchFilter !== 'all' ? churchFilter : undefined
+      churchId: churchFilter !== 'all' ? churchFilter : undefined,
+      role: roleFilter !== 'all' ? roleFilter : undefined
     }),
     enabled: hasUsers,
   });
@@ -488,7 +490,14 @@ export default function UsersManagement() {
               lastName: u.lastName,
               email: u.email,
               phone: u.phone || '',
+              gender: (u as any).gender || '',
+              dateOfBirth: (u as any).dateOfBirth ? new Date((u as any).dateOfBirth).toLocaleDateString() : '',
+              weddingDate: (u as any).weddingDate ? new Date((u as any).weddingDate).toLocaleDateString() : '',
+              anniversary: (u as any).anniversary ? new Date((u as any).anniversary).toLocaleDateString() : '',
+              residentialNeighbourhood: (u as any).residentialNeighbourhood || '',
+              baptizedByImmersion: (u as any).baptizedByImmersion ? 'Yes' : 'No',
               role: ROLE_DISPLAY[u.roleName] || u.roleName,
+              teams: (u as any).teams?.join(', ') || '',
               status: u.status,
               joined: new Date(u.createdAt).toLocaleDateString(),
             }))}
@@ -498,7 +507,14 @@ export default function UsersManagement() {
               { label: 'Last Name', key: 'lastName' },
               { label: 'Email', key: 'email' },
               { label: 'Phone', key: 'phone' },
+              { label: 'Gender', key: 'gender' },
+              { label: 'Date of Birth', key: 'dateOfBirth' },
+              { label: 'Wedding Date', key: 'weddingDate' },
+              { label: 'Anniversary', key: 'anniversary' },
+              { label: 'Neighbourhood', key: 'residentialNeighbourhood' },
+              { label: 'Baptized', key: 'baptizedByImmersion' },
               { label: 'Role', key: 'role' },
+              { label: 'Teams', key: 'teams' },
               { label: 'Status', key: 'status' },
               { label: 'Joined', key: 'joined' },
             ]}
@@ -531,6 +547,19 @@ export default function UsersManagement() {
             className="pl-9" 
           />
         </div>
+        <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="national_admin">National Admin</SelectItem>
+            <SelectItem value="regional_leader">Regional Leader</SelectItem>
+            <SelectItem value="district_overseer">District Overseer</SelectItem>
+            <SelectItem value="local_admin">Local Admin</SelectItem>
+            <SelectItem value="member">Member</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={churchFilter} onValueChange={(v) => { setChurchFilter(v); setPage(1); }}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue />
@@ -568,7 +597,12 @@ export default function UsersManagement() {
                   <TableHead>Name</TableHead>
                   <TableHead className="hidden sm:table-cell">Email</TableHead>
                   <TableHead className="hidden md:table-cell">Phone</TableHead>
+                  <TableHead className="hidden xl:table-cell">Gender</TableHead>
+                  <TableHead className="hidden xl:table-cell">DOB</TableHead>
+                  <TableHead className="hidden 2xl:table-cell">Neighbourhood</TableHead>
+                  <TableHead className="hidden 2xl:table-cell">Baptized</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead className="hidden xl:table-cell">Teams</TableHead>
                   <TableHead className="hidden lg:table-cell">Scope</TableHead>
                   <TableHead className="hidden lg:table-cell">Joined</TableHead>
                   {(canUpdate || canDelete) && <TableHead className="w-20">Actions</TableHead>}
@@ -597,10 +631,19 @@ export default function UsersManagement() {
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{user.email}</TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">{user.phone ?? '—'}</TableCell>
+                      <TableCell className="hidden xl:table-cell text-xs capitalize">{(user as any).gender ?? '—'}</TableCell>
+                      <TableCell className="hidden xl:table-cell text-xs">
+                        {(user as any).dateOfBirth ? new Date((user as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                      </TableCell>
+                      <TableCell className="hidden 2xl:table-cell text-xs text-muted-foreground">{(user as any).residentialNeighbourhood ?? '—'}</TableCell>
+                      <TableCell className="hidden 2xl:table-cell text-xs">{(user as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
                       <TableCell>
                         <Badge variant={ROLE_BADGE_VARIANT[user.roleName] ?? 'outline'} className="text-xs capitalize">
                           {ROLE_DISPLAY[user.roleName] ?? user.roleName}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-xs text-muted-foreground max-w-[150px] truncate">
+                        {(user as any).teams?.length > 0 ? (user as any).teams.join(', ') : '—'}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-[180px] truncate">
                         {scopeText ?? '—'}
@@ -706,10 +749,50 @@ export default function UsersManagement() {
                 <Label className="text-muted-foreground">Phone</Label>
                 <p className="font-medium">{viewUser.phone || '—'}</p>
               </div>
+              {(viewUser as any).gender && (
+                <div>
+                  <Label className="text-muted-foreground">Gender</Label>
+                  <p className="font-medium capitalize">{(viewUser as any).gender}</p>
+                </div>
+              )}
+              {(viewUser as any).dateOfBirth && (
+                <div>
+                  <Label className="text-muted-foreground">Date of Birth</Label>
+                  <p className="font-medium">{new Date((viewUser as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+              )}
+              {(viewUser as any).weddingDate && (
+                <div>
+                  <Label className="text-muted-foreground">Wedding Date</Label>
+                  <p className="font-medium">{new Date((viewUser as any).weddingDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+              )}
+              {(viewUser as any).anniversary && (
+                <div>
+                  <Label className="text-muted-foreground">Anniversary</Label>
+                  <p className="font-medium">{new Date((viewUser as any).anniversary).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+              )}
+              {(viewUser as any).residentialNeighbourhood && (
+                <div>
+                  <Label className="text-muted-foreground">Residential Neighbourhood</Label>
+                  <p className="font-medium">{(viewUser as any).residentialNeighbourhood}</p>
+                </div>
+              )}
+              <div>
+                <Label className="text-muted-foreground">Baptized by Immersion</Label>
+                <p className="font-medium">{(viewUser as any).baptizedByImmersion ? 'Yes' : 'No'}</p>
+              </div>
               <div>
                 <Label className="text-muted-foreground">Role</Label>
                 <p><Badge variant={ROLE_BADGE_VARIANT[viewUser.roleName] ?? 'outline'}>{ROLE_DISPLAY[viewUser.roleName] ?? viewUser.roleName}</Badge></p>
               </div>
+              {(viewUser as any).teams?.length > 0 && (
+                <div>
+                  <Label className="text-muted-foreground">Teams</Label>
+                  <p className="font-medium">{(viewUser as any).teams.join(', ')}</p>
+                </div>
+              )}
               {viewUser.roleName === 'district_overseer' && viewUser.districts && viewUser.districts.length > 0 && (
                 <div>
                   <Label className="text-muted-foreground">Districts</Label>

@@ -34,6 +34,7 @@ const schema = z.object({
   title: z.string().min(1, 'Title required'),
   description: z.string().optional().default(''),
   date: z.string().min(1, 'Date required'),
+  endDate: z.string().min(1, 'End date required'),
   time: z.string().min(1, 'Time required'),
   location: z.string().min(1, 'Location required'),
   type: z.enum(['service', 'meeting', 'conference', 'outreach', 'fellowship']),
@@ -43,8 +44,12 @@ const schema = z.object({
   isFree: z.boolean().default(true),
   ticketPrice: z.number().optional(),
   currency: z.enum(['MWK', 'KSH']).optional(),
-  totalTickets: z.number().optional(),
+  totalTickets: z.number().positive().optional().nullable(),
+  ticketSalesCutoff: z.string().optional(),
   imageUrl: z.string().optional(),
+}).refine(data => new Date(data.endDate) >= new Date(data.date), {
+  message: 'End date must be on or after start date',
+  path: ['endDate'],
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -135,15 +140,20 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>Date</Label>
+          <Label>Start Date</Label>
           <Input type="date" {...register('date')} />
           {errors.date && <p className="text-xs text-destructive mt-1">{errors.date.message}</p>}
         </div>
         <div>
-          <Label>Time</Label>
-          <Input type="time" {...register('time')} />
-          {errors.time && <p className="text-xs text-destructive mt-1">{errors.time.message}</p>}
+          <Label>End Date</Label>
+          <Input type="date" {...register('endDate')} />
+          {errors.endDate && <p className="text-xs text-destructive mt-1">{errors.endDate.message}</p>}
         </div>
+      </div>
+      <div>
+        <Label>Time</Label>
+        <Input type="time" {...register('time')} />
+        {errors.time && <p className="text-xs text-destructive mt-1">{errors.time.message}</p>}
       </div>
       <div>
         <Label>Location</Label>
@@ -233,7 +243,13 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: {
           
           <div>
             <Label>Total Tickets <span className="text-muted-foreground text-xs">(optional)</span></Label>
-            <Input type="number" {...register('totalTickets', { valueAsNumber: true })} placeholder="Leave empty for unlimited" />
+            <Input type="number" {...register('totalTickets', { valueAsNumber: true, setValueAs: v => v === '' || isNaN(v) ? null : v })} placeholder="Leave empty for unlimited" />
+          </div>
+          
+          <div>
+            <Label>Ticket Sales Cutoff <span className="text-muted-foreground text-xs">(optional)</span></Label>
+            <Input type="datetime-local" {...register('ticketSalesCutoff')} />
+            <p className="text-xs text-muted-foreground mt-1">Stop ticket sales at this date/time</p>
           </div>
         </>
       )}
@@ -249,6 +265,7 @@ export default function EventsPage() {
   const [editEvent, setEditEvent] = useState<ChurchEvent | null>(null);
   const [deleteEvent, setDeleteEvent] = useState<ChurchEvent | null>(null);
   const [expandImage, setExpandImage] = useState<string | null>(null);
+  const [viewEvent, setViewEvent] = useState<ChurchEvent | null>(null);
   const [paymentConfirm, setPaymentConfirm] = useState<{ event: ChurchEvent; details: any } | null>(null);
   const { hasPermission } = useRole();
   const hasEventsFeature = useHasFeature('events_management');
@@ -311,6 +328,39 @@ export default function EventsPage() {
       </div>
     );
   }
+
+  const canBookTicket = (event: ChurchEvent) => {
+    if (event.status === 'completed' || event.status === 'cancelled') return false;
+    if (event.ticketSalesCutoff && new Date(event.ticketSalesCutoff) < new Date()) return false;
+    if (event.totalTickets && event.ticketsSold >= event.totalTickets) return false;
+    // Check if event has ended using endDate
+    if (new Date(event.endDate) < new Date()) return false;
+    return true;
+  };
+
+  const handleFreeTicket = async (event: ChurchEvent) => {
+    const toastId = toast.loading('Generating ticket...');
+    try {
+      const ticket = await eventsService.bookTicket({ eventId: event.id });
+      toast.loading('Downloading ticket...', { id: toastId });
+      await eventsService.downloadTicket(ticket.id, ticket.ticketNumber);
+      toast.success('Ticket generated and downloaded', { id: toastId });
+      qc.invalidateQueries({ queryKey: ['events'] });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to generate ticket', { id: toastId });
+    }
+  };
+
+  const handleDownloadTicket = async (event: ChurchEvent) => {
+    if (!event.userTicketId || !event.userTicketNumber) return;
+    const toastId = toast.loading('Downloading ticket...');
+    try {
+      await eventsService.downloadTicket(event.userTicketId, event.userTicketNumber);
+      toast.success('Ticket downloaded', { id: toastId });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to download ticket', { id: toastId });
+    }
+  };
 
   const handlePayment = async (event: ChurchEvent) => {
     if (!user?.email) return toast.error('User email not found');
@@ -414,8 +464,11 @@ export default function EventsPage() {
                   <Badge variant={statusVariant(event.status)}>{event.status}</Badge>
                   <div className="flex items-center gap-1">
                     <Badge variant="outline" className="text-xs capitalize">{event.type}</Badge>
+                    <button onClick={() => setViewEvent(event)} className="p-1 text-muted-foreground hover:text-foreground transition-colors ml-1">
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
                     {canUpdate && (
-                      <button onClick={() => setEditEvent(event)} className="p-1 text-muted-foreground hover:text-foreground transition-colors ml-1">
+                      <button onClick={() => setEditEvent(event)} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -429,7 +482,10 @@ export default function EventsPage() {
                 <h3 className="font-heading font-semibold text-foreground mb-2">{event.title}</h3>
                 {event.description && <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{event.description}</p>}
                 <div className="space-y-1.5 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2"><Calendar className="h-3 w-3" />{new Date(event.date).toLocaleDateString()}</div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(event.date).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+                  </div>
                   <div className="flex items-center gap-2"><Clock className="h-3 w-3" />{event.time}</div>
                   <div className="flex items-center gap-2"><MapPin className="h-3 w-3" />{event.location}</div>
                   {event.requiresTicket && (
@@ -445,12 +501,22 @@ export default function EventsPage() {
                     <Ticket className="h-3 w-3 mr-1" /> View All Tickets
                   </Button>
                 )}
-                {event.requiresTicket && !event.isFree && canViewTickets && event.userHasTicket && (
+                {event.requiresTicket && event.isFree && isMember && event.userHasTicket && (
+                  <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => handleDownloadTicket(event)}>
+                    <Ticket className="h-3 w-3 mr-1" /> Download Ticket
+                  </Button>
+                )}
+                {event.requiresTicket && event.isFree && isMember && !event.userHasTicket && canBookTicket(event) && (
+                  <Button size="sm" className="w-full mt-2 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleFreeTicket(event)}>
+                    <Ticket className="h-3 w-3 mr-1" /> Generate Ticket
+                  </Button>
+                )}
+                {event.requiresTicket && !event.isFree && canViewTickets && event.userHasTicket && canBookTicket(event) && (
                   <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => navigate(`/dashboard/my-tickets?eventId=${event.id}`)}>
                     <Eye className="h-3 w-3 mr-1" /> View My Ticket
                   </Button>
                 )}
-                {event.requiresTicket && !event.isFree && isMember && !event.userHasTicket && (
+                {event.requiresTicket && !event.isFree && isMember && !event.userHasTicket && canBookTicket(event) && (
                   <Button size="sm" className="w-full mt-2 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handlePayment(event)}>
                     <Wallet className="h-3 w-3 mr-1" /> Pay {event.currency} {event.ticketPrice}
                   </Button>
@@ -476,6 +542,7 @@ export default function EventsPage() {
                 title: editEvent.title, 
                 description: editEvent.description, 
                 date: new Date(editEvent.date).toISOString().split('T')[0], 
+                endDate: new Date(editEvent.endDate).toISOString().split('T')[0],
                 time: editEvent.time, 
                 location: editEvent.location, 
                 type: editEvent.type, 
@@ -486,6 +553,7 @@ export default function EventsPage() {
                 ticketPrice: editEvent.ticketPrice,
                 currency: editEvent.currency,
                 totalTickets: editEvent.totalTickets,
+                ticketSalesCutoff: editEvent.ticketSalesCutoff ? new Date(editEvent.ticketSalesCutoff).toISOString().slice(0, 16) : undefined,
                 imageUrl: editEvent.imageUrl,
               }}
               onSubmit={v => updateMutation.mutate({ id: editEvent.id, dto: v })}
@@ -508,6 +576,38 @@ export default function EventsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!viewEvent} onOpenChange={() => setViewEvent(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="font-heading">{viewEvent?.title}</DialogTitle></DialogHeader>
+          {viewEvent && (
+            <div className="space-y-4">
+              {viewEvent.imageUrl && <img src={getImageUrl(viewEvent.imageUrl)} alt={viewEvent.title} className="w-full rounded-md" />}
+              <div className="flex gap-2">
+                <Badge variant={statusVariant(viewEvent.status)}>{viewEvent.status}</Badge>
+                <Badge variant="outline" className="capitalize">{viewEvent.type}</Badge>
+              </div>
+              {viewEvent.description && <p className="text-sm text-muted-foreground">{viewEvent.description}</p>}
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /><span className="font-medium">Date:</span> {new Date(viewEvent.date).toLocaleDateString()} - {new Date(viewEvent.endDate).toLocaleDateString()}</div>
+                <div className="flex items-center gap-2"><Clock className="h-4 w-4" /><span className="font-medium">Time:</span> {viewEvent.time}</div>
+                <div className="flex items-center gap-2"><MapPin className="h-4 w-4" /><span className="font-medium">Location:</span> {viewEvent.location}</div>
+                {viewEvent.requiresTicket && (
+                  <div className="flex items-center gap-2">
+                    <Ticket className="h-4 w-4" />
+                    <span className="font-medium">Ticket:</span>
+                    {viewEvent.isFree ? 'Free' : `${viewEvent.currency} ${viewEvent.ticketPrice}`}
+                    {viewEvent.totalTickets && ` • ${viewEvent.ticketsSold}/${viewEvent.totalTickets} sold`}
+                  </div>
+                )}
+                {viewEvent.ticketSalesCutoff && (
+                  <div className="text-xs text-muted-foreground">Sales end: {new Date(viewEvent.ticketSalesCutoff).toLocaleString()}</div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!expandImage} onOpenChange={() => setExpandImage(null)}>
         <DialogContent className="max-w-4xl">

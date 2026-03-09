@@ -7,6 +7,7 @@ import { kpiService, KPI, CreateKPIData } from '@/services/kpi';
 import { churchesService } from '@/services/churches';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
+import { useRole } from '@/hooks/useRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -16,11 +17,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw } from 'lucide-react';
+import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { eventsService } from '@/services/events';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
 
 function downloadCSV(filename: string, rows: string[][], headers: string[]) {
   const content = [headers, ...rows].map(r => r.join(',')).join('\n');
@@ -36,8 +39,10 @@ function downloadCSV(filename: string, rows: string[][], headers: string[]) {
 export default function ReportsPage() {
   const { user } = useAuth();
   const hasReports = useHasFeature('reports_analytics');
+  const { hasPermission } = useRole();
   const queryClient = useQueryClient();
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
+  const [editingKpi, setEditingKpi] = useState<KPI | null>(null);
   
   // Filter states
   const [memberChurchFilter, setMemberChurchFilter] = useState('all');
@@ -65,6 +70,15 @@ export default function ReportsPage() {
     },
   });
 
+  const toggleRecurringMutation = useMutation({
+    mutationFn: ({ id, recurringActive }: { id: string; recurringActive: boolean }) =>
+      kpiService.update(id, { recurringActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kpis'] });
+      toast.success('Recurring status updated');
+    },
+  });
+
   if (!hasReports) {
     return (
       <div className="space-y-6">
@@ -80,6 +94,23 @@ export default function ReportsPage() {
               Upgrade now
             </Link>{' '}
             to unlock advanced reporting features.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!hasPermission('reports:read')) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Reports</h1>
+          <p className="text-sm text-muted-foreground">Generate and export comprehensive reports across all modules</p>
+        </div>
+        <Alert className="border-red-200 bg-red-50">
+          <Lock className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">
+            You do not have permission to access Reports & Analytics.
           </AlertDescription>
         </Alert>
       </div>
@@ -148,18 +179,24 @@ export default function ReportsPage() {
         const achievement = k.targetValue > 0 ? Math.round((k.currentValue / k.targetValue) * 100) : 0;
         return [
           k.name,
+          k.description || '',
           k.category,
           k.metricType,
+          k.attendanceType || 'N/A',
           k.targetValue.toString(),
           k.currentValue.toString(),
           `${achievement}%`,
           k.unit,
           k.period,
+          new Date(k.startDate).toLocaleDateString(),
+          new Date(k.endDate).toLocaleDateString(),
+          k.isRecurring ? 'Yes' : 'No',
+          k.recurringActive ? 'Active' : 'Paused',
           k.status,
           k.church?.name || 'All Churches',
         ];
       }),
-      ['KPI Name', 'Category', 'Metric Type', 'Target', 'Current', 'Achievement', 'Unit', 'Period', 'Status', 'Church'],
+      ['KPI Name', 'Description', 'Category', 'Metric Type', 'Attendance Type', 'Target', 'Current', 'Achievement', 'Unit', 'Period', 'Start Date', 'End Date', 'Recurring', 'Recurring Status', 'Status', 'Church'],
     );
   };
 
@@ -291,19 +328,31 @@ export default function ReportsPage() {
                 <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${calculateMutation.isPending ? 'animate-spin' : ''}`} />
                 Update
               </Button>
-              <Dialog open={kpiDialogOpen} onOpenChange={setKpiDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-3.5 w-3.5 mr-1.5" /> New KPI
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Create KPI Target</DialogTitle>
-                  </DialogHeader>
-                  <KPIForm onClose={() => setKpiDialogOpen(false)} />
-                </DialogContent>
-              </Dialog>
+              {hasPermission('reports:create') && (
+                <Dialog open={kpiDialogOpen} onOpenChange={setKpiDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="h-3.5 w-3.5 mr-1.5" /> New KPI
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Create KPI Target</DialogTitle>
+                    </DialogHeader>
+                    <KPIForm onClose={() => setKpiDialogOpen(false)} />
+                  </DialogContent>
+                </Dialog>
+              )}
+              {hasPermission('reports:update') && (
+                <Dialog open={!!editingKpi} onOpenChange={(open) => !open && setEditingKpi(null)}>
+                  <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Edit KPI Target</DialogTitle>
+                    </DialogHeader>
+                    <KPIForm kpi={editingKpi!} onClose={() => setEditingKpi(null)} />
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -335,6 +384,14 @@ export default function ReportsPage() {
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium">{kpi.name}</h4>
                           <span className="text-xs px-2 py-0.5 bg-muted rounded">{kpi.category}</span>
+                          {kpi.status === 'completed' && (
+                            <span className="text-xs px-2 py-0.5 bg-gray-200 rounded">Completed</span>
+                          )}
+                          {kpi.isRecurring && (
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                              🔄 Recurring ({kpi.period})
+                            </span>
+                          )}
                         </div>
                         {kpi.description && <p className="text-xs text-muted-foreground mt-1">{kpi.description}</p>}
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
@@ -349,12 +406,33 @@ export default function ReportsPage() {
                           )}
                         </div>
                       </div>
-                      <button
-                        onClick={() => deleteKpiMutation.mutate(kpi.id)}
-                        className="text-xs text-muted-foreground hover:text-destructive"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex gap-2">
+                        {kpi.isRecurring && kpi.status === 'active' && hasPermission('reports:update') && (
+                          <button
+                            onClick={() => toggleRecurringMutation.mutate({ id: kpi.id, recurringActive: !kpi.recurringActive })}
+                            className="text-xs text-muted-foreground hover:text-accent"
+                            title={kpi.recurringActive ? 'Stop Recurring' : 'Resume Recurring'}
+                          >
+                            {kpi.recurringActive ? <StopCircle className="h-3.5 w-3.5" /> : <PlayCircle className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
+                        {kpi.status !== 'completed' && hasPermission('reports:update') && (
+                          <button
+                            onClick={() => setEditingKpi(kpi)}
+                            className="text-xs text-muted-foreground hover:text-accent"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {hasPermission('reports:delete') && (
+                          <button
+                            onClick={() => deleteKpiMutation.mutate(kpi.id)}
+                            className="text-xs text-muted-foreground hover:text-destructive"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
@@ -431,19 +509,58 @@ export default function ReportsPage() {
   );
 }
 
-function KPIForm({ onClose }: { onClose: () => void }) {
+function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: churchesService.getAll });
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Attendance');
-  const [metricType, setMetricType] = useState('total_attendance');
-  const [targetValue, setTargetValue] = useState('');
-  const [period, setPeriod] = useState('monthly');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [churchId, setChurchId] = useState(user?.churchId || '');
+  const [name, setName] = useState(kpi?.name || '');
+  const [description, setDescription] = useState(kpi?.description || '');
+  const [category, setCategory] = useState(kpi?.category || 'Attendance');
+  const [metricType, setMetricType] = useState(kpi?.metricType || 'total_attendance');
+  const [attendanceType, setAttendanceType] = useState(kpi?.attendanceType || 'regular');
+  const [eventId, setEventId] = useState(kpi?.eventId || '');
+  const [isRecurring, setIsRecurring] = useState(kpi?.isRecurring || false);
+  const [targetValue, setTargetValue] = useState(kpi?.targetValue?.toString() || '');
+  const [period, setPeriod] = useState(kpi?.period || 'monthly');
+  const [startDate, setStartDate] = useState(kpi?.startDate?.split('T')[0] || '');
+  const [endDate, setEndDate] = useState(kpi?.endDate?.split('T')[0] || '');
+  const [churchId, setChurchId] = useState(kpi?.churchId || user?.churchId || '');
+
+  // Auto-fill end date when recurring is enabled and start date changes
+  useEffect(() => {
+    if (isRecurring && startDate) {
+      const start = new Date(startDate);
+      let end = new Date(start);
+      
+      if (period === 'monthly') {
+        end.setMonth(end.getMonth() + 1);
+        end.setDate(end.getDate() - 1); // One day before next month
+      } else if (period === 'quarterly') {
+        end.setMonth(end.getMonth() + 3);
+        end.setDate(end.getDate() - 1); // One day before next quarter
+      } else if (period === 'yearly') {
+        end.setFullYear(end.getFullYear() + 1);
+        end.setDate(end.getDate() - 1); // One day before next year
+      }
+      
+      setEndDate(end.toISOString().split('T')[0]);
+    }
+  }, [isRecurring, period, startDate]);
+
+  // Reset to regular attendance when recurring is enabled
+  useEffect(() => {
+    if (isRecurring && attendanceType === 'event') {
+      setAttendanceType('regular');
+      setEventId('');
+    }
+  }, [isRecurring]);
+
+  // Fetch all accessible events (backend filters by user's accessible churches)
+  const { data: events = [] } = useQuery({
+    queryKey: ['events'],
+    queryFn: eventsService.getAll,
+    enabled: category === 'Attendance' && attendanceType === 'event',
+  });
 
   const metricOptions: Record<string, { value: string; label: string; unit: string }[]> = {
     Attendance: [
@@ -476,9 +593,21 @@ function KPIForm({ onClose }: { onClose: () => void }) {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (data: CreateKPIData) => kpiService.update(kpi!.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kpis'] });
+      toast.success('KPI updated successfully');
+      onClose();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to update KPI');
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate({
+    const data: any = {
       name,
       description: description || undefined,
       category,
@@ -489,7 +618,22 @@ function KPIForm({ onClose }: { onClose: () => void }) {
       startDate,
       endDate,
       churchId,
-    });
+      isRecurring,
+    };
+    
+    // Add attendance-specific fields
+    if (category === 'Attendance') {
+      data.attendanceType = attendanceType;
+      if (attendanceType === 'event' && eventId) {
+        data.eventId = eventId;
+      }
+    }
+    
+    if (kpi) {
+      updateMutation.mutate(data);
+    } else {
+      createMutation.mutate(data);
+    }
   };
 
   return (
@@ -513,6 +657,34 @@ function KPIForm({ onClose }: { onClose: () => void }) {
         <Label>Description (Optional)</Label>
         <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Brief description of this KPI" rows={2} />
       </div>
+      <div className="flex items-center justify-between p-3 border rounded-md">
+        <div>
+          <Label className="text-sm font-medium">Recurring KPI</Label>
+          <p className="text-xs text-muted-foreground">Auto-create this KPI for next period</p>
+        </div>
+        <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
+      </div>
+      {isRecurring && (
+        <>
+          <div>
+            <Label>Period <span className="text-destructive">*</span></Label>
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">Dates will auto-fill for current {period} period</p>
+          </div>
+          <Alert className="border-green-200 bg-green-50">
+            <p className="text-xs text-green-800">
+              Select your start date and end date will auto-calculate based on the period.
+            </p>
+          </Alert>
+        </>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Category</Label>
@@ -538,12 +710,41 @@ function KPIForm({ onClose }: { onClose: () => void }) {
           </Select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Target Value</Label>
-          <Input type="number" value={targetValue} onChange={e => setTargetValue(e.target.value)} placeholder="1000" required />
-          <p className="text-xs text-muted-foreground mt-1">Unit: {currentUnit}</p>
-        </div>
+      {category === 'Attendance' && !isRecurring && (
+        <>
+          <div>
+            <Label>Attendance Type</Label>
+            <Select value={attendanceType} onValueChange={setAttendanceType}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="regular">Regular Service</SelectItem>
+                <SelectItem value="event">Event</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {attendanceType === 'event' && (
+            <div>
+              <Label>Select Event (Optional)</Label>
+              <Select value={eventId || 'all'} onValueChange={(v) => setEventId(v === 'all' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="All Events" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Events</SelectItem>
+                  {(events as any[]).map(event => (
+                    <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Leave empty to track all event attendance</p>
+            </div>
+          )}
+        </>
+      )}
+      <div>
+        <Label>Target Value</Label>
+        <Input type="number" value={targetValue} onChange={e => setTargetValue(e.target.value)} placeholder="1000" required />
+        <p className="text-xs text-muted-foreground mt-1">Unit: {currentUnit}</p>
+      </div>
+      {!isRecurring && (
         <div>
           <Label>Period</Label>
           <Select value={period} onValueChange={setPeriod}>
@@ -555,21 +756,23 @@ function KPIForm({ onClose }: { onClose: () => void }) {
             </SelectContent>
           </Select>
         </div>
-      </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Start Date</Label>
           <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
+          {isRecurring && <p className="text-xs text-muted-foreground mt-1">Choose your period start</p>}
         </div>
         <div>
           <Label>End Date</Label>
-          <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required />
+          <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required disabled={isRecurring} />
+          {isRecurring && <p className="text-xs text-muted-foreground mt-1">Auto-calculated</p>}
         </div>
       </div>
       <div className="flex gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-        <Button type="submit" disabled={createMutation.isPending} className="flex-1">
-          {createMutation.isPending ? 'Creating...' : 'Create KPI'}
+        <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="flex-1">
+          {kpi ? (updateMutation.isPending ? 'Updating...' : 'Update KPI') : (createMutation.isPending ? 'Creating...' : 'Create KPI')}
         </Button>
       </div>
     </form>

@@ -19,6 +19,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
+import Reminders from "./pages/Reminders";
 import Giving from "./pages/Giving";
 import Donations from "./pages/Donations";
 import Attendance from "./pages/Attendance";
@@ -31,6 +32,8 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import UsersManagement from "./pages/UsersManagement";
 import RolesManagement from "./pages/RolesManagement";
+import Teams from "./pages/Teams";
+import TeamMembers from "./pages/TeamMembers";
 import Packages from "./pages/Packages";
 import Transactions from "./pages/Transactions";
 import Withdrawals from "./pages/Withdrawals";
@@ -74,6 +77,7 @@ const App = () => (
                 <Route path="events" element={<Events />} />
                 <Route path="events/:id/tickets" element={<EventTickets />} />
                 <Route path="my-tickets" element={<MyTickets />} />
+                <Route path="reminders" element={<Reminders />} />
                 <Route path="giving" element={<Giving />} />
                 <Route path="donations" element={<Donations />} />
                 <Route path="attendance" element={<Attendance />} />
@@ -87,6 +91,8 @@ const App = () => (
                 <Route path="settings" element={<Settings />} />
                 <Route path="users" element={<UsersManagement />} />
                 <Route path="roles" element={<RolesManagement />} />
+                <Route path="teams" element={<Teams />} />
+                <Route path="teams/:id/members" element={<TeamMembers />} />
                 <Route path="packages" element={<Packages />} />
                 <Route path="transactions" element={<Transactions />} />
                 <Route path="withdrawals" element={<Withdrawals />} />

@@ -5,6 +5,7 @@ export interface ChurchEvent {
   title: string;
   description: string;
   date: string;
+  endDate: string;
   time: string;
   location: string;
   type: 'service' | 'meeting' | 'conference' | 'outreach' | 'fellowship';
@@ -16,17 +17,22 @@ export interface ChurchEvent {
   currency?: 'MWK' | 'KSH';
   totalTickets?: number;
   ticketsSold: number;
+  ticketSalesCutoff?: string;
   imageUrl?: string;
   churchId: string;
   createdById: string;
   createdAt: string;
   updatedAt: string;
+  userHasTicket?: boolean;
+  userTicketId?: string;
+  userTicketNumber?: string;
 }
 
 export interface CreateEventDto {
   title: string;
   description?: string;
   date: string;
+  endDate: string;
   time: string;
   location: string;
   type: ChurchEvent['type'];
@@ -90,5 +96,23 @@ export const eventsService = {
   markAttendance: async (ticketId: string, attended: boolean) => {
     const { data } = await apiClient.patch(`/events/tickets/${ticketId}/attendance`, { attended });
     return data.data;
+  },
+  downloadTicket: async (ticketId: string, ticketNumber: string) => {
+    const response = await apiClient.get(`/events/tickets/${ticketId}/download`, {
+      responseType: 'blob',
+    });
+    const blob = response.data;
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ticket-${ticketNumber}.pdf`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }, 100);
   },
 };

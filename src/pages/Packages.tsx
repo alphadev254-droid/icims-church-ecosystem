@@ -48,6 +48,7 @@ function PackageCard({ pkg, isCurrent, allFeatures, onUpgrade }: {
   onUpgrade: (pkgId: string, pkgName: string) => void;
 }) {
   const includedFeatureIds = new Set(pkg.features.map(f => f.feature.id));
+  const limitFeatures = ['max_members', 'max_churches', 'max_events_per_month'];
 
   return (
     <Card className={`relative border-2 ${PKG_COLOR[pkg.name] ?? ''} ${isCurrent ? 'ring-2 ring-accent' : ''}`}>
@@ -74,10 +75,19 @@ function PackageCard({ pkg, isCurrent, allFeatures, onUpgrade }: {
         <div className="space-y-1.5">
           {allFeatures.map(feat => {
             const included = includedFeatureIds.has(feat.id);
+            const isLimit = limitFeatures.includes(feat.name);
+            const pkgFeature = pkg.features.find(f => f.feature.id === feat.id);
+            const limitValue = pkgFeature?.limitValue;
+            
             return (
               <div key={feat.id} className={`flex items-center gap-2 text-sm ${included ? '' : 'opacity-35'}`}>
                 <Check className={`h-3.5 w-3.5 flex-shrink-0 ${included ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
-                <span>{feat.displayName}</span>
+                <span>
+                  {feat.displayName}
+                  {isLimit && included && limitValue !== null && (
+                    <span className="text-muted-foreground"> ({limitValue >= 999999 ? 'Unlimited' : limitValue.toLocaleString()})</span>
+                  )}
+                </span>
               </div>
             );
           })}

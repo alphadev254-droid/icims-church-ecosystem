@@ -18,6 +18,7 @@ const schema = z.object({
   phone: z.string().min(1, 'Phone number is required'),
   gender: z.enum(['male', 'female'], { required_error: 'Gender is required' }),
   accountCountry: z.enum(['Malawi', 'Kenya'], { required_error: 'Country is required' }),
+  anniversary: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
     .regex(/[0-9]/, 'Must contain at least one number'),
@@ -49,6 +50,7 @@ export default function RegisterPage() {
       phone: values.phone,
       gender: values.gender,
       accountCountry: values.accountCountry,
+      anniversary: values.anniversary,
       password: values.password,
     });
     if (result.success) {
@@ -128,6 +130,12 @@ export default function RegisterPage() {
               </SelectContent>
             </Select>
             {errors.gender && <p className="text-xs text-destructive">{errors.gender.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label>Church Founded Date (Optional)</Label>
+            <Input type="date" {...register('anniversary')} />
+            <p className="text-xs text-muted-foreground">When was your church established?</p>
           </div>
 
           <div className="space-y-1">

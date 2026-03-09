@@ -5,13 +5,14 @@ export interface DashboardStats {
   activeMembers: number;
   totalChurches: number;
   totalDonations: number;
-  totalDonationRecords: number;
-  totalEvents: number;
   upcomingEvents: number;
-  recentDonationAmount: number;
   averageAttendance: number;
   memberGrowth: number;
   donationGrowth: number;
+  totalNewVisitors: number;
+  retentionRate: number;
+  attendanceRate: number;
+  newMembersThisMonth: number;
 }
 
 export const dashboardService = {

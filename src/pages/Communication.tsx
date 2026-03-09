@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChurchSelect } from '@/components/ChurchSelect';
+import TeamCommunicationTab from '@/components/TeamCommunicationTab';
 import { Plus, MessageSquare, Bell, Trash2, HandHeart, Pencil, Eye, Paperclip, X, FileText, Image as ImageIcon, Download, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -154,6 +155,10 @@ export default function CommunicationPage() {
   const canUpdate = hasPermission('communication:update');
   const canDelete = hasPermission('communication:delete');
 
+  // Check if user is admin (not just member) for church communication
+  const { role } = useRole();
+  const canCreateChurchPost = canCreate && role !== 'member';
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -265,11 +270,11 @@ export default function CommunicationPage() {
           <h1 className="font-heading text-2xl font-bold">Communication</h1>
           <p className="text-sm text-muted-foreground">Announcements, newsletters, and prayer requests</p>
         </div>
-        {canCreate && (
+        {canCreateChurchPost && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
-                <Plus className="h-4 w-4" /> New Post
+                <Plus className="h-4 w-4" /> New Church Post
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -364,29 +369,42 @@ export default function CommunicationPage() {
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
       ) : (
-        <Tabs defaultValue="announcement">
+        <Tabs defaultValue="church">
           <TabsList>
-            <TabsTrigger value="announcement">
-              Announcements <Badge variant="secondary" className="ml-2">{filterByType('announcement').length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="prayer_request">
-              Prayer Requests <Badge variant="secondary" className="ml-2">{filterByType('prayer_request').length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="newsletter">
-              Newsletters <Badge variant="secondary" className="ml-2">{filterByType('newsletter').length}</Badge>
-            </TabsTrigger>
+            <TabsTrigger value="church">Church Communication</TabsTrigger>
+            <TabsTrigger value="team">Team Communication</TabsTrigger>
           </TabsList>
 
-          {(['announcement', 'prayer_request', 'newsletter'] as const).map(type => (
-            <TabsContent key={type} value={type} className="mt-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                {filterByType(type).length === 0
-                  ? <EmptyState type={type} />
-                  : filterByType(type).map((item: any) => <ItemCard key={item.id} item={item} />)
-                }
-              </div>
-            </TabsContent>
-          ))}
+          <TabsContent value="church" className="mt-4">
+            <Tabs defaultValue="announcement">
+              <TabsList>
+                <TabsTrigger value="announcement">
+                  Announcements <Badge variant="secondary" className="ml-2">{filterByType('announcement').length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="prayer_request">
+                  Prayer Requests <Badge variant="secondary" className="ml-2">{filterByType('prayer_request').length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="newsletter">
+                  Newsletters <Badge variant="secondary" className="ml-2">{filterByType('newsletter').length}</Badge>
+                </TabsTrigger>
+              </TabsList>
+
+              {(['announcement', 'prayer_request', 'newsletter'] as const).map(type => (
+                <TabsContent key={type} value={type} className="mt-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {filterByType(type).length === 0
+                      ? <EmptyState type={type} />
+                      : filterByType(type).map((item: any) => <ItemCard key={item.id} item={item} />)
+                    }
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </TabsContent>
+
+          <TabsContent value="team" className="mt-4">
+            <TeamCommunicationTab />
+          </TabsContent>
         </Tabs>
       )}
 

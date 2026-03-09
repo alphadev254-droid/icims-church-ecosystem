@@ -2,14 +2,10 @@ import apiClient from '@/lib/api-client';
 
 export interface AttendanceRecord {
   id: string;
-  eventId?: string | null;
   churchId: string;
   date: string;
   totalAttendees: number;
-  newVisitors: number;
   serviceType: string;
-  notes?: string | null;
-  createdAt: string;
 }
 
 export interface CreateAttendanceDto {

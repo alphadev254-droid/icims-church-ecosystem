@@ -18,7 +18,7 @@ export interface PackageTier {
   priceYearly: number;
   isActive: boolean;
   sortOrder: number;
-  features: Array<{ feature: PackageFeature }>;
+  features: Array<{ feature: PackageFeature; limitValue?: number | null }>;
 }
 
 export interface Payment {

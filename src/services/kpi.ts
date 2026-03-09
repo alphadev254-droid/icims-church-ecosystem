@@ -6,6 +6,8 @@ export interface KPI {
   description?: string;
   category: string;
   metricType: string;
+  attendanceType?: string;
+  eventId?: string;
   targetValue: number;
   currentValue: number;
   unit: string;
@@ -13,9 +15,14 @@ export interface KPI {
   startDate: string;
   endDate: string;
   status: string;
+  isRecurring: boolean;
+  recurringActive: boolean;
+  parentKpiId?: string;
+  recurrenceCount: number;
   nationalAdminId: string;
   churchId?: string;
   church?: { id: string; name: string };
+  event?: { id: string; title: string };
   createdAt: string;
   updatedAt: string;
 }
@@ -25,12 +32,15 @@ export interface CreateKPIData {
   description?: string;
   category: string;
   metricType: string;
+  attendanceType?: string;
+  eventId?: string;
   targetValue: number;
   unit: string;
   period: string;
   startDate: string;
   endDate: string;
   churchId: string;
+  isRecurring?: boolean;
 }
 
 export const kpiService = {
@@ -49,7 +59,7 @@ export const kpiService = {
     return data;
   },
 
-  async update(id: string, updates: Partial<CreateKPIData> & { status?: string }) {
+  async update(id: string, updates: Partial<CreateKPIData> & { status?: string; recurringActive?: boolean }) {
     const { data } = await apiClient.put<KPI>(`/kpis/${id}`, updates);
     return data;
   },

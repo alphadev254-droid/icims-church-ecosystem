@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { User, Lock, Bell, Sun, Moon, Building2, Shield, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Bell, Sun, Moon, Building2, Shield, Eye, EyeOff, Camera, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 const profileSchema = z.object({
@@ -38,9 +38,13 @@ export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -58,9 +62,23 @@ export default function SettingsPage() {
   const onSaveProfile = async (values: ProfileValues) => {
     setProfileLoading(true);
     try {
-      await apiClient.put('/auth/profile', values);
+      const formData = new FormData();
+      formData.append('firstName', values.firstName);
+      formData.append('lastName', values.lastName);
+      if (values.phone) formData.append('phone', values.phone);
+      
+      // Add avatar if selected
+      const avatarData = profileForm.getValues('avatar' as any) as any;
+      if (avatarData?.file) {
+        formData.append('avatar', avatarData.file);
+      }
+      
+      await apiClient.put('/auth/profile', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       await fetchMe();
       toast.success('Profile updated');
+      profileForm.setValue('avatar' as any, null);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to update profile');
     } finally {
@@ -84,6 +102,31 @@ export default function SettingsPage() {
     }
   };
 
+  const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const preview = e.target?.result as string;
+      profileForm.setValue('avatar' as any, { file, preview });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const avatarPreview = profileForm.watch('avatar' as any) as any;
+  const displayAvatar = avatarPreview?.preview || (user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${API_BASE}${user.avatar}`) : null);
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
@@ -99,6 +142,51 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Avatar Upload */}
+          <div className="flex items-center gap-4 mb-6 pb-6 border-b">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                {displayAvatar ? (
+                  <img 
+                    src={displayAvatar} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <User className="h-10 w-10 text-muted-foreground" />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 p-1.5 bg-accent text-accent-foreground rounded-full hover:bg-accent/90"
+              >
+                <Camera className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Profile Picture</p>
+              <p className="text-xs text-muted-foreground mb-2">JPG, PNG or GIF. Max 5MB</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={onAvatarChange}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-2"
+              >
+                <Upload className="h-3 w-3" />
+                Upload Photo
+              </Button>
+            </div>
+          </div>
+
           <form onSubmit={profileForm.handleSubmit(onSaveProfile)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>

@@ -91,11 +91,11 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>Target Amount</Label>
-          <Input type="number" {...register('targetAmount')} placeholder="Optional" />
+          <Label>Target Amount*</Label>
+          <Input type="number" {...register('targetAmount')} placeholder="" />
         </div>
         <div>
-          <Label>Currency</Label>
+          <Label>Currency*</Label>
           <Select defaultValue={defaultValues?.currency ?? 'MWK'} onValueChange={v => setValue('currency', v as any)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>

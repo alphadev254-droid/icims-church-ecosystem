@@ -7,6 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Church, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -18,6 +21,12 @@ const schema = z.object({
   email: z.string().email('Enter a valid email address'),
   phone: z.string().min(1, 'Phone number is required'),
   gender: z.enum(['male', 'female'], { required_error: 'Gender is required' }),
+  dateOfBirth: z.string().optional(),
+  maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced'], { required_error: 'Marital status is required' }),
+  weddingDate: z.string().optional(),
+  residentialNeighbourhood: z.string().optional(),
+  membershipType: z.enum(['visitor', 'member'], { required_error: 'Membership type is required' }),
+  baptizedByImmersion: z.boolean().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
     .regex(/[0-9]/, 'Must contain at least one number'),
@@ -35,6 +44,10 @@ export default function MemberRegisterPage() {
   const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
+  const [maritalStatus, setMaritalStatus] = useState<'single' | 'married' | 'widowed' | 'divorced' | ''>('');
+  const [membershipType, setMembershipType] = useState<'visitor' | 'member' | ''>('');
+  const [serviceInterests, setServiceInterests] = useState<string[]>([]);
+  const [baptized, setBaptized] = useState<boolean | undefined>(undefined);
   const inviteToken = searchParams.get('invite');
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue } = useForm<FormValues>({
@@ -60,6 +73,13 @@ export default function MemberRegisterPage() {
       email: values.email,
       phone: values.phone,
       gender: values.gender,
+      dateOfBirth: values.dateOfBirth,
+      maritalStatus: values.maritalStatus,
+      weddingDate: values.weddingDate,
+      residentialNeighbourhood: values.residentialNeighbourhood,
+      membershipType: values.membershipType,
+      serviceInterest: serviceInterests.join(', '),
+      baptizedByImmersion: baptized,
       password: values.password,
       inviteToken,
     });
@@ -137,6 +157,90 @@ export default function MemberRegisterPage() {
               </SelectContent>
             </Select>
             {errors.gender && <p className="text-xs text-destructive">{errors.gender.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label>Date of Birth (Optional)</Label>
+            <Input type="date" {...register('dateOfBirth')} />
+          </div>
+
+          <div className="space-y-1">
+            <Label>Marital Status</Label>
+            <Select value={maritalStatus} onValueChange={(v: 'single' | 'married' | 'widowed' | 'divorced') => { setMaritalStatus(v); setValue('maritalStatus', v); }}>
+              <SelectTrigger className={errors.maritalStatus ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select marital status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="single">Single</SelectItem>
+                <SelectItem value="married">Married</SelectItem>
+                <SelectItem value="widowed">Widowed</SelectItem>
+                <SelectItem value="divorced">Divorced</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.maritalStatus && <p className="text-xs text-destructive">{errors.maritalStatus.message}</p>}
+          </div>
+
+          {maritalStatus === 'married' && (
+            <div className="space-y-1">
+              <Label>Wedding Date (Optional)</Label>
+              <Input type="date" {...register('weddingDate')} />
+              <p className="text-xs text-muted-foreground">Used for church anniversary celebrations</p>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Label>Residential Neighbourhood (Optional)</Label>
+            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" />
+          </div>
+
+          <div className="space-y-1">
+            <Label>Are you a:</Label>
+            <Select value={membershipType} onValueChange={(v: 'visitor' | 'member') => { setMembershipType(v); setValue('membershipType', v); }}>
+              <SelectTrigger className={errors.membershipType ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select membership type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="visitor">Visitor</SelectItem>
+                <SelectItem value="member">Member</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.membershipType && <p className="text-xs text-destructive">{errors.membershipType.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label>How would you like to serve? (Optional)</Label>
+            <div className="space-y-2">
+              {['Choir', 'Ushering', 'Greeters', 'Security/Protocol', 'Missions/Outreaches', 'Other'].map((service) => (
+                <div key={service} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={service}
+                    checked={serviceInterests.includes(service)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setServiceInterests([...serviceInterests, service]);
+                      } else {
+                        setServiceInterests(serviceInterests.filter(s => s !== service));
+                      }
+                    }}
+                  />
+                  <label htmlFor={service} className="text-sm cursor-pointer">{service}</label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Have you been baptized by immersion into water?</Label>
+            <RadioGroup value={baptized === undefined ? '' : baptized ? 'yes' : 'no'} onValueChange={(v) => setBaptized(v === 'yes')}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="yes" id="baptized-yes" />
+                <label htmlFor="baptized-yes" className="text-sm cursor-pointer">Yes</label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="no" id="baptized-no" />
+                <label htmlFor="baptized-no" className="text-sm cursor-pointer">No</label>
+              </div>
+            </RadioGroup>
           </div>
 
           <div className="space-y-1">

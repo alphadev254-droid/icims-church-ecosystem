@@ -3,8 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { eventsService } from '@/services/events';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function MyTicketsPage() {
   const [searchParams] = useSearchParams();
@@ -39,6 +41,16 @@ export default function MyTicketsPage() {
     setExpandedTicket(expandedTicket === ticketId ? null : ticketId);
   };
 
+  const handleDownloadTicket = async (ticketId: string, ticketNumber: string) => {
+    const toastId = toast.loading('Downloading ticket...');
+    try {
+      await eventsService.downloadTicket(ticketId, ticketNumber);
+      toast.success('Ticket downloaded successfully', { id: toastId });
+    } catch (error) {
+      toast.error('Failed to download ticket', { id: toastId });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -62,6 +74,7 @@ export default function MyTicketsPage() {
                 <TableHead>Location</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Purchased</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -85,10 +98,19 @@ export default function MyTicketsPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(ticket.createdAt).toLocaleDateString()}
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownloadTicket(ticket.id, ticket.ticketNumber)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                   {expandedTicket === ticket.id && (
                     <TableRow>
-                      <TableCell colSpan={7} className="bg-muted/30">
+                      <TableCell colSpan={8} className="bg-muted/30">
                         {isLoadingTransaction ? (
                           <div className="text-center py-4">Loading transaction details...</div>
                         ) : transactionData ? (

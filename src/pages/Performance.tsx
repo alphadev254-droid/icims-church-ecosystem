@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { TrendingUp, TrendingDown, Minus, Users, HandCoins, ClipboardList, Calendar, Lock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Users, HandCoins, ClipboardList, Calendar, Lock, UserCheck, UserPlus, TrendingUpDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -118,9 +118,8 @@ export default function PerformancePage() {
     {
       label: 'Upcoming Events',
       value: stats.upcomingEvents ?? 0,
-      target: 4,
-      progress: Math.min(100, Math.round(((stats.upcomingEvents ?? 0) / 4) * 100)),
-      trend: (stats.upcomingEvents ?? 0) >= 2 ? 'up' : 'flat',
+      progress: 100,
+      trend: 'flat',
       icon: Calendar,
     },
   ];
@@ -230,43 +229,77 @@ export default function PerformancePage() {
         </Card>
       )}
 
-      {/* Ministry targets */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Ministry Targets</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[
-              { ministry: 'Youth Ministry', target: 'Grow youth attendance by 20%', status: 'on-track', progress: 72 },
-              { ministry: 'Outreach', target: '2 community outreach events per month', status: 'behind', progress: 45 },
-              { ministry: 'Giving', target: 'Increase tithe participation by 15%', status: 'on-track', progress: 81 },
-              { ministry: 'Bible Study', target: '80% of members in a study group', status: 'behind', progress: 38 },
-            ].map(item => (
-              <div key={item.ministry} className="flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">{item.ministry}</span>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      item.status === 'on-track'
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                    }`}>{item.status}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-2">{item.target}</p>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${item.progress >= 70 ? 'bg-green-500' : 'bg-yellow-500'}`}
-                      style={{ width: `${item.progress}%` }}
-                    />
-                  </div>
-                </div>
-                <span className="text-sm font-semibold w-10 text-right">{item.progress}%</span>
+      {/* Additional Insights */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Members</CardTitle>
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold font-heading">{stats.activeMembers}</div>
+            <p className="text-xs text-muted-foreground mt-1">of {stats.totalMembers} total</p>
+            <div className="mt-2">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-muted-foreground">Retention Rate</span>
+                <span className="font-medium">{stats.retentionRate}%</span>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${stats.retentionRate}%` }} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">New Members</CardTitle>
+            <UserPlus className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold font-heading">{stats.newMembersThisMonth}</div>
+            <p className="text-xs text-muted-foreground mt-1">this month</p>
+            {stats.memberGrowth !== 0 && (
+              <div className={`flex items-center gap-1 mt-2 text-xs ${trendColor(stats.memberGrowth > 0 ? 'up' : 'down')}`}>
+                {trendIcon(stats.memberGrowth > 0 ? 'up' : 'down')}
+                {Math.abs(stats.memberGrowth)}% vs last month
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">New Visitors</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold font-heading">{stats.totalNewVisitors}</div>
+            <p className="text-xs text-muted-foreground mt-1">total recorded</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Attendance Rate</CardTitle>
+            <TrendingUpDown className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold font-heading">{stats.attendanceRate}%</div>
+            <p className="text-xs text-muted-foreground mt-1">avg vs total members</p>
+            <div className="mt-2">
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full ${stats.attendanceRate >= 70 ? 'bg-green-500' : stats.attendanceRate >= 50 ? 'bg-yellow-500' : 'bg-orange-500'}`}
+                  style={{ width: `${Math.min(100, stats.attendanceRate)}%` }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+
     </div>
   );
 }
