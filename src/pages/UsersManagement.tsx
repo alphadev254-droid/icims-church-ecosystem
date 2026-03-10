@@ -68,14 +68,20 @@ const createSchema = z.object({
   password: z.string().min(8, 'Min 8 characters'),
   firstName: z.string().min(1, 'First name required'),
   lastName: z.string().min(1, 'Last name required'),
-  phone: z.string().optional().default(''),
+  phone: z.string().min(1, 'Phone number is required'),
+  gender: z.enum(['male', 'female']).optional(),
+  dateOfBirth: z.string().optional(),
+  maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced']).optional(),
+  weddingDate: z.string().optional(),
+  residentialNeighbourhood: z.string().optional(),
+  membershipType: z.enum(['visitor', 'member']).optional(),
+  serviceInterest: z.string().optional(),
+  baptizedByImmersion: z.boolean().optional(),
   roleName: z.string().default('member'),
-  // Location fields for church assignment
   region: z.string().optional(),
   district: z.string().optional(),
   traditionalAuthority: z.string().optional(),
   village: z.string().optional(),
-  // Church selection for member role - MANDATORY
   churchId: z.string().min(1, 'Church is required'),
 });
 type CreateValues = z.infer<typeof createSchema>;
@@ -103,9 +109,9 @@ function CreateUserForm({ onSubmit, isPending }: {
   const [showPassword, setShowPassword] = useState(false);
   const currentUser = useAuthStore(s => s.user);
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<CreateValues>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<CreateValues>({
     resolver: zodResolver(createSchema),
-    defaultValues: { roleName: 'member', phone: '' },
+    defaultValues: { roleName: 'member', phone: '', membershipType: 'member' },
   });
 
   // Determine current user role (with fallback for backend compatibility)
@@ -134,23 +140,23 @@ function CreateUserForm({ onSubmit, isPending }: {
     <form onSubmit={handleSubmit(v => onSubmit(v, districts, tas))} className="space-y-4" autoComplete="off">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>First Name</Label>
+          <Label>First Name *</Label>
           <Input {...register('firstName')} autoComplete="off" />
           {errors.firstName && <p className="text-xs text-destructive mt-1">{errors.firstName.message}</p>}
         </div>
         <div>
-          <Label>Last Name</Label>
+          <Label>Last Name *</Label>
           <Input {...register('lastName')} autoComplete="off" />
           {errors.lastName && <p className="text-xs text-destructive mt-1">{errors.lastName.message}</p>}
         </div>
       </div>
       <div>
-        <Label>Email</Label>
+        <Label>Email *</Label>
         <Input {...register('email')} type="email" autoComplete="off" />
         {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
       </div>
       <div>
-        <Label>Password</Label>
+        <Label>Password *</Label>
         <div className="relative">
           <Input 
             {...register('password')} 
@@ -170,13 +176,112 @@ function CreateUserForm({ onSubmit, isPending }: {
         {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
       </div>
       <div>
-        <Label>Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Label>Phone *</Label>
         <Input {...register('phone')} placeholder="+265 999 000 111" autoComplete="off" />
+        {errors.phone && <p className="text-xs text-destructive mt-1">{errors.phone.message}</p>}
       </div>
       <div>
-        <Label>Role</Label>
+        <Label>Role *</Label>
         <RoleSelect value={role} onChange={handleRoleChange} />
       </div>
+      
+      {/* Member-specific fields */}
+      {needsChurchSelection && (
+        <>
+          <div>
+            <Label>Assign to Church *</Label>
+            <Select onValueChange={(value) => setValue('churchId', value)}>
+              <SelectTrigger className={errors.churchId ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select a church" />
+              </SelectTrigger>
+              <SelectContent>
+                {churches.map((church: any) => (
+                  <SelectItem key={church.id} value={church.id}>
+                    {church.name} 
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.churchId && <p className="text-xs text-destructive mt-1">{errors.churchId.message}</p>}
+          </div>
+          
+          <div>
+            <Label>Gender</Label>
+            <Select onValueChange={(v) => setValue('gender', v as 'male' | 'female')}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label>Date of Birth *</Label>
+            <Input type="date" {...register('dateOfBirth')} />
+            {errors.dateOfBirth && <p className="text-xs text-destructive mt-1">{errors.dateOfBirth.message}</p>}
+          </div>
+          
+          <div>
+            <Label>Marital Status *</Label>
+            <Select onValueChange={(v) => setValue('maritalStatus', v as any)}>
+              <SelectTrigger className={errors.maritalStatus ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select marital status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="single">Single</SelectItem>
+                <SelectItem value="married">Married</SelectItem>
+                <SelectItem value="widowed">Widowed</SelectItem>
+                <SelectItem value="divorced">Divorced</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.maritalStatus && <p className="text-xs text-destructive mt-1">{errors.maritalStatus.message}</p>}
+          </div>
+          
+          {watch('maritalStatus') === 'married' && (
+            <div>
+              <Label>Wedding Date</Label>
+              <Input type="date" {...register('weddingDate')} />
+            </div>
+          )}
+          
+          <div>
+            <Label>Residential Neighbourhood *</Label>
+            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" />
+            {errors.residentialNeighbourhood && <p className="text-xs text-destructive mt-1">{errors.residentialNeighbourhood.message}</p>}
+          </div>
+          
+          <div>
+            <Label>Membership Type</Label>
+            <Select defaultValue="member" onValueChange={(v) => setValue('membershipType', v as any)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="visitor">Visitor</SelectItem>
+                <SelectItem value="member">Member</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label>Service Interest <span className="text-muted-foreground text-xs">(optional)</span></Label>
+            <Input {...register('serviceInterest')} placeholder="e.g., Choir, Ushering" />
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="baptized"
+              onChange={(e) => setValue('baptizedByImmersion', e.target.checked)}
+              className="h-4 w-4"
+            />
+            <Label htmlFor="baptized" className="cursor-pointer">Baptized by immersion</Label>
+          </div>
+        </>
+      )}
       
       {/* Admin scope for district_overseer / local_admin / regional_leader */}
       {showAdminScope && (
@@ -189,26 +294,6 @@ function CreateUserForm({ onSubmit, isPending }: {
           onTAsChange={setTas}
           onRegionsChange={setRegions}
         />
-      )}
-      
-      {/* Church selection for member role */}
-      {needsChurchSelection && (
-        <div>
-          <Label>Assign to Church *</Label>
-          <Select onValueChange={(value) => setValue('churchId', value)}>
-            <SelectTrigger className={errors.churchId ? 'border-destructive' : ''}>
-              <SelectValue placeholder="Select a church" />
-            </SelectTrigger>
-            <SelectContent>
-              {churches.map((church: any) => (
-                <SelectItem key={church.id} value={church.id}>
-                  {church.name} 
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.churchId && <p className="text-xs text-destructive mt-1">{errors.churchId.message}</p>}
-        </div>
       )}
       
       <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
@@ -600,11 +685,11 @@ export default function UsersManagement() {
                   <TableHead className="hidden md:table-cell">Phone</TableHead>
                   <TableHead className="hidden xl:table-cell">Gender</TableHead>
                   <TableHead className="hidden xl:table-cell">DOB</TableHead>
-                  <TableHead className="hidden 2xl:table-cell">Neighbourhood</TableHead>
+                  <TableHead className="hidden lg:table-cell">Marital Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Residence</TableHead>
                   <TableHead className="hidden 2xl:table-cell">Baptized</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead className="hidden xl:table-cell">Teams</TableHead>
-                  <TableHead className="hidden lg:table-cell">Scope</TableHead>
                   <TableHead className="hidden lg:table-cell">Joined</TableHead>
                   {(canUpdate || canDelete) && <TableHead className="w-20">Actions</TableHead>}
                 </TableRow>
@@ -636,7 +721,8 @@ export default function UsersManagement() {
                       <TableCell className="hidden xl:table-cell text-xs">
                         {(user as any).dateOfBirth ? new Date((user as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                       </TableCell>
-                      <TableCell className="hidden 2xl:table-cell text-xs text-muted-foreground">{(user as any).residentialNeighbourhood ?? '—'}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs capitalize">{(user as any).maritalStatus ?? '—'}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">{(user as any).residentialNeighbourhood ?? '—'}</TableCell>
                       <TableCell className="hidden 2xl:table-cell text-xs">{(user as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
                       <TableCell>
                         <Badge variant={ROLE_BADGE_VARIANT[user.roleName] ?? 'outline'} className="text-xs capitalize">
@@ -645,9 +731,6 @@ export default function UsersManagement() {
                       </TableCell>
                       <TableCell className="hidden xl:table-cell text-xs text-muted-foreground max-w-[150px] truncate">
                         {(user as any).teams?.length > 0 ? (user as any).teams.join(', ') : '—'}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-[180px] truncate">
-                        {scopeText ?? '—'}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">
                         {new Date(user.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
