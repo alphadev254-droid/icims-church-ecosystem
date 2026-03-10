@@ -212,7 +212,7 @@ export default function AboutPage() {
               </h2>
               <div className="space-y-5">
                 {[
-                  { icon: Church, title: 'Denomination-Aware', desc: 'Designed around real church hierarchies — national, regional, district, and local branch levels.' },
+                  { icon: Church, title: 'Ministry-Aware', desc: 'Designed around real church hierarchies — national, regional, district, and local branch levels.' },
                   { icon: Users, title: 'People-First Design', desc: 'Intuitive interfaces that church staff and volunteers can learn in minutes, not weeks.' },
                   { icon: Globe, title: 'Scalable for Any Size', desc: 'From 50 to 50,000 members, ICIMS grows with your ministry without extra configuration.' },
                   { icon: ShieldCheck, title: 'Secure & Compliant', desc: 'Role-based access control, PCI-compliant giving, and encrypted data at rest and in transit.' },

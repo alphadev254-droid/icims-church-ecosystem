@@ -115,4 +115,8 @@ export const eventsService = {
       document.body.removeChild(a);
     }, 100);
   },
+  getPublicEvent: async (id: string): Promise<ChurchEvent> => {
+    const { data } = await apiClient.get(`/events/${id}/public`);
+    return data.data;
+  },
 };

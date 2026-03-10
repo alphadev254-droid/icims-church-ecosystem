@@ -91,7 +91,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>Target Amount*</Label>
+          <Label>Target Amount (Optional)</Label>
           <Input type="number" {...register('targetAmount')} placeholder="" />
         </div>
         <div>
@@ -185,7 +185,7 @@ export default function GivingPage() {
   const canViewDonations = hasPermission('donations:read');
   const isMember = user?.roleName === 'member';
 
-  if (!hasGivingFeature) {
+  if (!isMember && !hasGivingFeature) {
     return (
       <div className="space-y-6">
         <div>
@@ -233,7 +233,9 @@ export default function GivingPage() {
 
   const activeCampaigns = campaigns.filter(c => c.status === 'active');
   const filteredCampaigns = isMember ? campaigns : statusFilter === 'all' ? campaigns : campaigns.filter(c => c.status === statusFilter);
-  const totalRaised = campaigns.reduce((sum, c) => sum + (c.totalRaised || 0), 0);
+  const totalRaised = isMember 
+    ? campaigns.reduce((sum, c) => sum + (c.userTotalDonated || 0), 0)
+    : campaigns.reduce((sum, c) => sum + (c.totalRaised || 0), 0);
   const totalDonors = campaigns.reduce((sum, c) => sum + (c.donorCount || 0), 0);
 
   return (
@@ -299,35 +301,37 @@ export default function GivingPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Raised</CardTitle>
-            <HandCoins className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">MWK {totalRaised.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Campaigns</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{activeCampaigns.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Donors</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{totalDonors}</div>
-          </CardContent>
-        </Card>
-      </div>
+      {!isMember && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Raised</CardTitle>
+              <HandCoins className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">MWK {totalRaised.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active Campaigns</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">{activeCampaigns.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Donors</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">{totalDonors}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -369,28 +373,37 @@ export default function GivingPage() {
                 <CardContent className="space-y-3">
                   {campaign.description && <p className="text-sm text-muted-foreground line-clamp-2">{campaign.description}</p>}
                   
-                  {campaign.targetAmount && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{campaign.currency} {campaign.totalRaised?.toLocaleString()} / {campaign.targetAmount.toLocaleString()}</span>
-                      </div>
-                      <Progress value={Math.min(progress, 100)} className="h-2" />
-                      <p className="text-xs text-muted-foreground">{progress.toFixed(0)}% of goal</p>
-                    </div>
-                  )}
-
-                  {!campaign.targetAmount && (
+                  {isMember ? (
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Raised: </span>
-                      <span className="font-medium">{campaign.currency} {campaign.totalRaised?.toLocaleString()}</span>
+                      <span className="text-muted-foreground">Your Total: </span>
+                      <span className="font-medium">{campaign.currency} {(campaign.userTotalDonated || 0).toLocaleString()}</span>
                     </div>
-                  )}
+                  ) : (
+                    <>
+                      {campaign.targetAmount && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="font-medium">{campaign.currency} {campaign.totalRaised?.toLocaleString()} / {campaign.targetAmount.toLocaleString()}</span>
+                          </div>
+                          <Progress value={Math.min(progress, 100)} className="h-2" />
+                          <p className="text-xs text-muted-foreground">{progress.toFixed(0)}% of goal</p>
+                        </div>
+                      )}
 
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    <span>{campaign.donorCount} donors</span>
-                  </div>
+                      {!campaign.targetAmount && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Raised: </span>
+                          <span className="font-medium">{campaign.currency} {campaign.totalRaised?.toLocaleString()}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Users className="h-3 w-3" />
+                        <span>{campaign.donorCount} donors</span>
+                      </div>
+                    </>
+                  )}
 
                   {isMember ? (
                     <div className="flex gap-2">

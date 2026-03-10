@@ -29,9 +29,22 @@ export default function TransactionsPage() {
   const [churchFilter, setChurchFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const { hasPermission } = useRole();
+  const { hasPermission, role } = useRole();
   const hasTransactions = useHasFeature('transactions_view');
   const qc = useQueryClient();
+  const isMember = role === 'member';
+
+  // Block members from accessing this page
+  if (isMember) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Access Denied</h1>
+          <p className="text-sm text-muted-foreground">You don't have permission to view transactions.</p>
+        </div>
+      </div>
+    );
+  }
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],

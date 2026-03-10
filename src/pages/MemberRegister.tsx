@@ -18,13 +18,13 @@ import { toast } from 'sonner';
 const schema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  email: z.string().email('Enter a valid email address'),
+  email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
   phone: z.string().min(1, 'Phone number is required'),
   gender: z.enum(['male', 'female'], { required_error: 'Gender is required' }),
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: z.string().min(1, 'Date of birth is required'),
   maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced'], { required_error: 'Marital status is required' }),
   weddingDate: z.string().optional(),
-  residentialNeighbourhood: z.string().optional(),
+  residentialNeighbourhood: z.string().min(1, 'Neighbourhood is required'),
   membershipType: z.enum(['visitor', 'member'], { required_error: 'Membership type is required' }),
   baptizedByImmersion: z.boolean().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters')
@@ -160,8 +160,10 @@ export default function MemberRegisterPage() {
           </div>
 
           <div className="space-y-1">
-            <Label>Date of Birth (Optional)</Label>
-            <Input type="date" {...register('dateOfBirth')} />
+            <Label>Date of Birth</Label>
+            <Input type="date" {...register('dateOfBirth')}
+              className={errors.dateOfBirth ? 'border-destructive' : ''} />
+            {errors.dateOfBirth && <p className="text-xs text-destructive">{errors.dateOfBirth.message}</p>}
           </div>
 
           <div className="space-y-1">
@@ -189,8 +191,10 @@ export default function MemberRegisterPage() {
           )}
 
           <div className="space-y-1">
-            <Label>Residential Neighbourhood (Optional)</Label>
-            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" />
+            <Label>Residential Neighbourhood</Label>
+            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47"
+              className={errors.residentialNeighbourhood ? 'border-destructive' : ''} />
+            {errors.residentialNeighbourhood && <p className="text-xs text-destructive">{errors.residentialNeighbourhood.message}</p>}
           </div>
 
           <div className="space-y-1">

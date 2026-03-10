@@ -374,7 +374,7 @@ function RegularServiceForm({ onSubmit, isPending, defaultValues, submitLabel = 
   const [youngAdults, setYoungAdults] = useState(defaultValues?.youngAdults?.toString() ?? '');
   const [adults, setAdults] = useState(defaultValues?.adults?.toString() ?? '');
   const [seniors, setSeniors] = useState(defaultValues?.seniors?.toString() ?? '');
-  const [newVisitors, setNewVisitors] = useState(defaultValues?.newVisitors?.toString() ?? '0');
+  const [newVisitors, setNewVisitors] = useState(defaultValues?.newVisitors?.toString() ?? '');
   const [notes, setNotes] = useState(defaultValues?.notes ?? '');
 
   const totalAttendees = (parseInt(maleCount) || 0) + (parseInt(femaleCount) || 0);
@@ -383,6 +383,10 @@ function RegularServiceForm({ onSubmit, isPending, defaultValues, submitLabel = 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!churchId || !date || !maleCount || !femaleCount) {
+      toast.error('Church, date, and gender fields are required');
+      return;
+    }
     if (ageGroupMismatch) {
       toast.error(`Age groups total (${ageGroupTotal}) must equal total attendees (${totalAttendees})`);
       return;
@@ -392,14 +396,14 @@ function RegularServiceForm({ onSubmit, isPending, defaultValues, submitLabel = 
       date,
       serviceType,
       totalAttendees,
-      maleCount: parseInt(maleCount) || 0,
-      femaleCount: parseInt(femaleCount) || 0,
+      maleCount: parseInt(maleCount),
+      femaleCount: parseInt(femaleCount),
       children: parseInt(children) || 0,
       youth: parseInt(youth) || 0,
       youngAdults: parseInt(youngAdults) || 0,
       adults: parseInt(adults) || 0,
       seniors: parseInt(seniors) || 0,
-      newVisitors: parseInt(newVisitors),
+      newVisitors: parseInt(newVisitors) || 0,
       notes,
     });
   };
@@ -410,12 +414,12 @@ function RegularServiceForm({ onSubmit, isPending, defaultValues, submitLabel = 
       
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>Date</Label>
+          <Label>Date *</Label>
           <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
         </div>
         <div>
-          <Label>Service Type</Label>
-          <Select value={serviceType} onValueChange={setServiceType}>
+          <Label>Service Type *</Label>
+          <Select value={serviceType} onValueChange={setServiceType} required>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Sunday Service">Sunday Service</SelectItem>
@@ -429,14 +433,14 @@ function RegularServiceForm({ onSubmit, isPending, defaultValues, submitLabel = 
       </div>
       
       <div>
-        <Label className="text-sm font-medium">Gender Breakdown</Label>
+        <Label className="text-sm font-medium">Gender Breakdown *</Label>
         <div className="grid grid-cols-2 gap-4 mt-2">
           <div>
-            <Label className="text-xs">Male</Label>
+            <Label className="text-xs">Male *</Label>
             <Input type="number" min={0} value={maleCount} onChange={e => setMaleCount(e.target.value)} required />
           </div>
           <div>
-            <Label className="text-xs">Female</Label>
+            <Label className="text-xs">Female *</Label>
             <Input type="number" min={0} value={femaleCount} onChange={e => setFemaleCount(e.target.value)} required />
           </div>
         </div>

@@ -16,7 +16,7 @@ async function fetchStats(churchId?: string | null) {
 }
 
 const ROLE_LABELS: Record<string, { scope: string; icon: typeof Globe }> = {
-  national_admin:    { scope: 'Entire Denomination', icon: Globe },
+  national_admin:    { scope: 'Entire Ministry', icon: Globe },
   regional_leader:   { scope: 'Your Region',         icon: MapPin },
   district_overseer: { scope: 'Your District',       icon: Landmark },
   local_admin:       { scope: 'Your Branch',         icon: Building2 },
@@ -211,7 +211,7 @@ export default function DashboardPage() {
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="text-base">
-                {isNational ? 'Denomination Overview' : 'Regional Overview'}
+                {isNational ? 'Ministry Overview' : 'Regional Overview'}
               </CardTitle>
             </CardHeader>
             <CardContent>

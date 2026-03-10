@@ -478,14 +478,15 @@ export default function ResourcesPage() {
   const [editResource, setEditResource] = useState<Resource | null>(null);
   const [deleteResource, setDeleteResource] = useState<Resource | null>(null);
   const [viewResource, setViewResource] = useState<Resource | null>(null);
-  const { hasPermission } = useRole();
+  const { hasPermission, role } = useRole();
   const hasResources = useHasFeature('resources_library');
   const qc = useQueryClient();
+  const isMember = role === 'member';
 
   const { data: resources = [], isLoading } = useQuery({
     queryKey: ['resources'],
     queryFn: resourcesService.getAll,
-    enabled: hasResources,
+    enabled: isMember || hasResources,
   });
 
   const createMutation = useMutation({
@@ -519,7 +520,7 @@ export default function ResourcesPage() {
 
   const canCreate = hasPermission('resources:create');
 
-  if (!hasResources) {
+  if (!isMember && !hasResources) {
     return (
       <div className="space-y-6">
         <div>

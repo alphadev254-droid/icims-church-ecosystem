@@ -52,6 +52,11 @@ export function getNavForPermissions(permissions: string[]): NavItem[] {
         return user?.accountCountry === 'Malawi';
       }
       
+      // Hide transactions from members
+      if (item.to === '/dashboard/transactions') {
+        return user?.roleName !== 'member';
+      }
+      
       // Hide teams from members only (show regardless of package - page handles upgrade prompt)
       if (item.to === '/dashboard/teams') {
         return user?.roleName !== 'member';
@@ -74,6 +79,10 @@ export function getAllowedRoutesFromPermissions(permissions: string[]): string[]
     if (permSet.has(permission) && !routes.includes(item.to)) {
       // Hide withdrawals route for non-Malawi accounts
       if (item.to === '/dashboard/withdrawals' && user?.accountCountry !== 'Malawi') {
+        continue;
+      }
+      // Hide transactions route from members
+      if (item.to === '/dashboard/transactions' && user?.roleName === 'member') {
         continue;
       }
       // Hide teams route from members only

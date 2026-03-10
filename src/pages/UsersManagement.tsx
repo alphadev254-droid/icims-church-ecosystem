@@ -75,8 +75,8 @@ const createSchema = z.object({
   district: z.string().optional(),
   traditionalAuthority: z.string().optional(),
   village: z.string().optional(),
-  // Church selection for member role
-  churchId: z.string().optional(),
+  // Church selection for member role - MANDATORY
+  churchId: z.string().min(1, 'Church is required'),
 });
 type CreateValues = z.infer<typeof createSchema>;
 
@@ -194,9 +194,9 @@ function CreateUserForm({ onSubmit, isPending }: {
       {/* Church selection for member role */}
       {needsChurchSelection && (
         <div>
-          <Label>Assign to Church</Label>
+          <Label>Assign to Church *</Label>
           <Select onValueChange={(value) => setValue('churchId', value)}>
-            <SelectTrigger>
+            <SelectTrigger className={errors.churchId ? 'border-destructive' : ''}>
               <SelectValue placeholder="Select a church" />
             </SelectTrigger>
             <SelectContent>
@@ -207,6 +207,7 @@ function CreateUserForm({ onSubmit, isPending }: {
               ))}
             </SelectContent>
           </Select>
+          {errors.churchId && <p className="text-xs text-destructive mt-1">{errors.churchId.message}</p>}
         </div>
       )}
       

@@ -62,7 +62,7 @@ export default function LandingPage() {
               The Complete Church Management Ecosystem
             </h1>
             <p className="text-lg text-primary-foreground/80 mb-8 max-w-xl">
-              Built to help churches grow sustainably, maintain accountability, and make data-driven decisions across every level of your denomination.
+              Built to help churches grow sustainably, maintain accountability, and make data-driven decisions across every level of your ministry.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to="/register">
@@ -155,10 +155,10 @@ export default function LandingPage() {
         <div className="container">
           <div className="max-w-3xl mx-auto text-center mb-14">
             <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-3">
-              Trusted by Churches Worldwide
+              Trusted by Ministries Worldwide
             </h2>
             <p className="text-muted-foreground">
-              From small branches to large denominations, ICIMS adapts to your unique needs.
+              From small branches to large ministries, ICIMS adapts to your unique needs.
             </p>
           </div>
 

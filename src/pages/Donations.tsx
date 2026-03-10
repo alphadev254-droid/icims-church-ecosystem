@@ -39,7 +39,7 @@ export default function DonationsPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="font-heading text-2xl font-bold">Donations</h1>
+            <h1 className="font-heading text-2xl font-bold">Donations/Giving</h1>
             <p className="text-sm text-muted-foreground">{donations.length} total donations</p>
           </div>
         </div>

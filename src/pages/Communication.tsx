@@ -53,16 +53,17 @@ export default function CommunicationPage() {
   const [formType, setFormType] = useState<'announcement' | 'prayer_request' | 'newsletter'>('announcement');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [existingFiles, setExistingFiles] = useState<any[]>([]);
-  const { hasPermission } = useRole();
+  const { hasPermission, role } = useRole();
   const qc = useQueryClient();
+  const isMember = role === 'member';
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['announcements'],
     queryFn: communicationService.getAll,
-    enabled: hasCommunication,
+    enabled: isMember || hasCommunication,
   });
 
-  if (!hasCommunication) {
+  if (!isMember && !hasCommunication) {
     return (
       <div className="space-y-6">
         <div>
@@ -160,7 +161,6 @@ export default function CommunicationPage() {
   const canDelete = hasPermission('communication:delete');
 
   // Check if user is admin (not just member) for church communication
-  const { role } = useRole();
   const canCreateChurchPost = canCreate && role !== 'member';
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
