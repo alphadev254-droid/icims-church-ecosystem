@@ -85,6 +85,10 @@ export default function CommunicationPage() {
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      type: 'announcement',
+      priority: 'normal',
+    },
   });
 
   const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, setValue: setValueEdit, formState: { errors: errorsEdit } } = useForm<FormValues>({
@@ -281,21 +285,26 @@ export default function CommunicationPage() {
               <DialogHeader>
                 <DialogTitle className="font-heading">Create Post</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit(v => createMutation.mutate(v))} className="space-y-4">
+              <form onSubmit={handleSubmit(v => {
+                console.log('Form values:', v);
+                console.log('Form errors:', errors);
+                createMutation.mutate(v);
+              })} className="space-y-4">
                 <ChurchSelect 
                   value={churchId} 
                   onValueChange={value => setValue('churchId', value)}
                 />
                 {errors.churchId && <p className="text-xs text-destructive mt-1">{errors.churchId.message}</p>}
+                {!churchId && <p className="text-xs text-amber-600 mt-1">Please select a church</p>}
                 
                 <div>
                   <Label>Type</Label>
                   <Select
-                    defaultValue="announcement"
+                    value={formType}
                     onValueChange={v => {
                       const t = v as typeof formType;
                       setFormType(t);
-                      setValue('type', t);
+                      setValue('type', t, { shouldValidate: true });
                     }}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -308,7 +317,7 @@ export default function CommunicationPage() {
                 </div>
                 <div>
                   <Label>Priority</Label>
-                  <Select defaultValue="normal" onValueChange={v => setValue('priority', v as 'normal' | 'urgent')}>
+                  <Select value={watch('priority') || 'normal'} onValueChange={v => setValue('priority', v as 'normal' | 'urgent', { shouldValidate: true })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="normal">Normal</SelectItem>
