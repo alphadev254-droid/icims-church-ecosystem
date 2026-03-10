@@ -74,4 +74,8 @@ export const usersService = {
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/users/${id}`);
   },
+  bulkCreate: async (users: any[]): Promise<{ success: number; failed: number; errors: any[] }> => {
+    const { data } = await apiClient.post('/users/bulk', { users });
+    return data;
+  },
 };

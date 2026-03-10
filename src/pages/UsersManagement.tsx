@@ -70,10 +70,10 @@ const createSchema = z.object({
   lastName: z.string().min(1, 'Last name required'),
   phone: z.string().min(1, 'Phone number is required'),
   gender: z.enum(['male', 'female']).optional(),
-  dateOfBirth: z.string().optional(),
-  maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced']).optional(),
+  dateOfBirth: z.string().min(1, 'Date of birth is required'),
+  maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced'], { required_error: 'Marital status is required' }),
   weddingDate: z.string().optional(),
-  residentialNeighbourhood: z.string().optional(),
+  residentialNeighbourhood: z.string().min(1, 'Residential neighbourhood is required'),
   membershipType: z.enum(['visitor', 'member']).optional(),
   serviceInterest: z.string().optional(),
   baptizedByImmersion: z.boolean().optional(),
@@ -82,7 +82,17 @@ const createSchema = z.object({
   district: z.string().optional(),
   traditionalAuthority: z.string().optional(),
   village: z.string().optional(),
-  churchId: z.string().min(1, 'Church is required'),
+  churchId: z.string().min(1, 'Church is required').refine((val) => val !== 'CHURCH_ID_HERE' && !val.includes('placeholder'), {
+    message: 'Please select a valid church',
+  }),
+}).refine((data) => {
+  if (data.roleName === 'member') {
+    return !!data.churchId && !!data.dateOfBirth && !!data.maritalStatus && !!data.residentialNeighbourhood;
+  }
+  return true;
+}, {
+  message: 'All church member fields are required',
+  path: ['churchId'],
 });
 type CreateValues = z.infer<typeof createSchema>;
 
@@ -92,6 +102,14 @@ const editSchema = z.object({
   lastName: z.string().min(1, 'Last name required'),
   phone: z.string().optional().default(''),
   password: z.string().min(8, 'Min 8 characters').optional().or(z.literal('')),
+  gender: z.enum(['male', 'female']).optional(),
+  dateOfBirth: z.string().optional(),
+  maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced']).optional(),
+  weddingDate: z.string().optional(),
+  residentialNeighbourhood: z.string().optional(),
+  membershipType: z.enum(['visitor', 'member']).optional(),
+  serviceInterest: z.string().optional(),
+  baptizedByImmersion: z.boolean().optional(),
   roleName: z.string().default('member'),
   churchId: z.string().optional(),
 });
@@ -220,7 +238,7 @@ function CreateUserForm({ onSubmit, isPending }: {
           
           <div>
             <Label>Date of Birth *</Label>
-            <Input type="date" {...register('dateOfBirth')} />
+            <Input type="date" {...register('dateOfBirth')} className={errors.dateOfBirth ? 'border-destructive' : ''} />
             {errors.dateOfBirth && <p className="text-xs text-destructive mt-1">{errors.dateOfBirth.message}</p>}
           </div>
           
@@ -249,7 +267,7 @@ function CreateUserForm({ onSubmit, isPending }: {
           
           <div>
             <Label>Residential Neighbourhood *</Label>
-            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" />
+            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" className={errors.residentialNeighbourhood ? 'border-destructive' : ''} />
             {errors.residentialNeighbourhood && <p className="text-xs text-destructive mt-1">{errors.residentialNeighbourhood.message}</p>}
           </div>
           
@@ -316,7 +334,7 @@ function EditUserForm({ user, onSubmit, isPending }: {
   const [showPassword, setShowPassword] = useState(false);
   const currentUser = useAuthStore(s => s.user);
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<EditValues>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<EditValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
       email: user.email,
@@ -324,6 +342,14 @@ function EditUserForm({ user, onSubmit, isPending }: {
       lastName: user.lastName,
       phone: user.phone ?? '',
       password: '',
+      gender: (user as any).gender,
+      dateOfBirth: (user as any).dateOfBirth ? new Date((user as any).dateOfBirth).toISOString().split('T')[0] : '',
+      maritalStatus: (user as any).maritalStatus,
+      weddingDate: (user as any).weddingDate ? new Date((user as any).weddingDate).toISOString().split('T')[0] : '',
+      residentialNeighbourhood: (user as any).residentialNeighbourhood ?? '',
+      membershipType: (user as any).membershipType,
+      serviceInterest: (user as any).serviceInterest ?? '',
+      baptizedByImmersion: (user as any).baptizedByImmersion ?? false,
       roleName: user.roleName ?? 'member',
       churchId: user.churchId ?? undefined,
     },
@@ -368,7 +394,7 @@ function EditUserForm({ user, onSubmit, isPending }: {
         {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
       </div>
       <div>
-        <Label>Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Label>Phone</Label>
         <Input {...register('phone')} placeholder="+265 999 000 111" autoComplete="off" />
       </div>
       <div>
@@ -395,6 +421,101 @@ function EditUserForm({ user, onSubmit, isPending }: {
         <Label>Role</Label>
         <RoleSelect value={role} onChange={handleRoleChange} />
       </div>
+      
+      {needsChurchSelection && (
+        <>
+          <div>
+            <Label>Assign to Church</Label>
+            <Select value={user.churchId ?? undefined} onValueChange={(value) => setValue('churchId', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a church" />
+              </SelectTrigger>
+              <SelectContent>
+                {churches.map((church: any) => (
+                  <SelectItem key={church.id} value={church.id}>
+                    {church.name} 
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label>Gender</Label>
+            <Select value={watch('gender')} onValueChange={(v) => setValue('gender', v as 'male' | 'female')}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label>Date of Birth</Label>
+            <Input type="date" {...register('dateOfBirth')} />
+          </div>
+          
+          <div>
+            <Label>Marital Status</Label>
+            <Select value={watch('maritalStatus')} onValueChange={(v) => setValue('maritalStatus', v as any)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select marital status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="single">Single</SelectItem>
+                <SelectItem value="married">Married</SelectItem>
+                <SelectItem value="widowed">Widowed</SelectItem>
+                <SelectItem value="divorced">Divorced</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {watch('maritalStatus') === 'married' && (
+            <div>
+              <Label>Wedding Date</Label>
+              <Input type="date" {...register('weddingDate')} />
+            </div>
+          )}
+          
+          <div>
+            <Label>Residential Neighbourhood</Label>
+            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" />
+          </div>
+          
+          <div>
+            <Label>Membership Type</Label>
+            <Select value={watch('membershipType')} onValueChange={(v) => setValue('membershipType', v as any)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="visitor">Visitor</SelectItem>
+                <SelectItem value="member">Member</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label>Service Interest</Label>
+            <Input {...register('serviceInterest')} placeholder="e.g., Choir, Ushering" />
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="baptized-edit"
+              checked={watch('baptizedByImmersion')}
+              onChange={(e) => setValue('baptizedByImmersion', e.target.checked)}
+              className="h-4 w-4"
+            />
+            <Label htmlFor="baptized-edit" className="cursor-pointer">Baptized by immersion</Label>
+          </div>
+        </>
+      )}
+      
       {showAdminScope && (
         <AdminScopeSelector
           role={role as 'district_overseer' | 'local_admin' | 'regional_leader'}
@@ -406,23 +527,7 @@ function EditUserForm({ user, onSubmit, isPending }: {
           onRegionsChange={setRegions}
         />
       )}
-      {needsChurchSelection && (
-        <div>
-          <Label>Assign to Church</Label>
-          <Select value={user.churchId ?? undefined} onValueChange={(value) => setValue('churchId', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a church" />
-            </SelectTrigger>
-            <SelectContent>
-              {churches.map((church: any) => (
-                <SelectItem key={church.id} value={church.id}>
-                  {church.name} 
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      
       <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
         {isPending ? 'Saving...' : 'Save Changes'}
       </Button>
@@ -441,6 +546,10 @@ export default function UsersManagement() {
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [viewUser, setViewUser] = useState<AppUser | null>(null);
   const [deleteUser, setDeleteUser] = useState<AppUser | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [csvData, setCsvData] = useState<any[]>([]);
+  const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string>>>({});
+  const [bulkChurchId, setBulkChurchId] = useState<string>('');
   const { hasPermission } = useRole();
   const hasUsers = useHasFeature('users_management');
   const currentUser = useAuthStore(s => s.user);
@@ -457,27 +566,6 @@ export default function UsersManagement() {
     }),
     enabled: hasUsers,
   });
-
-  if (!hasUsers) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Users</h1>
-          <p className="text-sm text-muted-foreground">Manage system users</p>
-        </div>
-        <Alert className="border-amber-200 bg-amber-50">
-          <Lock className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-800">
-            User Management is not available in your current package.{' '}
-            <Link to="/dashboard/packages" className="font-medium underline">Upgrade now</Link>
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  const users = data?.data || [];
-  const pagination = data?.pagination;
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches-for-filter'],
@@ -523,9 +611,46 @@ export default function UsersManagement() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete user'),
   });
 
+  const bulkUploadMutation = useMutation({
+    mutationFn: (users: any[]) => usersService.bulkCreate(users),
+    onSuccess: (data) => {
+      toast.success(`Successfully uploaded ${data.success} users`);
+      if (data.failed > 0) {
+        toast.warning(`${data.failed} users failed to upload`);
+        console.error('Failed users:', data.errors);
+      }
+      qc.invalidateQueries({ queryKey: ['users'] });
+      setUploadOpen(false);
+      setCsvData([]);
+      setValidationErrors({});
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Bulk upload failed'),
+  });
+
   const canCreate = hasPermission('users:create');
   const canUpdate = hasPermission('users:update');
   const canDelete = hasPermission('users:delete');
+
+  if (!hasUsers) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Users</h1>
+          <p className="text-sm text-muted-foreground">Manage system users</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            User Management is not available in your current package.{' '}
+            <Link to="/dashboard/packages" className="font-medium underline">Upgrade now</Link>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const users = data?.data || [];
+  const pagination = data?.pagination;
 
   function handleCreate(v: CreateValues, districts: string[], tas: string[], regions: string[]) {
     createMutation.mutate({
@@ -549,6 +674,14 @@ export default function UsersManagement() {
       lastName: v.lastName,
       phone: v.phone,
       email: v.email,
+      gender: v.gender,
+      dateOfBirth: v.dateOfBirth,
+      maritalStatus: v.maritalStatus,
+      weddingDate: v.weddingDate,
+      residentialNeighbourhood: v.residentialNeighbourhood,
+      membershipType: v.membershipType,
+      serviceInterest: v.serviceInterest,
+      baptizedByImmersion: v.baptizedByImmersion,
       roleName: v.roleName,
       churchId: v.churchId,
       districts: (v.roleName === 'district_overseer' || v.roleName === 'local_admin') ? districts : [],
@@ -607,6 +740,56 @@ export default function UsersManagement() {
             pdfTitle="Users Report"
           />
           {canCreate && (
+          <>
+          <Button variant="outline" className="gap-2" onClick={() => document.getElementById('csv-upload')?.click()}>
+            <Plus className="h-4 w-4" /> Upload CSV
+          </Button>
+          <input
+            id="csv-upload"
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  const text = event.target?.result as string;
+                  const rows = text.split('\n').map(row => row.split(','));
+                  const headers = rows[0].map(h => h.trim());
+                  const data = rows.slice(1).filter(row => row.length > 1).map((row, idx) => {
+                    const obj: any = { _rowIndex: idx };
+                    headers.forEach((header, i) => {
+                      obj[header] = row[i]?.trim() || '';
+                    });
+                    return obj;
+                  });
+                  
+                  // Validate immediately on load
+                  const errors: Record<number, Record<string, string>> = {};
+                  data.forEach((row, idx) => {
+                    const rowErrors: Record<string, string> = {};
+                    if (!row.firstName) rowErrors.firstName = 'Required';
+                    if (!row.lastName) rowErrors.lastName = 'Required';
+                    if (!row.email) rowErrors.email = 'Required';
+                    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) rowErrors.email = 'Invalid email';
+                    if (!row.phone) rowErrors.phone = 'Required';
+                    if (!row.dateOfBirth) rowErrors.dateOfBirth = 'Required';
+                    if (!row.maritalStatus) rowErrors.maritalStatus = 'Required';
+                    if (!row.residentialNeighbourhood) rowErrors.residentialNeighbourhood = 'Required';
+                    if (!row.churchId || row.churchId === 'CHURCH_ID_HERE' || row.churchId.includes('placeholder')) rowErrors.churchId = 'Valid church required';
+                    if (Object.keys(rowErrors).length > 0) errors[idx] = rowErrors;
+                  });
+                  
+                  setCsvData(data);
+                  setValidationErrors(errors);
+                  setUploadOpen(true);
+                  e.target.value = '';
+                };
+                reader.readAsText(file);
+              }
+            }}
+          />
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
@@ -618,6 +801,7 @@ export default function UsersManagement() {
               <CreateUserForm onSubmit={handleCreate} isPending={createMutation.isPending} />
             </DialogContent>
           </Dialog>
+          </>
         )}
         </div>
       </div>
@@ -915,6 +1099,330 @@ export default function UsersManagement() {
               isPending={updateMutation.isPending}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* CSV Upload Preview Dialog */}
+      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Review CSV Data ({csvData.length} users)</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[1200px]">
+                <thead className="sticky top-0 bg-background border-b z-10">
+                  <tr>
+                    <th className="p-2 text-left min-w-[120px]">First Name</th>
+                    <th className="p-2 text-left min-w-[120px]">Last Name</th>
+                    <th className="p-2 text-left min-w-[180px]">Email</th>
+                    <th className="p-2 text-left min-w-[130px]">Phone</th>
+                    <th className="p-2 text-left min-w-[100px]">Gender</th>
+                    <th className="p-2 text-left min-w-[120px]">DOB</th>
+                    <th className="p-2 text-left min-w-[130px]">Marital Status</th>
+                    <th className="p-2 text-left min-w-[120px]">Wedding Date</th>
+                    <th className="p-2 text-left min-w-[150px]">Neighbourhood</th>
+                    <th className="p-2 text-left min-w-[120px]">Membership</th>
+                    <th className="p-2 text-left min-w-[150px]">Service Interest</th>
+                    <th className="p-2 text-left min-w-[100px]">Baptized</th>
+                    <th className="p-2 text-left min-w-[200px]">
+                      <div className="space-y-1">
+                        <div>Church ID</div>
+                        <Select value={bulkChurchId} onValueChange={(value) => {
+                          setBulkChurchId(value);
+                          const newData = csvData.map(row => ({ ...row, churchId: value }));
+                          setCsvData(newData);
+                          // Clear all churchId errors
+                          const newErrors = { ...validationErrors };
+                          Object.keys(newErrors).forEach(idx => {
+                            if (newErrors[idx].churchId) {
+                              delete newErrors[idx].churchId;
+                              if (Object.keys(newErrors[idx]).length === 0) delete newErrors[idx];
+                            }
+                          });
+                          setValidationErrors(newErrors);
+                        }}>
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue placeholder="Apply to all" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {churches.map((church: any) => (
+                              <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </th>
+                    <th className="p-2 text-left min-w-[120px]">Password</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {csvData.map((row, idx) => {
+                  const errors = validationErrors[idx] || {};
+                  const hasErrors = Object.keys(errors).length > 0;
+                  return (
+                    <tr key={idx} className={hasErrors ? 'bg-destructive/10' : ''}>
+                      <td className="p-2">
+                        <Input
+                          value={row.firstName || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].firstName = e.target.value;
+                            setCsvData(newData);
+                            // Clear error if field is now valid
+                            if (e.target.value && validationErrors[idx]?.firstName) {
+                              const newErrors = { ...validationErrors };
+                              delete newErrors[idx].firstName;
+                              if (Object.keys(newErrors[idx]).length === 0) delete newErrors[idx];
+                              setValidationErrors(newErrors);
+                            }
+                          }}
+                          className={errors.firstName ? 'border-destructive' : ''}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.lastName || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].lastName = e.target.value;
+                            setCsvData(newData);
+                            if (e.target.value && validationErrors[idx]?.lastName) {
+                              const newErrors = { ...validationErrors };
+                              delete newErrors[idx].lastName;
+                              if (Object.keys(newErrors[idx]).length === 0) delete newErrors[idx];
+                              setValidationErrors(newErrors);
+                            }
+                          }}
+                          className={errors.lastName ? 'border-destructive' : ''}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.email || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].email = e.target.value;
+                            setCsvData(newData);
+                            if (e.target.value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value) && validationErrors[idx]?.email) {
+                              const newErrors = { ...validationErrors };
+                              delete newErrors[idx].email;
+                              if (Object.keys(newErrors[idx]).length === 0) delete newErrors[idx];
+                              setValidationErrors(newErrors);
+                            }
+                          }}
+                          className={errors.email ? 'border-destructive' : ''}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.phone || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].phone = e.target.value;
+                            setCsvData(newData);
+                            if (e.target.value && validationErrors[idx]?.phone) {
+                              const newErrors = { ...validationErrors };
+                              delete newErrors[idx].phone;
+                              if (Object.keys(newErrors[idx]).length === 0) delete newErrors[idx];
+                              setValidationErrors(newErrors);
+                            }
+                          }}
+                          className={errors.phone ? 'border-destructive' : ''}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.gender || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].gender = e.target.value;
+                            setCsvData(newData);
+                          }}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          type="date"
+                          value={row.dateOfBirth || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].dateOfBirth = e.target.value;
+                            setCsvData(newData);
+                            if (e.target.value && validationErrors[idx]?.dateOfBirth) {
+                              const newErrors = { ...validationErrors };
+                              delete newErrors[idx].dateOfBirth;
+                              if (Object.keys(newErrors[idx]).length === 0) delete newErrors[idx];
+                              setValidationErrors(newErrors);
+                            }
+                          }}
+                          className={errors.dateOfBirth ? 'border-destructive' : ''}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.maritalStatus || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].maritalStatus = e.target.value;
+                            setCsvData(newData);
+                            if (e.target.value && validationErrors[idx]?.maritalStatus) {
+                              const newErrors = { ...validationErrors };
+                              delete newErrors[idx].maritalStatus;
+                              if (Object.keys(newErrors[idx]).length === 0) delete newErrors[idx];
+                              setValidationErrors(newErrors);
+                            }
+                          }}
+                          className={errors.maritalStatus ? 'border-destructive' : ''}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          type="date"
+                          value={row.weddingDate || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].weddingDate = e.target.value;
+                            setCsvData(newData);
+                          }}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.residentialNeighbourhood || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].residentialNeighbourhood = e.target.value;
+                            setCsvData(newData);
+                            if (e.target.value && validationErrors[idx]?.residentialNeighbourhood) {
+                              const newErrors = { ...validationErrors };
+                              delete newErrors[idx].residentialNeighbourhood;
+                              if (Object.keys(newErrors[idx]).length === 0) delete newErrors[idx];
+                              setValidationErrors(newErrors);
+                            }
+                          }}
+                          className={errors.residentialNeighbourhood ? 'border-destructive' : ''}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.membershipType || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].membershipType = e.target.value;
+                            setCsvData(newData);
+                          }}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.serviceInterest || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].serviceInterest = e.target.value;
+                            setCsvData(newData);
+                          }}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.baptizedByImmersion || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].baptizedByImmersion = e.target.value;
+                            setCsvData(newData);
+                          }}
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Select
+                          value={row.churchId || ''}
+                          onValueChange={(value) => {
+                            const newData = [...csvData];
+                            newData[idx].churchId = value;
+                            setCsvData(newData);
+                            if (value && validationErrors[idx]?.churchId) {
+                              const newErrors = { ...validationErrors };
+                              delete newErrors[idx].churchId;
+                              if (Object.keys(newErrors[idx]).length === 0) delete newErrors[idx];
+                              setValidationErrors(newErrors);
+                            }
+                          }}
+                        >
+                          <SelectTrigger className={errors.churchId ? 'border-destructive h-9' : 'h-9'}>
+                            <SelectValue placeholder="Select church" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {churches.map((church: any) => (
+                              <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.password || ''}
+                          onChange={(e) => {
+                            const newData = [...csvData];
+                            newData[idx].password = e.target.value;
+                            setCsvData(newData);
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setUploadOpen(false)}>Cancel</Button>
+            <Button
+              disabled={bulkUploadMutation.isPending}
+              onClick={() => {
+                const errors: Record<number, Record<string, string>> = {};
+                csvData.forEach((row, idx) => {
+                  const rowErrors: Record<string, string> = {};
+                  if (!row.firstName) rowErrors.firstName = 'Required';
+                  if (!row.lastName) rowErrors.lastName = 'Required';
+                  if (!row.email) rowErrors.email = 'Required';
+                  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) rowErrors.email = 'Invalid email';
+                  if (!row.phone) rowErrors.phone = 'Required';
+                  if (!row.dateOfBirth) rowErrors.dateOfBirth = 'Required';
+                  if (!row.maritalStatus) rowErrors.maritalStatus = 'Required';
+                  if (!row.residentialNeighbourhood) rowErrors.residentialNeighbourhood = 'Required';
+                  if (!row.churchId || row.churchId === 'CHURCH_ID_HERE' || row.churchId.includes('placeholder')) rowErrors.churchId = 'Valid church required';
+                  if (Object.keys(rowErrors).length > 0) errors[idx] = rowErrors;
+                });
+                setValidationErrors(errors);
+                if (Object.keys(errors).length === 0) {
+                  bulkUploadMutation.mutate(csvData.map(row => ({
+                    firstName: row.firstName,
+                    lastName: row.lastName,
+                    email: row.email,
+                    phone: row.phone,
+                    gender: row.gender,
+                    dateOfBirth: row.dateOfBirth,
+                    maritalStatus: row.maritalStatus,
+                    weddingDate: row.weddingDate,
+                    residentialNeighbourhood: row.residentialNeighbourhood,
+                    membershipType: row.membershipType || 'member',
+                    serviceInterest: row.serviceInterest,
+                    baptizedByImmersion: row.baptizedByImmersion === 'true' || row.baptizedByImmersion === 'Yes',
+                    churchId: row.churchId,
+                    password: row.password || 'Welcome123',
+                    roleName: 'member',
+                  })));
+                } else {
+                  toast.error('Please fix validation errors');
+                }
+              }}
+              className={Object.keys(validationErrors).length === 0 && csvData.length > 0 ? 'bg-green-600 hover:bg-green-700' : ''}
+            >
+              {bulkUploadMutation.isPending ? 'Uploading...' : `Upload ${csvData.length} Users`}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
