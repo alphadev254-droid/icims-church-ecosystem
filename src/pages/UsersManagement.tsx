@@ -82,16 +82,17 @@ const createSchema = z.object({
   district: z.string().optional(),
   traditionalAuthority: z.string().optional(),
   village: z.string().optional(),
-  churchId: z.string().min(1, 'Church is required').refine((val) => val !== 'CHURCH_ID_HERE' && !val.includes('placeholder'), {
-    message: 'Please select a valid church',
-  }),
+  churchId: z.string().min(1, 'Church is required'),
 }).refine((data) => {
   if (data.roleName === 'member') {
-    return !!data.churchId && !!data.dateOfBirth && !!data.maritalStatus && !!data.residentialNeighbourhood;
+    if (!data.churchId || data.churchId === 'CHURCH_ID_HERE' || data.churchId.includes('placeholder')) {
+      return false;
+    }
+    return !!data.dateOfBirth && !!data.maritalStatus && !!data.residentialNeighbourhood;
   }
   return true;
 }, {
-  message: 'All church member fields are required',
+  message: 'Please select a valid church and fill all required fields',
   path: ['churchId'],
 });
 type CreateValues = z.infer<typeof createSchema>;
