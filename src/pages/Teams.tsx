@@ -28,31 +28,23 @@ export default function TeamsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTeam, setEditTeam] = useState<Team | null>(null);
   const [deleteTeam, setDeleteTeam] = useState<Team | null>(null);
+  const [churchFilter, setChurchFilter] = useState<string>('all');
 
-  // Block members from accessing this page
-  if (user?.roleName === 'member') {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ShieldAlert className="h-12 w-12 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-sm text-muted-foreground text-center">This page is only available to administrators.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const isMember = user?.roleName === 'member';
 
   const { data: teams = [], isLoading } = useQuery({
-    queryKey: ['teams'],
-    queryFn: teamsService.getAll,
+    queryKey: ['teams', churchFilter],
+    queryFn: async () => {
+      const filterValue = churchFilter !== 'all' ? churchFilter : undefined;
+      return teamsService.getAll(filterValue);
+    },
     enabled: hasPermission('teams:read'),
   });
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
     queryFn: churchesService.getAll,
+    enabled: !isMember,
   });
 
   const createMutation = useMutation({
@@ -85,12 +77,13 @@ export default function TeamsPage() {
     onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to delete team'),
   });
 
-  const canCreate = hasPermission('teams:create') && hasTeamsFeature;
-  const canUpdate = hasPermission('teams:update') && hasTeamsFeature;
-  const canDelete = hasPermission('teams:delete') && hasTeamsFeature;
-  const canAssign = hasPermission('teams:assign') && hasTeamsFeature;
+  const canCreate = hasPermission('teams:create') && hasTeamsFeature && !isMember;
+  const canUpdate = hasPermission('teams:update') && hasTeamsFeature && !isMember;
+  const canDelete = hasPermission('teams:delete') && hasTeamsFeature && !isMember;
+  const canAssign = hasPermission('teams:assign') && hasTeamsFeature && !isMember;
 
-  if (!hasTeamsFeature) {
+  // Members see their teams without feature gate
+  if (!hasTeamsFeature && !isMember) {
     return (
       <div className="space-y-6">
         <h1 className="font-heading text-2xl font-bold">Teams</h1>
@@ -116,10 +109,24 @@ export default function TeamsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Teams</h1>
-          <p className="text-sm text-muted-foreground">{teams.length} teams</p>
+          <h1 className="font-heading text-2xl font-bold">{isMember ? 'My Teams' : 'Teams'}</h1>
+          <p className="text-sm text-muted-foreground">{teams.length} {isMember ? 'team(s) you belong to' : 'teams'}</p>
         </div>
+        {!isMember && (
         <div className="flex gap-2">
+          {churches.length >= 1 && (
+            <Select value={churchFilter} onValueChange={setChurchFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by church" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {churches.map((church: any) => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <ExportImportButtons
             data={teams.map(t => ({
               name: t.name,
@@ -156,6 +163,7 @@ export default function TeamsPage() {
           </Dialog>
           )}
         </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -166,7 +174,7 @@ export default function TeamsPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Users className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No teams yet. Create your first team!</p>
+            <p className="text-muted-foreground">{isMember ? 'You are not part of any team yet.' : churchFilter === 'all' ? 'No teams yet. Create your first team!' : 'No teams found for this church.'}</p>
           </CardContent>
         </Card>
       ) : (

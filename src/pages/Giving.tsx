@@ -8,6 +8,7 @@ import { givingService, type GivingCampaign } from '@/services/giving';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useAuthStore } from '@/stores/authStore';
+import apiClient from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +32,14 @@ const campaignSchema = z.object({
   description: z.string().optional(),
   category: z.enum(['tithe', 'offering', 'partnership', 'welfare', 'missions']),
   subcategory: z.string().optional(),
-  targetAmount: z.coerce.number().positive().optional(),
+  targetAmount: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      const num = Number(val);
+      return isNaN(num) || num <= 0 ? undefined : num;
+    },
+    z.number().positive().optional()
+  ),
   currency: z.enum(['MWK', 'KSH']).default('MWK'),
   endDate: z.string().optional(),
 });
@@ -128,16 +136,27 @@ export default function GivingPage() {
   const [endCampaignId, setEndCampaignId] = useState<string | null>(null);
   const [activateCampaignId, setActivateCampaignId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [churchFilter, setChurchFilter] = useState<string>('all');
   const { hasPermission } = useRole();
   const hasGivingFeature = useHasFeature('giving_tracking');
   const user = useAuthStore(state => state.user);
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const isMember = user?.roleName === 'member';
 
   const { data: campaigns = [], isLoading } = useQuery({
     queryKey: ['campaigns'],
     queryFn: () => givingService.getCampaigns(),
     staleTime: STALE_TIME.DEFAULT,
+  });
+
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/churches');
+      return data.data || [];
+    },
+    enabled: !isMember,
   });
 
   const createMutation = useMutation({
@@ -183,7 +202,6 @@ export default function GivingPage() {
   const canCreate = hasPermission('campaigns:create') && hasGivingFeature;
   const canUpdate = hasPermission('campaigns:update') && hasGivingFeature;
   const canViewDonations = hasPermission('donations:read');
-  const isMember = user?.roleName === 'member';
 
   if (!isMember && !hasGivingFeature) {
     return (
@@ -232,7 +250,10 @@ export default function GivingPage() {
   };
 
   const activeCampaigns = campaigns.filter(c => c.status === 'active');
-  const filteredCampaigns = isMember ? campaigns : statusFilter === 'all' ? campaigns : campaigns.filter(c => c.status === statusFilter);
+  let filteredCampaigns = isMember ? campaigns : statusFilter === 'all' ? campaigns : campaigns.filter(c => c.status === statusFilter);
+  if (churchFilter !== 'all') {
+    filteredCampaigns = filteredCampaigns.filter(c => c.churchId === churchFilter);
+  }
   const totalRaised = isMember 
     ? campaigns.reduce((sum, c) => sum + (c.userTotalDonated || 0), 0)
     : campaigns.reduce((sum, c) => sum + (c.totalRaised || 0), 0);
@@ -246,6 +267,19 @@ export default function GivingPage() {
           <p className="text-sm text-muted-foreground">{activeCampaigns.length} active campaigns</p>
         </div>
         <div className="flex gap-2">
+          {!isMember && churches.length > 1 && (
+            <Select value={churchFilter} onValueChange={setChurchFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by church" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {churches.map((church: any) => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <ExportImportButtons
             data={campaigns.map(c => ({
               name: c.name,

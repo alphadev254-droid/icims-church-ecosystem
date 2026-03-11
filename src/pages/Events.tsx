@@ -396,18 +396,31 @@ export default function EventsPage() {
   const [viewEvent, setViewEvent] = useState<ChurchEvent | null>(null);
   const [paymentConfirm, setPaymentConfirm] = useState<{ event: ChurchEvent; details: any } | null>(null);
   const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
+  const [churchFilter, setChurchFilter] = useState<string>('all');
 
   const { hasPermission } = useRole();
   const hasEventsFeature = useHasFeature('events_management');
   const user = useAuthStore((state) => state.user);
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const isMember = user?.roleName === 'member';
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ['events'],
     queryFn: eventsService.getAll,
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/churches');
+      return data.data || [];
+    },
+    enabled: !isMember,
+  });
+
+  const filteredEvents = churchFilter === 'all' ? events : events.filter(e => e.churchId === churchFilter);
 
   const eventLimit = useCheckLimit('max_events_per_month', events.length);
 
@@ -452,7 +465,6 @@ export default function EventsPage() {
   const canDelete = hasPermission('events:delete') && hasEventsFeature;
   const canViewTickets = hasPermission('tickets:read');
   const canViewAllTickets = hasPermission('tickets:create');
-  const isMember = user?.roleName === 'member';
 
   // Feature gate
   if (!isMember && !hasEventsFeature) {
@@ -575,11 +587,24 @@ export default function EventsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl font-bold">Events</h1>
-          <p className="text-sm text-muted-foreground">{events.length} total events</p>
+          <p className="text-sm text-muted-foreground">{filteredEvents.length} total events</p>
         </div>
         <div className="flex gap-2">
+          {!isMember && churches.length > 1 && (
+            <Select value={churchFilter} onValueChange={setChurchFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by church" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {churches.map((church: any) => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <ExportImportButtons
-            data={events.map((e) => ({
+            data={filteredEvents.map((e) => ({
               title: e.title,
               date: new Date(e.date).toLocaleDateString(),
               time: e.time,
@@ -633,7 +658,7 @@ export default function EventsPage() {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <Card key={event.id} className="hover:shadow-md transition-shadow">
               {event.imageUrl && (
                 <img
@@ -788,7 +813,7 @@ export default function EventsPage() {
             </Card>
           ))}
 
-          {events.length === 0 && (
+          {filteredEvents.length === 0 && (
             <div className="col-span-full text-center py-12 text-muted-foreground">
               <Calendar className="h-10 w-10 mx-auto mb-2 opacity-50" />
               <p>{canCreate ? 'No events yet. Create your first event!' : 'No events scheduled.'}</p>

@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Search, Users, Pencil, Trash2, Eye, EyeOff, Info, Lock } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
+import { AgeRangeFilter } from '@/components/AgeRangeFilter';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
@@ -542,6 +543,8 @@ export default function UsersManagement() {
   const [limit, setLimit] = useState(100);
   const [churchFilter, setChurchFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [minAge, setMinAge] = useState<number | undefined>();
+  const [maxAge, setMaxAge] = useState<number | undefined>();
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [viewUser, setViewUser] = useState<AppUser | null>(null);
@@ -556,13 +559,15 @@ export default function UsersManagement() {
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', page, limit, search, churchFilter, roleFilter],
+    queryKey: ['users', page, limit, search, churchFilter, roleFilter, minAge, maxAge],
     queryFn: () => usersService.getAll({ 
       page, 
       limit, 
       search: search || undefined,
       churchId: churchFilter !== 'all' ? churchFilter : undefined,
-      role: roleFilter !== 'all' ? roleFilter : undefined
+      role: roleFilter !== 'all' ? roleFilter : undefined,
+      minAge,
+      maxAge,
     }),
     enabled: hasUsers,
   });
@@ -817,6 +822,13 @@ export default function UsersManagement() {
             className="pl-9" 
           />
         </div>
+        <AgeRangeFilter
+          minAge={minAge}
+          maxAge={maxAge}
+          onMinAgeChange={(v) => { setMinAge(v); setPage(1); }}
+          onMaxAgeChange={(v) => { setMaxAge(v); setPage(1); }}
+          onClear={() => { setMinAge(undefined); setMaxAge(undefined); setPage(1); }}
+        />
         <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue />

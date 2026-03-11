@@ -124,8 +124,44 @@ export default function ReportsPage() {
     const members = response || [];
     downloadCSV(
       'members-report.csv',
-      members.map(m => [m.memberId ?? '', m.firstName, m.lastName, m.email ?? '', m.phone, m.status, new Date(m.createdAt).toLocaleDateString()]),
-      ['Member ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Status', 'Joined'],
+      members.map(m => [
+        m.firstName,
+        m.lastName,
+        m.email ?? '',
+        m.phone ?? '',
+        m.gender ?? '',
+        m.dateOfBirth ? new Date(m.dateOfBirth).toLocaleDateString() : '',
+        m.maritalStatus ?? '',
+        m.weddingDate ? new Date(m.weddingDate).toLocaleDateString() : '',
+        m.residentialNeighbourhood ?? '',
+        m.serviceInterest ?? '',
+        m.membershipType ?? '',
+        m.baptizedByImmersion ? 'Yes' : 'No',
+        m.church?.name ?? '',
+        m.roleName ?? '',
+        m.status,
+        Array.isArray(m.teams) ? m.teams.join('; ') : '',
+        new Date(m.createdAt).toLocaleDateString()
+      ]),
+      [
+        'First Name',
+        'Last Name',
+        'Email',
+        'Phone',
+        'Gender',
+        'Date of Birth',
+        'Marital Status',
+        'Wedding Date',
+        'Neighbourhood',
+        'Service Interest',
+        'Membership Type',
+        'Baptized',
+        'Church',
+        'Role',
+        'Status',
+        'Teams',
+        'Joined'
+      ],
     );
   };
 

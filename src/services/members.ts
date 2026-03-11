@@ -9,10 +9,22 @@ export interface Member {
   phone: string;
   gender?: string | null;
   dateOfBirth?: string | null;
+  maritalStatus?: string | null;
+  weddingDate?: string | null;
+  anniversary?: string | null;
+  residentialNeighbourhood?: string | null;
+  serviceInterest?: string | null;
+  membershipType?: string | null;
+  baptizedByImmersion?: boolean | null;
   status: 'active' | 'inactive' | 'pending';
-  roles: string[];
+  roles?: string[];
+  roleName?: string;
   familyId?: string | null;
   churchId: string;
+  church?: {
+    name: string;
+  };
+  teams?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -24,6 +36,12 @@ export interface CreateMemberDto {
   email?: string;
   gender?: string;
   dateOfBirth?: string;
+  maritalStatus?: string;
+  weddingDate?: string;
+  residentialNeighbourhood?: string;
+  serviceInterest?: string;
+  membershipType?: string;
+  baptizedByImmersion?: boolean;
   status?: 'active' | 'inactive' | 'pending';
   roles?: string[];
 }

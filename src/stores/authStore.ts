@@ -62,10 +62,10 @@ export interface RegisterData {
   inviteToken?: string;
 }
 
-function applyPermissions(permissions: string[]) {
+function applyPermissions(permissions: string[], user: AuthUser) {
   return {
-    allowedRoutes: getAllowedRoutesFromPermissions(permissions),
-    navItems: getNavForPermissions(permissions),
+    allowedRoutes: getAllowedRoutesFromPermissions(permissions, user),
+    navItems: getNavForPermissions(permissions, user),
   };
 }
 
@@ -86,7 +86,7 @@ export const useAuthStore = create<AuthState>()(
             const permissions: string[] = data.user.permissions ?? [];
             set({
               user: data.user,
-              ...applyPermissions(permissions),
+              ...applyPermissions(permissions, data.user),
               isLoading: false,
             });
             return { success: true };
@@ -104,7 +104,7 @@ export const useAuthStore = create<AuthState>()(
             const permissions: string[] = data.user.permissions ?? [];
             set({
               user: data.user,
-              ...applyPermissions(permissions),
+              ...applyPermissions(permissions, data.user),
               isLoading: false,
             });
             return { success: true };
@@ -127,7 +127,7 @@ export const useAuthStore = create<AuthState>()(
             const permissions: string[] = data.user.permissions ?? [];
             set({
               user: data.user,
-              ...applyPermissions(permissions),
+              ...applyPermissions(permissions, data.user),
               isLoading: false,
             });
           } else {

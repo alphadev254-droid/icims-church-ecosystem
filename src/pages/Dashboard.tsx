@@ -79,14 +79,14 @@ export default function DashboardPage() {
   const adminStats = [
     {
       title: 'Total Members',
-      value: stats.totalMembers,
+      value: stats.totalMembers ?? 0,
       icon: Users,
-      change: stats.memberGrowth,
+      change: stats.memberGrowth ?? 0,
       show: hasPermission('members:read'),
     },
     {
       title: isLocal ? 'Active Members' : 'Churches',
-      value: isLocal ? stats.activeMembers : stats.totalChurches,
+      value: isLocal ? (stats.activeMembers ?? 0) : (stats.totalChurches ?? 0),
       icon: Building2,
       change: 0,
       show: hasPermission('churches:read') || isLocal,
@@ -95,12 +95,12 @@ export default function DashboardPage() {
       title: 'Total Giving (MWK)',
       value: `MWK ${Number(stats.totalDonations ?? 0).toLocaleString()}`,
       icon: HandCoins,
-      change: stats.donationGrowth,
+      change: stats.donationGrowth ?? 0,
       show: hasPermission('giving:read'),
     },
     {
       title: 'Avg. Attendance',
-      value: stats.averageAttendance,
+      value: stats.averageAttendance ?? 0,
       icon: Calendar,
       change: 5.2,
       show: hasPermission('attendance:read'),
@@ -157,19 +157,14 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {hasPermission('attendance:read') && (
+        {hasPermission('attendance:read') && stats.weeklyAttendance && stats.weeklyAttendance.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Weekly Attendance</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={[
-                  { week: 'Week 1', attendees: 220 },
-                  { week: 'Week 2', attendees: 258 },
-                  { week: 'Week 3', attendees: 230 },
-                  { week: 'Week 4', attendees: stats.averageAttendance },
-                ]}>
+                <BarChart data={stats.weeklyAttendance}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="week" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
                   <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
@@ -181,21 +176,14 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {hasPermission('giving:read') && (
+        {hasPermission('giving:read') && stats.monthlyGiving && stats.monthlyGiving.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Monthly Giving (MWK)</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={[
-                  { month: 'Sep', amount: 850000 },
-                  { month: 'Oct', amount: 920000 },
-                  { month: 'Nov', amount: 780000 },
-                  { month: 'Dec', amount: 1200000 },
-                  { month: 'Jan', amount: 950000 },
-                  { month: 'Feb', amount: Math.round(stats.totalDonations) },
-                ]}>
+                <LineChart data={stats.monthlyGiving}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
                   <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
@@ -217,11 +205,11 @@ export default function DashboardPage() {
             <CardContent>
               <div className="grid grid-cols-3 gap-6 text-center">
                 <div>
-                  <p className="text-3xl font-bold font-heading text-accent">{stats.totalChurches}</p>
+                  <p className="text-3xl font-bold font-heading text-accent">{stats.totalChurches ?? 0}</p>
                   <p className="text-xs text-muted-foreground mt-1">Churches</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold font-heading text-accent">{stats.totalMembers}</p>
+                  <p className="text-3xl font-bold font-heading text-accent">{stats.totalMembers ?? 0}</p>
                   <p className="text-xs text-muted-foreground mt-1">Total Members</p>
                 </div>
                 <div>

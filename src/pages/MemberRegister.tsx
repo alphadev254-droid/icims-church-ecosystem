@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Church, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import apiClient from '@/lib/api-client';
 
 const schema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -48,6 +49,8 @@ export default function MemberRegisterPage() {
   const [membershipType, setMembershipType] = useState<'visitor' | 'member' | ''>('');
   const [serviceInterests, setServiceInterests] = useState<string[]>([]);
   const [baptized, setBaptized] = useState<boolean | undefined>(undefined);
+  const [churchName, setChurchName] = useState<string>('');
+  const [loadingChurch, setLoadingChurch] = useState(true);
   const inviteToken = searchParams.get('invite');
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue } = useForm<FormValues>({
@@ -55,10 +58,30 @@ export default function MemberRegisterPage() {
   });
 
   useEffect(() => {
-    if (!inviteToken) {
-      toast.error('Invalid invite link');
-      navigate('/login');
-    }
+    const fetchChurch = async () => {
+      if (!inviteToken) {
+        toast.error('Invalid invite link');
+        navigate('/login');
+        return;
+      }
+
+      try {
+        const { data } = await apiClient.get(`/churches/by-invite/${inviteToken}`);
+        if (data.success) {
+          setChurchName(data.data.name);
+        } else {
+          toast.error('Invalid invite link');
+          navigate('/login');
+        }
+      } catch (error) {
+        toast.error('Invalid or expired invite link');
+        navigate('/login');
+      } finally {
+        setLoadingChurch(false);
+      }
+    };
+
+    fetchChurch();
   }, [inviteToken, navigate]);
 
   const onSubmit = async (values: FormValues) => {
@@ -92,7 +115,7 @@ export default function MemberRegisterPage() {
     }
   };
 
-  if (!inviteToken) {
+  if (!inviteToken || loadingChurch) {
     return null;
   }
 
@@ -102,18 +125,11 @@ export default function MemberRegisterPage() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-3">
             <Church className="h-7 w-7 text-accent" />
-            <span className="font-heading text-xl font-bold">ICIMS</span>
+            <span className="font-heading text-xl font-bold">{churchName || 'ICIMS'}</span>
           </Link>
           <h1 className="font-heading text-2xl font-bold text-foreground">Join as Church Member</h1>
           <p className="text-sm text-muted-foreground mt-1">Create your account to join the church</p>
         </div>
-
-        <Alert className="mb-4 border-accent/50 bg-accent/10">
-          <AlertCircle className="h-4 w-4 text-accent" />
-          <AlertDescription className="text-sm">
-            You're registering via a church invite link. Your account will be automatically linked to the church.
-          </AlertDescription>
-        </Alert>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">

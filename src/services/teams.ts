@@ -27,8 +27,9 @@ export interface TeamMember {
 }
 
 export const teamsService = {
-  getAll: async (): Promise<Team[]> => {
-    const { data } = await apiClient.get('/teams');
+  getAll: async (churchId?: string): Promise<Team[]> => {
+    const params = churchId ? { churchId } : {};
+    const { data } = await apiClient.get('/teams', { params });
     return data;
   },
 
@@ -46,8 +47,8 @@ export const teamsService = {
     await apiClient.delete(`/teams/${id}`);
   },
 
-  getMembers: async (teamId: string, search?: string, limit = 100, offset = 0): Promise<{ data: TeamMember[]; total: number; limit: number; offset: number }> => {
-    const { data } = await apiClient.get(`/teams/${teamId}/members`, { params: { search, limit, offset } });
+  getMembers: async (teamId: string, search?: string, limit = 100, offset = 0, minAge?: number, maxAge?: number): Promise<{ data: TeamMember[]; total: number; limit: number; offset: number }> => {
+    const { data } = await apiClient.get(`/teams/${teamId}/members`, { params: { search, limit, offset, minAge, maxAge } });
     return data;
   },
 

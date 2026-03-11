@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, ArrowLeft, Crown, Users, ChevronLeft, ChevronRight, ShieldAlert } from 'lucide-react';
+import { AgeRangeFilter } from '@/components/AgeRangeFilter';
 import { toast } from 'sonner';
 
 export default function TeamMembersPage() {
@@ -24,6 +25,8 @@ export default function TeamMembersPage() {
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(100);
   const [offset, setOffset] = useState(0);
+  const [minAge, setMinAge] = useState<number | undefined>();
+  const [maxAge, setMaxAge] = useState<number | undefined>();
   const hasTeamsFeature = useHasFeature('teams_management');
 
   // Block members from accessing this page
@@ -46,19 +49,20 @@ export default function TeamMembersPage() {
 
   const { data: teams = [] } = useQuery({
     queryKey: ['teams'],
-    queryFn: teamsService.getAll,
+    queryFn: async () => teamsService.getAll(),
   });
 
   const team = teams.find(t => t.id === id);
 
   const { data: membersData, isLoading } = useQuery({
-    queryKey: ['team-members', id, search, limit, offset],
-    queryFn: () => teamsService.getMembers(id!, search, limit, offset),
+    queryKey: ['team-members', id, search, limit, offset, minAge, maxAge],
+    queryFn: () => teamsService.getMembers(id!, search, limit, offset, minAge, maxAge),
     enabled: !!id,
   });
 
   const members = membersData?.data || [];
   const total = membersData?.total || 0;
+  const teamMembersCount = membersData?.teamMembersCount ?? team?.memberCount ?? 0;
 
   const addMutation = useMutation({
     mutationFn: ({ userId, isLeader }: { userId: string; isLeader: boolean }) => teamsService.addMember(id!, userId, isLeader),
@@ -140,10 +144,11 @@ export default function TeamMembersPage() {
               gender: (m as any).gender || '',
               dateOfBirth: (m as any).dateOfBirth ? new Date((m as any).dateOfBirth).toLocaleDateString() : '',
               residentialNeighbourhood: (m as any).residentialNeighbourhood || '',
-              baptizedByImmersion: (m as any).baptizedByImmersion ? 'Yes' : 'No',
               membershipType: m.membershipType || '',
               maritalStatus: m.maritalStatus || '',
+              weddingDate: (m as any).weddingDate ? new Date((m as any).weddingDate).toLocaleDateString() : '',
               serviceInterest: m.serviceInterest || '',
+              baptizedByImmersion: (m as any).baptizedByImmersion ? 'Yes' : 'No',
               inTeam: m.inTeam ? 'Yes' : 'No',
               isLeader: m.isLeader ? 'Yes' : 'No',
             }))}
@@ -156,10 +161,11 @@ export default function TeamMembersPage() {
               { label: 'Gender', key: 'gender' },
               { label: 'Date of Birth', key: 'dateOfBirth' },
               { label: 'Neighbourhood', key: 'residentialNeighbourhood' },
-              { label: 'Baptized', key: 'baptizedByImmersion' },
               { label: 'Membership Type', key: 'membershipType' },
               { label: 'Marital Status', key: 'maritalStatus' },
+              { label: 'Wedding Date', key: 'weddingDate' },
               { label: 'Service Interest', key: 'serviceInterest' },
+              { label: 'Baptized', key: 'baptizedByImmersion' },
               { label: 'In Team', key: 'inTeam' },
               { label: 'Is Leader', key: 'isLeader' },
             ]}
@@ -167,7 +173,7 @@ export default function TeamMembersPage() {
           />
           <Badge variant="secondary" className="gap-1">
             <Users className="h-3 w-3" />
-            {team.memberCount} members
+            {teamMembersCount} members
           </Badge>
         </div>
       </div>
@@ -217,6 +223,13 @@ export default function TeamMembersPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Search by name or email..." className="pl-9" />
                   </div>
+                  <AgeRangeFilter
+                    minAge={minAge}
+                    maxAge={maxAge}
+                    onMinAgeChange={(v) => { setMinAge(v); setOffset(0); }}
+                    onMaxAgeChange={(v) => { setMaxAge(v); setOffset(0); }}
+                    onClear={() => { setMinAge(undefined); setMaxAge(undefined); setOffset(0); }}
+                  />
                   <Select value={limit.toString()} onValueChange={(v) => { setLimit(parseInt(v)); setOffset(0); }}>
                     <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -244,9 +257,14 @@ export default function TeamMembersPage() {
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Phone</TableHead>
+                        <TableHead>Gender</TableHead>
+                        <TableHead>DOB</TableHead>
+                        <TableHead>Neighbourhood</TableHead>
                         <TableHead>Membership</TableHead>
                         <TableHead>Marital Status</TableHead>
+                        <TableHead>Wedding Date</TableHead>
                         <TableHead>Service Interest</TableHead>
+                        <TableHead>Baptized</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -266,11 +284,16 @@ export default function TeamMembersPage() {
                           <TableCell className="font-medium">{member.firstName} {member.lastName}</TableCell>
                           <TableCell className="text-muted-foreground">{member.email}</TableCell>
                           <TableCell className="text-muted-foreground">{member.phone || '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground capitalize">{(member as any).gender || '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{(member as any).dateOfBirth ? new Date((member as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{(member as any).residentialNeighbourhood || '—'}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">{member.membershipType || 'Member'}</Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground capitalize">{member.maritalStatus || '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{(member as any).weddingDate ? new Date((member as any).weddingDate).toLocaleDateString() : '—'}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{member.serviceInterest || '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{(member as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -301,6 +324,13 @@ export default function TeamMembersPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Search by name or email..." className="pl-9" />
                   </div>
+                  <AgeRangeFilter
+                    minAge={minAge}
+                    maxAge={maxAge}
+                    onMinAgeChange={(v) => { setMinAge(v); setOffset(0); }}
+                    onMaxAgeChange={(v) => { setMaxAge(v); setOffset(0); }}
+                    onClear={() => { setMinAge(undefined); setMaxAge(undefined); setOffset(0); }}
+                  />
                   <Select value={limit.toString()} onValueChange={(v) => { setLimit(parseInt(v)); setOffset(0); }}>
                     <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -328,9 +358,14 @@ export default function TeamMembersPage() {
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Phone</TableHead>
+                        <TableHead>Gender</TableHead>
+                        <TableHead>DOB</TableHead>
+                        <TableHead>Neighbourhood</TableHead>
                         <TableHead>Membership</TableHead>
                         <TableHead>Marital Status</TableHead>
+                        <TableHead>Wedding Date</TableHead>
                         <TableHead>Service Interest</TableHead>
+                        <TableHead>Baptized</TableHead>
                         <TableHead className="w-24 text-center">Leader</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -351,11 +386,16 @@ export default function TeamMembersPage() {
                           <TableCell className="font-medium">{member.firstName} {member.lastName}</TableCell>
                           <TableCell className="text-muted-foreground">{member.email}</TableCell>
                           <TableCell className="text-muted-foreground">{member.phone || '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground capitalize">{(member as any).gender || '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{(member as any).dateOfBirth ? new Date((member as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{(member as any).residentialNeighbourhood || '—'}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">{member.membershipType || 'Member'}</Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground capitalize">{member.maritalStatus || '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{(member as any).weddingDate ? new Date((member as any).weddingDate).toLocaleDateString() : '—'}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{member.serviceInterest || '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{(member as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
                           <TableCell className="text-center">
                             <button
                               onClick={() => leaderMutation.mutate({ userId: member.id, isLeader: !member.isLeader })}
