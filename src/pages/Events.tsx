@@ -406,16 +406,17 @@ export default function EventsPage() {
   const isMember = user?.roleName === 'member';
 
   const { data: eventsResponse, isLoading } = useQuery({
-    queryKey: ['events'],
-    queryFn: eventsService.getAll,
+    queryKey: ['events', churchFilter],
+    queryFn: () => eventsService.getAll(churchFilter !== 'all' ? churchFilter : undefined),
     staleTime: 5 * 60 * 1000,
   });
 
   const events = Array.isArray(eventsResponse) 
     ? eventsResponse.flatMap((group: any) => group.posts || [])
     : [];
+  
   const groupedEvents = Array.isArray(eventsResponse) && eventsResponse[0]?.label 
-    ? eventsResponse 
+    ? eventsResponse
     : [];
 
   const { data: churches = [] } = useQuery({
@@ -426,8 +427,6 @@ export default function EventsPage() {
     },
     enabled: !isMember,
   });
-
-  const filteredEvents = churchFilter === 'all' ? events : events.filter(e => e.churchId === churchFilter);
 
   const eventLimit = useCheckLimit('max_events_per_month', events.length);
 
@@ -594,7 +593,7 @@ export default function EventsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl font-bold">Events</h1>
-          <p className="text-sm text-muted-foreground">{filteredEvents.length} total events</p>
+          <p className="text-sm text-muted-foreground">{events.length} total events</p>
         </div>
         <div className="flex gap-2">
           {!isMember && churches.length > 1 && (
@@ -611,7 +610,7 @@ export default function EventsPage() {
             </Select>
           )}
           <ExportImportButtons
-            data={filteredEvents.map((e) => ({
+            data={events.map((e) => ({
               title: e.title,
               date: new Date(e.date).toLocaleDateString(),
               time: e.time,
