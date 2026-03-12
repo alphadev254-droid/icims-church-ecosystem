@@ -26,8 +26,17 @@ export function AdminScopeSelector({
 }: AdminScopeSelectorProps) {
   const [selectedDistrict, setSelectedDistrict] = useState(districts[0] || '');
 
+  console.log('=== AdminScopeSelector Render ===');
+  console.log('Role:', role);
+  console.log('Districts prop:', districts);
+  console.log('TAs prop:', tas);
+  console.log('Regions prop:', regions);
+  console.log('Selected district (local state):', selectedDistrict);
+  console.log('=================================');
+
   useEffect(() => {
     if (districts.length > 0 && districts[0] !== selectedDistrict) {
+      console.log('useEffect: Updating selectedDistrict from', selectedDistrict, 'to', districts[0]);
       setSelectedDistrict(districts[0]);
     }
   }, [districts]);
@@ -61,6 +70,10 @@ export function AdminScopeSelector({
   const isTAAll = tas.includes('__all__');
 
   if (role === 'regional_leader') {
+    console.log('Rendering regional_leader UI');
+    console.log('isRegionAll:', isRegionAll);
+    console.log('Available regions:', allRegions);
+    
     return (
       <div className="space-y-2">
         <Label>Regions <span className="text-destructive">*</span></Label>
@@ -82,10 +95,17 @@ export function AdminScopeSelector({
                   id={`reg-${reg}`}
                   checked={!isRegionAll && regions.includes(reg)}
                   onCheckedChange={c => {
+                    console.log('Region checkbox changed:', reg, 'checked:', c);
+                    console.log('Current regions:', regions);
+                    console.log('isRegionAll:', isRegionAll);
+                    
                     if (isRegionAll) {
+                      console.log('Was "All", now selecting single region:', reg);
                       onRegionsChange(c ? [reg] : []);
                     } else {
-                      onRegionsChange(c ? [...regions, reg] : regions.filter(r => r !== reg));
+                      const newRegions = c ? [...regions, reg] : regions.filter(r => r !== reg);
+                      console.log('New regions array:', newRegions);
+                      onRegionsChange(newRegions);
                     }
                   }}
                   disabled={isRegionAll}
@@ -100,6 +120,10 @@ export function AdminScopeSelector({
   }
 
   if (role === 'district_overseer') {
+    console.log('Rendering district_overseer UI');
+    console.log('isDistrictAll:', isDistrictAll);
+    console.log('Available districts:', allDistricts);
+    
     return (
       <div className="space-y-2">
         <Label>Districts <span className="text-destructive">*</span></Label>
@@ -121,10 +145,17 @@ export function AdminScopeSelector({
                   id={`dist-${dist}`}
                   checked={!isDistrictAll && districts.includes(dist)}
                   onCheckedChange={c => {
+                    console.log('District checkbox changed:', dist, 'checked:', c);
+                    console.log('Current districts:', districts);
+                    console.log('isDistrictAll:', isDistrictAll);
+                    
                     if (isDistrictAll) {
+                      console.log('Was "All", now selecting single district:', dist);
                       onDistrictsChange(c ? [dist] : []);
                     } else {
-                      onDistrictsChange(c ? [...districts, dist] : districts.filter(d => d !== dist));
+                      const newDistricts = c ? [...districts, dist] : districts.filter(d => d !== dist);
+                      console.log('New districts array:', newDistricts);
+                      onDistrictsChange(newDistricts);
                     }
                   }}
                   disabled={isDistrictAll}

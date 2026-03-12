@@ -51,11 +51,13 @@ const ROLE_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = 
 // ─── Role select ──────────────────────────────────────────────────────────────
 function RoleSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { data: roles = [] } = useQuery({ queryKey: ['roles'], queryFn: rolesService.getRoles });
+  // Filter out national_admin role from user creation/editing
+  const filteredRoles = roles.filter(r => r.name !== 'national_admin');
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger><SelectValue /></SelectTrigger>
       <SelectContent>
-        {roles.map(r => (
+        {filteredRoles.map(r => (
           <SelectItem key={r.name} value={r.name}>{ROLE_DISPLAY[r.name] ?? r.displayName}</SelectItem>
         ))}
       </SelectContent>
@@ -71,10 +73,10 @@ const createSchema = z.object({
   lastName: z.string().min(1, 'Last name required'),
   phone: z.string().min(1, 'Phone number is required'),
   gender: z.enum(['male', 'female']).optional(),
-  dateOfBirth: z.string().min(1, 'Date of birth is required'),
-  maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced'], { required_error: 'Marital status is required' }),
+  dateOfBirth: z.string().optional(),
+  maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced']).optional(),
   weddingDate: z.string().optional(),
-  residentialNeighbourhood: z.string().min(1, 'Residential neighbourhood is required'),
+  residentialNeighbourhood: z.string().optional(),
   membershipType: z.enum(['visitor', 'member']).optional(),
   serviceInterest: z.string().optional(),
   baptizedByImmersion: z.boolean().optional(),
@@ -83,16 +85,19 @@ const createSchema = z.object({
   district: z.string().optional(),
   traditionalAuthority: z.string().optional(),
   village: z.string().optional(),
-  churchId: z.string().min(1, 'Church is required').refine((val) => val !== 'CHURCH_ID_HERE' && !val.includes('placeholder'), {
-    message: 'Please select a valid church',
-  }),
+  churchId: z.string().optional(),
 }).refine((data) => {
   if (data.roleName === 'member') {
-    return !!data.churchId && !!data.dateOfBirth && !!data.maritalStatus && !!data.residentialNeighbourhood;
+    if (!data.churchId || data.churchId === 'CHURCH_ID_HERE' || data.churchId.includes('placeholder')) {
+      return false;
+    }
+    if (!data.dateOfBirth || !data.maritalStatus || !data.residentialNeighbourhood) {
+      return false;
+    }
   }
   return true;
 }, {
-  message: 'All church member fields are required',
+  message: 'Church, date of birth, marital status, and residential neighbourhood are required for members',
   path: ['churchId'],
 });
 type CreateValues = z.infer<typeof createSchema>;
@@ -108,7 +113,7 @@ const editSchema = z.object({
   maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced']).optional(),
   weddingDate: z.string().optional(),
   residentialNeighbourhood: z.string().optional(),
-  membershipType: z.enum(['visitor', 'member']).optional(),
+  membershipType: z.enum(['visitor', 'member']).nullable().optional(),
   serviceInterest: z.string().optional(),
   baptizedByImmersion: z.boolean().optional(),
   roleName: z.string().default('member'),
@@ -136,11 +141,10 @@ function CreateUserForm({ onSubmit, isPending }: {
   // Determine current user role (with fallback for backend compatibility)
   const currentUserRole = currentUser?.roleName || currentUser?.role;
 
-  // Get churches for member role selection
+  // Get churches for all roles
   const { data: churches = [] } = useQuery({
     queryKey: ['churches-for-user-assignment'],
     queryFn: churchesService.getAll,
-    enabled: role === 'member' && currentUserRole === 'national_admin',
   });
 
   function handleRoleChange(v: string) {
@@ -149,6 +153,11 @@ function CreateUserForm({ onSubmit, isPending }: {
     setDistricts([]);
     setTas([]);
     setRegions([]);
+    
+    // Clear churchId for non-member roles
+    if (v !== 'member') {
+      setValue('churchId', undefined);
+    }
   }
 
   // Determine what fields are needed based on selected role
@@ -156,7 +165,14 @@ function CreateUserForm({ onSubmit, isPending }: {
   const needsChurchSelection = role === 'member';
 
   return (
-    <form onSubmit={handleSubmit(v => onSubmit(v, districts, tas))} className="space-y-4" autoComplete="off">
+    <form onSubmit={handleSubmit((v) =>
+      { onSubmit(v, districts, tas, regions)
+      }, (errors) => {
+
+        console.log('=== CREATE FORM VALIDATION FAILED ===');
+        console.log('Validation errors:', errors);
+      }
+    )} className="space-y-4" autoComplete="off">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>First Name *</Label>
@@ -204,7 +220,7 @@ function CreateUserForm({ onSubmit, isPending }: {
         <RoleSelect value={role} onChange={handleRoleChange} />
       </div>
       
-      {/* Member-specific fields */}
+      {/* Church and membership - only for member role */}
       {needsChurchSelection && (
         <>
           <div>
@@ -225,54 +241,6 @@ function CreateUserForm({ onSubmit, isPending }: {
           </div>
           
           <div>
-            <Label>Gender</Label>
-            <Select onValueChange={(v) => setValue('gender', v as 'male' | 'female')}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div>
-            <Label>Date of Birth *</Label>
-            <Input type="date" {...register('dateOfBirth')} className={errors.dateOfBirth ? 'border-destructive' : ''} />
-            {errors.dateOfBirth && <p className="text-xs text-destructive mt-1">{errors.dateOfBirth.message}</p>}
-          </div>
-          
-          <div>
-            <Label>Marital Status *</Label>
-            <Select onValueChange={(v) => setValue('maritalStatus', v as any)}>
-              <SelectTrigger className={errors.maritalStatus ? 'border-destructive' : ''}>
-                <SelectValue placeholder="Select marital status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="single">Single</SelectItem>
-                <SelectItem value="married">Married</SelectItem>
-                <SelectItem value="widowed">Widowed</SelectItem>
-                <SelectItem value="divorced">Divorced</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.maritalStatus && <p className="text-xs text-destructive mt-1">{errors.maritalStatus.message}</p>}
-          </div>
-          
-          {watch('maritalStatus') === 'married' && (
-            <div>
-              <Label>Wedding Date</Label>
-              <Input type="date" {...register('weddingDate')} />
-            </div>
-          )}
-          
-          <div>
-            <Label>Residential Neighbourhood *</Label>
-            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" className={errors.residentialNeighbourhood ? 'border-destructive' : ''} />
-            {errors.residentialNeighbourhood && <p className="text-xs text-destructive mt-1">{errors.residentialNeighbourhood.message}</p>}
-          </div>
-          
-          <div>
             <Label>Membership Type</Label>
             <Select defaultValue="member" onValueChange={(v) => setValue('membershipType', v as any)}>
               <SelectTrigger>
@@ -284,23 +252,72 @@ function CreateUserForm({ onSubmit, isPending }: {
               </SelectContent>
             </Select>
           </div>
-          
-          <div>
-            <Label>Service Interest <span className="text-muted-foreground text-xs">(optional)</span></Label>
-            <Input {...register('serviceInterest')} placeholder="e.g., Choir, Ushering" />
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="baptized"
-              onChange={(e) => setValue('baptizedByImmersion', e.target.checked)}
-              className="h-4 w-4"
-            />
-            <Label htmlFor="baptized" className="cursor-pointer">Baptized by immersion</Label>
-          </div>
         </>
       )}
+      
+      {/* User personal fields - shown for all roles */}
+      <div>
+        <Label>Gender</Label>
+        <Select onValueChange={(v) => setValue('gender', v as 'male' | 'female')}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select gender" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="male">Male</SelectItem>
+            <SelectItem value="female">Female</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div>
+        <Label>Date of Birth {needsChurchSelection && '*'}</Label>
+        <Input type="date" {...register('dateOfBirth')} className={errors.dateOfBirth ? 'border-destructive' : ''} />
+        {errors.dateOfBirth && <p className="text-xs text-destructive mt-1">{errors.dateOfBirth.message}</p>}
+      </div>
+      
+      <div>
+        <Label>Marital Status {needsChurchSelection && '*'}</Label>
+        <Select onValueChange={(v) => setValue('maritalStatus', v as any)}>
+          <SelectTrigger className={errors.maritalStatus ? 'border-destructive' : ''}>
+            <SelectValue placeholder="Select marital status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="single">Single</SelectItem>
+            <SelectItem value="married">Married</SelectItem>
+            <SelectItem value="widowed">Widowed</SelectItem>
+            <SelectItem value="divorced">Divorced</SelectItem>
+          </SelectContent>
+        </Select>
+        {errors.maritalStatus && <p className="text-xs text-destructive mt-1">{errors.maritalStatus.message}</p>}
+      </div>
+      
+      {watch('maritalStatus') === 'married' && (
+        <div>
+          <Label>Wedding Date</Label>
+          <Input type="date" {...register('weddingDate')} />
+        </div>
+      )}
+      
+      <div>
+        <Label>Residential Neighbourhood {needsChurchSelection && '*'}</Label>
+        <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" className={errors.residentialNeighbourhood ? 'border-destructive' : ''} />
+        {errors.residentialNeighbourhood && <p className="text-xs text-destructive mt-1">{errors.residentialNeighbourhood.message}</p>}
+      </div>
+      
+      <div>
+        <Label>Service Interest <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Input {...register('serviceInterest')} placeholder="e.g., Choir, Ushering" />
+      </div>
+      
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="baptized"
+          onChange={(e) => setValue('baptizedByImmersion', e.target.checked)}
+          className="h-4 w-4"
+        />
+        <Label htmlFor="baptized" className="cursor-pointer">Baptized by immersion</Label>
+      </div>
       
       {/* Admin scope for district_overseer / local_admin / regional_leader */}
       {showAdminScope && (
@@ -361,7 +378,6 @@ function EditUserForm({ user, onSubmit, isPending }: {
   const { data: churches = [] } = useQuery({
     queryKey: ['churches-for-edit'],
     queryFn: churchesService.getAll,
-    enabled: role === 'member' && currentUserRole === 'national_admin',
   });
 
   function handleRoleChange(v: string) {
@@ -376,7 +392,15 @@ function EditUserForm({ user, onSubmit, isPending }: {
   const needsChurchSelection = role === 'member' && currentUserRole === 'national_admin';
 
   return (
-    <form onSubmit={handleSubmit(v => onSubmit(v, districts, tas))} className="space-y-4" autoComplete="off">
+    <form onSubmit={handleSubmit((v) => {
+      console.log('=== EDIT FORM SUBMIT TRIGGERED ===');
+      console.log('Form is valid, calling onSubmit');
+      onSubmit(v, districts, tas, regions);
+    }, (errors) => {
+      console.log('=== EDIT FORM VALIDATION FAILED ===');
+      console.log('Validation errors:', errors);
+      console.log('===================================');
+    })} className="space-y-4" autoComplete="off">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>First Name</Label>
@@ -423,6 +447,7 @@ function EditUserForm({ user, onSubmit, isPending }: {
         <RoleSelect value={role} onChange={handleRoleChange} />
       </div>
       
+      {/* Church and membership - only for member role */}
       {needsChurchSelection && (
         <>
           <div>
@@ -442,51 +467,6 @@ function EditUserForm({ user, onSubmit, isPending }: {
           </div>
           
           <div>
-            <Label>Gender</Label>
-            <Select value={watch('gender')} onValueChange={(v) => setValue('gender', v as 'male' | 'female')}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div>
-            <Label>Date of Birth</Label>
-            <Input type="date" {...register('dateOfBirth')} />
-          </div>
-          
-          <div>
-            <Label>Marital Status</Label>
-            <Select value={watch('maritalStatus')} onValueChange={(v) => setValue('maritalStatus', v as any)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select marital status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="single">Single</SelectItem>
-                <SelectItem value="married">Married</SelectItem>
-                <SelectItem value="widowed">Widowed</SelectItem>
-                <SelectItem value="divorced">Divorced</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {watch('maritalStatus') === 'married' && (
-            <div>
-              <Label>Wedding Date</Label>
-              <Input type="date" {...register('weddingDate')} />
-            </div>
-          )}
-          
-          <div>
-            <Label>Residential Neighbourhood</Label>
-            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" />
-          </div>
-          
-          <div>
             <Label>Membership Type</Label>
             <Select value={watch('membershipType')} onValueChange={(v) => setValue('membershipType', v as any)}>
               <SelectTrigger>
@@ -498,24 +478,70 @@ function EditUserForm({ user, onSubmit, isPending }: {
               </SelectContent>
             </Select>
           </div>
-          
-          <div>
-            <Label>Service Interest</Label>
-            <Input {...register('serviceInterest')} placeholder="e.g., Choir, Ushering" />
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="baptized-edit"
-              checked={watch('baptizedByImmersion')}
-              onChange={(e) => setValue('baptizedByImmersion', e.target.checked)}
-              className="h-4 w-4"
-            />
-            <Label htmlFor="baptized-edit" className="cursor-pointer">Baptized by immersion</Label>
-          </div>
         </>
       )}
+      
+      {/* User personal fields - shown for all roles */}
+      <div>
+        <Label>Gender</Label>
+        <Select value={watch('gender')} onValueChange={(v) => setValue('gender', v as 'male' | 'female')}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select gender" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="male">Male</SelectItem>
+            <SelectItem value="female">Female</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div>
+        <Label>Date of Birth</Label>
+        <Input type="date" {...register('dateOfBirth')} />
+      </div>
+      
+      <div>
+        <Label>Marital Status</Label>
+        <Select value={watch('maritalStatus')} onValueChange={(v) => setValue('maritalStatus', v as any)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select marital status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="single">Single</SelectItem>
+            <SelectItem value="married">Married</SelectItem>
+            <SelectItem value="widowed">Widowed</SelectItem>
+            <SelectItem value="divorced">Divorced</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {watch('maritalStatus') === 'married' && (
+        <div>
+          <Label>Wedding Date</Label>
+          <Input type="date" {...register('weddingDate')} />
+        </div>
+      )}
+      
+      <div>
+        <Label>Residential Neighbourhood</Label>
+        <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" />
+      </div>
+      
+      <div>
+        <Label>Service Interest</Label>
+        <Input {...register('serviceInterest')} placeholder="e.g., Choir, Ushering" />
+      </div>
+      
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="baptized-edit"
+          checked={watch('baptizedByImmersion')}
+          onChange={(e) => setValue('baptizedByImmersion', e.target.checked)}
+          className="h-4 w-4"
+        />
+        <Label htmlFor="baptized-edit" className="cursor-pointer">Baptized by immersion</Label>
+      </div>
       
       {showAdminScope && (
         <AdminScopeSelector
@@ -658,7 +684,14 @@ export default function UsersManagement() {
   const pagination = data?.pagination;
 
   function handleCreate(v: CreateValues, districts: string[], tas: string[], regions: string[]) {
-    createMutation.mutate({
+    console.log('=== CREATE USER SUBMISSION ===');
+    console.log('Form values:', v);
+    console.log('Role:', v.roleName);
+    console.log('Districts:', districts);
+    console.log('TAs:', tas);
+    console.log('Regions:', regions);
+    
+    const payload = {
       ...v,
       districts: (v.roleName === 'district_overseer' || v.roleName === 'local_admin') ? districts : undefined,
       traditionalAuthorities: v.roleName === 'local_admin' ? tas : undefined,
@@ -669,11 +702,26 @@ export default function UsersManagement() {
       traditionalAuthority: v.traditionalAuthority,
       village: v.village,
       churchId: v.churchId,
-    });
+    };
+    
+    console.log('Final payload:', payload);
+    console.log('==============================');
+    
+    createMutation.mutate(payload);
   }
 
   function handleEdit(v: EditValues, districts: string[], tas: string[], regions: string[]) {
     if (!editUser) return;
+    
+    console.log('=== EDIT USER SUBMISSION ===');
+    console.log('Editing user:', editUser.id, editUser.firstName, editUser.lastName);
+    console.log('Current user role:', editUser.roleName);
+    console.log('Form values:', v);
+    console.log('New role:', v.roleName);
+    console.log('Districts array:', districts);
+    console.log('TAs array:', tas);
+    console.log('Regions array:', regions);
+    
     const payload: any = {
       firstName: v.firstName,
       lastName: v.lastName,
@@ -684,18 +732,36 @@ export default function UsersManagement() {
       maritalStatus: v.maritalStatus,
       weddingDate: v.weddingDate,
       residentialNeighbourhood: v.residentialNeighbourhood,
-      membershipType: v.membershipType,
       serviceInterest: v.serviceInterest,
       baptizedByImmersion: v.baptizedByImmersion,
       roleName: v.roleName,
-      churchId: v.churchId,
       districts: (v.roleName === 'district_overseer' || v.roleName === 'local_admin') ? districts : [],
       traditionalAuthorities: v.roleName === 'local_admin' ? tas : [],
       regions: v.roleName === 'regional_leader' ? regions : [],
     };
+    
+    console.log('Payload before church check:', payload);
+    
+    // Set church and membership based on role
+    if (v.roleName === 'member') {
+      payload.churchId = v.churchId;
+      payload.membershipType = v.membershipType;
+      console.log('Member role - churchId:', v.churchId, 'membershipType:', v.membershipType);
+    } else {
+      // Clear church and membership for non-member roles
+      payload.churchId = null;
+      payload.membershipType = null;
+      console.log('Non-member role - clearing church and membership');
+    }
+    
     if (v.password && v.password.trim()) {
       payload.password = v.password;
+      console.log('Password will be updated');
     }
+    
+    console.log('Final payload:', payload);
+    console.log('============================');
+    
     updateMutation.mutate({ id: editUser.id, dto: payload });
   }
 
