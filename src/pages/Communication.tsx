@@ -386,17 +386,19 @@ export default function CommunicationPage() {
 
           <TabsContent value="church" className="mt-4">
             <Tabs defaultValue="announcement">
-              <TabsList>
-                <TabsTrigger value="announcement">
-                  Announcements <Badge variant="secondary" className="ml-2">{filterByType('announcement').length}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="prayer_request">
-                  Prayer Requests <Badge variant="secondary" className="ml-2">{filterByType('prayer_request').length}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="newsletter">
-                  Newsletters <Badge variant="secondary" className="ml-2">{filterByType('newsletter').length}</Badge>
-                </TabsTrigger>
-              </TabsList>
+              <div className="overflow-x-auto pb-2">
+                <TabsList className="inline-flex w-auto">
+                  <TabsTrigger value="announcement" className="whitespace-nowrap">
+                    Announcements <Badge variant="secondary" className="ml-2">{filterByType('announcement').length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="prayer_request" className="whitespace-nowrap">
+                    Prayer Requests <Badge variant="secondary" className="ml-2">{filterByType('prayer_request').length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="newsletter" className="whitespace-nowrap">
+                    Newsletters <Badge variant="secondary" className="ml-2">{filterByType('newsletter').length}</Badge>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               {(['announcement', 'prayer_request', 'newsletter'] as const).map(type => (
                 <TabsContent key={type} value={type} className="mt-4">
