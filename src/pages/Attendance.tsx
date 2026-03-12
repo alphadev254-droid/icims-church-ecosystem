@@ -27,17 +27,22 @@ export default function AttendancePage() {
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
   const [churchFilter, setChurchFilter] = useState('all');
   const [serviceTypeFilter, setServiceTypeFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [appliedFilters, setAppliedFilters] = useState({ church: 'all', serviceType: 'all', startDate: '', endDate: '' });
   const { hasPermission } = useRole();
   const hasAttendanceFeature = useHasFeature('attendance_tracking');
   const qc = useQueryClient();
   const navigate = useNavigate();
 
   const { data: allRecords = [], isLoading } = useQuery({
-    queryKey: ['attendance', churchFilter, serviceTypeFilter],
+    queryKey: ['attendance', appliedFilters.church, appliedFilters.serviceType, appliedFilters.startDate, appliedFilters.endDate],
     queryFn: () => {
       const params: any = {};
-      if (churchFilter !== 'all') params.churchId = churchFilter;
-      if (serviceTypeFilter !== 'all') params.serviceType = serviceTypeFilter;
+      if (appliedFilters.church !== 'all') params.churchId = appliedFilters.church;
+      if (appliedFilters.serviceType !== 'all') params.serviceType = appliedFilters.serviceType;
+      if (appliedFilters.startDate) params.startDate = appliedFilters.startDate;
+      if (appliedFilters.endDate) params.endDate = appliedFilters.endDate;
       return attendanceService.getAll(params);
     },
     staleTime: STALE_TIME.DEFAULT,
@@ -218,32 +223,62 @@ export default function AttendancePage() {
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm">Filter by Church</Label>
-              <Select value={churchFilter} onValueChange={setChurchFilter}>
-                <SelectTrigger><SelectValue placeholder="All Churches" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Churches</SelectItem>
-                  {churches.map((church: any) => (
-                    <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <Label className="text-sm">Filter by Church</Label>
+                <Select value={churchFilter} onValueChange={setChurchFilter}>
+                  <SelectTrigger><SelectValue placeholder="All Churches" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Churches</SelectItem>
+                    {churches.map((church: any) => (
+                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm">Filter by Service Type</Label>
+                <Select value={serviceTypeFilter} onValueChange={setServiceTypeFilter}>
+                  <SelectTrigger><SelectValue placeholder="All Service Types" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Service Types</SelectItem>
+                    <SelectItem value="Sunday Service">Sunday Service</SelectItem>
+                    <SelectItem value="Midweek Service">Midweek Service</SelectItem>
+                    <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
+                    <SelectItem value="Youth Service">Youth Service</SelectItem>
+                    <SelectItem value="Special Service">Special Service</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm">Start Date</Label>
+                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm">End Date</Label>
+                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+              </div>
             </div>
-            <div>
-              <Label className="text-sm">Filter by Service Type</Label>
-              <Select value={serviceTypeFilter} onValueChange={setServiceTypeFilter}>
-                <SelectTrigger><SelectValue placeholder="All Service Types" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Service Types</SelectItem>
-                  <SelectItem value="Sunday Service">Sunday Service</SelectItem>
-                  <SelectItem value="Midweek Service">Midweek Service</SelectItem>
-                  <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
-                  <SelectItem value="Youth Service">Youth Service</SelectItem>
-                  <SelectItem value="Special Service">Special Service</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setAppliedFilters({ church: churchFilter, serviceType: serviceTypeFilter, startDate, endDate })}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                Apply Filters
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setChurchFilter('all');
+                  setServiceTypeFilter('all');
+                  setStartDate('');
+                  setEndDate('');
+                  setAppliedFilters({ church: 'all', serviceType: 'all', startDate: '', endDate: '' });
+                }}
+              >
+                Clear Filters
+              </Button>
             </div>
           </div>
         </CardContent>
