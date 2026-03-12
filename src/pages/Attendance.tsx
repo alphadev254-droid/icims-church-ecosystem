@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { attendanceService } from '@/services/attendance';
+import { churchesService } from '@/services/churches';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,22 +20,35 @@ import { Link } from 'react-router-dom';
 import { STALE_TIME } from '@/lib/query-config';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 export default function AttendancePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editRecord, setEditRecord] = useState<any | null>(null);
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
+  const [churchFilter, setChurchFilter] = useState('all');
+  const [serviceTypeFilter, setServiceTypeFilter] = useState('all');
   const { hasPermission } = useRole();
   const hasAttendanceFeature = useHasFeature('attendance_tracking');
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  const { data: records = [], isLoading } = useQuery({
-    queryKey: ['attendance'],
-    queryFn: attendanceService.getAll,
+  const { data: allRecords = [], isLoading } = useQuery({
+    queryKey: ['attendance', churchFilter, serviceTypeFilter],
+    queryFn: () => {
+      const params: any = {};
+      if (churchFilter !== 'all') params.churchId = churchFilter;
+      if (serviceTypeFilter !== 'all') params.serviceType = serviceTypeFilter;
+      return attendanceService.getAll(params);
+    },
     staleTime: STALE_TIME.DEFAULT,
   });
+
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches'],
+    queryFn: churchesService.getAll,
+  });
+
+  const records = allRecords;
 
   const createAttendanceMutation = useMutation({
     mutationFn: attendanceService.create,
@@ -93,12 +107,6 @@ export default function AttendancePage() {
   const totalAttendees = records.reduce((s, r) => s + r.totalAttendees, 0);
   const totalVisitors = records.reduce((s, r) => s + (r.newVisitors ?? 0), 0);
   const avgAttendance = totalServices ? Math.round(totalAttendees / totalServices) : 0;
-
-  const chartData = [...records].reverse().slice(-8).map(r => ({
-    date: new Date(r.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
-    attendees: r.totalAttendees,
-    visitors: r.newVisitors ?? 0,
-  }));
 
   return (
     <div className="space-y-6">
@@ -205,25 +213,41 @@ export default function AttendancePage() {
         </Card>
       </div>
 
-      {chartData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Attendance Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="date" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-                <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 6 }} />
-                <Bar dataKey="attendees" name="Attendees" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="visitors" name="New Visitors" fill="hsl(var(--accent) / 0.4)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm">Filter by Church</Label>
+              <Select value={churchFilter} onValueChange={setChurchFilter}>
+                <SelectTrigger><SelectValue placeholder="All Churches" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Churches</SelectItem>
+                  {churches.map((church: any) => (
+                    <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm">Filter by Service Type</Label>
+              <Select value={serviceTypeFilter} onValueChange={setServiceTypeFilter}>
+                <SelectTrigger><SelectValue placeholder="All Service Types" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Service Types</SelectItem>
+                  <SelectItem value="Sunday Service">Sunday Service</SelectItem>
+                  <SelectItem value="Midweek Service">Midweek Service</SelectItem>
+                  <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
+                  <SelectItem value="Youth Service">Youth Service</SelectItem>
+                  <SelectItem value="Special Service">Special Service</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-0">

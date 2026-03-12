@@ -483,11 +483,18 @@ export default function ResourcesPage() {
   const qc = useQueryClient();
   const isMember = role === 'member';
 
-  const { data: resources = [], isLoading } = useQuery({
+  const { data: resourcesResponse = [], isLoading } = useQuery({
     queryKey: ['resources'],
     queryFn: resourcesService.getAll,
     enabled: isMember || hasResources,
   });
+
+  const resources = Array.isArray(resourcesResponse) && resourcesResponse[0]?.label
+    ? resourcesResponse.flatMap((group: any) => group.posts || [])
+    : resourcesResponse;
+  const groupedResources = Array.isArray(resourcesResponse) && resourcesResponse[0]?.label
+    ? resourcesResponse
+    : [];
 
   const createMutation = useMutation({
     mutationFn: ({ dto, files }: { dto: FormValues; files: File[] }) =>
@@ -576,7 +583,11 @@ export default function ResourcesPage() {
             <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="font-heading">Add Resource</DialogTitle></DialogHeader>
               <ResourceForm
-                onSubmit={(v, files) => createMutation.mutate({ dto: v, files })}
+                onSubmit={(v, files) => {
+                  console.log('Resource form values:', v);
+                  console.log('Resource form files:', files);
+                  createMutation.mutate({ dto: v, files });
+                }}
                 isPending={createMutation.isPending}
                 submitLabel="Create Resource"
               />
@@ -603,9 +614,21 @@ export default function ResourcesPage() {
         <div className="flex items-center justify-center py-12">
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(resource => {
+      ) : groupedResources.length > 0 ? (
+        groupedResources.map((group: any) => {
+          const groupFiltered = group.posts.filter((r: any) => {
+            const matchSearch = search === '' ||
+              r.title.toLowerCase().includes(search.toLowerCase()) ||
+              (r.description ?? '').toLowerCase().includes(search.toLowerCase());
+            const matchCat = activeCategory === 'all' || r.category === activeCategory;
+            return matchSearch && matchCat;
+          });
+          if (groupFiltered.length === 0) return null;
+          return (
+            <div key={group.label} className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground">{group.label}</h3>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {groupFiltered.map((resource: any) => {
             const Icon = TYPE_ICON[resource.type] ?? BookOpen;
             const storedFiles = parseResourceFiles(resource);
             const primaryHref = resolveUrl(resource.fileUrl);
@@ -688,13 +711,15 @@ export default function ResourcesPage() {
                 </CardContent>
               </Card>
             );
-          })}
-          {filtered.length === 0 && (
-            <div className="col-span-full text-center py-12 text-muted-foreground">
-              <BookOpen className="h-10 w-10 mx-auto mb-2 opacity-40" />
-              <p>{canCreate ? 'No resources yet. Add your first resource!' : 'No resources match your search.'}</p>
+                })}
+              </div>
             </div>
-          )}
+          );
+        })
+      ) : (
+        <div className="text-center py-12 text-muted-foreground">
+          <BookOpen className="h-10 w-10 mx-auto mb-2 opacity-40" />
+          <p>{canCreate ? 'No resources yet. Add your first resource!' : 'No resources match your search.'}</p>
         </div>
       )}
 

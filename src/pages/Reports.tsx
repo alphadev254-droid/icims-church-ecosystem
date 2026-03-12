@@ -11,6 +11,7 @@ import { useRole } from '@/hooks/useRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +42,7 @@ export default function ReportsPage() {
   const hasReports = useHasFeature('reports_analytics');
   const { hasPermission } = useRole();
   const queryClient = useQueryClient();
+  const [deleteKpi, setDeleteKpi] = useState<KPI | null>(null);
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [editingKpi, setEditingKpi] = useState<KPI | null>(null);
   
@@ -462,7 +464,7 @@ export default function ReportsPage() {
                         )}
                         {hasPermission('reports:delete') && (
                           <button
-                            onClick={() => deleteKpiMutation.mutate(kpi.id)}
+                            onClick={() => setDeleteKpi(kpi)}
                             className="text-xs text-muted-foreground hover:text-destructive"
                           >
                             Delete
@@ -497,6 +499,32 @@ export default function ReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete KPI Dialog */}
+      <AlertDialog open={!!deleteKpi} onOpenChange={() => setDeleteKpi(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete KPI</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteKpi?.name}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteKpi) {
+                  deleteKpiMutation.mutate(deleteKpi.id);
+                  setDeleteKpi(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Export cards */}
       {isLoading ? (

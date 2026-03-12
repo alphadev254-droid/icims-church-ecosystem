@@ -405,11 +405,18 @@ export default function EventsPage() {
   const navigate = useNavigate();
   const isMember = user?.roleName === 'member';
 
-  const { data: events = [], isLoading } = useQuery({
+  const { data: eventsResponse, isLoading } = useQuery({
     queryKey: ['events'],
     queryFn: eventsService.getAll,
     staleTime: 5 * 60 * 1000,
   });
+
+  const events = Array.isArray(eventsResponse) 
+    ? eventsResponse.flatMap((group: any) => group.posts || [])
+    : [];
+  const groupedEvents = Array.isArray(eventsResponse) && eventsResponse[0]?.label 
+    ? eventsResponse 
+    : [];
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
@@ -641,7 +648,10 @@ export default function EventsPage() {
                   <DialogTitle className="font-heading">Create Event</DialogTitle>
                 </DialogHeader>
                 <EventForm
-                  onSubmit={(v) => createMutation.mutate(v)}
+                  onSubmit={(v) => {
+                    console.log('Event form values:', v);
+                    createMutation.mutate(v);
+                  }}
                   isPending={createMutation.isPending}
                   submitLabel="Create Event"
                 />
@@ -656,9 +666,12 @@ export default function EventsPage() {
         <div className="flex items-center justify-center py-12">
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {filteredEvents.map((event) => (
+      ) : groupedEvents.length > 0 ? (
+        groupedEvents.map((group: any) => (
+          <div key={group.label} className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground">{group.label}</h3>
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {group.posts.map((event: any) => (
             <Card key={event.id} className="hover:shadow-md transition-shadow">
               {event.imageUrl && (
                 <img
@@ -811,14 +824,14 @@ export default function EventsPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
-
-          {filteredEvents.length === 0 && (
-            <div className="col-span-full text-center py-12 text-muted-foreground">
-              <Calendar className="h-10 w-10 mx-auto mb-2 opacity-50" />
-              <p>{canCreate ? 'No events yet. Create your first event!' : 'No events scheduled.'}</p>
+              ))}
             </div>
-          )}
+          </div>
+        ))
+      ) : (
+        <div className="text-center py-12 text-muted-foreground">
+          <Calendar className="h-10 w-10 mx-auto mb-2 opacity-50" />
+          <p>{canCreate ? 'No events yet. Create your first event!' : 'No events scheduled.'}</p>
         </div>
       )}
 

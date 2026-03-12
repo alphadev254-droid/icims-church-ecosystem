@@ -117,7 +117,10 @@ export default function TeamCommunicationTab() {
               </DialogHeader>
               <TeamCommunicationForm
                 teams={postableTeams}
-                onSubmit={(data) => createMutation.mutate(data)}
+                onSubmit={(data) => {
+                  console.log('Team communication form values:', data);
+                  createMutation.mutate(data);
+                }}
                 isPending={createMutation.isPending}
               />
             </DialogContent>

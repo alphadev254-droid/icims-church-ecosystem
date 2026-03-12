@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChurchSelect } from '@/components/ChurchSelect';
+
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
@@ -19,14 +19,17 @@ export default function EventAttendancePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [selectedEventId, setSelectedEventId] = useState(searchParams.get('eventId') || '');
-  const [selectedChurchId, setSelectedChurchId] = useState('');
   const qc = useQueryClient();
 
-  const { data: events = [] } = useQuery({
+  const { data: eventsResponse = [] } = useQuery({
     queryKey: ['events'],
     queryFn: eventsService.getAll,
     staleTime: STALE_TIME.DEFAULT,
   });
+
+  const events = Array.isArray(eventsResponse) && eventsResponse[0]?.label
+    ? eventsResponse.flatMap((group: any) => group.posts || [])
+    : eventsResponse;
 
   const { data: eventTickets = [], isLoading: isLoadingTickets } = useQuery({
     queryKey: ['event-tickets', selectedEventId],
@@ -56,10 +59,6 @@ export default function EventAttendancePage() {
   });
 
   const handleSaveAttendance = () => {
-    if (!selectedChurchId) {
-      toast.error('Please select a church');
-      return;
-    }
     const attendedTickets = eventTickets.filter((t: any) => t.attended);
     const attendedCount = attendedTickets.length;
     const maleCount = attendedTickets.filter((t: any) => t.user?.gender === 'male').length;
@@ -81,7 +80,7 @@ export default function EventAttendancePage() {
     });
     
     createAttendanceMutation.mutate({
-      churchId: selectedChurchId,
+      churchId: selectedEvent.churchId,
       eventId: selectedEventId,
       date: new Date().toISOString().split('T')[0],
       totalAttendees: attendedCount,
@@ -136,27 +135,18 @@ export default function EventAttendancePage() {
 
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label>Select Event</Label>
-              <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-                <SelectTrigger><SelectValue placeholder="Choose an event" /></SelectTrigger>
-                <SelectContent>
-                  {events.map((event: any) => (
-                    <SelectItem key={event.id} value={event.id}>
-                      {event.title} - {new Date(event.date).toLocaleDateString()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {selectedEventId && (
-              <div>
-                <Label>Select Church</Label>
-                <ChurchSelect value={selectedChurchId} onValueChange={setSelectedChurchId} />
-              </div>
-            )}
+          <div>
+            <Label>Select Event</Label>
+            <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+              <SelectTrigger><SelectValue placeholder="Choose an event" /></SelectTrigger>
+              <SelectContent>
+                {events.map((event: any) => (
+                  <SelectItem key={event.id} value={event.id}>
+                    {event.title} - {new Date(event.date).toLocaleDateString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {selectedEvent && (
@@ -239,7 +229,7 @@ export default function EventAttendancePage() {
                   <div className="p-4 border-t">
                     <Button
                       onClick={handleSaveAttendance}
-                      disabled={!selectedChurchId || createAttendanceMutation.isPending}
+                      disabled={createAttendanceMutation.isPending}
                       className="w-full"
                     >
                       {createAttendanceMutation.isPending ? 'Saving...' : 'Save Attendance Record'}

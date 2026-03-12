@@ -144,11 +144,18 @@ export default function GivingPage() {
   const navigate = useNavigate();
   const isMember = user?.roleName === 'member';
 
-  const { data: campaigns = [], isLoading } = useQuery({
+  const { data: campaignsResponse = [], isLoading } = useQuery({
     queryKey: ['campaigns'],
     queryFn: () => givingService.getCampaigns(),
     staleTime: STALE_TIME.DEFAULT,
   });
+
+  const campaigns = Array.isArray(campaignsResponse) && campaignsResponse[0]?.label
+    ? campaignsResponse.flatMap((group: any) => group.posts || [])
+    : campaignsResponse;
+  const groupedCampaigns = Array.isArray(campaignsResponse) && campaignsResponse[0]?.label
+    ? campaignsResponse
+    : [];
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
@@ -328,7 +335,14 @@ export default function GivingPage() {
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Create Campaign</DialogTitle></DialogHeader>
-                <CampaignForm onSubmit={v => createMutation.mutate(v)} isPending={createMutation.isPending} submitLabel="Create" />
+                <CampaignForm 
+                onSubmit={v => {
+                  console.log('Campaign form values:', v);
+                  createMutation.mutate(v);
+                }} 
+                isPending={createMutation.isPending} 
+                submitLabel="Create" 
+              />
               </DialogContent>
             </Dialog>
           )}
@@ -371,9 +385,12 @@ export default function GivingPage() {
         <div className="flex items-center justify-center py-12">
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredCampaigns.map(campaign => {
+      ) : groupedCampaigns.length > 0 ? (
+        groupedCampaigns.map((group: any) => (
+          <div key={group.label} className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground">{group.label}</h3>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {group.posts.map((campaign: any) => {
             const progress = campaign.targetAmount ? (campaign.totalRaised! / campaign.targetAmount) * 100 : 0;
             return (
               <Card key={campaign.id}>
@@ -458,13 +475,14 @@ export default function GivingPage() {
                 </CardContent>
               </Card>
             );
-          })}
-          {filteredCampaigns.length === 0 && (
-            <div className="col-span-full text-center py-12 text-muted-foreground">
-              <HandCoins className="h-10 w-10 mx-auto mb-2 opacity-50" />
-              <p>No campaigns yet. {canCreate && 'Create your first campaign!'}</p>
+              })}
             </div>
-          )}
+          </div>
+        ))
+      ) : (
+        <div className="text-center py-12 text-muted-foreground">
+          <HandCoins className="h-10 w-10 mx-auto mb-2 opacity-50" />
+          <p>No campaigns yet. {canCreate && 'Create your first campaign!'}</p>
         </div>
       )}
 
