@@ -76,8 +76,8 @@ type FormValues = z.infer<typeof schema>;
 const getImageUrl = (path?: string): string => {
   if (!path) return '';
   if (path.startsWith('data:') || path.startsWith('http')) return path;
-  const base = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
-  return base + path;
+  const base = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/['"]|\/$|^\/api$/g, '');
+  return `${base}${path}`;
 };
 
 const statusVariant = (s: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
