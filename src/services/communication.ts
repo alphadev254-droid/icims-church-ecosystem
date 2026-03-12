@@ -10,6 +10,10 @@ export interface Announcement {
   createdById: string;
   createdAt: string;
   updatedAt: string;
+  church?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface CreateAnnouncementDto {
@@ -23,8 +27,8 @@ export interface CreateAnnouncementDto {
 export type UpdateAnnouncementDto = Partial<CreateAnnouncementDto>;
 
 export const communicationService = {
-  getAll: async (): Promise<Announcement[]> => {
-    const { data } = await apiClient.get('/announcements');
+  getAll: async (params?: { churchId?: string }): Promise<Announcement[]> => {
+    const { data } = await apiClient.get('/announcements', { params });
     return data.data;
   },
   create: async (dto: CreateAnnouncementDto): Promise<Announcement> => {

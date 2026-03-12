@@ -50,6 +50,8 @@ const schema = z.object({
   type: z.enum(['service', 'meeting', 'conference', 'outreach', 'fellowship']),
   status: z.enum(['upcoming', 'ongoing', 'completed', 'cancelled']).default('upcoming'),
   churchId: z.string().min(1, 'Church selection required'),
+  contactEmail: z.string().email('Valid email required').optional().or(z.literal('')),
+  contactPhone: z.string().optional(),
   requiresTicket: z.boolean().default(false),
   isFree: z.boolean().default(true),
   ticketPrice: z.number().nullable().optional(),
@@ -240,6 +242,19 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
         {errors.location && <p className="text-xs text-destructive mt-1">{errors.location.message}</p>}
       </div>
 
+      {/* Contact Information */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Contact Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
+          <Input type="email" {...register('contactEmail')} placeholder="info@church.com" />
+          {errors.contactEmail && <p className="text-xs text-destructive mt-1">{errors.contactEmail.message}</p>}
+        </div>
+        <div>
+          <Label>Contact Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+          <Input {...register('contactPhone')} placeholder="+265..." />
+        </div>
+      </div>
+
       {/* Type / Status */}
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -397,6 +412,9 @@ export default function EventsPage() {
   const [paymentConfirm, setPaymentConfirm] = useState<{ event: ChurchEvent; details: any } | null>(null);
   const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
   const [churchFilter, setChurchFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [appliedFilters, setAppliedFilters] = useState({ church: 'all', startDate: '', endDate: '' });
 
   const { hasPermission } = useRole();
   const hasEventsFeature = useHasFeature('events_management');
@@ -406,8 +424,14 @@ export default function EventsPage() {
   const isMember = user?.roleName === 'member';
 
   const { data: eventsResponse, isLoading } = useQuery({
-    queryKey: ['events', churchFilter],
-    queryFn: () => eventsService.getAll(churchFilter !== 'all' ? churchFilter : undefined),
+    queryKey: ['events', appliedFilters.church, appliedFilters.startDate, appliedFilters.endDate],
+    queryFn: () => {
+      const churchId = appliedFilters.church !== 'all' ? appliedFilters.church : undefined;
+      const params: any = {};
+      if (appliedFilters.startDate) params.startDate = appliedFilters.startDate;
+      if (appliedFilters.endDate) params.endDate = appliedFilters.endDate;
+      return eventsService.getAll(churchId, params);
+    },
     staleTime: 5 * 60 * 1000,
   });
 
@@ -573,6 +597,8 @@ export default function EventsPage() {
     endDate: new Date(e.endDate).toISOString().split('T')[0],
     time: e.time,
     location: e.location,
+    contactEmail: (e as any).contactEmail ?? '',
+    contactPhone: (e as any).contactPhone ?? '',
     type: e.type,
     status: e.status,
     churchId: e.churchId,
@@ -597,17 +623,49 @@ export default function EventsPage() {
         </div>
         <div className="flex gap-2">
           {!isMember && churches.length > 1 && (
-            <Select value={churchFilter} onValueChange={setChurchFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by church" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Churches</SelectItem>
-                {churches.map((church: any) => (
-                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2 items-end">
+              <div>
+                <Label className="text-xs">Church</Label>
+                <Select value={churchFilter} onValueChange={setChurchFilter}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Filter by church" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Churches</SelectItem>
+                    {churches.map((church: any) => (
+                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Start Date</Label>
+                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-40" />
+              </div>
+              <div>
+                <Label className="text-xs">End Date</Label>
+                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-40" />
+              </div>
+              <Button 
+                size="sm"
+                onClick={() => setAppliedFilters({ church: churchFilter, startDate, endDate })}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                Apply
+              </Button>
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setChurchFilter('all');
+                  setStartDate('');
+                  setEndDate('');
+                  setAppliedFilters({ church: 'all', startDate: '', endDate: '' });
+                }}
+              >
+                Clear
+              </Button>
+            </div>
           )}
           <ExportImportButtons
             data={events.map((e) => ({
@@ -683,10 +741,12 @@ export default function EventsPage() {
               )}
               <CardContent className="p-3">
                 {/* Badges + actions row */}
-                <div className="flex items-start justify-between mb-2">
-                  <Badge variant={statusVariant(event.status)} className="text-xs">{event.status}</Badge>
-                  <div className="flex items-center gap-0.5">
+                <div className="flex flex-wrap items-start justify-between gap-1 mb-2">
+                  <div className="flex gap-1">
+                    <Badge variant={statusVariant(event.status)} className="text-xs">{event.status}</Badge>
                     <Badge variant="outline" className="text-xs capitalize">{event.type}</Badge>
+                  </div>
+                  <div className="flex items-center gap-0.5">
                     <button
                       onClick={() => setViewEvent(event)}
                       className="p-1 text-muted-foreground hover:text-foreground transition-colors"

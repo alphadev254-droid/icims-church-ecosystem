@@ -50,9 +50,12 @@ export interface CreateEventDto {
 export type UpdateEventDto = Partial<CreateEventDto>;
 
 export const eventsService = {
-  getAll: async (churchId?: string): Promise<ChurchEvent[]> => {
-    const params = churchId ? { churchId } : {};
-    const { data } = await apiClient.get('/events', { params });
+  getAll: async (churchId?: string, params?: { startDate?: string; endDate?: string }): Promise<ChurchEvent[]> => {
+    const queryParams: any = {};
+    if (churchId) queryParams.churchId = churchId;
+    if (params?.startDate) queryParams.startDate = params.startDate;
+    if (params?.endDate) queryParams.endDate = params.endDate;
+    const { data } = await apiClient.get('/events', { params: queryParams });
     return data.data;
   },
   getOne: async (id: string): Promise<ChurchEvent> => {

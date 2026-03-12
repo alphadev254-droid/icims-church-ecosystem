@@ -4,8 +4,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { resourcesService, parseResourceFiles, type Resource, type ResourceFile } from '@/services/resources';
+import { churchesService, Church } from '@/services/churches';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -474,19 +476,30 @@ function ResourceDetailDialog({ resource, open, onClose, backendBase }: {
 export default function ResourcesPage() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [selectedChurch, setSelectedChurch] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [editResource, setEditResource] = useState<Resource | null>(null);
   const [deleteResource, setDeleteResource] = useState<Resource | null>(null);
   const [viewResource, setViewResource] = useState<Resource | null>(null);
+  const { user } = useAuth();
   const { hasPermission, role } = useRole();
   const hasResources = useHasFeature('resources_library');
   const qc = useQueryClient();
   const isMember = role === 'member';
 
   const { data: resourcesResponse = [], isLoading } = useQuery({
-    queryKey: ['resources'],
-    queryFn: resourcesService.getAll,
+    queryKey: ['resources', selectedChurch, activeCategory],
+    queryFn: () => resourcesService.getAll({
+      churchId: selectedChurch !== 'all' ? selectedChurch : undefined,
+      category: activeCategory !== 'all' ? activeCategory : undefined,
+    }),
     enabled: isMember || hasResources,
+  });
+
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches'],
+    queryFn: churchesService.getAll,
+    enabled: !isMember,
   });
 
   const resources = Array.isArray(resourcesResponse) && resourcesResponse[0]?.label
@@ -549,8 +562,7 @@ export default function ResourcesPage() {
     const matchSearch = search === '' ||
       r.title.toLowerCase().includes(search.toLowerCase()) ||
       (r.description ?? '').toLowerCase().includes(search.toLowerCase());
-    const matchCat = activeCategory === 'all' || r.category === activeCategory;
-    return matchSearch && matchCat;
+    return matchSearch;
   });
 
   const backendBase = import.meta.env.VITE_STATIC_URL ?? 'http://localhost:5000';
@@ -596,9 +608,27 @@ export default function ResourcesPage() {
         )}
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search resources..." className="pl-9" />
+      <div className="flex flex-col gap-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search resources..." className="pl-9" />
+        </div>
+        
+        {!isMember && churches.length > 0 && (
+          <Select value={selectedChurch} onValueChange={setSelectedChurch}>
+            <SelectTrigger className="w-full md:w-64">
+              <SelectValue placeholder="All Churches" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Churches</SelectItem>
+              {churches.map((church: Church) => (
+                <SelectItem key={church.id} value={church.id}>
+                  {church.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -620,8 +650,7 @@ export default function ResourcesPage() {
             const matchSearch = search === '' ||
               r.title.toLowerCase().includes(search.toLowerCase()) ||
               (r.description ?? '').toLowerCase().includes(search.toLowerCase());
-            const matchCat = activeCategory === 'all' || r.category === activeCategory;
-            return matchSearch && matchCat;
+            return matchSearch;
           });
           if (groupFiltered.length === 0) return null;
           return (

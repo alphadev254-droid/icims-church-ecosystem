@@ -62,8 +62,8 @@ export interface UpdateResourceDto {
 const BASE = '/resources';
 
 export const resourcesService = {
-  getAll: async (): Promise<Resource[]> => {
-    const { data } = await apiClient.get(BASE);
+  getAll: async (params?: { churchId?: string; category?: string }): Promise<Resource[]> => {
+    const { data } = await apiClient.get(BASE, { params });
     return data.data;
   },
 

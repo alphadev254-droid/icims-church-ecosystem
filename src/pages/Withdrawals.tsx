@@ -6,12 +6,19 @@ import { walletService } from '@/services/wallet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Wallet, Plus, ArrowDownToLine } from 'lucide-react';
+import { ExportImportButtons } from '@/components/ExportImportButtons';
 
 export default function WithdrawalsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [appliedStartDate, setAppliedStartDate] = useState('');
+  const [appliedEndDate, setAppliedEndDate] = useState('');
 
   // Block access for non-Malawi accounts
   if (user?.accountCountry !== 'Malawi') {
@@ -34,9 +41,24 @@ export default function WithdrawalsPage() {
   });
 
   const { data: withdrawals = [], isLoading } = useQuery({
-    queryKey: ['withdrawals'],
-    queryFn: walletService.getWithdrawals,
+    queryKey: ['withdrawals', appliedStartDate, appliedEndDate],
+    queryFn: () => walletService.getWithdrawals({
+      startDate: appliedStartDate || undefined,
+      endDate: appliedEndDate || undefined,
+    }),
   });
+
+  const handleApplyFilters = () => {
+    setAppliedStartDate(startDate);
+    setAppliedEndDate(endDate);
+  };
+
+  const handleClearFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setAppliedStartDate('');
+    setAppliedEndDate('');
+  };
 
   const statusVariant = (s: string): 'default' | 'secondary' | 'destructive' | 'outline' =>
     s === 'completed' ? 'default' : s === 'processing' ? 'outline' : s === 'failed' ? 'destructive' : 'secondary';
@@ -45,17 +67,39 @@ export default function WithdrawalsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl font-bold">Withdrawals</h1>
           <p className="text-sm text-muted-foreground">Manage wallet withdrawals</p>
         </div>
-        <Button 
-          onClick={() => navigate('/dashboard/withdrawals/request')} 
-          className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2"
-        >
-          <Plus className="h-4 w-4" /> Request Withdrawal
-        </Button>
+        <div className="flex gap-2">
+          <ExportImportButtons
+            data={withdrawals.map((w: any) => ({
+              amount: w.amount,
+              fee: w.fee,
+              netAmount: w.netAmount,
+              method: w.method.replace('_', ' '),
+              status: w.status,
+              date: new Date(w.createdAt).toLocaleDateString(),
+            }))}
+            filename="withdrawals"
+            headers={[
+              { label: 'Amount', key: 'amount' },
+              { label: 'Fee', key: 'fee' },
+              { label: 'Net Amount', key: 'netAmount' },
+              { label: 'Method', key: 'method' },
+              { label: 'Status', key: 'status' },
+              { label: 'Date', key: 'date' },
+            ]}
+            pdfTitle="Withdrawals Report"
+          />
+          <Button 
+            onClick={() => navigate('/dashboard/withdrawals/request')} 
+            className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2"
+          >
+            <Plus className="h-4 w-4" /> Request Withdrawal
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -75,7 +119,30 @@ export default function WithdrawalsPage() {
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
       ) : (
-        <Card>
+        <>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex-1">
+                  <Label>Start Date</Label>
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                </div>
+                <div className="flex-1">
+                  <Label>End Date</Label>
+                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={handleApplyFilters} variant="default">
+                    Apply
+                  </Button>
+                  <Button onClick={handleClearFilters} variant="outline">
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -115,6 +182,7 @@ export default function WithdrawalsPage() {
             </Table>
           </CardContent>
         </Card>
+        </>
       )}
     </div>
   );

@@ -248,6 +248,7 @@ export default function AttendancePage() {
                     <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
                     <SelectItem value="Youth Service">Youth Service</SelectItem>
                     <SelectItem value="Special Service">Special Service</SelectItem>
+                    <SelectItem value="Event">Event</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

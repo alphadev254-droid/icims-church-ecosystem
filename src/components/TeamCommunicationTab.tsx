@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { teamCommunicationService, TeamCommunication } from '@/services/teamCommunication';
 import { teamsService } from '@/services/teams';
+import { churchesService, Church } from '@/services/churches';
 import { useRole } from '@/hooks/useRole';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, MessageSquare, Pencil, Trash2, Download, FileText, Video, Image as ImageIcon } from 'lucide-react';
@@ -17,10 +20,12 @@ import { formatDistanceToNow } from 'date-fns';
 const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
 const getMediaUrl = (url: string) => url.startsWith('http') ? url : `${API_BASE}${url}`;
 
-export default function TeamCommunicationTab() {
+export default function TeamCommunicationTab({ churches, isMember }: { churches: Church[], isMember: boolean }) {
   const queryClient = useQueryClient();
-  const { isMember } = useRole();
+  const { user } = useAuth();
+  const { isMember: isMemberRole } = useRole();
   const [selectedTeam, setSelectedTeam] = useState<string>('');
+  const [selectedChurch, setSelectedChurch] = useState<string>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [viewPost, setViewPost] = useState<TeamCommunication | null>(null);
   const [editPost, setEditPost] = useState<TeamCommunication | null>(null);
@@ -29,7 +34,7 @@ export default function TeamCommunicationTab() {
   const { data: memberTeams = [] } = useQuery({
     queryKey: ['teams'],
     queryFn: () => teamsService.getAll(),
-    enabled: isMember
+    enabled: isMemberRole
   });
 
   const { data: postableTeams = [] } = useQuery({
@@ -37,20 +42,24 @@ export default function TeamCommunicationTab() {
     queryFn: teamCommunicationService.getPostableTeams
   });
 
-  const teams = isMember ? memberTeams : postableTeams;
+  const teams = isMemberRole ? memberTeams : postableTeams;
   const canPost = postableTeams.length > 0;
+
+  const filteredTeams = selectedChurch === 'all' 
+    ? teams 
+    : teams.filter((team: any) => team.church?.id === selectedChurch);
 
   // Initialize selectedTeam with first team when teams load
   useEffect(() => {
-    if (teams.length > 0 && !selectedTeam) {
-      setSelectedTeam(teams[0].id);
+    if (filteredTeams.length > 0 && !selectedTeam) {
+      setSelectedTeam(filteredTeams[0].id);
     }
-  }, [teams, selectedTeam]);
+  }, [filteredTeams, selectedTeam]);
 
   const { data: groupedCommunications = [], isLoading } = useQuery({
     queryKey: ['team-communications', selectedTeam],
     queryFn: () => teamCommunicationService.getAll(selectedTeam || undefined),
-    enabled: teams.length > 0 && !!selectedTeam
+    enabled: filteredTeams.length > 0 && !!selectedTeam
   });
 
   const createMutation = useMutation({
@@ -102,15 +111,31 @@ export default function TeamCommunicationTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Team Communication</h2>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex gap-2 items-center">
+          {!isMember && churches.length > 0 && (
+            <Select value={selectedChurch} onValueChange={setSelectedChurch}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Churches" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {churches.map((church: Church) => (
+                  <SelectItem key={church.id} value={church.id}>
+                    {church.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
         {canPost && (
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" /> New Team post
-              </Button>
-            </DialogTrigger>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" /> New Team post
+            </Button>
+          </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Create Team Post</DialogTitle>
@@ -124,17 +149,17 @@ export default function TeamCommunicationTab() {
                 isPending={createMutation.isPending}
               />
             </DialogContent>
-          </Dialog>
-        )}
+        </Dialog>
+      )}
       </div>
 
       <div className="overflow-x-auto pb-2">
-        <Tabs value={selectedTeam || teams[0]?.id} onValueChange={(value) => {
+        <Tabs value={selectedTeam || filteredTeams[0]?.id} onValueChange={(value) => {
           setSelectedTeam(value);
         }}>
           <TabsList className="inline-flex w-auto">
             <TabsTrigger value="" className="whitespace-nowrap">All Teams</TabsTrigger>
-            {teams.map(team => (
+            {filteredTeams.map((team: any) => (
               <TabsTrigger key={team.id} value={team.id} className="whitespace-nowrap">
                 {team.color && <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: team.color }} />}
                 {team.name}
@@ -142,7 +167,7 @@ export default function TeamCommunicationTab() {
             ))}
           </TabsList>
 
-        <TabsContent value={selectedTeam || teams[0]?.id} className="space-y-4 mt-4">
+        <TabsContent value={selectedTeam || filteredTeams[0]?.id} className="space-y-4 mt-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
@@ -176,6 +201,11 @@ export default function TeamCommunicationTab() {
                             {post.team.color && <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: post.team.color }} />}
                             <span className="truncate">{post.team.name}</span>
                           </Badge>
+                          {!isMember && (post.team as any).church && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {(post.team as any).church.name}
+                            </p>
+                          )}
                           <h4 className="text-sm font-semibold line-clamp-2">{post.title}</h4>
                           <p className="text-xs text-muted-foreground line-clamp-3">{post.content}</p>
                           {post.mediaUrls && post.mediaUrls.length > 0 && (

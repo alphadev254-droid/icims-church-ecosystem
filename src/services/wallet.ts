@@ -9,8 +9,8 @@ export const walletService = {
     const { data } = await apiClient.get('/wallet/transactions');
     return data.data;
   },
-  getWithdrawals: async () => {
-    const { data } = await apiClient.get('/wallet/withdrawals');
+  getWithdrawals: async (params?: { startDate?: string; endDate?: string }) => {
+    const { data } = await apiClient.get('/wallet/withdrawals', { params });
     return data.data;
   },
   requestWithdrawal: async (payload: {

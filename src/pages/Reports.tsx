@@ -54,6 +54,11 @@ export default function ReportsPage() {
   const { data: stats } = useQuery({ queryKey: ['dashboard-stats', user?.churchId], queryFn: () => dashboardService.getStats(user?.churchId), enabled: !!user && hasReports });
   const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: churchesService.getAll, enabled: hasReports });
   const { data: campaigns = [] } = useQuery({ queryKey: ['campaigns'], queryFn: givingService.getCampaigns, enabled: hasReports });
+
+  // Flatten grouped campaigns if needed
+  const flatCampaigns = Array.isArray(campaigns) && campaigns[0]?.label
+    ? campaigns.flatMap((group: any) => group.posts || [])
+    : campaigns;
   const { data: kpis = [], isLoading: kl } = useQuery({ queryKey: ['kpis'], queryFn: kpiService.getAll, enabled: hasReports });
 
   const calculateMutation = useMutation({
@@ -178,11 +183,12 @@ export default function ReportsPage() {
         d.currency,
         d.campaign?.name || '',
         d.campaign?.category || '',
+        d.church?.name || '',
         d.paymentMethod || 'N/A',
         d.status,
         new Date(d.createdAt).toLocaleDateString()
       ]),
-      ['Member', 'Amount', 'Currency', 'Campaign', 'Category', 'Method', 'Status', 'Date'],
+      ['Member', 'Amount', 'Currency', 'Campaign', 'Category', 'Church', 'Method', 'Status', 'Date'],
     );
   };
 
@@ -275,7 +281,7 @@ export default function ReportsPage() {
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Campaigns" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Campaigns</SelectItem>
-              {(campaigns as any[]).map(campaign => (
+              {(flatCampaigns as any[]).map(campaign => (
                 <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
               ))}
             </SelectContent>

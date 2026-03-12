@@ -3,12 +3,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { getUpcomingReminders, Reminder, ReminderStats } from '@/services/reminders';
+import { churchesService, Church } from '@/services/churches';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Gift, Heart, Church, Cake, Search, Phone, Mail, Bell, Lock } from 'lucide-react';
+import { Calendar, Gift, Heart, Church as ChurchIcon, Cake, Search, Phone, Mail, Bell, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const EMPTY_STATS: ReminderStats = {
@@ -30,11 +31,26 @@ const Reminders = () => {
   const [stats, setStats] = useState<ReminderStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedChurch, setSelectedChurch] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [daysFilter, setDaysFilter] = useState(30);
+  const [churches, setChurches] = useState<Church[]>([]);
 
   // Derive permission as a stable boolean — not the function reference
   const canReadReminders = hasPermission('reminders:read');
+
+  // Fetch churches for filter (only for non-members)
+  useEffect(() => {
+    if (!isMember) {
+      console.log('Fetching churches for filter...');
+      churchesService.getAll()
+        .then((data) => {
+          console.log('Churches fetched:', data.length);
+          setChurches(data);
+        })
+        .catch(err => console.error('Failed to fetch churches:', err));
+    }
+  }, [isMember]);
 
   const fetchReminders = useCallback(async () => {
     if ((!isMember && !hasRemindersFeature) || !canReadReminders) {
@@ -45,6 +61,7 @@ const Reminders = () => {
       setLoading(true);
       const params: Record<string, any> = { days: daysFilter };
       if (selectedType !== 'all') params.type = selectedType;
+      if (selectedChurch !== 'all') params.churchId = selectedChurch;
 
       const response = await getUpcomingReminders(params);
       setReminders(response.data);
@@ -54,7 +71,7 @@ const Reminders = () => {
     } finally {
       setLoading(false);
     }
-  }, [isMember, hasRemindersFeature, canReadReminders, daysFilter, selectedType]);
+  }, [isMember, hasRemindersFeature, canReadReminders, daysFilter, selectedType, selectedChurch]);
   // ^^^ stable primitives only — no function references in deps
 
   useEffect(() => {
@@ -67,7 +84,7 @@ const Reminders = () => {
       case 'birthday':          return <Cake    className="h-4 w-4 text-pink-500"   />;
       case 'wedding':           return <Heart   className="h-4 w-4 text-red-500"    />;
       case 'member_anniversary':return <Gift    className="h-4 w-4 text-blue-500"   />;
-      case 'church_founded':    return <Church  className="h-4 w-4 text-purple-500" />;
+      case 'church_founded':    return <ChurchIcon  className="h-4 w-4 text-purple-500" />;
       case 'event':             return <Calendar className="h-4 w-4 text-green-500" />;
       default:                  return <Bell    className="h-4 w-4"                 />;
     }
@@ -91,10 +108,22 @@ const Reminders = () => {
   };
 
   const filteredReminders = reminders.filter((r) => {
-    const fullName   = `${r.user.firstName} ${r.user.lastName}`.toLowerCase();
-    const eventTitle = r.eventTitle?.toLowerCase() ?? '';
-    const query      = searchQuery.toLowerCase();
-    return fullName.includes(query) || eventTitle.includes(query);
+    const query = searchQuery.toLowerCase();
+    
+    // Search filter only (church filter is handled by backend)
+    // For event reminders
+    if (r.type === 'event') {
+      const eventTitle = r.event?.title?.toLowerCase() ?? r.eventTitle?.toLowerCase() ?? '';
+      return eventTitle.includes(query);
+    }
+    
+    // For other reminders with user object
+    if (r.user) {
+      const fullName = `${r.user.firstName} ${r.user.lastName}`.toLowerCase();
+      return fullName.includes(query);
+    }
+    
+    return false;
   });
 
   // ---------- guards ----------
@@ -199,7 +228,7 @@ const Reminders = () => {
                   <p className="text-xs text-muted-foreground">Church Founded</p>
                   <p className="text-2xl font-bold">{stats.churchFounded}</p>
                 </div>
-                <Church className="h-8 w-8 text-purple-500 opacity-80" />
+                <ChurchIcon className="h-8 w-8 text-purple-500 opacity-80" />
               </div>
             </CardContent>
           </Card>
@@ -219,6 +248,21 @@ const Reminders = () => {
                 className="pl-9"
               />
             </div>
+            {!isMember && churches.length > 0 && (
+              <Select value={selectedChurch} onValueChange={setSelectedChurch}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="All Churches" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Churches</SelectItem>
+                  {churches.map((church) => (
+                    <SelectItem key={church.id} value={church.id}>
+                      {church.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Select value={selectedType} onValueChange={setSelectedType}>
               <SelectTrigger className="w-full md:w-48">
                 <SelectValue placeholder="All Types" />
@@ -263,82 +307,93 @@ const Reminders = () => {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredReminders.map((reminder) => (
-            <Card key={reminder.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    {getTypeIcon(reminder.type)}
-                    <span className="text-xs font-medium text-muted-foreground capitalize">
-                      {getTypeLabel(reminder.type)}
-                    </span>
+          {filteredReminders.map((reminder) => {
+            const isEvent = reminder.type === 'event';
+            const displayName = isEvent 
+              ? (reminder.event?.title || reminder.eventTitle || 'Event')
+              : (reminder.user ? `${reminder.user.firstName} ${reminder.user.lastName}` : 'Unknown');
+            const contactPhone = isEvent ? reminder.event?.contactPhone : reminder.user?.phone;
+            const contactEmail = isEvent ? reminder.event?.contactEmail : reminder.user?.email;
+
+            return (
+              <Card key={reminder.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      {getTypeIcon(reminder.type)}
+                      <span className="text-xs font-medium text-muted-foreground capitalize">
+                        {getTypeLabel(reminder.type)}
+                      </span>
+                    </div>
+                    <Badge
+                      variant={
+                        reminder.daysUntil === 0 ? 'default'
+                        : reminder.daysUntil <= 3 ? 'secondary'
+                        : 'outline'
+                      }
+                      className="text-xs"
+                    >
+                      {getDaysLabel(reminder.daysUntil)}
+                    </Badge>
                   </div>
-                  <Badge
-                    variant={
-                      reminder.daysUntil === 0 ? 'default'
-                      : reminder.daysUntil <= 3 ? 'secondary'
-                      : 'outline'
-                    }
-                    className="text-xs"
-                  >
-                    {getDaysLabel(reminder.daysUntil)}
-                  </Badge>
-                </div>
 
-                <h3 className="font-heading font-semibold mb-1">
-                  {reminder.user.firstName} {reminder.user.lastName}
-                </h3>
+                  <h3 className="font-heading font-semibold mb-1">
+                    {displayName}
+                  </h3>
 
-                {reminder.eventTitle && (
-                  <p className="text-sm text-muted-foreground mb-2">{reminder.eventTitle}</p>
-                )}
+                  {isEvent && reminder.event?.location && (
+                    <p className="text-sm text-muted-foreground mb-2">{reminder.event.location}</p>
+                  )}
 
-                {(reminder.age || reminder.years) && (
-                  <p className="text-xs text-muted-foreground mb-2">
-                    {reminder.age  && `Turning ${reminder.age}`}
-                    {reminder.years && `${reminder.years} ${reminder.years === 1 ? 'year' : 'years'}`}
+                  {!isEvent && (reminder.age || reminder.years) && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {reminder.age  && `Turning ${reminder.age}`}
+                      {reminder.years && `${reminder.years} ${reminder.years === 1 ? 'year' : 'years'}`}
+                    </p>
+                  )}
+
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {new Date(reminder.upcomingDate).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
                   </p>
-                )}
 
-                <p className="text-xs text-muted-foreground mb-3">
-                  {new Date(reminder.upcomingDate).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </p>
-
-                {user?.roleName !== 'member' && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
-                    <Church className="h-3 w-3" />
-                    {reminder.church.name}
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-2 border-t">
-                  {reminder.user.phone && (
-                    <a
-                      href={`tel:${reminder.user.phone}`}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs border rounded-md hover:bg-accent transition-colors"
-                      title="Call"
-                    >
-                      <Phone className="h-3 w-3" /> Call
-                    </a>
+                  {user?.roleName !== 'member' && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+                      <ChurchIcon className="h-3 w-3" />
+                      {reminder.church.name}
+                    </div>
                   )}
-                  {reminder.user.email && (
-                    <a
-                      href={`mailto:${reminder.user.email}`}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs border rounded-md hover:bg-accent transition-colors"
-                      title="Email"
-                    >
-                      <Mail className="h-3 w-3" /> Email
-                    </a>
+
+                  {(contactPhone || contactEmail) && (
+                    <div className="flex gap-2 pt-2 border-t">
+                      {contactPhone && (
+                        <a
+                          href={`tel:${contactPhone}`}
+                          className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs border rounded-md hover:bg-accent transition-colors"
+                          title="Call"
+                        >
+                          <Phone className="h-3 w-3" /> Call
+                        </a>
+                      )}
+                      {contactEmail && (
+                        <a
+                          href={`mailto:${contactEmail}`}
+                          className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs border rounded-md hover:bg-accent transition-colors"
+                          title="Email"
+                        >
+                          <Mail className="h-3 w-3" /> Email
+                        </a>
+                      )}
+                    </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

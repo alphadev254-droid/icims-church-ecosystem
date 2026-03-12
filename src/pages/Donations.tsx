@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { givingService } from '@/services/giving';
@@ -47,6 +48,7 @@ export default function DonationsPage() {
           data={donations.map((d: any) => ({
             donor: d.isAnonymous ? 'Anonymous' : (d.donorName || `${d.user?.firstName} ${d.user?.lastName}`),
             campaign: d.campaign?.name || '',
+            church: d.church?.name || '',
             category: d.campaign?.category || '',
             amount: d.amount,
             currency: d.currency,
@@ -57,6 +59,7 @@ export default function DonationsPage() {
           headers={[
             { label: 'Donor', key: 'donor' },
             { label: 'Campaign', key: 'campaign' },
+            { label: 'Church', key: 'church' },
             { label: 'Category', key: 'category' },
             { label: 'Amount', key: 'amount' },
             { label: 'Currency', key: 'currency' },
@@ -78,6 +81,7 @@ export default function DonationsPage() {
               <tr>
                 <th className="text-left p-3 text-sm font-medium">Donor</th>
                 <th className="text-left p-3 text-sm font-medium">Campaign</th>
+                <th className="text-left p-3 text-sm font-medium">Church</th>
                 <th className="text-left p-3 text-sm font-medium">Amount</th>
                 <th className="text-left p-3 text-sm font-medium">Status</th>
                 <th className="text-left p-3 text-sm font-medium">Date</th>
@@ -86,8 +90,8 @@ export default function DonationsPage() {
             </thead>
             <tbody>
               {donations.map((donation: any) => (
-                <>
-                  <tr key={donation.id} className="border-t hover:bg-muted/50">
+                <React.Fragment key={donation.id}>
+                  <tr className="border-t hover:bg-muted/50">
                     <td className="p-3">
                       {donation.isAnonymous ? (
                         <span className="text-muted-foreground">Anonymous</span>
@@ -105,6 +109,9 @@ export default function DonationsPage() {
                     <td className="p-3">
                       <div className="font-medium">{donation.campaign?.name}</div>
                       <div className="text-xs text-muted-foreground capitalize">{donation.campaign?.category}</div>
+                    </td>
+                    <td className="p-3">
+                      <div className="text-sm">{donation.church?.name || 'N/A'}</div>
                     </td>
                     <td className="p-3 font-medium">
                       {donation.currency} {donation.amount.toLocaleString()}
@@ -132,7 +139,7 @@ export default function DonationsPage() {
                   </tr>
                   {expandedDonation === donation.id && (
                     <tr className="border-t bg-muted/30">
-                      <td colSpan={6} className="p-4">
+                      <td colSpan={7} className="p-4">
                         {isLoadingTransaction ? (
                           <div className="flex items-center justify-center py-4">
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
@@ -233,11 +240,11 @@ export default function DonationsPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
               {donations.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
                     No donations found
                   </td>
                 </tr>

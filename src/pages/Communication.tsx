@@ -5,8 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { communicationService, type Announcement } from '@/services/communication';
 import { uploadService } from '@/services/upload';
+import { churchesService, Church } from '@/services/churches';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,14 +55,24 @@ export default function CommunicationPage() {
   const [formType, setFormType] = useState<'announcement' | 'prayer_request' | 'newsletter'>('announcement');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [existingFiles, setExistingFiles] = useState<any[]>([]);
+  const [selectedChurch, setSelectedChurch] = useState<string>('all');
+  const { user } = useAuth();
   const { hasPermission, role } = useRole();
   const qc = useQueryClient();
   const isMember = role === 'member';
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ['announcements'],
-    queryFn: communicationService.getAll,
+    queryKey: ['announcements', selectedChurch],
+    queryFn: () => communicationService.getAll({
+      churchId: selectedChurch !== 'all' ? selectedChurch : undefined,
+    }),
     enabled: isMember || hasCommunication,
+  });
+
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches'],
+    queryFn: churchesService.getAll,
+    enabled: !isMember,
   });
 
   if (!isMember && !hasCommunication) {
@@ -209,8 +221,13 @@ export default function CommunicationPage() {
                   {item.priority === 'urgent' && <Badge variant="destructive" className="text-xs">Urgent</Badge>}
                   {attachments.length > 0 && <Paperclip className="h-3 w-3 text-muted-foreground" />}
                 </div>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-3">{item.content}</p>
-                <div className="flex items-center gap-3 mt-2">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-2">{item.content}</p>
+                <div className="flex items-center gap-3 mt-2 flex-wrap">
+                  {!isMember && item.church && (
+                    <p className="text-xs text-muted-foreground">
+                      {item.church.name}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     {new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
@@ -269,108 +286,9 @@ export default function CommunicationPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Communication</h1>
-          <p className="text-sm text-muted-foreground">Announcements, newsletters, and prayer requests</p>
-        </div>
-        {canCreateChurchPost && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
-                <Plus className="h-4 w-4" /> New Church Post
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="font-heading">Create Post</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit(v => {
-                console.log('Form values:', v);
-                console.log('Form errors:', errors);
-                createMutation.mutate(v);
-              })} className="space-y-4">
-                <ChurchSelect 
-                  value={churchId} 
-                  onValueChange={value => setValue('churchId', value)}
-                />
-                {errors.churchId && <p className="text-xs text-destructive mt-1">{errors.churchId.message}</p>}
-                {!churchId && <p className="text-xs text-amber-600 mt-1">Please select a church</p>}
-                
-                <div>
-                  <Label>Type</Label>
-                  <Select
-                    value={formType}
-                    onValueChange={v => {
-                      const t = v as typeof formType;
-                      setFormType(t);
-                      setValue('type', t, { shouldValidate: true });
-                    }}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="announcement">Announcement</SelectItem>
-                      <SelectItem value="prayer_request">Prayer Request</SelectItem>
-                      <SelectItem value="newsletter">Newsletter</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Priority</Label>
-                  <Select value={watch('priority') || 'normal'} onValueChange={v => setValue('priority', v as 'normal' | 'urgent', { shouldValidate: true })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Title</Label>
-                  <Input {...register('title')} />
-                  {errors.title && <p className="text-xs text-destructive mt-1">{errors.title.message}</p>}
-                </div>
-                <div>
-                  <Label>{formType === 'prayer_request' ? 'Prayer Request Details' : 'Content'}</Label>
-                  <Textarea {...register('content')} rows={4} />
-                  {errors.content && <p className="text-xs text-destructive mt-1">{errors.content.message}</p>}
-                </div>
-                
-                <div>
-                  <Label>Attachments <span className="text-xs text-muted-foreground">(Max 5 files - Images, PDFs, Documents, Videos)</span></Label>
-                  <div className="space-y-2">
-                    <Input
-                      type="file"
-                      multiple
-                      accept="image/*,.pdf,.doc,.docx,.mp4,.webm,.mov,.avi"
-                      onChange={handleFileSelect}
-                      disabled={selectedFiles.length >= 5}
-                      className="cursor-pointer"
-                    />
-                    {selectedFiles.length > 0 && (
-                      <div className="space-y-1">
-                        {selectedFiles.map((file, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs bg-muted p-2 rounded">
-                            {file.type?.startsWith('image/') ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                            <span className="flex-1 truncate">{file.name}</span>
-                            <span className="text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</span>
-                            <button type="button" onClick={() => removeSelectedFile(i)} className="text-destructive hover:text-destructive/80">
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <Button type="submit" disabled={createMutation.isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-                  {createMutation.isPending ? 'Posting...' : 'Post'}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
+      <div>
+        <h1 className="font-heading text-2xl font-bold">Communication</h1>
+        <p className="text-sm text-muted-foreground">Announcements, newsletters, and prayer requests</p>
       </div>
 
       {isLoading ? (
@@ -385,6 +303,122 @@ export default function CommunicationPage() {
           </TabsList>
 
           <TabsContent value="church" className="mt-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+              <div className="flex gap-2 items-center">
+                {!isMember && churches.length > 0 && (
+                  <Select value={selectedChurch} onValueChange={setSelectedChurch}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="All Churches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Churches</SelectItem>
+                      {churches.map((church: Church) => (
+                        <SelectItem key={church.id} value={church.id}>
+                          {church.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              {canCreateChurchPost && (
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
+                      <Plus className="h-4 w-4" /> New Church Post
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="font-heading">Create Post</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit(v => {
+                    console.log('Form values:', v);
+                    console.log('Form errors:', errors);
+                    createMutation.mutate(v);
+                  })} className="space-y-4">
+                    <ChurchSelect 
+                      value={churchId} 
+                      onValueChange={value => setValue('churchId', value)}
+                    />
+                    {errors.churchId && <p className="text-xs text-destructive mt-1">{errors.churchId.message}</p>}
+                    {!churchId && <p className="text-xs text-amber-600 mt-1">Please select a church</p>}
+                    
+                    <div>
+                      <Label>Type</Label>
+                      <Select
+                        value={formType}
+                        onValueChange={v => {
+                          const t = v as typeof formType;
+                          setFormType(t);
+                          setValue('type', t, { shouldValidate: true });
+                        }}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="announcement">Announcement</SelectItem>
+                          <SelectItem value="prayer_request">Prayer Request</SelectItem>
+                          <SelectItem value="newsletter">Newsletter</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Priority</Label>
+                      <Select value={watch('priority') || 'normal'} onValueChange={v => setValue('priority', v as 'normal' | 'urgent', { shouldValidate: true })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="normal">Normal</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Title</Label>
+                      <Input {...register('title')} />
+                      {errors.title && <p className="text-xs text-destructive mt-1">{errors.title.message}</p>}
+                    </div>
+                    <div>
+                      <Label>{formType === 'prayer_request' ? 'Prayer Request Details' : 'Content'}</Label>
+                      <Textarea {...register('content')} rows={4} />
+                      {errors.content && <p className="text-xs text-destructive mt-1">{errors.content.message}</p>}
+                    </div>
+                    
+                    <div>
+                      <Label>Attachments <span className="text-xs text-muted-foreground">(Max 5 files - Images, PDFs, Documents, Videos)</span></Label>
+                      <div className="space-y-2">
+                        <Input
+                          type="file"
+                          multiple
+                          accept="image/*,.pdf,.doc,.docx,.mp4,.webm,.mov,.avi"
+                          onChange={handleFileSelect}
+                          disabled={selectedFiles.length >= 5}
+                          className="cursor-pointer"
+                        />
+                        {selectedFiles.length > 0 && (
+                          <div className="space-y-1">
+                            {selectedFiles.map((file, i) => (
+                              <div key={i} className="flex items-center gap-2 text-xs bg-muted p-2 rounded">
+                                {file.type?.startsWith('image/') ? <ImageIcon className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                                <span className="flex-1 truncate">{file.name}</span>
+                                <span className="text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</span>
+                                <button type="button" onClick={() => removeSelectedFile(i)} className="text-destructive hover:text-destructive/80">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <Button type="submit" disabled={createMutation.isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                      {createMutation.isPending ? 'Posting...' : 'Post'}
+                    </Button>
+                  </form>
+                </DialogContent>
+                </Dialog>
+              )}
+            </div>
             <Tabs defaultValue="announcement">
               <div className="overflow-x-auto pb-2">
                 <TabsList className="inline-flex w-auto">
@@ -414,7 +448,7 @@ export default function CommunicationPage() {
           </TabsContent>
 
           <TabsContent value="team" className="mt-4">
-            <TeamCommunicationTab />
+            <TeamCommunicationTab churches={churches} isMember={isMember} />
           </TabsContent>
         </Tabs>
       )}

@@ -137,6 +137,7 @@ export default function GivingPage() {
   const [activateCampaignId, setActivateCampaignId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [churchFilter, setChurchFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const { hasPermission } = useRole();
   const hasGivingFeature = useHasFeature('giving_tracking');
   const user = useAuthStore(state => state.user);
@@ -145,8 +146,11 @@ export default function GivingPage() {
   const isMember = user?.roleName === 'member';
 
   const { data: campaignsResponse = [], isLoading } = useQuery({
-    queryKey: ['campaigns'],
-    queryFn: () => givingService.getCampaigns(),
+    queryKey: ['campaigns', churchFilter, categoryFilter],
+    queryFn: () => givingService.getCampaigns({
+      churchId: churchFilter !== 'all' ? churchFilter : undefined,
+      category: categoryFilter !== 'all' ? categoryFilter : undefined,
+    }),
     staleTime: STALE_TIME.DEFAULT,
   });
 
@@ -258,9 +262,6 @@ export default function GivingPage() {
 
   const activeCampaigns = campaigns.filter(c => c.status === 'active');
   let filteredCampaigns = isMember ? campaigns : statusFilter === 'all' ? campaigns : campaigns.filter(c => c.status === statusFilter);
-  if (churchFilter !== 'all') {
-    filteredCampaigns = filteredCampaigns.filter(c => c.churchId === churchFilter);
-  }
   const totalRaised = isMember 
     ? campaigns.reduce((sum, c) => sum + (c.userTotalDonated || 0), 0)
     : campaigns.reduce((sum, c) => sum + (c.totalRaised || 0), 0);
@@ -284,6 +285,21 @@ export default function GivingPage() {
                 {churches.map((church: any) => (
                   <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          )}
+          {!isMember && (
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="tithe">Tithe</SelectItem>
+                <SelectItem value="offering">Offering</SelectItem>
+                <SelectItem value="partnership">Partnership</SelectItem>
+                <SelectItem value="welfare">Welfare</SelectItem>
+                <SelectItem value="missions">Missions</SelectItem>
               </SelectContent>
             </Select>
           )}

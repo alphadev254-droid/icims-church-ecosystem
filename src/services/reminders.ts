@@ -17,7 +17,7 @@ export interface Reminder {
   notifyAt?: string;
   createdAt: string;
   updatedAt: string;
-  user: {
+  user?: {
     id: string;
     firstName: string;
     lastName: string;
@@ -28,6 +28,14 @@ export interface Reminder {
   church: {
     id: string;
     name: string;
+  };
+  event?: {
+    id: string;
+    title: string;
+    date: string;
+    location?: string;
+    contactEmail?: string;
+    contactPhone?: string;
   };
 }
 
@@ -49,6 +57,7 @@ export interface RemindersResponse {
 export const getUpcomingReminders = async (params?: {
   days?: number;
   type?: string;
+  churchId?: string;
 }): Promise<RemindersResponse> => {
   const response = await api.get('/reminders/upcoming', { params });
   return response.data;
