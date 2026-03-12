@@ -16,8 +16,8 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
-  const avatarUrl = user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${API_BASE}${user.avatar}`) : null;
+  const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/['"]|\/$|^\/api$/g, '');
+  const avatarUrl = user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${STATIC_BASE}${user.avatar}`) : null;
 
   const handleLogout = async () => {
     await logout();
