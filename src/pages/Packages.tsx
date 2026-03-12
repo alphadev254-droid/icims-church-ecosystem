@@ -32,11 +32,11 @@ const STATUS_BADGE: Record<string, string> = {
   failed:    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
 };
 
-function fmt(n: number, currency: string = 'MWK') {
+function fmt(n: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', { 
     style: 'currency', 
     currency: currency, 
-    maximumFractionDigits: 0 
+    maximumFractionDigits: currency === 'USD' ? 2 : 0
   }).format(n);
 }
 
