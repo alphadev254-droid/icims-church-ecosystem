@@ -273,7 +273,7 @@ const Reminders = () => {
                 <SelectItem value="wedding">Weddings</SelectItem>
                 <SelectItem value="member_anniversary">Anniversaries</SelectItem>
                 <SelectItem value="event">Events</SelectItem>
-                {user?.roleName === 'national_admin' && (
+                {user?.roleName === 'ministry_admin' && (
                   <SelectItem value="church_founded">Church Founded</SelectItem>
                 )}
               </SelectContent>

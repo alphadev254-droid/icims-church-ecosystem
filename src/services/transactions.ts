@@ -16,10 +16,13 @@ export interface Transaction {
   cardBank?: string;
   baseAmount?: number;
   convenienceFee?: number;
-  taxAmount?: number;
+  systemFeeAmount?: number;
   totalAmount?: number;
   gateway?: string;
   createdAt: string;
+  isGuest?: boolean;
+  guestName?: string;
+  guestEmail?: string;
   user?: {
     firstName: string;
     lastName: string;

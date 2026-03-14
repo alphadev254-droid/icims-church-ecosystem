@@ -13,12 +13,14 @@ export interface GivingCampaign {
   startDate: string;
   endDate?: string;
   imageUrl?: string;
+  allowPublicDonations: boolean;
   createdAt: string;
   updatedAt: string;
   church?: { name: string };
   totalRaised?: number;
   donorCount?: number;
   userHasDonated?: boolean;
+  userTotalDonated?: number;
 }
 
 export interface CreateCampaignDto {
@@ -75,6 +77,16 @@ export interface CreateDonationDto {
 }
 
 export const givingService = {
+  async getPublicCampaign(id: string): Promise<GivingCampaign> {
+    const { data } = await apiClient.get(`/giving/campaigns/${id}/public`);
+    return data.data;
+  },
+
+  async guestDonate(dto: { campaignId: string; amount: number; guestName: string; guestEmail: string; guestPhone?: string }): Promise<any> {
+    const { data } = await apiClient.post('/giving/guest-donate', dto);
+    return data.data;
+  },
+
   async createCampaign(dto: CreateCampaignDto): Promise<GivingCampaign> {
     const { data } = await apiClient.post('/giving/campaigns', dto);
     return data.data;
@@ -99,9 +111,13 @@ export const givingService = {
     await apiClient.delete(`/giving/campaigns/${id}`);
   },
 
-  async getDonations(campaignId?: string): Promise<DonationTransaction[]> {
+  async getDonations(campaignId?: string, churchId?: string): Promise<DonationTransaction[]> {
+    const params: any = {};
+    if (campaignId) params.campaignId = campaignId;
+    if (churchId) params.churchId = churchId;
+    
     const { data } = await apiClient.get('/giving/donations', {
-      params: campaignId ? { campaignId } : undefined,
+      params: Object.keys(params).length > 0 ? params : undefined,
     });
     return data.data;
   },

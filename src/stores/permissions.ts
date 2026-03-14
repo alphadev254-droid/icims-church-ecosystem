@@ -5,10 +5,10 @@ import {
 import { useAuthStore } from './authStore';
 
 export type UserRole =
-  | 'national_admin'
-  | 'regional_leader'
-  | 'district_overseer'
-  | 'local_admin'
+  | 'ministry_admin'
+  | 'regional_admin'
+  | 'district_admin'
+  | 'branch_admin'
   | 'member';
 
 export interface NavItem {

@@ -19,7 +19,7 @@ export interface KPI {
   recurringActive: boolean;
   parentKpiId?: string;
   recurrenceCount: number;
-  nationalAdminId: string;
+  ministryAdminId: string;
   churchId?: string;
   church?: { id: string; name: string };
   event?: { id: string; title: string };

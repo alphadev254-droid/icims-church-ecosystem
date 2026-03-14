@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface AdminScopeSelectorProps {
-  role: 'district_overseer' | 'local_admin' | 'regional_leader';
+  role: 'district_admin' | 'branch_admin' | 'regional_admin';
   districts: string[];
   tas: string[];
   regions: string[];
@@ -62,15 +62,15 @@ export function AdminScopeSelector({
   const { data: availableTAs = [] } = useQuery({
     queryKey: ['tas-for-district', selectedDistrict],
     queryFn: () => locationsService.getTAs(selectedDistrict),
-    enabled: role === 'local_admin' && !!selectedDistrict,
+    enabled: role === 'branch_admin' && !!selectedDistrict,
   });
 
   const isRegionAll = regions.includes('__all__');
   const isDistrictAll = districts.includes('__all__');
   const isTAAll = tas.includes('__all__');
 
-  if (role === 'regional_leader') {
-    console.log('Rendering regional_leader UI');
+  if (role === 'regional_admin') {
+    console.log('Rendering regional_admin UI');
     console.log('isRegionAll:', isRegionAll);
     console.log('Available regions:', allRegions);
     
@@ -119,8 +119,8 @@ export function AdminScopeSelector({
     );
   }
 
-  if (role === 'district_overseer') {
-    console.log('Rendering district_overseer UI');
+  if (role === 'district_admin') {
+    console.log('Rendering district_admin UI');
     console.log('isDistrictAll:', isDistrictAll);
     console.log('Available districts:', allDistricts);
     
@@ -169,7 +169,7 @@ export function AdminScopeSelector({
     );
   }
 
-  // Local Admin: Single district selection, then TAs
+  // Branch Administrator: Single district selection, then TAs
   return (
     <div className="space-y-3">
       <div className="space-y-2">

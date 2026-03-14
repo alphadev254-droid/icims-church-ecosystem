@@ -46,7 +46,7 @@ export default function DonationsPage() {
         </div>
         <ExportImportButtons
           data={donations.map((d: any) => ({
-            donor: d.isAnonymous ? 'Anonymous' : (d.donorName || `${d.user?.firstName} ${d.user?.lastName}`),
+            donor: d.isAnonymous ? 'Anonymous' : (d.isGuest ? d.guestName : (d.donorName || `${d.user?.firstName} ${d.user?.lastName}`)),
             campaign: d.campaign?.name || '',
             church: d.church?.name || '',
             category: d.campaign?.category || '',
@@ -98,10 +98,17 @@ export default function DonationsPage() {
                       ) : (
                         <div>
                           <div className="font-medium">
-                            {donation.donorName || `${donation.user?.firstName} ${donation.user?.lastName}`}
+                            {donation.isGuest
+                              ? donation.guestName
+                              : donation.donorName || `${donation.user?.firstName} ${donation.user?.lastName}`}
                           </div>
-                          {donation.donorEmail && (
-                            <div className="text-xs text-muted-foreground">{donation.donorEmail}</div>
+                          {(donation.isGuest ? donation.guestEmail : donation.donorEmail) && (
+                            <div className="text-xs text-muted-foreground">
+                              {donation.isGuest ? donation.guestEmail : donation.donorEmail}
+                            </div>
+                          )}
+                          {donation.isGuest && (
+                            <div className="text-xs text-blue-500">Guest</div>
                           )}
                         </div>
                       )}
@@ -162,19 +169,11 @@ export default function DonationsPage() {
                                   </div>
                                 </div>
                               )}
-                              {transactionData.convenienceFee !== undefined && (
+                              {(transactionData.convenienceFee !== undefined || transactionData.systemFeeAmount !== undefined) && (
                                 <div>
                                   <div className="text-muted-foreground">Transaction Cost</div>
                                   <div className="font-medium">
-                                    {transactionData.currency} {transactionData.convenienceFee?.toLocaleString()}
-                                  </div>
-                                </div>
-                              )}
-                              {transactionData.taxAmount !== undefined && (
-                                <div>
-                                  <div className="text-muted-foreground">Tax</div>
-                                  <div className="font-medium">
-                                    {transactionData.currency} {transactionData.taxAmount?.toLocaleString()}
+                                    {transactionData.currency} {((transactionData.convenienceFee ?? 0) + (transactionData.systemFeeAmount ?? 0)).toLocaleString()}
                                   </div>
                                 </div>
                               )}

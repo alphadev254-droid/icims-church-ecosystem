@@ -48,8 +48,10 @@ export default function ReportsPage() {
   
   // Filter states
   const [memberChurchFilter, setMemberChurchFilter] = useState('all');
-  const [givingCategoryFilter, setGivingCategoryFilter] = useState('all');
+  const [givingCampaignFilter, setGivingCampaignFilter] = useState('all');
+  const [givingChurchFilter, setGivingChurchFilter] = useState('all');
   const [attendanceServiceFilter, setAttendanceServiceFilter] = useState('all');
+  const [attendanceChurchFilter, setAttendanceChurchFilter] = useState('all');
 
   const { data: stats } = useQuery({ queryKey: ['dashboard-stats', user?.churchId], queryFn: () => dashboardService.getStats(user?.churchId), enabled: !!user && hasReports });
   const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: churchesService.getAll, enabled: hasReports });
@@ -173,11 +175,15 @@ export default function ReportsPage() {
   };
 
   const handleExportGiving = async () => {
-    const response = await givingService.getDonations(givingCategoryFilter !== 'all' ? givingCategoryFilter : undefined);
+    const response = await givingService.getDonations(
+      givingCampaignFilter !== 'all' ? givingCampaignFilter : undefined,
+      givingChurchFilter !== 'all' ? givingChurchFilter : undefined
+    );
     const donations = response || [];
+    
     downloadCSV(
       'giving-report.csv',
-      donations.map(d => [
+      donations.map((d: any) => [
         d.user?.firstName + ' ' + d.user?.lastName || d.donorName || 'Anonymous',
         d.amount.toString(),
         d.currency,
@@ -193,7 +199,11 @@ export default function ReportsPage() {
   };
 
   const handleExportAttendance = async () => {
-    const response = await attendanceService.getAll(attendanceServiceFilter !== 'all' ? { serviceType: attendanceServiceFilter } : undefined);
+    const params: any = {};
+    if (attendanceServiceFilter !== 'all') params.serviceType = attendanceServiceFilter;
+    if (attendanceChurchFilter !== 'all') params.churchId = attendanceChurchFilter;
+    
+    const response = await attendanceService.getAll(Object.keys(params).length > 0 ? params : undefined);
     const attendance = response || [];
     downloadCSV(
       'attendance-report.csv',
@@ -275,17 +285,31 @@ export default function ReportsPage() {
       unit: 'MWK',
       onExport: handleExportGiving,
       filterComponent: (
-        <div className="mb-3">
-          <Label className="text-xs">Filter by Campaign</Label>
-          <Select value={givingCategoryFilter} onValueChange={setGivingCategoryFilter}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Campaigns" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Campaigns</SelectItem>
-              {(flatCampaigns as any[]).map(campaign => (
-                <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="space-y-2 mb-3">
+          <div>
+            <Label className="text-xs">Filter by Campaign</Label>
+            <Select value={givingCampaignFilter} onValueChange={setGivingCampaignFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Campaigns" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Campaigns</SelectItem>
+                {(flatCampaigns as any[]).map(campaign => (
+                  <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Church</Label>
+            <Select value={givingChurchFilter} onValueChange={setGivingChurchFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {(churches as any[]).map(church => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       ),
     },
@@ -297,19 +321,34 @@ export default function ReportsPage() {
       unit: 'avg',
       onExport: handleExportAttendance,
       filterComponent: (
-        <div className="mb-3">
-          <Label className="text-xs">Filter by Service Type</Label>
-          <Select value={attendanceServiceFilter} onValueChange={setAttendanceServiceFilter}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Services" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Services</SelectItem>
-              <SelectItem value="Sunday Service">Sunday Service</SelectItem>
-              <SelectItem value="Midweek Service">Midweek Service</SelectItem>
-              <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
-              <SelectItem value="Youth Service">Youth Service</SelectItem>
-              <SelectItem value="Special Service">Special Service</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="space-y-2 mb-3">
+          <div>
+            <Label className="text-xs">Filter by Service Type</Label>
+            <Select value={attendanceServiceFilter} onValueChange={setAttendanceServiceFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Services" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Services</SelectItem>
+                <SelectItem value="Sunday Service">Sunday Service</SelectItem>
+                <SelectItem value="Midweek Service">Midweek Service</SelectItem>
+                <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
+                <SelectItem value="Youth Service">Youth Service</SelectItem>
+                <SelectItem value="Special Service">Special Service</SelectItem>
+                <SelectItem value="Event">Event</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Church</Label>
+            <Select value={attendanceChurchFilter} onValueChange={setAttendanceChurchFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {(churches as any[]).map(church => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       ),
     },

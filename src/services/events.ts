@@ -18,6 +18,7 @@ export interface ChurchEvent {
   totalTickets?: number;
   ticketsSold: number;
   ticketSalesCutoff?: string;
+  allowPublicTicketing: boolean;
   imageUrl?: string;
   churchId: string;
   createdById: string;
@@ -121,6 +122,54 @@ export const eventsService = {
   },
   getPublicEvent: async (id: string): Promise<ChurchEvent> => {
     const { data } = await apiClient.get(`/events/${id}/public`);
+    return data.data;
+  },
+  purchaseGuestTicket: async (dto: {
+    eventId: string;
+    guestName: string;
+    guestEmail: string;
+    guestPhone?: string;
+    quantity?: number;
+  }): Promise<{
+    isFree?: boolean;
+    ticketNumbers?: string[];
+    guestEmail?: string;
+    authorization_url?: string;
+    reference?: string;
+    baseAmount?: number;
+    convenienceFee?: number;
+    systemFeeAmount?: number;
+    totalAmount?: number;
+    currency?: string;
+  }> => {
+    const { data } = await apiClient.post('/payments/guest-ticket', dto);
+    return data.data;
+  },
+  calculateGuestTicketFees: async (eventId: string): Promise<{
+    currency: string;
+    baseAmount: number;
+    convenienceFee: number;
+    systemFeeAmount: number;
+    transactionCost: number;
+    totalAmount: number;
+  }> => {
+    const { data } = await apiClient.get('/payments/guest-ticket/fees', { params: { eventId } });
+    return data.data;
+  },
+  getTransactionByReference: async (reference: string): Promise<{
+    type: string;
+    isGuest: boolean;
+    guestName: string | null;
+    guestEmail: string | null;
+    baseAmount: number | null;
+    currency: string | null;
+    reference: string;
+    status: string;
+    paidAt: string | null;
+    eventTitle: string | null;
+    tickets: string[];
+  }> => {
+    const { data } = await apiClient.get(`/payments/transaction/${reference}`);
     return data.data;
   },
 };

@@ -32,11 +32,11 @@ const STATUS_BADGE: Record<string, string> = {
   failed:    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
 };
 
-function fmt(n: number, currency: string = 'USD') {
+function fmt(n: number, currency: string = 'KES') {
   return new Intl.NumberFormat('en-US', { 
     style: 'currency', 
-    currency: currency, 
-    maximumFractionDigits: currency === 'USD' ? 2 : 0
+    currency, 
+    maximumFractionDigits: currency === 'KES' || currency === 'MWK' ? 0 : 2
   }).format(n);
 }
 
@@ -64,10 +64,10 @@ function PackageCard({ pkg, isCurrent, allFeatures, onUpgrade }: {
           </span>
         </div>
         <CardTitle className="text-2xl font-bold mt-2">
-          {fmt(pkg.priceMonthly)}
+          {fmt(pkg.priceMonthly, (pkg as any).currency)}
           <span className="text-sm font-normal text-muted-foreground">/mo</span>
         </CardTitle>
-        <CardDescription className="text-xs">{fmt(pkg.priceYearly)}/yr · Save {Math.round((1 - pkg.priceYearly / (pkg.priceMonthly * 12)) * 100)}%</CardDescription>
+        <CardDescription className="text-xs">{fmt(pkg.priceYearly, (pkg as any).currency)}/yr · Save {Math.round((1 - pkg.priceYearly / (pkg.priceMonthly * 12)) * 100)}%</CardDescription>
         {pkg.description && <p className="text-xs text-muted-foreground mt-1">{pkg.description}</p>}
       </CardHeader>
       <CardContent className="space-y-4">
@@ -118,6 +118,12 @@ export default function PackagesPage() {
 
   const [upgradeDialog, setUpgradeDialog] = useState<{ open: boolean; packageId: string; packageName: string } | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+
+  const { data: fees, isFetching: loadingFees } = useQuery({
+    queryKey: ['package-fees', upgradeDialog?.packageId, billingCycle],
+    queryFn: () => packagesService.calculateFees(upgradeDialog!.packageId, billingCycle),
+    enabled: !!upgradeDialog?.packageId,
+  });
 
   const { data: packages = [], isLoading: loadingPkgs } = useQuery({
     queryKey: ['packages'],
@@ -238,7 +244,7 @@ export default function PackagesPage() {
                         </TableCell>
                         <TableCell className="font-medium">{fmt(p.baseAmount || p.amount, p.currency)}</TableCell>
                         <TableCell className="text-sm">{p.convenienceFee ? fmt(p.convenienceFee, p.currency) : '—'}</TableCell>
-                        <TableCell className="text-sm">{p.taxAmount ? fmt(p.taxAmount, p.currency) : '—'}</TableCell>
+                        <TableCell className="text-sm">{p.systemFeeAmount ? fmt(p.systemFeeAmount, p.currency) : '—'}</TableCell>
                         <TableCell className="font-semibold">{fmt(p.totalAmount || p.amount, p.currency)}</TableCell>
                         <TableCell>
                           <span className="text-xs capitalize">{p.gateway || 'paystack'}</span>
@@ -293,6 +299,28 @@ export default function PackagesPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {loadingFees ? (
+              <div className="flex justify-center py-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+              </div>
+            ) : fees && (
+              <div className="rounded-md border bg-muted/40 p-3 space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Package price</span>
+                  <span className="font-medium">{fmt(fees.baseAmount, fees.currency)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Transaction cost</span>
+                  <span>{fmt(fees.transactionCost, fees.currency)}</span>
+                </div>
+                <div className="flex justify-between border-t pt-1.5 font-semibold">
+                  <span>Total</span>
+                  <span>{fmt(fees.totalAmount, fees.currency)}</span>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-2 border-t">
               <Button variant="outline" size="sm" onClick={() => setUpgradeDialog(null)}>Cancel</Button>
               <Button

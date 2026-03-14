@@ -248,7 +248,7 @@ export default function AboutPage() {
               <blockquote className="text-primary-foreground/90 text-sm italic leading-relaxed mb-6">
                 "ICIMS transformed how we manage our denomination. What used to take our admin team days now takes hours. We can focus on people, not paperwork."
               </blockquote>
-              <p className="text-primary-foreground/60 text-xs font-semibold uppercase tracking-wider">— National Administrator, CCAP</p>
+              <p className="text-primary-foreground/60 text-xs font-semibold uppercase tracking-wider">— Ministry Administratoristrator, CCAP</p>
             </motion.div>
           </div>
         </div>

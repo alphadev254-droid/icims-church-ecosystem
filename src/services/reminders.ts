@@ -10,7 +10,7 @@ export interface Reminder {
   age?: number;
   years?: number;
   churchId: string;
-  nationalAdminId?: string;
+  ministryAdminId?: string;
   eventId?: string;
   eventTitle?: string;
   lastNotified?: string;

@@ -128,10 +128,10 @@ export default function MyTicketsPage() {
                                   <div>{transactionData.currency} {transactionData.convenienceFee?.toFixed(2)}</div>
                                 </div>
                               )}
-                              {transactionData.taxAmount !== undefined && transactionData.taxAmount > 0 && (
+                              {transactionData.systemFeeAmount !== undefined && transactionData.systemFeeAmount > 0 && (
                                 <div>
                                   <div className="text-xs text-muted-foreground">Tax</div>
-                                  <div>{transactionData.currency} {transactionData.taxAmount?.toFixed(2)}</div>
+                                  <div>{transactionData.currency} {transactionData.systemFeeAmount?.toFixed(2)}</div>
                                 </div>
                               )}
                               {transactionData.totalAmount !== undefined && (

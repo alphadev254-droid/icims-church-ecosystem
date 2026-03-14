@@ -40,6 +40,7 @@ import Withdrawals from "./pages/Withdrawals";
 import RequestWithdrawal from "./pages/RequestWithdrawal";
 import EventTickets from "./pages/EventTickets";
 import PublicEvent from "./pages/PublicEvent";
+import PublicCampaign from "./pages/PublicCampaign";
 import PaymentCallback from "./pages/PaymentCallback";
 import MyTickets from "./pages/MyTickets";
 import Subaccount from "./pages/Subaccount";
@@ -63,6 +64,7 @@ const App = () => (
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/events/:id" element={<PublicEvent />} />
+                <Route path="/giving/:id" element={<PublicCampaign />} />
               </Route>
 
               {/* Auth routes */}

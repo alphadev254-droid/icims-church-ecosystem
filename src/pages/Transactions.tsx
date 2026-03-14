@@ -119,15 +119,15 @@ export default function TransactionsPage() {
           data={transactions.map(t => ({
             amount: t.amount,
             baseAmount: t.baseAmount || 0,
-            convenienceFee: t.convenienceFee || 0,
-            taxAmount: t.taxAmount || 0,
+            convenienceFee: (t.convenienceFee || 0) + (t.systemFeeAmount || 0),
             totalAmount: t.totalAmount || 0,
             currency: t.currency,
             status: t.status,
             type: t.type,
             paymentMethod: t.paymentMethod,
             gateway: t.gateway || '',
-            user: t.user ? `${t.user.firstName} ${t.user.lastName}` : '',
+            name: t.user ? `${t.user.firstName} ${t.user.lastName}` : (t.isGuest ? t.guestName : ''),
+            email: t.user ? t.user.email : (t.isGuest ? t.guestEmail : ''),
             church: t.church?.name || '',
             subaccount: t.subaccountName || 'Finance Account',
             date: new Date(t.createdAt).toLocaleDateString(),
@@ -137,14 +137,14 @@ export default function TransactionsPage() {
             { label: 'Amount', key: 'amount' },
             { label: 'Base', key: 'baseAmount' },
             { label: 'Transaction Cost', key: 'convenienceFee' },
-            { label: 'Tax', key: 'taxAmount' },
             { label: 'Total', key: 'totalAmount' },
             { label: 'Currency', key: 'currency' },
             { label: 'Status', key: 'status' },
             { label: 'Type', key: 'type' },
             { label: 'Payment Method', key: 'paymentMethod' },
             { label: 'Gateway', key: 'gateway' },
-            { label: 'User', key: 'user' },
+            { label: 'Name', key: 'name' },
+            { label: 'Email', key: 'email' },
             { label: 'Church', key: 'church' },
             { label: 'Church Account', key: 'subaccount' },
             { label: 'Date', key: 'date' },
@@ -265,11 +265,11 @@ export default function TransactionsPage() {
                   <TableHead>Amount</TableHead>
                   <TableHead>Base</TableHead>
                   <TableHead>Transaction Cost</TableHead>
-                  <TableHead>Tax</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>User</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Church</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead>Gateway</TableHead>
@@ -289,10 +289,9 @@ export default function TransactionsPage() {
                       {transaction.baseAmount ? formatCurrency(transaction.baseAmount, transaction.currency) : '-'}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {transaction.convenienceFee ? formatCurrency(transaction.convenienceFee, transaction.currency) : '-'}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {transaction.taxAmount ? formatCurrency(transaction.taxAmount, transaction.currency) : '-'}
+                      {(transaction.convenienceFee || transaction.systemFeeAmount)
+                        ? formatCurrency((transaction.convenienceFee || 0) + (transaction.systemFeeAmount || 0), transaction.currency)
+                        : '-'}
                     </TableCell>
                     <TableCell className="text-sm">
                       {transaction.totalAmount ? formatCurrency(transaction.totalAmount, transaction.currency) : '-'}
@@ -301,8 +300,11 @@ export default function TransactionsPage() {
                       <Badge variant={statusVariant(transaction.status)}>{transaction.status}</Badge>
                     </TableCell>
                     <TableCell className="capitalize">{transaction.type.replace('_', ' ')}</TableCell>
-                    <TableCell>
-                      {transaction.user ? `${transaction.user.firstName} ${transaction.user.lastName}` : '-'}
+                    <TableCell className="text-sm">
+                      {transaction.user ? `${transaction.user.firstName} ${transaction.user.lastName}` : transaction.isGuest ? transaction.guestName : '-'}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {transaction.user?.email || (transaction.isGuest ? transaction.guestEmail : '-')}
                     </TableCell>
                     <TableCell>{transaction.church?.name || '-'}</TableCell>
                     <TableCell>
@@ -372,11 +374,13 @@ export default function TransactionsPage() {
                       </div>
                       <div className="text-sm text-muted-foreground space-y-1">
                         {transaction.baseAmount && <p>Base: {formatCurrency(transaction.baseAmount, transaction.currency)}</p>}
-                        {transaction.convenienceFee && <p>Transaction Cost: {formatCurrency(transaction.convenienceFee, transaction.currency)}</p>}
-                        {transaction.taxAmount && <p>Tax: {formatCurrency(transaction.taxAmount, transaction.currency)}</p>}
+                        {(transaction.convenienceFee || transaction.systemFeeAmount) && <p>Transaction Cost: {formatCurrency((transaction.convenienceFee || 0) + (transaction.systemFeeAmount || 0), transaction.currency)}</p>}
                         {transaction.totalAmount && <p>Total: {formatCurrency(transaction.totalAmount, transaction.currency)}</p>}
-                        {transaction.user && (
-                          <p>User: {transaction.user.firstName} {transaction.user.lastName}</p>
+                        {(transaction.user || transaction.isGuest) && (
+                          <p>Name: {transaction.user ? `${transaction.user.firstName} ${transaction.user.lastName}` : transaction.guestName}</p>
+                        )}
+                        {(transaction.user?.email || transaction.guestEmail) && (
+                          <p>Email: {transaction.user?.email || transaction.guestEmail}</p>
                         )}
                         {transaction.church && <p>Church: {transaction.church.name}</p>}
                         <p>Payment: {transaction.paymentMethod.replace('_', ' ')}</p>
@@ -481,11 +485,11 @@ export default function TransactionsPage() {
                     <p className="font-mono text-xs">{viewTransaction.reference}</p>
                   </div>
                 )}
-                {viewTransaction.user && (
+                {(viewTransaction.user || viewTransaction.isGuest) && (
                   <div className="col-span-2">
-                    <p className="text-muted-foreground">User</p>
-                    <p>{viewTransaction.user.firstName} {viewTransaction.user.lastName}</p>
-                    <p className="text-xs text-muted-foreground">{viewTransaction.user.email}</p>
+                    <p className="text-muted-foreground">Name</p>
+                    <p>{viewTransaction.user ? `${viewTransaction.user.firstName} ${viewTransaction.user.lastName}` : viewTransaction.guestName}</p>
+                    <p className="text-xs text-muted-foreground">{viewTransaction.user?.email || viewTransaction.guestEmail}</p>
                   </div>
                 )}
                 {viewTransaction.church && (

@@ -148,7 +148,9 @@ export default function EventTicketsPage() {
           <ExportImportButtons
             data={tickets.map((t: any) => ({
               ticketNumber: t.ticketNumber,
-              user: `${t.user?.firstName} ${t.user?.lastName}`,
+              attendee: t.isGuest ? (t.guestName || 'Guest') : `${t.user?.firstName} ${t.user?.lastName}`,
+              email: t.isGuest ? (t.guestEmail || '') : '',
+              type: t.isGuest ? 'Guest' : 'Member',
               status: t.status,
               amount: t.transaction?.amount || 0,
               currency: t.transaction?.currency || '',
@@ -158,7 +160,9 @@ export default function EventTicketsPage() {
             filename={`event-tickets-${event?.title || 'export'}`}
             headers={[
               { label: 'Ticket Number', key: 'ticketNumber' },
-              { label: 'User', key: 'user' },
+              { label: 'Attendee', key: 'attendee' },
+              { label: 'Email', key: 'email' },
+              { label: 'Type', key: 'type' },
               { label: 'Status', key: 'status' },
               { label: 'Amount', key: 'amount' },
               { label: 'Currency', key: 'currency' },
@@ -307,7 +311,8 @@ export default function EventTicketsPage() {
             <thead className="bg-muted">
               <tr>
                 <th className="text-left p-3 text-sm font-medium">Ticket #</th>
-                <th className="text-left p-3 text-sm font-medium">User</th>
+                <th className="text-left p-3 text-sm font-medium">Attendee</th>
+                <th className="text-left p-3 text-sm font-medium">Type</th>
                 <th className="text-left p-3 text-sm font-medium">Status</th>
                 <th className="text-left p-3 text-sm font-medium">Amount</th>
                 <th className="text-left p-3 text-sm font-medium">Payment</th>
@@ -324,7 +329,15 @@ export default function EventTicketsPage() {
                         <span className="font-mono">{ticket.ticketNumber}</span>
                       </button>
                     </td>
-                    <td className="p-3 text-sm">{ticket.user?.firstName} {ticket.user?.lastName}</td>
+                    <td className="p-3 text-sm">
+                      {ticket.isGuest ? (ticket.guestName || 'Guest') : `${ticket.user?.firstName} ${ticket.user?.lastName}`}
+                    </td>
+                    <td className="p-3 text-sm">
+                      {ticket.isGuest
+                        ? <span className="px-2 py-1 rounded text-xs bg-purple-100 text-purple-800">Guest</span>
+                        : <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">Member</span>
+                      }
+                    </td>
                     <td className="p-3 text-sm">
                       <span className={`px-2 py-1 rounded text-xs ${
                         ticket.status === 'confirmed' ? 'bg-green-100 text-green-800' :
@@ -336,7 +349,7 @@ export default function EventTicketsPage() {
                       </span>
                     </td>
                     <td className="p-3 text-sm">
-                      {ticket.transaction ? `${ticket.transaction.currency} ${ticket.transaction.amount}` : event?.isFree ? 'Free' : '-'}
+                      {ticket.transaction ? `${ticket.transaction.currency} ${ticket.transaction.baseAmount ?? ticket.transaction.amount}` : event?.isFree ? 'Free' : '-'}
                     </td>
                     <td className="p-3 text-sm capitalize">{ticket.transaction?.paymentMethod?.replace('_', ' ') || '-'}</td>
                     <td className="p-3 text-sm">{new Date(ticket.createdAt).toLocaleDateString()}</td>
@@ -355,8 +368,7 @@ export default function EventTicketsPage() {
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                               {transactionData.gateway && <div><span className="font-medium">Gateway:</span> <span className="capitalize">{transactionData.gateway}</span></div>}
                               {transactionData.baseAmount && <div><span className="font-medium">Base Amount:</span> {transactionData.currency} {transactionData.baseAmount}</div>}
-                              {transactionData.convenienceFee && <div><span className="font-medium">Transaction Cost:</span> {transactionData.currency} {transactionData.convenienceFee}</div>}
-                              {transactionData.taxAmount && <div><span className="font-medium">Tax:</span> {transactionData.currency} {transactionData.taxAmount}</div>}
+                              {(transactionData.convenienceFee || transactionData.systemFeeAmount) && <div><span className="font-medium">Transaction Cost:</span> {transactionData.currency} {((transactionData.convenienceFee ?? 0) + (transactionData.systemFeeAmount ?? 0)).toLocaleString()}</div>}
                               {transactionData.totalAmount && <div><span className="font-medium">Total Amount:</span> {transactionData.currency} {transactionData.totalAmount}</div>}
                               <div><span className="font-medium">Status:</span> <span className="capitalize">{transactionData.status}</span></div>
                               <div><span className="font-medium">Payment Method:</span> <span className="capitalize">{transactionData.paymentMethod?.replace('_', ' ')}</span></div>
@@ -364,7 +376,6 @@ export default function EventTicketsPage() {
                               {transactionData.type && <div><span className="font-medium">Type:</span> <span className="capitalize">{transactionData.type?.replace('_', ' ')}</span></div>}
                               {transactionData.channel && <div><span className="font-medium">Channel:</span> <span className="capitalize">{transactionData.channel}</span></div>}
                               {transactionData.paidAt && <div><span className="font-medium">Paid At:</span> {new Date(transactionData.paidAt).toLocaleString()}</div>}
-                              {transactionData.feeRate && <div><span className="font-medium">Fee Rate:</span> {(transactionData.feeRate * 100).toFixed(1)}%</div>}
                               {transactionData.subaccountName && <div><span className="font-medium">Subaccount:</span> {transactionData.subaccountName}</div>}
                               {transactionData.customerEmail && <div><span className="font-medium">Email:</span> {transactionData.customerEmail}</div>}
                               {transactionData.customerPhone && <div><span className="font-medium">Phone:</span> {transactionData.customerPhone}</div>}

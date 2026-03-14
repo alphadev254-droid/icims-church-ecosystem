@@ -33,26 +33,26 @@ import { Link } from 'react-router-dom';
 
 // ─── Role display helpers ─────────────────────────────────────────────────────
 const ROLE_DISPLAY: Record<string, string> = {
-  national_admin: 'National Admin',
-  regional_leader: 'Regional Leader',
-  district_overseer: 'District Overseer',
-  local_admin: 'Local Admin',
+  ministry_admin: 'Ministry Administrator',
+  regional_admin: 'Regional Administrator',
+  district_admin: 'District Administrator',
+  branch_admin: 'Branch Administrator',
   member: 'Member',
 };
 
 const ROLE_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = {
-  national_admin: 'default',
-  regional_leader: 'default',
-  district_overseer: 'secondary',
-  local_admin: 'secondary',
+  ministry_admin: 'default',
+  regional_admin: 'default',
+  district_admin: 'secondary',
+  branch_admin: 'secondary',
   member: 'outline',
 };
 
 // ─── Role select ──────────────────────────────────────────────────────────────
 function RoleSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { data: roles = [] } = useQuery({ queryKey: ['roles'], queryFn: rolesService.getRoles });
-  // Filter out national_admin role from user creation/editing
-  const filteredRoles = roles.filter(r => r.name !== 'national_admin');
+  // Filter out ministry_admin role from user creation/editing
+  const filteredRoles = roles.filter(r => r.name !== 'ministry_admin');
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -161,7 +161,7 @@ function CreateUserForm({ onSubmit, isPending }: {
   }
 
   // Determine what fields are needed based on selected role
-  const showAdminScope = (role === 'district_overseer' || role === 'local_admin' || role === 'regional_leader') && currentUserRole === 'national_admin';
+  const showAdminScope = (role === 'district_admin' || role === 'branch_admin' || role === 'regional_admin') && currentUserRole === 'ministry_admin';
   const needsChurchSelection = role === 'member';
 
   return (
@@ -319,10 +319,10 @@ function CreateUserForm({ onSubmit, isPending }: {
         <Label htmlFor="baptized" className="cursor-pointer">Baptized by immersion</Label>
       </div>
       
-      {/* Admin scope for district_overseer / local_admin / regional_leader */}
+      {/* Admin scope for district_admin / branch_admin / regional_admin */}
       {showAdminScope && (
         <AdminScopeSelector
-          role={role as 'district_overseer' | 'local_admin' | 'regional_leader'}
+          role={role as 'district_admin' | 'branch_admin' | 'regional_admin'}
           districts={districts}
           tas={tas}
           regions={regions}
@@ -383,13 +383,13 @@ function EditUserForm({ user, onSubmit, isPending }: {
   function handleRoleChange(v: string) {
     setRole(v);
     setValue('roleName', v);
-    if (v !== 'district_overseer') setDistricts([]);
-    if (v !== 'local_admin') setTas([]);
-    if (v !== 'regional_leader') setRegions([]);
+    if (v !== 'district_admin') setDistricts([]);
+    if (v !== 'branch_admin') setTas([]);
+    if (v !== 'regional_admin') setRegions([]);
   }
 
-  const showAdminScope = (role === 'district_overseer' || role === 'local_admin' || role === 'regional_leader') && currentUserRole === 'national_admin';
-  const needsChurchSelection = role === 'member' && currentUserRole === 'national_admin';
+  const showAdminScope = (role === 'district_admin' || role === 'branch_admin' || role === 'regional_admin') && currentUserRole === 'ministry_admin';
+  const needsChurchSelection = role === 'member' && currentUserRole === 'ministry_admin';
 
   return (
     <form onSubmit={handleSubmit((v) => {
@@ -545,7 +545,7 @@ function EditUserForm({ user, onSubmit, isPending }: {
       
       {showAdminScope && (
         <AdminScopeSelector
-          role={role as 'district_overseer' | 'local_admin' | 'regional_leader'}
+          role={role as 'district_admin' | 'branch_admin' | 'regional_admin'}
           districts={districts}
           tas={tas}
           regions={regions}
@@ -693,9 +693,9 @@ export default function UsersManagement() {
     
     const payload = {
       ...v,
-      districts: (v.roleName === 'district_overseer' || v.roleName === 'local_admin') ? districts : undefined,
-      traditionalAuthorities: v.roleName === 'local_admin' ? tas : undefined,
-      regions: v.roleName === 'regional_leader' ? regions : undefined,
+      districts: (v.roleName === 'district_admin' || v.roleName === 'branch_admin') ? districts : undefined,
+      traditionalAuthorities: v.roleName === 'branch_admin' ? tas : undefined,
+      regions: v.roleName === 'regional_admin' ? regions : undefined,
       // Pass location data for church assignment
       region: v.region,
       district: v.district,
@@ -735,9 +735,9 @@ export default function UsersManagement() {
       serviceInterest: v.serviceInterest,
       baptizedByImmersion: v.baptizedByImmersion,
       roleName: v.roleName,
-      districts: (v.roleName === 'district_overseer' || v.roleName === 'local_admin') ? districts : [],
-      traditionalAuthorities: v.roleName === 'local_admin' ? tas : [],
-      regions: v.roleName === 'regional_leader' ? regions : [],
+      districts: (v.roleName === 'district_admin' || v.roleName === 'branch_admin') ? districts : [],
+      traditionalAuthorities: v.roleName === 'branch_admin' ? tas : [],
+      regions: v.roleName === 'regional_admin' ? regions : [],
     };
     
     console.log('Payload before church check:', payload);
@@ -901,10 +901,10 @@ export default function UsersManagement() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="national_admin">National Admin</SelectItem>
-            <SelectItem value="regional_leader">Regional Leader</SelectItem>
-            <SelectItem value="district_overseer">District Overseer</SelectItem>
-            <SelectItem value="local_admin">Local Admin</SelectItem>
+            <SelectItem value="ministry_admin">Ministry Administrator</SelectItem>
+            <SelectItem value="regional_admin">Regional Administrator</SelectItem>
+            <SelectItem value="district_admin">District Administrator</SelectItem>
+            <SelectItem value="branch_admin">Branch Administrator</SelectItem>
             <SelectItem value="member">Member</SelectItem>
           </SelectContent>
         </Select>
@@ -959,9 +959,9 @@ export default function UsersManagement() {
               <TableBody>
                 {users.map(user => {
                   const isSelf = user.id === currentUser?.id;
-                  const scopeItems = user.roleName === 'district_overseer'
+                  const scopeItems = user.roleName === 'district_admin'
                     ? user.districts
-                    : user.roleName === 'local_admin'
+                    : user.roleName === 'branch_admin'
                     ? user.traditionalAuthorities
                     : null;
                   const scopeText = !scopeItems || scopeItems.length === 0
@@ -1139,19 +1139,19 @@ export default function UsersManagement() {
                   <p className="font-medium">{(viewUser as any).teams.join(', ')}</p>
                 </div>
               )}
-              {viewUser.roleName === 'district_overseer' && viewUser.districts && viewUser.districts.length > 0 && (
+              {viewUser.roleName === 'district_admin' && viewUser.districts && viewUser.districts.length > 0 && (
                 <div>
                   <Label className="text-muted-foreground">Districts</Label>
                   <p className="font-medium">{viewUser.districts.includes('__all__') ? 'All Districts' : viewUser.districts.join(', ')}</p>
                 </div>
               )}
-              {viewUser.roleName === 'local_admin' && viewUser.districts && viewUser.districts.length > 0 && (
+              {viewUser.roleName === 'branch_admin' && viewUser.districts && viewUser.districts.length > 0 && (
                 <div>
                   <Label className="text-muted-foreground">District</Label>
                   <p className="font-medium">{viewUser.districts[0]}</p>
                 </div>
               )}
-              {viewUser.roleName === 'local_admin' && viewUser.traditionalAuthorities && viewUser.traditionalAuthorities.length > 0 && (
+              {viewUser.roleName === 'branch_admin' && viewUser.traditionalAuthorities && viewUser.traditionalAuthorities.length > 0 && (
                 <div>
                   <Label className="text-muted-foreground">Traditional Authorities</Label>
                   <p className="font-medium">{viewUser.traditionalAuthorities.includes('__all__') ? 'All TAs' : viewUser.traditionalAuthorities.join(', ')}</p>

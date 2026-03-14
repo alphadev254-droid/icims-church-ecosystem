@@ -64,7 +64,8 @@ const schema = z.object({
     z.number().positive().optional(),
   ),
   ticketSalesCutoff: z.string().optional(),
-  imageUrl: z.string().optional(),
+  allowPublicTicketing: z.boolean().default(false),
+  imageUrl: z.string().nullable().optional(),
 }).refine((data) => new Date(data.endDate) >= new Date(data.date), {
   message: 'End date must be on or after start date',
   path: ['endDate'],
@@ -117,6 +118,7 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
       description: '',
       requiresTicket: false,
       isFree: true,
+      allowPublicTicketing: false,
       currency: 'MWK',
       ...defaultValues,
     },
@@ -130,6 +132,7 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
     if (defaultValues?.currency) setValue('currency', defaultValues.currency);
     if (defaultValues?.requiresTicket !== undefined) setValue('requiresTicket', defaultValues.requiresTicket);
     if (defaultValues?.isFree !== undefined) setValue('isFree', defaultValues.isFree);
+    if (defaultValues?.allowPublicTicketing !== undefined) setValue('allowPublicTicketing', defaultValues.allowPublicTicketing);
     if (defaultValues?.imageUrl) setValue('imageUrl', defaultValues.imageUrl);
   }, []); // run once on mount — defaultValues won't change between mounts
 
@@ -161,6 +164,7 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
   };
 
   const handleFormSubmit = async (values: FormValues) => {
+    console.log('[EventForm] Submit data:', values);
     // Upload new image if one was selected
     if (imageFileRef.current) {
       setIsUploading(true);
@@ -188,6 +192,7 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit, (errs) => {
+        console.log('[EventForm] Validation errors:', errs);
         const firstError = Object.values(errs)[0];
         toast.error(firstError?.message || 'Please fix validation errors');
       })}
@@ -245,12 +250,12 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
       {/* Contact Information */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>Contact Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
+          <Label>Enquiries Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
           <Input type="email" {...register('contactEmail')} placeholder="info@church.com" />
           {errors.contactEmail && <p className="text-xs text-destructive mt-1">{errors.contactEmail.message}</p>}
         </div>
         <div>
-          <Label>Contact Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+          <Label>Enquiries Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
           <Input {...register('contactPhone')} placeholder="+265..." />
         </div>
       </div>
@@ -385,6 +390,19 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
             </Label>
             <Input type="datetime-local" {...register('ticketSalesCutoff')} />
             <p className="text-xs text-muted-foreground mt-1">Stop ticket sales at this date/time</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="allowPublicTicketing"
+              {...register('allowPublicTicketing')}
+              className="h-4 w-4"
+            />
+            <Label htmlFor="allowPublicTicketing" className="cursor-pointer">
+              Allow public ticket purchasing
+              <span className="block text-xs text-muted-foreground font-normal">Guests can buy tickets without an account via the public event page</span>
+            </Label>
           </div>
         </>
       )}
@@ -604,13 +622,14 @@ export default function EventsPage() {
     churchId: e.churchId,
     requiresTicket: e.requiresTicket,
     isFree: e.isFree,
+    allowPublicTicketing: (e as any).allowPublicTicketing ?? false,
     ticketPrice: e.ticketPrice,
     currency: e.currency,
     totalTickets: e.totalTickets,
     ticketSalesCutoff: e.ticketSalesCutoff
       ? new Date(e.ticketSalesCutoff).toISOString().slice(0, 16)
       : undefined,
-    imageUrl: e.imageUrl,
+    imageUrl: e.imageUrl ?? undefined,
   });
 
   return (
@@ -1014,10 +1033,10 @@ export default function EventsPage() {
                       <span>Convenience Fee:</span>
                       <span>{paymentConfirm.details.currency} {paymentConfirm.details.convenienceFee?.toFixed(2)}</span>
                     </div>
-                    {paymentConfirm.details.taxAmount > 0 && (
+                    {paymentConfirm.details.systemFeeAmount > 0 && (
                       <div className="flex justify-between text-muted-foreground">
                         <span>Tax:</span>
-                        <span>{paymentConfirm.details.currency} {paymentConfirm.details.taxAmount?.toFixed(2)}</span>
+                        <span>{paymentConfirm.details.currency} {paymentConfirm.details.systemFeeAmount?.toFixed(2)}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-semibold text-base pt-2 border-t">
