@@ -357,8 +357,8 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-bold">Reports</h1>
-        <p className="text-sm text-muted-foreground">Generate and export comprehensive reports across all modules</p>
+        <h1 className="font-heading text-xl sm:text-2xl font-bold">Reports</h1>
+        <p className="text-xs text-muted-foreground">Generate and export comprehensive reports across all modules</p>
       </div>
 
       {/* Summary banner */}
@@ -373,13 +373,13 @@ export default function ReportsPage() {
             const Icon = item.icon;
             return (
               <Card key={item.label}>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 bg-accent/10 rounded-md">
-                    <Icon className="h-4 w-4 text-accent" />
+                <CardContent className="p-3 flex items-center gap-2">
+                  <div className="p-1.5 bg-accent/10 rounded-md shrink-0">
+                    <Icon className="h-3.5 w-3.5 text-accent" />
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{item.label}</p>
-                    <p className="text-lg font-bold font-heading">{item.value}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground truncate">{item.label}</p>
+                    <p className="text-base font-bold font-heading truncate">{item.value}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -390,18 +390,15 @@ export default function ReportsPage() {
 
       {/* KPI Section */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-accent/10 rounded-md">
-                <Target className="h-4 w-4 text-accent" />
-              </div>
-              <div>
-                <CardTitle className="text-base">KPI Targets</CardTitle>
-                <p className="text-xs text-muted-foreground">Track performance against your goals</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
+        <div className="flex items-center gap-3 px-6 py-4">
+          <div className="p-2 bg-accent/10 rounded-md shrink-0">
+            <Target className="h-4 w-4 text-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-base">KPI Targets</CardTitle>
+            <p className="text-xs text-muted-foreground">Track performance against your goals</p>
+          </div>
+          <div className="flex flex-wrap gap-2 shrink-0">
               <Button
                 size="sm"
                 variant="outline"
@@ -418,7 +415,7 @@ export default function ReportsPage() {
                       <Plus className="h-3.5 w-3.5 mr-1.5" /> New KPI
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+                  <DialogContent className="max-w-sm sm:max-w-lg max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Create KPI Target</DialogTitle>
                     </DialogHeader>
@@ -428,7 +425,7 @@ export default function ReportsPage() {
               )}
               {hasPermission('reports:update') && (
                 <Dialog open={!!editingKpi} onOpenChange={(open) => !open && setEditingKpi(null)}>
-                  <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+                  <DialogContent className="max-w-sm sm:max-w-lg max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Edit KPI Target</DialogTitle>
                     </DialogHeader>
@@ -437,8 +434,7 @@ export default function ReportsPage() {
                 </Dialog>
               )}
             </div>
-          </div>
-        </CardHeader>
+        </div>
         <CardContent>
           {kl ? (
             <div className="flex items-center justify-center py-8">
@@ -477,16 +473,10 @@ export default function ReportsPage() {
                           )}
                         </div>
                         {kpi.description && <p className="text-xs text-muted-foreground mt-1">{kpi.description}</p>}
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
                           <span>{kpi.period}</span>
-                          <span>•</span>
                           <span>{new Date(kpi.startDate).toLocaleDateString()} - {new Date(kpi.endDate).toLocaleDateString()}</span>
-                          {kpi.church && (
-                            <>
-                              <span>•</span>
-                              <span>{kpi.church.name}</span>
-                            </>
-                          )}
+                          {kpi.church && <span>{kpi.church.name}</span>}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -578,7 +568,7 @@ export default function ReportsPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
             {reportCards.map(card => {
               const Icon = card.icon;
               return (
@@ -746,11 +736,11 @@ function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
       <div>
-        <Label>Church <span className="text-destructive">*</span></Label>
+        <Label className="text-xs sm:text-sm">Church <span className="text-destructive">*</span></Label>
         <Select value={churchId} onValueChange={setChurchId} required>
-          <SelectTrigger><SelectValue placeholder="Select a church" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="Select a church" /></SelectTrigger>
           <SelectContent>
             {(churches as any[]).map(church => (
               <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
@@ -759,16 +749,16 @@ function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
         </Select>
       </div>
       <div>
-        <Label>KPI Name</Label>
-        <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Q1 Attendance Goal" required />
+        <Label className="text-xs sm:text-sm">KPI Name</Label>
+        <Input className="h-8 text-xs sm:h-10 sm:text-sm" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Q1 Attendance Goal" required />
       </div>
       <div>
-        <Label>Description (Optional)</Label>
-        <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Brief description of this KPI" rows={2} />
+        <Label className="text-xs sm:text-sm">Description (Optional)</Label>
+        <Textarea className="text-xs sm:text-sm" value={description} onChange={e => setDescription(e.target.value)} placeholder="Brief description of this KPI" rows={2} />
       </div>
-      <div className="flex items-center justify-between p-3 border rounded-md">
+      <div className="flex items-center justify-between p-2 sm:p-3 border rounded-md">
         <div>
-          <Label className="text-sm font-medium">Recurring KPI</Label>
+          <Label className="text-xs sm:text-sm font-medium">Recurring KPI</Label>
           <p className="text-xs text-muted-foreground">Auto-create this KPI for next period</p>
         </div>
         <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
@@ -776,29 +766,27 @@ function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
       {isRecurring && (
         <>
           <div>
-            <Label>Period <span className="text-destructive">*</span></Label>
+            <Label className="text-xs sm:text-sm">Period <span className="text-destructive">*</span></Label>
             <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="monthly">Monthly</SelectItem>
                 <SelectItem value="quarterly">Quarterly</SelectItem>
                 <SelectItem value="yearly">Yearly</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground mt-1">Dates will auto-fill for current {period} period</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Dates will auto-fill for current {period} period</p>
           </div>
-          <Alert className="border-green-200 bg-green-50">
-            <p className="text-xs text-green-800">
-              Select your start date and end date will auto-calculate based on the period.
-            </p>
+          <Alert className="border-green-200 bg-green-50 py-2">
+            <p className="text-xs text-green-800">Select your start date and end date will auto-calculate based on the period.</p>
           </Alert>
         </>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <Label>Category</Label>
+          <Label className="text-xs sm:text-sm">Category</Label>
           <Select value={category} onValueChange={(v) => { setCategory(v); setMetricType(metricOptions[v][0].value); }}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Attendance">Attendance</SelectItem>
               <SelectItem value="Giving">Giving</SelectItem>
@@ -808,9 +796,9 @@ function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
           </Select>
         </div>
         <div>
-          <Label>Metric Type</Label>
+          <Label className="text-xs sm:text-sm">Metric Type</Label>
           <Select value={metricType} onValueChange={setMetricType}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               {currentMetrics.map(m => (
                 <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
@@ -822,9 +810,9 @@ function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
       {category === 'Attendance' && !isRecurring && (
         <>
           <div>
-            <Label>Attendance Type</Label>
+            <Label className="text-xs sm:text-sm">Attendance Type</Label>
             <Select value={attendanceType} onValueChange={setAttendanceType}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="regular">Regular Service</SelectItem>
                 <SelectItem value="event">Event</SelectItem>
@@ -833,9 +821,9 @@ function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
           </div>
           {attendanceType === 'event' && (
             <div>
-              <Label>Select Event (Optional)</Label>
+              <Label className="text-xs sm:text-sm">Select Event (Optional)</Label>
               <Select value={eventId || 'all'} onValueChange={(v) => setEventId(v === 'all' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="All Events" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="All Events" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Events</SelectItem>
                   {(events as any[]).map(event => (
@@ -843,21 +831,21 @@ function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-1">Leave empty to track all event attendance</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Leave empty to track all event attendance</p>
             </div>
           )}
         </>
       )}
       <div>
-        <Label>Target Value</Label>
-        <Input type="number" value={targetValue} onChange={e => setTargetValue(e.target.value)} placeholder="1000" required />
-        <p className="text-xs text-muted-foreground mt-1">Unit: {currentUnit}</p>
+        <Label className="text-xs sm:text-sm">Target Value</Label>
+        <Input className="h-8 text-xs sm:h-10 sm:text-sm" type="number" value={targetValue} onChange={e => setTargetValue(e.target.value)} placeholder="1000" required />
+        <p className="text-xs text-muted-foreground mt-0.5">Unit: {currentUnit}</p>
       </div>
       {!isRecurring && (
         <div>
-          <Label>Period</Label>
+          <Label className="text-xs sm:text-sm">Period</Label>
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="monthly">Monthly</SelectItem>
               <SelectItem value="quarterly">Quarterly</SelectItem>
@@ -866,21 +854,21 @@ function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
           </Select>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <Label>Start Date</Label>
-          <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
-          {isRecurring && <p className="text-xs text-muted-foreground mt-1">Choose your period start</p>}
+          <Label className="text-xs sm:text-sm">Start Date</Label>
+          <Input className="h-8 text-xs sm:h-10 sm:text-sm" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
+          {isRecurring && <p className="text-xs text-muted-foreground mt-0.5">Choose your period start</p>}
         </div>
         <div>
-          <Label>End Date</Label>
-          <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required disabled={isRecurring} />
-          {isRecurring && <p className="text-xs text-muted-foreground mt-1">Auto-calculated</p>}
+          <Label className="text-xs sm:text-sm">End Date</Label>
+          <Input className="h-8 text-xs sm:h-10 sm:text-sm" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required disabled={isRecurring} />
+          {isRecurring && <p className="text-xs text-muted-foreground mt-0.5">Auto-calculated</p>}
         </div>
       </div>
-      <div className="flex gap-2 pt-2">
-        <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-        <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="flex-1">
+      <div className="flex gap-2 pt-1 sm:pt-2">
+        <Button type="button" size="sm" variant="outline" onClick={onClose} className="flex-1 sm:h-10 sm:text-sm">Cancel</Button>
+        <Button type="submit" size="sm" disabled={createMutation.isPending || updateMutation.isPending} className="flex-1 sm:h-10 sm:text-sm">
           {kpi ? (updateMutation.isPending ? 'Updating...' : 'Update KPI') : (createMutation.isPending ? 'Creating...' : 'Create KPI')}
         </Button>
       </div>

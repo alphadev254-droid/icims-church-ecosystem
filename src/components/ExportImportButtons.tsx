@@ -72,27 +72,27 @@ export function ExportImportButtons({
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-1.5">
       <CSVLink
         data={data}
         headers={headers}
         filename={`${filename}.csv`}
         className="inline-flex"
       >
-        <Button variant="outline" size="sm" className="gap-2">
-          <Download className="h-4 w-4" /> CSV
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+          <Download className="h-3 w-3" /> CSV
         </Button>
       </CSVLink>
 
-      <Button variant="outline" size="sm" className="gap-2" onClick={handleExportPDF}>
-        <FileText className="h-4 w-4" /> PDF
+      <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={handleExportPDF}>
+        <FileText className="h-3 w-3" /> PDF
       </Button>
 
       {onImport && (
         <label>
-          <Button variant="outline" size="sm" className="gap-2" asChild>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" asChild>
             <span>
-              <Upload className="h-4 w-4" /> Import CSV
+              <Upload className="h-3 w-3" /> Import
             </span>
           </Button>
           <input

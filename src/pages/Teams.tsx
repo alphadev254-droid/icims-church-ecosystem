@@ -106,17 +106,17 @@ export default function TeamsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold">{isMember ? 'My Teams' : 'Teams'}</h1>
-          <p className="text-sm text-muted-foreground">{teams.length} {isMember ? 'team(s) you belong to' : 'teams'}</p>
+          <h1 className="font-heading text-xl sm:text-2xl font-bold">{isMember ? 'My Teams' : 'Teams'}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">{teams.length} {isMember ? 'team(s) you belong to' : 'teams'}</p>
         </div>
         {!isMember && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {churches.length >= 1 && (
             <Select value={churchFilter} onValueChange={setChurchFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="h-8 text-xs sm:h-9 sm:text-sm w-40 sm:w-48">
                 <SelectValue placeholder="Filter by church" />
               </SelectTrigger>
               <SelectContent>
@@ -150,11 +150,11 @@ export default function TeamsPage() {
           {canCreate && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" /> Create Team
+              <Button size="sm" className="h-8 text-xs sm:h-9 sm:text-sm gap-1.5">
+                <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Create Team
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-sm sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Create Team</DialogTitle>
               </DialogHeader>
@@ -178,51 +178,51 @@ export default function TeamsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((team) => (
             <Card key={team.id}>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-2 sm:pb-3 px-4 sm:px-6 pt-4 sm:pt-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      {team.color && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: team.color }} />}
+                    <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                      {team.color && <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: team.color }} />}
                       {team.name}
                     </CardTitle>
-                    <p className="text-xs text-muted-foreground mt-1">{team.church.name}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">{team.church.name}</p>
                   </div>
                   <div className="flex gap-1">
                     {canUpdate && (
                       <button onClick={() => setEditTeam(team)} className="p-1 hover:bg-muted rounded">
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </button>
                     )}
                     {canDelete && (
                       <button onClick={() => setDeleteTeam(team)} className="p-1 hover:bg-muted rounded text-destructive">
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </button>
                     )}
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {team.description && <p className="text-xs text-muted-foreground">{team.description}</p>}
-                <div className="flex items-center justify-between text-sm">
+              <CardContent className="space-y-2 sm:space-y-3 px-4 sm:px-6 pb-4 sm:pb-6">
+                {team.description && <p className="text-xs sm:text-sm text-muted-foreground">{team.description}</p>}
+                <div className="flex items-center justify-between text-xs sm:text-sm">
                   <span className="text-muted-foreground">Members</span>
                   <Badge variant="secondary">{team.memberCount}</Badge>
                 </div>
                 {team.leaders.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Crown className="h-3 w-3" /> Leaders
+                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                      <Crown className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Leaders
                     </p>
                     {team.leaders.map((leader) => (
-                      <p key={leader.id} className="text-xs font-medium">{leader.firstName} {leader.lastName}</p>
+                      <p key={leader.id} className="text-xs sm:text-sm font-medium">{leader.firstName} {leader.lastName}</p>
                     ))}
                   </div>
                 )}
                 {canAssign && (
-                  <Button size="sm" variant="outline" className="w-full gap-2" onClick={() => navigate(`/dashboard/teams/${team.id}/members`)}>
-                    <UserPlus className="h-3.5 w-3.5" /> Manage Members
+                  <Button size="sm" variant="outline" className="w-full gap-1.5 h-8 text-xs sm:h-9 sm:text-sm" onClick={() => navigate(`/dashboard/teams/${team.id}/members`)}>
+                    <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Manage Members
                   </Button>
                 )}
               </CardContent>
@@ -233,7 +233,7 @@ export default function TeamsPage() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editTeam} onOpenChange={(open) => !open && setEditTeam(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-sm sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Team</DialogTitle>
           </DialogHeader>
@@ -281,20 +281,20 @@ function TeamForm({ team, onSubmit, isPending, churches }: { team?: Team; onSubm
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <Label>Team Name</Label>
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Usher Team" required />
+        <Label className="text-xs sm:text-sm">Team Name</Label>
+        <Input className="h-8 text-xs sm:h-10 sm:text-sm" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Usher Team" required />
       </div>
       <div>
-        <Label>Description (Optional)</Label>
-        <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description" rows={2} />
+        <Label className="text-xs sm:text-sm">Description (Optional)</Label>
+        <Textarea className="text-xs sm:text-sm" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description" rows={2} />
       </div>
       {!team && (
         <div>
-          <Label>Church</Label>
+          <Label className="text-xs sm:text-sm">Church</Label>
           <Select value={churchId} onValueChange={setChurchId} required>
-            <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="Select church" /></SelectTrigger>
             <SelectContent>
               {churches.map((church: any) => (
                 <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
@@ -304,10 +304,10 @@ function TeamForm({ team, onSubmit, isPending, churches }: { team?: Team; onSubm
         </div>
       )}
       <div>
-        <Label>Color (Optional)</Label>
-        <Input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+        <Label className="text-xs sm:text-sm">Color (Optional)</Label>
+        <Input type="color" className="h-8 sm:h-10" value={color} onChange={(e) => setColor(e.target.value)} />
       </div>
-      <Button type="submit" disabled={isPending} className="w-full">
+      <Button type="submit" disabled={isPending} className="w-full h-8 text-xs sm:h-10 sm:text-sm">
         {isPending ? 'Saving...' : team ? 'Update Team' : 'Create Team'}
       </Button>
     </form>

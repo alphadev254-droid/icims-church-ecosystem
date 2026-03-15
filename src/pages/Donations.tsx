@@ -33,20 +33,22 @@ export default function DonationsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/giving')}>
-            <ArrowLeft className="h-5 w-5" />
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate('/dashboard/giving')}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="font-heading text-2xl font-bold">Donations/Giving</h1>
-            <p className="text-sm text-muted-foreground">{donations.length} total donations</p>
+            <h1 className="font-heading text-xl sm:text-2xl font-bold">Donations/Giving</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">{donations.length} total donations</p>
           </div>
         </div>
         <ExportImportButtons
           data={donations.map((d: any) => ({
             donor: d.isAnonymous ? 'Anonymous' : (d.isGuest ? d.guestName : (d.donorName || `${d.user?.firstName} ${d.user?.lastName}`)),
+            email: d.isAnonymous ? '' : (d.isGuest ? d.guestEmail : (d.donorEmail || d.user?.email || '')),
+            type: d.isAnonymous ? 'Anonymous' : d.isGuest ? 'Guest' : 'Member',
             campaign: d.campaign?.name || '',
             church: d.church?.name || '',
             category: d.campaign?.category || '',
@@ -58,6 +60,8 @@ export default function DonationsPage() {
           filename="donations"
           headers={[
             { label: 'Donor', key: 'donor' },
+            { label: 'Email', key: 'email' },
+            { label: 'Type', key: 'type' },
             { label: 'Campaign', key: 'campaign' },
             { label: 'Church', key: 'church' },
             { label: 'Category', key: 'category' },
@@ -75,86 +79,78 @@ export default function DonationsPage() {
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full">
+        <div className="border rounded-lg overflow-x-auto">
+          <table className="w-full min-w-[640px] text-xs sm:text-sm">
             <thead className="bg-muted">
               <tr>
-                <th className="text-left p-3 text-sm font-medium">Donor</th>
-                <th className="text-left p-3 text-sm font-medium">Campaign</th>
-                <th className="text-left p-3 text-sm font-medium">Church</th>
-                <th className="text-left p-3 text-sm font-medium">Amount</th>
-                <th className="text-left p-3 text-sm font-medium">Status</th>
-                <th className="text-left p-3 text-sm font-medium">Date</th>
-                <th className="w-10"></th>
+                <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Donor</th>
+                <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Email</th>
+                <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Type</th>
+                <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Campaign</th>
+                <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Church</th>
+                <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Amount</th>
+                <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Status</th>
+                <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Date</th>
+                <th className="w-8"></th>
               </tr>
             </thead>
             <tbody>
               {donations.map((donation: any) => (
                 <React.Fragment key={donation.id}>
                   <tr className="border-t hover:bg-muted/50">
-                    <td className="p-3">
-                      {donation.isAnonymous ? (
-                        <span className="text-muted-foreground">Anonymous</span>
-                      ) : (
-                        <div>
-                          <div className="font-medium">
-                            {donation.isGuest
-                              ? donation.guestName
-                              : donation.donorName || `${donation.user?.firstName} ${donation.user?.lastName}`}
-                          </div>
-                          {(donation.isGuest ? donation.guestEmail : donation.donorEmail) && (
-                            <div className="text-xs text-muted-foreground">
-                              {donation.isGuest ? donation.guestEmail : donation.donorEmail}
-                            </div>
-                          )}
-                          {donation.isGuest && (
-                            <div className="text-xs text-blue-500">Guest</div>
-                          )}
-                        </div>
-                      )}
+                    <td className="px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">
+                      {donation.isAnonymous ? 'Anonymous' : (donation.isGuest ? donation.guestName : (donation.donorName || `${donation.user?.firstName} ${donation.user?.lastName}`))}
                     </td>
-                    <td className="p-3">
-                      <div className="font-medium">{donation.campaign?.name}</div>
+                    <td className="px-3 py-2 text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                      {donation.isAnonymous ? '-' : (donation.isGuest ? donation.guestEmail : (donation.donorEmail || donation.user?.email || '-'))}
+                    </td>
+                    <td className="px-3 py-2">
+                      {donation.isAnonymous
+                        ? <Badge variant="outline" className="text-xs px-1.5 py-0">Anonymous</Badge>
+                        : donation.isGuest
+                        ? <Badge variant="outline" className="text-xs px-1.5 py-0 text-blue-500 border-blue-300">Guest</Badge>
+                        : <Badge variant="outline" className="text-xs px-1.5 py-0">Member</Badge>
+                      }
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="text-xs sm:text-sm font-medium whitespace-nowrap">{donation.campaign?.name}</div>
                       <div className="text-xs text-muted-foreground capitalize">{donation.campaign?.category}</div>
                     </td>
-                    <td className="p-3">
-                      <div className="text-sm">{donation.church?.name || 'N/A'}</div>
+                    <td className="px-3 py-2">
+                      <div className="text-xs sm:text-sm whitespace-nowrap">{donation.church?.name || 'N/A'}</div>
                     </td>
-                    <td className="p-3 font-medium">
+                    <td className="px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">
                       {donation.currency} {donation.amount.toLocaleString()}
                     </td>
-                    <td className="p-3">
-                      <Badge variant={donation.status === 'completed' ? 'default' : 'secondary'}>
+                    <td className="px-3 py-2">
+                      <Badge variant={donation.status === 'completed' ? 'default' : 'secondary'} className="text-xs px-1.5 py-0">
                         {donation.status}
                       </Badge>
                     </td>
-                    <td className="p-3 text-sm text-muted-foreground">
+                    <td className="px-3 py-2 text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                       {new Date(donation.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="p-3">
-                      <button
-                        onClick={() => handleToggleExpand(donation.id)}
-                        className="p-1 hover:bg-muted rounded"
-                      >
+                    <td className="px-3 py-2">
+                      <button onClick={() => handleToggleExpand(donation.id)} className="p-1 hover:bg-muted rounded">
                         {expandedDonation === donation.id ? (
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className="h-3.5 w-3.5" />
                         ) : (
-                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-3.5 w-3.5" />
                         )}
                       </button>
                     </td>
                   </tr>
                   {expandedDonation === donation.id && (
                     <tr className="border-t bg-muted/30">
-                      <td colSpan={7} className="p-4">
+                      <td colSpan={9} className="px-3 py-3">
                         {isLoadingTransaction ? (
                           <div className="flex items-center justify-center py-4">
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
                           </div>
                         ) : transactionData ? (
-                          <div className="space-y-3">
-                            <h3 className="font-semibold text-sm">Transaction Details</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div className="space-y-2">
+                            <h3 className="font-semibold text-xs sm:text-sm">Transaction Details</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs sm:text-sm">
                               {transactionData.gateway && (
                                 <div>
                                   <div className="text-muted-foreground">Gateway</div>
@@ -164,25 +160,19 @@ export default function DonationsPage() {
                               {transactionData.baseAmount !== undefined && (
                                 <div>
                                   <div className="text-muted-foreground">Base Amount</div>
-                                  <div className="font-medium">
-                                    {transactionData.currency} {transactionData.baseAmount?.toLocaleString()}
-                                  </div>
+                                  <div className="font-medium">{transactionData.currency} {transactionData.baseAmount?.toLocaleString()}</div>
                                 </div>
                               )}
                               {(transactionData.convenienceFee !== undefined || transactionData.systemFeeAmount !== undefined) && (
                                 <div>
                                   <div className="text-muted-foreground">Transaction Cost</div>
-                                  <div className="font-medium">
-                                    {transactionData.currency} {((transactionData.convenienceFee ?? 0) + (transactionData.systemFeeAmount ?? 0)).toLocaleString()}
-                                  </div>
+                                  <div className="font-medium">{transactionData.currency} {((transactionData.convenienceFee ?? 0) + (transactionData.systemFeeAmount ?? 0)).toLocaleString()}</div>
                                 </div>
                               )}
                               {transactionData.totalAmount !== undefined && (
                                 <div>
                                   <div className="text-muted-foreground">Total Amount</div>
-                                  <div className="font-medium">
-                                    {transactionData.currency} {transactionData.totalAmount?.toLocaleString()}
-                                  </div>
+                                  <div className="font-medium">{transactionData.currency} {transactionData.totalAmount?.toLocaleString()}</div>
                                 </div>
                               )}
                               <div>
@@ -191,11 +181,11 @@ export default function DonationsPage() {
                               </div>
                               <div>
                                 <div className="text-muted-foreground">Reference</div>
-                                <div className="font-medium text-xs break-all">{transactionData.reference}</div>
+                                <div className="font-medium break-all">{transactionData.reference}</div>
                               </div>
                               <div>
                                 <div className="text-muted-foreground">Status</div>
-                                <Badge variant={transactionData.status === 'completed' ? 'default' : 'secondary'}>
+                                <Badge variant={transactionData.status === 'completed' ? 'default' : 'secondary'} className="text-xs px-1.5 py-0">
                                   {transactionData.status}
                                 </Badge>
                               </div>
@@ -208,33 +198,31 @@ export default function DonationsPage() {
                               {transactionData.paidAt && (
                                 <div>
                                   <div className="text-muted-foreground">Paid At</div>
-                                  <div className="font-medium text-xs">
-                                    {new Date(transactionData.paidAt).toLocaleString()}
-                                  </div>
+                                  <div className="font-medium">{new Date(transactionData.paidAt).toLocaleString()}</div>
                                 </div>
                               )}
                               {transactionData.customerEmail && (
                                 <div>
                                   <div className="text-muted-foreground">Customer Email</div>
-                                  <div className="font-medium text-xs">{transactionData.customerEmail}</div>
+                                  <div className="font-medium break-all">{transactionData.customerEmail}</div>
                                 </div>
                               )}
                               {transactionData.subaccountName && (
                                 <div>
                                   <div className="text-muted-foreground">Subaccount</div>
-                                  <div className="font-medium text-xs">{transactionData.subaccountName}</div>
+                                  <div className="font-medium">{transactionData.subaccountName}</div>
                                 </div>
                               )}
                             </div>
                             {donation.notes && (
                               <div>
-                                <div className="text-muted-foreground text-sm">Notes</div>
-                                <div className="text-sm">{donation.notes}</div>
+                                <div className="text-muted-foreground text-xs">Notes</div>
+                                <div className="text-xs">{donation.notes}</div>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="text-sm text-muted-foreground">No transaction details available</div>
+                          <div className="text-xs text-muted-foreground">No transaction details available</div>
                         )}
                       </td>
                     </tr>
@@ -243,9 +231,7 @@ export default function DonationsPage() {
               ))}
               {donations.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                    No donations found
-                  </td>
+                  <td colSpan={9} className="p-8 text-center text-xs text-muted-foreground">No donations found</td>
                 </tr>
               )}
             </tbody>
