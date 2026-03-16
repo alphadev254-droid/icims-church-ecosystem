@@ -19,8 +19,12 @@ export interface ChurchEvent {
   ticketsSold: number;
   ticketSalesCutoff?: string;
   allowPublicTicketing: boolean;
+  contactEmail?: string;
+  contactPhone?: string;
   imageUrl?: string;
   churchId: string;
+  churchName?: string;
+  maxAttendees?: number;
   createdById: string;
   createdAt: string;
   updatedAt: string;

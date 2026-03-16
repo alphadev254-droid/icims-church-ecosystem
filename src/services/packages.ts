@@ -16,6 +16,7 @@ export interface PackageTier {
   description?: string | null;
   priceMonthly: number;
   priceYearly: number;
+  currency?: string;
   isActive: boolean;
   sortOrder: number;
   features: Array<{ feature: PackageFeature; limitValue?: number | null }>;
@@ -26,10 +27,16 @@ export interface Payment {
   churchId: string;
   packageId?: string | null;
   amount: number;
+  baseAmount?: number;
+  totalAmount?: number;
+  convenienceFee?: number;
+  systemFeeAmount?: number;
   currency: string;
   type: string;
   status: string;
+  gateway?: string;
   packageName: string;
+  paidAt?: string;
   reference?: string | null;
   notes?: string | null;
   createdById: string;
