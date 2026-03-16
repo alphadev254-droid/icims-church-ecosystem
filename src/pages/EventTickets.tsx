@@ -134,17 +134,17 @@ export default function EventTicketsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/events')}>
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="font-heading text-2xl font-bold">Event Tickets</h1>
-            {event && <p className="text-sm text-muted-foreground">{event.title} - {tickets.length} tickets</p>}
+            <h1 className="font-heading text-xl sm:text-2xl font-bold">Event Tickets</h1>
+            {event && <p className="text-xs sm:text-sm text-muted-foreground">{event.title} - {tickets.length} tickets</p>}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-end sm:self-auto">
           <ExportImportButtons
             data={tickets.map((t: any) => ({
               ticketNumber: t.ticketNumber,
@@ -174,18 +174,18 @@ export default function EventTicketsPage() {
           {canCreate && event?.requiresTicket && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
-                <Plus className="h-4 w-4" /> Create Ticket
+              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 h-8 text-xs sm:h-9 sm:text-sm">
+                <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Create Ticket
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Create Manual Ticket</DialogTitle></DialogHeader>
-              <form onSubmit={handleSubmit(data => createMutation.mutate(data))} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+            <DialogContent className="max-w-sm sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader><DialogTitle className="text-sm sm:text-base">Create Manual Ticket</DialogTitle></DialogHeader>
+              <form onSubmit={handleSubmit(data => createMutation.mutate(data))} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <Label>Member *</Label>
-                    <Select onValueChange={v => { console.log('Selected member ID:', v); setValue('memberId', v); }}>
-                      <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
+                    <Label className="text-xs sm:text-sm">Member *</Label>
+                    <Select onValueChange={v => { setValue('memberId', v); }}>
+                      <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="Select member" /></SelectTrigger>
                       <SelectContent>
                         {members.map(m => (
                           <SelectItem key={m.id} value={m.id}>
@@ -204,15 +204,15 @@ export default function EventTicketsPage() {
                         {...register('useExistingTransaction')} 
                         className="h-4 w-4" 
                       />
-                      <Label htmlFor="useExisting" className="cursor-pointer">Use Existing Transaction</Label>
+                      <Label htmlFor="useExisting" className="cursor-pointer text-xs sm:text-sm">Use Existing Transaction</Label>
                     </div>
                   </div>
 
                   {useExistingTransaction ? (
                     <div className="col-span-2">
-                      <Label>Select Transaction *</Label>
+                      <Label className="text-xs sm:text-sm">Select Transaction *</Label>
                       <Select onValueChange={v => setValue('existingTransactionId', v)}>
-                        <SelectTrigger><SelectValue placeholder="Select unallocated transaction" /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="Select unallocated transaction" /></SelectTrigger>
                         <SelectContent>
                           {unallocatedTransactions.map((t: any) => (
                             <SelectItem key={t.id} value={t.id}>
@@ -225,9 +225,9 @@ export default function EventTicketsPage() {
                   ) : (
                     <>
                   <div>
-                    <Label>Ticket Status *</Label>
+                    <Label className="text-xs sm:text-sm">Ticket Status *</Label>
                     <Select defaultValue="confirmed" onValueChange={v => setValue('ticketStatus', v as any)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="confirmed">Confirmed</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
@@ -238,14 +238,14 @@ export default function EventTicketsPage() {
                   </div>
 
                   <div>
-                    <Label>Amount *</Label>
-                    <Input type="number" step="0.01" {...register('amount', { valueAsNumber: true })} />
+                    <Label className="text-xs sm:text-sm">Amount *</Label>
+                    <Input type="number" step="0.01" {...register('amount', { valueAsNumber: true })} className="h-8 text-xs sm:h-10 sm:text-sm" />
                   </div>
 
                   <div>
-                    <Label>Currency *</Label>
+                    <Label className="text-xs sm:text-sm">Currency *</Label>
                     <Select defaultValue="MWK" onValueChange={v => setValue('currency', v as any)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="MWK">MWK</SelectItem>
                         <SelectItem value="KSH">KSH</SelectItem>
@@ -254,9 +254,9 @@ export default function EventTicketsPage() {
                   </div>
 
                   <div>
-                    <Label>Transaction Status *</Label>
+                    <Label className="text-xs sm:text-sm">Transaction Status *</Label>
                     <Select defaultValue="completed" onValueChange={v => setValue('transactionStatus', v as any)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="completed">Completed</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
@@ -266,9 +266,9 @@ export default function EventTicketsPage() {
                   </div>
 
                   <div>
-                    <Label>Payment Method *</Label>
+                    <Label className="text-xs sm:text-sm">Payment Method *</Label>
                     <Select defaultValue="cash" onValueChange={v => setValue('paymentMethod', v as any)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="cash">Cash</SelectItem>
                         <SelectItem value="mobile_money">Mobile Money</SelectItem>
@@ -279,19 +279,19 @@ export default function EventTicketsPage() {
                   </div>
 
                   <div className="col-span-2">
-                    <Label>Reference (Optional - Auto-generated if empty)</Label>
-                    <Input {...register('reference')} placeholder="Leave empty to auto-generate" />
+                    <Label className="text-xs sm:text-sm">Reference (Optional)</Label>
+                    <Input {...register('reference')} placeholder="Leave empty to auto-generate" className="h-8 text-xs sm:h-10 sm:text-sm" />
                   </div>
 
                   <div className="col-span-2">
-                    <Label>Notes (Optional)</Label>
-                    <Textarea {...register('notes')} placeholder="Additional notes" rows={3} />
+                    <Label className="text-xs sm:text-sm">Notes (Optional)</Label>
+                    <Textarea {...register('notes')} placeholder="Additional notes" rows={3} className="text-xs sm:text-sm" />
                   </div>
                     </>
                   )}
                 </div>
                 
-                <Button type="submit" disabled={createMutation.isPending} className="w-full">
+                <Button type="submit" disabled={createMutation.isPending} className="w-full h-8 text-xs sm:h-10 sm:text-sm">
                   {createMutation.isPending ? 'Creating...' : 'Create Ticket'}
                 </Button>
               </form>
@@ -306,39 +306,39 @@ export default function EventTicketsPage() {
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full">
+        <div className="overflow-x-auto border rounded-lg">
+          <table className="w-full min-w-[700px]">
             <thead className="bg-muted">
               <tr>
-                <th className="text-left p-3 text-sm font-medium">Ticket #</th>
-                <th className="text-left p-3 text-sm font-medium">Attendee</th>
-                <th className="text-left p-3 text-sm font-medium">Type</th>
-                <th className="text-left p-3 text-sm font-medium">Status</th>
-                <th className="text-left p-3 text-sm font-medium">Amount</th>
-                <th className="text-left p-3 text-sm font-medium">Payment</th>
-                <th className="text-left p-3 text-sm font-medium">Date</th>
+                <th className="text-left p-3 text-xs sm:text-sm font-medium">Ticket #</th>
+                <th className="text-left p-3 text-xs sm:text-sm font-medium">Attendee</th>
+                <th className="text-left p-3 text-xs sm:text-sm font-medium">Type</th>
+                <th className="text-left p-3 text-xs sm:text-sm font-medium">Status</th>
+                <th className="text-left p-3 text-xs sm:text-sm font-medium">Amount</th>
+                <th className="text-left p-3 text-xs sm:text-sm font-medium">Payment</th>
+                <th className="text-left p-3 text-xs sm:text-sm font-medium">Date</th>
               </tr>
             </thead>
             <tbody>
               {tickets.map((ticket: any) => (
                 <React.Fragment key={ticket.id}>
                   <tr className="border-t hover:bg-muted/50">
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-xs sm:text-sm">
                       <button onClick={() => handleToggleExpand(ticket.id)} className="flex items-center gap-1">
-                        {expandedTicket === ticket.id ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        {expandedTicket === ticket.id ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                         <span className="font-mono">{ticket.ticketNumber}</span>
                       </button>
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-xs sm:text-sm whitespace-nowrap">
                       {ticket.isGuest ? (ticket.guestName || 'Guest') : `${ticket.user?.firstName} ${ticket.user?.lastName}`}
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-xs sm:text-sm">
                       {ticket.isGuest
                         ? <span className="px-2 py-1 rounded text-xs bg-purple-100 text-purple-800">Guest</span>
                         : <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">Member</span>
                       }
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-xs sm:text-sm">
                       <span className={`px-2 py-1 rounded text-xs ${
                         ticket.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                         ticket.status === 'used' ? 'bg-blue-100 text-blue-800' :
@@ -348,11 +348,11 @@ export default function EventTicketsPage() {
                         {ticket.status}
                       </span>
                     </td>
-                    <td className="p-3 text-sm">
+                    <td className="p-3 text-xs sm:text-sm whitespace-nowrap">
                       {ticket.transaction ? `${ticket.transaction.currency} ${ticket.transaction.baseAmount ?? ticket.transaction.amount}` : event?.isFree ? 'Free' : '-'}
                     </td>
-                    <td className="p-3 text-sm capitalize">{ticket.transaction?.paymentMethod?.replace('_', ' ') || '-'}</td>
-                    <td className="p-3 text-sm">{new Date(ticket.createdAt).toLocaleDateString()}</td>
+                    <td className="p-3 text-xs sm:text-sm capitalize whitespace-nowrap">{ticket.transaction?.paymentMethod?.replace('_', ' ') || '-'}</td>
+                    <td className="p-3 text-xs sm:text-sm whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString()}</td>
                   </tr>
                   {expandedTicket === ticket.id && (
                     <tr key={`${ticket.id}-details`} className="border-t bg-muted/30">

@@ -28,28 +28,12 @@ export default function TeamMembersPage() {
   const [minAge, setMinAge] = useState<number | undefined>();
   const [maxAge, setMaxAge] = useState<number | undefined>();
   const hasTeamsFeature = useHasFeature('teams_management');
-
-  // Block members from accessing this page
-  if (user?.roleName === 'member') {
-    return (
-      <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/dashboard')} className="gap-2">
-          <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-        </Button>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ShieldAlert className="h-12 w-12 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-sm text-muted-foreground text-center">This page is only available to administrators.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const isMember = user?.roleName === 'member';
 
   const { data: teams = [] } = useQuery({
     queryKey: ['teams'],
     queryFn: async () => teamsService.getAll(),
+    enabled: !isMember,
   });
 
   const team = teams.find(t => t.id === id);
@@ -57,12 +41,12 @@ export default function TeamMembersPage() {
   const { data: membersData, isLoading } = useQuery({
     queryKey: ['team-members', id, search, limit, offset, minAge, maxAge],
     queryFn: () => teamsService.getMembers(id!, search, limit, offset, minAge, maxAge),
-    enabled: !!id,
+    enabled: !!id && !isMember,
   });
 
   const members = membersData?.data || [];
   const total = membersData?.total || 0;
-  const teamMembersCount = membersData?.teamMembersCount ?? team?.memberCount ?? 0;
+  const teamMembersCount = team?.memberCount ?? 0;
 
   const addMutation = useMutation({
     mutationFn: ({ userId, isLeader }: { userId: string; isLeader: boolean }) => teamsService.addMember(id!, userId, isLeader),
@@ -93,6 +77,24 @@ export default function TeamMembersPage() {
     },
   });
 
+  // All early returns after all hooks
+  if (isMember) {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={() => navigate('/dashboard')} className="gap-2">
+          <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+        </Button>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <ShieldAlert className="h-12 w-12 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-sm text-muted-foreground text-center">This page is only available to administrators.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!hasTeamsFeature) {
     return (
       <div className="space-y-6">
@@ -121,20 +123,20 @@ export default function TeamMembersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/teams')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="font-heading text-2xl font-bold flex items-center gap-2">
-              {team.color && <div className="w-4 h-4 rounded-full" style={{ backgroundColor: team.color }} />}
+            <h1 className="font-heading text-xl sm:text-2xl font-bold flex items-center gap-2">
+              {team.color && <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full" style={{ backgroundColor: team.color }} />}
               {team.name}
             </h1>
-            <p className="text-sm text-muted-foreground">{team.church.name}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{team.church.name}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <ExportImportButtons
             data={members.map(m => ({
               firstName: m.firstName,
@@ -171,7 +173,7 @@ export default function TeamMembersPage() {
             ]}
             pdfTitle={`${team.name} - Team Members`}
           />
-          <Badge variant="secondary" className="gap-1">
+          <Badge variant="secondary" className="gap-1 text-xs">
             <Users className="h-3 w-3" />
             {teamMembersCount} members
           </Badge>
@@ -180,24 +182,24 @@ export default function TeamMembersPage() {
 
       {team.description && (
         <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">{team.description}</p>
+          <CardContent className="pt-4 sm:pt-6">
+            <p className="text-xs sm:text-sm text-muted-foreground">{team.description}</p>
           </CardContent>
         </Card>
       )}
 
       {team.leaders.length > 0 && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Crown className="h-4 w-4 text-amber-600" />
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm flex items-center gap-2">
+              <Crown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600" />
               Team Leaders
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {team.leaders.map((leader) => (
-                <Badge key={leader.id} variant="outline" className="gap-1">
+                <Badge key={leader.id} variant="outline" className="gap-1 text-xs">
                   {leader.firstName} {leader.lastName}
                 </Badge>
               ))}
@@ -218,10 +220,10 @@ export default function TeamMembersPage() {
           <TabsContent value="assign">
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Search by name or email..." className="pl-9" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative flex-1 min-w-[160px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                    <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Search by name or email..." className="pl-8 sm:pl-9 h-8 text-xs sm:h-9 sm:text-sm" />
                   </div>
                   <AgeRangeFilter
                     minAge={minAge}
@@ -231,7 +233,7 @@ export default function TeamMembersPage() {
                     onClear={() => { setMinAge(undefined); setMaxAge(undefined); setOffset(0); }}
                   />
                   <Select value={limit.toString()} onValueChange={(v) => { setLimit(parseInt(v)); setOffset(0); }}>
-                    <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-28 sm:w-32 h-8 text-xs sm:h-9 sm:text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="100">100 / page</SelectItem>
                       <SelectItem value="200">200 / page</SelectItem>
@@ -250,21 +252,22 @@ export default function TeamMembersPage() {
                     <p className="text-sm">All members are already in this team</p>
                   </div>
                 ) : (
-                  <Table>
+                  <div className="overflow-x-auto">
+                  <Table className="min-w-[900px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-12">Assign</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Gender</TableHead>
-                        <TableHead>DOB</TableHead>
-                        <TableHead>Neighbourhood</TableHead>
-                        <TableHead>Membership</TableHead>
-                        <TableHead>Marital Status</TableHead>
-                        <TableHead>Wedding Date</TableHead>
-                        <TableHead>Service Interest</TableHead>
-                        <TableHead>Baptized</TableHead>
+                        <TableHead className="w-12 text-xs sm:text-sm">Assign</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Email</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Phone</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Gender</TableHead>
+                        <TableHead className="text-xs sm:text-sm">DOB</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Neighbourhood</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Membership</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Marital Status</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Wedding Date</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Service Interest</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Baptized</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -281,32 +284,33 @@ export default function TeamMembersPage() {
                               disabled={addMutation.isPending}
                             />
                           </TableCell>
-                          <TableCell className="font-medium">{member.firstName} {member.lastName}</TableCell>
-                          <TableCell className="text-muted-foreground">{member.email}</TableCell>
-                          <TableCell className="text-muted-foreground">{member.phone || '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground capitalize">{(member as any).gender || '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{(member as any).dateOfBirth ? new Date((member as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{(member as any).residentialNeighbourhood || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{member.firstName} {member.lastName}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.email}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.phone || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{(member as any).gender || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).dateOfBirth ? new Date((member as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).residentialNeighbourhood || '—'}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs">{member.membershipType || 'Member'}</Badge>
+                            <Badge variant="outline" className="text-xs whitespace-nowrap">{member.membershipType || 'Member'}</Badge>
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground capitalize">{member.maritalStatus || '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{(member as any).weddingDate ? new Date((member as any).weddingDate).toLocaleDateString() : '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{member.serviceInterest || '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{(member as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{member.maritalStatus || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).weddingDate ? new Date((member as any).weddingDate).toLocaleDateString() : '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.serviceInterest || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
                 {total > limit && (
                   <div className="flex items-center justify-between pt-4">
-                    <p className="text-sm text-muted-foreground">Showing {offset + 1}-{Math.min(offset + limit, total)} of {total}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Showing {offset + 1}-{Math.min(offset + limit, total)} of {total}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0}>
+                      <Button size="sm" variant="outline" className="h-8 sm:h-9" onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0}>
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => setOffset(offset + limit)} disabled={offset + limit >= total}>
+                      <Button size="sm" variant="outline" className="h-8 sm:h-9" onClick={() => setOffset(offset + limit)} disabled={offset + limit >= total}>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -319,10 +323,10 @@ export default function TeamMembersPage() {
           <TabsContent value="manage">
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Search by name or email..." className="pl-9" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative flex-1 min-w-[160px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                    <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Search by name or email..." className="pl-8 sm:pl-9 h-8 text-xs sm:h-9 sm:text-sm" />
                   </div>
                   <AgeRangeFilter
                     minAge={minAge}
@@ -332,7 +336,7 @@ export default function TeamMembersPage() {
                     onClear={() => { setMinAge(undefined); setMaxAge(undefined); setOffset(0); }}
                   />
                   <Select value={limit.toString()} onValueChange={(v) => { setLimit(parseInt(v)); setOffset(0); }}>
-                    <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-28 sm:w-32 h-8 text-xs sm:h-9 sm:text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="100">100 / page</SelectItem>
                       <SelectItem value="200">200 / page</SelectItem>
@@ -351,22 +355,23 @@ export default function TeamMembersPage() {
                     <p className="text-sm">No members in this team yet</p>
                   </div>
                 ) : (
-                  <Table>
+                  <div className="overflow-x-auto">
+                  <Table className="min-w-[960px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-12">Remove</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Gender</TableHead>
-                        <TableHead>DOB</TableHead>
-                        <TableHead>Neighbourhood</TableHead>
-                        <TableHead>Membership</TableHead>
-                        <TableHead>Marital Status</TableHead>
-                        <TableHead>Wedding Date</TableHead>
-                        <TableHead>Service Interest</TableHead>
-                        <TableHead>Baptized</TableHead>
-                        <TableHead className="w-24 text-center">Leader</TableHead>
+                        <TableHead className="w-12 text-xs sm:text-sm">Remove</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Email</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Phone</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Gender</TableHead>
+                        <TableHead className="text-xs sm:text-sm">DOB</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Neighbourhood</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Membership</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Marital Status</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Wedding Date</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Service Interest</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Baptized</TableHead>
+                        <TableHead className="w-24 text-center text-xs sm:text-sm">Leader</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -383,19 +388,19 @@ export default function TeamMembersPage() {
                               disabled={removeMutation.isPending}
                             />
                           </TableCell>
-                          <TableCell className="font-medium">{member.firstName} {member.lastName}</TableCell>
-                          <TableCell className="text-muted-foreground">{member.email}</TableCell>
-                          <TableCell className="text-muted-foreground">{member.phone || '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground capitalize">{(member as any).gender || '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{(member as any).dateOfBirth ? new Date((member as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{(member as any).residentialNeighbourhood || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{member.firstName} {member.lastName}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.email}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.phone || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{(member as any).gender || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).dateOfBirth ? new Date((member as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).residentialNeighbourhood || '—'}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs">{member.membershipType || 'Member'}</Badge>
+                            <Badge variant="outline" className="text-xs whitespace-nowrap">{member.membershipType || 'Member'}</Badge>
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground capitalize">{member.maritalStatus || '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{(member as any).weddingDate ? new Date((member as any).weddingDate).toLocaleDateString() : '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{member.serviceInterest || '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{(member as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{member.maritalStatus || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).weddingDate ? new Date((member as any).weddingDate).toLocaleDateString() : '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.serviceInterest || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
                           <TableCell className="text-center">
                             <button
                               onClick={() => leaderMutation.mutate({ userId: member.id, isLeader: !member.isLeader })}
@@ -403,22 +408,23 @@ export default function TeamMembersPage() {
                               className={`p-1.5 rounded transition-colors ${member.isLeader ? 'text-amber-600 hover:bg-amber-50' : 'text-muted-foreground hover:bg-muted'}`}
                               title={member.isLeader ? 'Remove as leader' : 'Make leader'}
                             >
-                              <Crown className="h-4 w-4" />
+                              <Crown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
                 {total > limit && (
                   <div className="flex items-center justify-between pt-4">
-                    <p className="text-sm text-muted-foreground">Showing {offset + 1}-{Math.min(offset + limit, total)} of {total}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Showing {offset + 1}-{Math.min(offset + limit, total)} of {total}</p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0}>
+                      <Button size="sm" variant="outline" className="h-8 sm:h-9" onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0}>
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => setOffset(offset + limit)} disabled={offset + limit >= total}>
+                      <Button size="sm" variant="outline" className="h-8 sm:h-9" onClick={() => setOffset(offset + limit)} disabled={offset + limit >= total}>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>

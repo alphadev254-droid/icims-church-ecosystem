@@ -17,6 +17,16 @@ export interface AppUser {
   updatedAt: string;
   role?: { id: string; name: string; displayName: string } | null;
   church?: { name: string } | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  maritalStatus?: string | null;
+  weddingDate?: string | null;
+  residentialNeighbourhood?: string | null;
+  membershipType?: string | null;
+  serviceInterest?: string | null;
+  baptizedByImmersion?: boolean | null;
+  anniversary?: string | null;
+  teams?: string[] | null;
 }
 
 export interface CreateUserDto {
@@ -26,9 +36,22 @@ export interface CreateUserDto {
   lastName: string;
   phone?: string;
   roleName?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  maritalStatus?: string;
+  weddingDate?: string;
+  residentialNeighbourhood?: string;
+  membershipType?: string;
+  serviceInterest?: string;
+  baptizedByImmersion?: boolean;
+  churchId?: string;
   districts?: string[];
   traditionalAuthorities?: string[];
   regions?: string[];
+  region?: string;
+  district?: string;
+  traditionalAuthority?: string;
+  village?: string;
 }
 
 export interface UpdateUserDto {
@@ -36,11 +59,19 @@ export interface UpdateUserDto {
   lastName?: string;
   phone?: string;
   roleName?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  maritalStatus?: string;
+  weddingDate?: string;
+  residentialNeighbourhood?: string;
+  membershipType?: string | null;
+  serviceInterest?: string;
+  baptizedByImmersion?: boolean;
+  churchId?: string | null;
   districts?: string[];
   traditionalAuthorities?: string[];
   regions?: string[];
   status?: string;
-  churchId?: string;
   password?: string;
 }
 
@@ -55,7 +86,7 @@ interface PaginationResponse {
 }
 
 export const usersService = {
-  getAll: async (params?: { page?: number; limit?: number; search?: string; churchId?: string; role?: string }): Promise<PaginationResponse> => {
+  getAll: async (params?: { page?: number; limit?: number; search?: string; churchId?: string; role?: string; minAge?: number; maxAge?: number }): Promise<PaginationResponse> => {
     const { data } = await apiClient.get('/users', { params });
     return data;
   },

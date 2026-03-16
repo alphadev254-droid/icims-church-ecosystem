@@ -59,6 +59,9 @@ export interface RegisterData {
   email: string;
   password: string;
   phone?: string;
+  gender?: string;
+  accountCountry?: string;
+  anniversary?: string;
   inviteToken?: string;
 }
 

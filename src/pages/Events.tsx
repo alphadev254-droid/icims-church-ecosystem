@@ -196,7 +196,7 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
         const firstError = Object.values(errs)[0];
         toast.error(firstError?.message || 'Please fix validation errors');
       })}
-      className="space-y-4"
+      className="space-y-3"
     >
       {/* Church */}
       <div>
@@ -206,69 +206,69 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
 
       {/* Title */}
       <div>
-        <Label>Name of the Event</Label>
-        <Input {...register('title')} />
+        <Label className="text-xs sm:text-sm">Name of the Event</Label>
+        <Input {...register('title')} className="h-8 text-xs sm:h-10 sm:text-sm" />
         {errors.title && <p className="text-xs text-destructive mt-1">{errors.title.message}</p>}
       </div>
 
       {/* Description */}
       <div>
-        <Label>
+        <Label className="text-xs sm:text-sm">
           Description <span className="text-muted-foreground text-xs">(optional)</span>
         </Label>
-        <Textarea {...register('description')} rows={2} />
+        <Textarea {...register('description')} rows={2} className="text-xs sm:text-sm" />
       </div>
 
       {/* Dates */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label>Start Date</Label>
-          <Input type="date" {...register('date')} />
+          <Label className="text-xs sm:text-sm">Start Date</Label>
+          <Input type="date" {...register('date')} className="h-8 text-xs sm:h-10 sm:text-sm" />
           {errors.date && <p className="text-xs text-destructive mt-1">{errors.date.message}</p>}
         </div>
         <div>
-          <Label>End Date</Label>
-          <Input type="date" {...register('endDate')} />
+          <Label className="text-xs sm:text-sm">End Date</Label>
+          <Input type="date" {...register('endDate')} className="h-8 text-xs sm:h-10 sm:text-sm" />
           {errors.endDate && <p className="text-xs text-destructive mt-1">{errors.endDate.message}</p>}
         </div>
       </div>
 
       {/* Time */}
       <div>
-        <Label>Time</Label>
-        <Input type="time" {...register('time')} />
+        <Label className="text-xs sm:text-sm">Time</Label>
+        <Input type="time" {...register('time')} className="h-8 text-xs sm:h-10 sm:text-sm" />
         {errors.time && <p className="text-xs text-destructive mt-1">{errors.time.message}</p>}
       </div>
 
       {/* Location */}
       <div>
-        <Label>Location</Label>
-        <Input {...register('location')} />
+        <Label className="text-xs sm:text-sm">Location</Label>
+        <Input {...register('location')} className="h-8 text-xs sm:h-10 sm:text-sm" />
         {errors.location && <p className="text-xs text-destructive mt-1">{errors.location.message}</p>}
       </div>
 
       {/* Contact Information */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label>Enquiries Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
-          <Input type="email" {...register('contactEmail')} placeholder="info@church.com" />
+          <Label className="text-xs sm:text-sm">Enquiries Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
+          <Input type="email" {...register('contactEmail')} placeholder="info@church.com" className="h-8 text-xs sm:h-10 sm:text-sm" />
           {errors.contactEmail && <p className="text-xs text-destructive mt-1">{errors.contactEmail.message}</p>}
         </div>
         <div>
-          <Label>Enquiries Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
-          <Input {...register('contactPhone')} placeholder="+265..." />
+          <Label className="text-xs sm:text-sm">Enquiries Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+          <Input {...register('contactPhone')} placeholder="+265..." className="h-8 text-xs sm:h-10 sm:text-sm" />
         </div>
       </div>
 
       {/* Type / Status */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label>Type</Label>
+          <Label className="text-xs sm:text-sm">Type</Label>
           <Select
             value={watch('type') || 'service'}
             onValueChange={(v) => setValue('type', v as FormValues['type'], { shouldValidate: true })}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="service">Service</SelectItem>
               <SelectItem value="meeting">Meeting</SelectItem>
@@ -279,12 +279,12 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
           </Select>
         </div>
         <div>
-          <Label>Status</Label>
+          <Label className="text-xs sm:text-sm">Status</Label>
           <Select
             value={watch('status') || 'upcoming'}
             onValueChange={(v) => setValue('status', v as FormValues['status'], { shouldValidate: true })}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="upcoming">Upcoming</SelectItem>
               <SelectItem value="ongoing">Ongoing</SelectItem>
@@ -348,22 +348,23 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
           </div>
 
           {!isFree && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Ticket Price</Label>
+                <Label className="text-xs sm:text-sm">Ticket Price</Label>
                 <Input
                   type="number"
                   step="0.01"
                   {...register('ticketPrice', { valueAsNumber: true })}
+                  className="h-8 text-xs sm:h-10 sm:text-sm"
                 />
               </div>
               <div>
-                <Label>Currency</Label>
+                <Label className="text-xs sm:text-sm">Currency</Label>
                 <Select
                   value={watch('currency') ?? 'MWK'}
                   onValueChange={(v) => setValue('currency', v as FormValues['currency'], { shouldValidate: true })}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MWK">MWK</SelectItem>
                     <SelectItem value="KSH">KSH</SelectItem>
@@ -374,21 +375,22 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
           )}
 
           <div>
-            <Label>
+            <Label className="text-xs sm:text-sm">
               Total Tickets <span className="text-muted-foreground text-xs">(optional)</span>
             </Label>
             <Input
               type="number"
               placeholder="Leave empty for unlimited"
               {...register('totalTickets', { valueAsNumber: true })}
+              className="h-8 text-xs sm:h-10 sm:text-sm"
             />
           </div>
 
           <div>
-            <Label>
+            <Label className="text-xs sm:text-sm">
               Ticket Sales Cutoff <span className="text-muted-foreground text-xs">(optional)</span>
             </Label>
-            <Input type="datetime-local" {...register('ticketSalesCutoff')} />
+            <Input type="datetime-local" {...register('ticketSalesCutoff')} className="h-8 text-xs sm:h-10 sm:text-sm" />
             <p className="text-xs text-muted-foreground mt-1">Stop ticket sales at this date/time</p>
           </div>
 
@@ -410,7 +412,7 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
       <Button
         type="submit"
         disabled={busy}
-        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+        className="w-full bg-accent text-accent-foreground hover:bg-accent/90 h-8 text-xs sm:h-10 sm:text-sm"
       >
         {busy ? 'Saving…' : submitLabel}
       </Button>
@@ -635,18 +637,18 @@ export default function EventsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Events</h1>
-          <p className="text-sm text-muted-foreground">{events.length} total events</p>
+          <h1 className="font-heading text-xl sm:text-2xl font-bold">Events</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">{events.length} total events</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {!isMember && churches.length > 1 && (
-            <div className="flex gap-2 items-end">
+            <div className="flex flex-wrap gap-2 items-end">
               <div>
                 <Label className="text-xs">Church</Label>
                 <Select value={churchFilter} onValueChange={setChurchFilter}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-36 sm:w-40 h-8 text-xs sm:h-9 sm:text-sm">
                     <SelectValue placeholder="Filter by church" />
                   </SelectTrigger>
                   <SelectContent>
@@ -659,22 +661,23 @@ export default function EventsPage() {
               </div>
               <div>
                 <Label className="text-xs">Start Date</Label>
-                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-40" />
+                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-36 sm:w-40 h-8 text-xs sm:h-9 sm:text-sm" />
               </div>
               <div>
                 <Label className="text-xs">End Date</Label>
-                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-40" />
+                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-36 sm:w-40 h-8 text-xs sm:h-9 sm:text-sm" />
               </div>
               <Button 
                 size="sm"
                 onClick={() => setAppliedFilters({ church: churchFilter, startDate, endDate })}
-                className="bg-accent text-accent-foreground hover:bg-accent/90"
+                className="bg-accent text-accent-foreground hover:bg-accent/90 h-8 text-xs sm:h-9 sm:text-sm"
               >
                 Apply
               </Button>
               <Button 
                 size="sm"
                 variant="outline"
+                className="h-8 text-xs sm:h-9 sm:text-sm"
                 onClick={() => {
                   setChurchFilter('all');
                   setStartDate('');
@@ -715,13 +718,13 @@ export default function EventsPage() {
           {canCreate && (
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
-                  <Plus className="h-4 w-4" /> Create Event
+                <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 h-8 text-xs sm:h-9 sm:text-sm">
+                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Create Event
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-sm sm:max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle className="font-heading">Create Event</DialogTitle>
+                  <DialogTitle className="font-heading text-sm sm:text-base">Create Event</DialogTitle>
                 </DialogHeader>
                 <EventForm
                   onSubmit={(v) => {
@@ -915,9 +918,9 @@ export default function EventsPage() {
 
       {/* Edit Dialog — key prop forces full remount so useEffect fires fresh */}
       <Dialog open={!!editEvent} onOpenChange={(open) => { if (!open) setEditEvent(null); }}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-sm sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-heading">Edit Event</DialogTitle>
+            <DialogTitle className="font-heading text-sm sm:text-base">Edit Event</DialogTitle>
           </DialogHeader>
           {editEvent && (
             <EventForm
@@ -954,9 +957,9 @@ export default function EventsPage() {
 
       {/* View Dialog */}
       <Dialog open={!!viewEvent} onOpenChange={() => setViewEvent(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-sm sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-heading">{viewEvent?.title}</DialogTitle>
+            <DialogTitle className="font-heading text-sm sm:text-base">{viewEvent?.title}</DialogTitle>
           </DialogHeader>
           {viewEvent && (
             <div className="space-y-4">
@@ -968,9 +971,9 @@ export default function EventsPage() {
                 <Badge variant="outline" className="capitalize">{viewEvent.type}</Badge>
               </div>
               {viewEvent.description && (
-                <p className="text-sm text-muted-foreground">{viewEvent.description}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{viewEvent.description}</p>
               )}
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   <span className="font-medium">Date:</span>

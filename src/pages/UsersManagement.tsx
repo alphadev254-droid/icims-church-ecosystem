@@ -768,12 +768,12 @@ export default function UsersManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Users</h1>
-          <p className="text-sm text-muted-foreground">{pagination?.total || 0} total users</p>
+          <h1 className="font-heading text-xl sm:text-2xl font-bold">Users</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">{pagination?.total || 0} total users</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 self-end sm:self-auto">
           <ExportImportButtons
             data={users.map(u => ({
               firstName: u.firstName,
@@ -878,14 +878,14 @@ export default function UsersManagement() {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[160px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
           <Input 
             value={search} 
             onChange={e => { setSearch(e.target.value); setPage(1); }} 
             placeholder="Search by name or email..." 
-            className="pl-9" 
+            className="pl-8 sm:pl-9 h-8 text-xs sm:h-10 sm:text-sm" 
           />
         </div>
         <AgeRangeFilter
@@ -896,7 +896,7 @@ export default function UsersManagement() {
           onClear={() => { setMinAge(undefined); setMaxAge(undefined); setPage(1); }}
         />
         <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-full sm:w-44 h-8 text-xs sm:h-10 sm:text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -909,7 +909,7 @@ export default function UsersManagement() {
           </SelectContent>
         </Select>
         <Select value={churchFilter} onValueChange={(v) => { setChurchFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-full sm:w-44 h-8 text-xs sm:h-10 sm:text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -920,7 +920,7 @@ export default function UsersManagement() {
           </SelectContent>
         </Select>
         <Select value={String(limit)} onValueChange={(v) => { setLimit(Math.max(100, parseInt(v))); setPage(1); }}>
-          <SelectTrigger className="w-full sm:w-32">
+          <SelectTrigger className="w-full sm:w-28 h-8 text-xs sm:h-10 sm:text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

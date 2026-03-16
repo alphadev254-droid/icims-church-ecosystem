@@ -33,39 +33,24 @@ export default function SubaccountPage() {
   const { hasPermission } = useRole();
   const [isEditing, setIsEditing] = useState(false);
 
-  // Block access for non-Kenya accounts
-  if (user?.accountCountry !== 'Kenya') {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-xl font-semibold mb-2">Not Available</h2>
-            <p className="text-muted-foreground mb-4">Subaccounts are only available for Kenya accounts.</p>
-            <Button onClick={() => navigate('/dashboard/churches')}>Back to Branches</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const canUpdate = hasPermission('subaccounts:update');
 
   const { data: church } = useQuery({
     queryKey: ['church', churchId],
     queryFn: () => churchesService.getOne(churchId!),
-    enabled: !!churchId,
+    enabled: !!churchId && user?.accountCountry === 'Kenya',
   });
 
   const { data: subaccount, isLoading } = useQuery({
     queryKey: ['subaccount', churchId],
     queryFn: () => subaccountsService.getByChurch(churchId!),
-    enabled: !!churchId,
+    enabled: !!churchId && user?.accountCountry === 'Kenya',
   });
 
   const { data: banks = [] } = useQuery({
     queryKey: ['banks'],
     queryFn: () => subaccountsService.getBanks(),
+    enabled: user?.accountCountry === 'Kenya',
   });
 
   const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<FormValues>({
@@ -92,7 +77,7 @@ export default function SubaccountPage() {
       toast.success('Account created successfully');
       qc.invalidateQueries({ queryKey: ['subaccount', churchId] });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create account'),
+    onError: (err: { response?: { data?: { message?: string } } }) => toast.error(err.response?.data?.message || 'Failed to create account'),
   });
 
   const updateMutation = useMutation({
@@ -102,7 +87,7 @@ export default function SubaccountPage() {
       qc.invalidateQueries({ queryKey: ['subaccount', churchId] });
       setIsEditing(false);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update account'),
+    onError: (err: { response?: { data?: { message?: string } } }) => toast.error(err.response?.data?.message || 'Failed to update account'),
   });
 
   const toggleActiveMutation = useMutation({
@@ -111,7 +96,7 @@ export default function SubaccountPage() {
       toast.success(`Account ${subaccount?.active ? 'deactivated' : 'activated'}`);
       qc.invalidateQueries({ queryKey: ['subaccount', churchId] });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update status'),
+    onError: (err: { response?: { data?: { message?: string } } }) => toast.error(err.response?.data?.message || 'Failed to update status'),
   });
 
   const onSubmit = (data: FormValues) => {
@@ -121,6 +106,22 @@ export default function SubaccountPage() {
       createMutation.mutate(data);
     }
   };
+
+  // Block access for non-Kenya accounts (after all hooks)
+  if (user?.accountCountry !== 'Kenya') {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-xl font-semibold mb-2">Not Available</h2>
+            <p className="text-muted-foreground mb-4">Subaccounts are only available for Kenya accounts.</p>
+            <Button onClick={() => navigate('/dashboard/churches')}>Back to Branches</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -132,13 +133,13 @@ export default function SubaccountPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/churches')}>
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="font-heading text-2xl font-bold">Account Management</h1>
-          {church && <p className="text-sm text-muted-foreground">{church.name}</p>}
+          <h1 className="font-heading text-xl sm:text-2xl font-bold">Account Management</h1>
+          {church && <p className="text-xs sm:text-sm text-muted-foreground">{church.name}</p>}
         </div>
       </div>
 
@@ -164,39 +165,40 @@ export default function SubaccountPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label className="text-muted-foreground">Business Name</Label>
-                <p className="font-medium">{subaccount.businessName}</p>
+                <Label className="text-xs sm:text-sm text-muted-foreground">Business Name</Label>
+                <p className="text-sm sm:text-base font-medium">{subaccount.businessName}</p>
               </div>
               <div>
-                <Label className="text-muted-foreground">Account Code</Label>
-                <p className="font-mono text-sm">{subaccount.subaccountCode}</p>
+                <Label className="text-xs sm:text-sm text-muted-foreground">Account Code</Label>
+                <p className="font-mono text-xs sm:text-sm">{subaccount.subaccountCode}</p>
               </div>
               <div>
-                <Label className="text-muted-foreground">Settlement Bank</Label>
-                <p className="font-medium">{banks.find(b => b.code === subaccount.settlementBank)?.name || subaccount.settlementBank}</p>
+                <Label className="text-xs sm:text-sm text-muted-foreground">Settlement Bank</Label>
+                <p className="text-sm sm:text-base font-medium">{banks.find(b => b.code === subaccount.settlementBank)?.name || subaccount.settlementBank}</p>
               </div>
               <div>
-                <Label className="text-muted-foreground">Account Number</Label>
-                <p className="font-medium">{subaccount.accountNumber}</p>
+                <Label className="text-xs sm:text-sm text-muted-foreground">Account Number</Label>
+                <p className="text-sm sm:text-base font-medium">{subaccount.accountNumber}</p>
               </div>
               <div>
-                <Label className="text-muted-foreground">Created</Label>
-                <p className="text-sm">{new Date(subaccount.createdAt).toLocaleDateString()}</p>
+                <Label className="text-xs sm:text-sm text-muted-foreground">Created</Label>
+                <p className="text-xs sm:text-sm">{new Date(subaccount.createdAt).toLocaleDateString()}</p>
               </div>
             </div>
             {subaccount.description && (
               <div>
-                <Label className="text-muted-foreground">Description</Label>
-                <p className="text-sm">{subaccount.description}</p>
+                <Label className="text-xs sm:text-sm text-muted-foreground">Description</Label>
+                <p className="text-xs sm:text-sm">{subaccount.description}</p>
               </div>
             )}
             {canUpdate && (
-              <div className="flex gap-2 pt-4 border-t">
-                <Button onClick={() => setIsEditing(true)}>Edit Account</Button>
+              <div className="flex flex-wrap gap-2 pt-4 border-t">
+                <Button className="h-8 text-xs sm:h-9 sm:text-sm" onClick={() => setIsEditing(true)}>Edit Account</Button>
                 <Button
                   variant="outline"
+                  className="h-8 text-xs sm:h-9 sm:text-sm"
                   onClick={() => toggleActiveMutation.mutate(!subaccount.active)}
                   disabled={toggleActiveMutation.isPending}
                 >
@@ -212,17 +214,17 @@ export default function SubaccountPage() {
             <CardTitle>{subaccount ? 'Edit Account' : 'Create Account'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
               <div>
-                <Label>Business Name *</Label>
-                <Input {...register('businessName')} placeholder="e.g. St. Peter Church" />
+                <Label className="text-xs sm:text-sm">Business Name *</Label>
+                <Input className="h-8 text-xs sm:h-10 sm:text-sm" {...register('businessName')} placeholder="e.g. St. Peter Church" />
                 {errors.businessName && <p className="text-xs text-destructive mt-1">{errors.businessName.message}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label>Settlement Bank *</Label>
-                  <select {...register('settlementBank')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Label className="text-xs sm:text-sm">Settlement Bank *</Label>
+                  <select {...register('settlementBank')} className="flex h-8 sm:h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-xs sm:text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     <option value="">Select bank</option>
                     {banks.map(bank => (
                       <option key={bank.code} value={bank.code}>{bank.name} ({bank.code})</option>
@@ -232,24 +234,24 @@ export default function SubaccountPage() {
                   <p className="text-xs text-muted-foreground mt-1">{banks.find(b => b.code === 'MPS') ? 'Use M-PESA for mobile money' : 'Bank account or M-PESA'}</p>
                 </div>
                 <div>
-                  <Label>Account Number *</Label>
-                  <Input {...register('accountNumber')} placeholder={selectedBank === 'MPESA' || selectedBank === 'MPPAYBILL' || selectedBank === 'MPTILL' ? 'e.g. 0714991414 or 0113765448' : 'Account number'} />
+                  <Label className="text-xs sm:text-sm">Account Number *</Label>
+                  <Input className="h-8 text-xs sm:h-10 sm:text-sm" {...register('accountNumber')} placeholder={selectedBank === 'MPESA' || selectedBank === 'MPPAYBILL' || selectedBank === 'MPTILL' ? 'e.g. 0714991414 or 0113765448' : 'Account number'} />
                   {errors.accountNumber && <p className="text-xs text-destructive mt-1">{errors.accountNumber.message}</p>}
                   {(selectedBank === 'MPESA' || selectedBank === 'MPPAYBILL' || selectedBank === 'MPTILL') && <p className="text-xs text-muted-foreground mt-1">Enter phone number (e.g. 0714991414)</p>}
                 </div>
               </div>
 
               <div>
-                <Label>Description (Optional)</Label>
-                <Textarea {...register('description')} placeholder="Additional notes" rows={3} />
+                <Label className="text-xs sm:text-sm">Description (Optional)</Label>
+                <Textarea className="text-xs sm:text-sm" {...register('description')} placeholder="Additional notes" rows={3} />
               </div>
 
-              <div className="flex gap-2">
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" className="h-8 text-xs sm:h-9 sm:text-sm" disabled={createMutation.isPending || updateMutation.isPending}>
                   {createMutation.isPending || updateMutation.isPending ? 'Saving...' : subaccount ? 'Update' : 'Create'}
                 </Button>
                 {subaccount && (
-                  <Button type="button" variant="outline" onClick={() => { setIsEditing(false); reset(); }}>
+                  <Button type="button" variant="outline" className="h-8 text-xs sm:h-9 sm:text-sm" onClick={() => { setIsEditing(false); reset(); }}>
                     Cancel
                   </Button>
                 )}

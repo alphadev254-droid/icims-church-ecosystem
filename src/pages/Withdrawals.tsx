@@ -20,24 +20,10 @@ export default function WithdrawalsPage() {
   const [appliedStartDate, setAppliedStartDate] = useState('');
   const [appliedEndDate, setAppliedEndDate] = useState('');
 
-  // Block access for non-Malawi accounts
-  if (user?.accountCountry !== 'Malawi') {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-xl font-semibold mb-2">Withdrawals Not Available</h2>
-            <p className="text-muted-foreground">Withdrawals are only available for Malawi accounts.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const { data: balance } = useQuery({
     queryKey: ['wallet-balance'],
     queryFn: walletService.getBalance,
+    enabled: user?.accountCountry === 'Malawi',
   });
 
   const { data: withdrawals = [], isLoading } = useQuery({
@@ -46,6 +32,7 @@ export default function WithdrawalsPage() {
       startDate: appliedStartDate || undefined,
       endDate: appliedEndDate || undefined,
     }),
+    enabled: user?.accountCountry === 'Malawi',
   });
 
   const handleApplyFilters = () => {
@@ -65,14 +52,29 @@ export default function WithdrawalsPage() {
 
   const formatCurrency = (amount: number) => `MWK ${amount.toLocaleString()}`;
 
+  // Block access for non-Malawi accounts (after all hooks)
+  if (user?.accountCountry !== 'Malawi') {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-xl font-semibold mb-2">Withdrawals Not Available</h2>
+            <p className="text-muted-foreground">Withdrawals are only available for Malawi accounts.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Withdrawals</h1>
-          <p className="text-sm text-muted-foreground">Manage wallet withdrawals</p>
+          <h1 className="font-heading text-xl sm:text-2xl font-bold">Withdrawals</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Manage wallet withdrawals</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-end sm:self-auto">
           <ExportImportButtons
             data={withdrawals.map((w: any) => ({
               amount: w.amount,
@@ -95,9 +97,9 @@ export default function WithdrawalsPage() {
           />
           <Button 
             onClick={() => navigate('/dashboard/withdrawals/request')} 
-            className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2"
+            className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 h-8 text-xs sm:h-9 sm:text-sm"
           >
-            <Plus className="h-4 w-4" /> Request Withdrawal
+            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Request Withdrawal
           </Button>
         </div>
       </div>
@@ -108,7 +110,7 @@ export default function WithdrawalsPage() {
           <Wallet className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold font-heading">
+          <div className="text-xl sm:text-2xl font-bold font-heading">
             {balance ? formatCurrency(balance.balance) : 'MWK 0'}
           </div>
         </CardContent>
@@ -122,20 +124,20 @@ export default function WithdrawalsPage() {
         <>
           <Card>
             <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row gap-4 items-end">
-                <div className="flex-1">
-                  <Label>Start Date</Label>
-                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <div className="flex flex-wrap gap-3 items-end">
+                <div className="flex-1 min-w-[140px]">
+                  <Label className="text-xs sm:text-sm">Start Date</Label>
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-8 text-xs sm:h-10 sm:text-sm" />
                 </div>
-                <div className="flex-1">
-                  <Label>End Date</Label>
-                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <div className="flex-1 min-w-[140px]">
+                  <Label className="text-xs sm:text-sm">End Date</Label>
+                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-8 text-xs sm:h-10 sm:text-sm" />
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleApplyFilters} variant="default">
+                  <Button onClick={handleApplyFilters} variant="default" className="h-8 text-xs sm:h-10 sm:text-sm">
                     Apply
                   </Button>
-                  <Button onClick={handleClearFilters} variant="outline">
+                  <Button onClick={handleClearFilters} variant="outline" className="h-8 text-xs sm:h-10 sm:text-sm">
                     Clear
                   </Button>
                 </div>
@@ -144,28 +146,29 @@ export default function WithdrawalsPage() {
           </Card>
           <Card>
           <CardContent className="p-0">
-            <Table>
+          <div className="overflow-x-auto">
+          <Table className="min-w-[500px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Fee</TableHead>
-                  <TableHead>Net Amount</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Amount</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Fee</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Net Amount</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Method</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {withdrawals.map((w: any) => (
                   <TableRow key={w.id}>
-                    <TableCell className="font-medium">{formatCurrency(w.amount)}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatCurrency(w.fee)}</TableCell>
-                    <TableCell className="font-semibold">{formatCurrency(w.netAmount)}</TableCell>
-                    <TableCell className="capitalize">{w.method.replace('_', ' ')}</TableCell>
+                    <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{formatCurrency(w.amount)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.fee)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{formatCurrency(w.netAmount)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm capitalize whitespace-nowrap">{w.method.replace('_', ' ')}</TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant(w.status)}>{w.status}</Badge>
+                      <Badge variant={statusVariant(w.status)} className="text-xs">{w.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                       {new Date(w.createdAt).toLocaleDateString()}
                     </TableCell>
                   </TableRow>
@@ -180,6 +183,7 @@ export default function WithdrawalsPage() {
                 )}
               </TableBody>
             </Table>
+          </div>
           </CardContent>
         </Card>
         </>

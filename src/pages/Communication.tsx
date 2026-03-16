@@ -287,8 +287,8 @@ export default function CommunicationPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-bold">Communication</h1>
-        <p className="text-sm text-muted-foreground">Announcements, newsletters, and prayer requests</p>
+        <h1 className="font-heading text-xl sm:text-2xl font-bold">Communication</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Announcements, newsletters, and prayer requests</p>
       </div>
 
       {isLoading ? (
@@ -303,11 +303,11 @@ export default function CommunicationPage() {
           </TabsList>
 
           <TabsContent value="church" className="mt-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex gap-2 items-center">
                 {!isMember && churches.length > 0 && (
                   <Select value={selectedChurch} onValueChange={setSelectedChurch}>
-                    <SelectTrigger className="w-48">
+                    <SelectTrigger className="w-40 sm:w-48 h-8 text-xs sm:h-9 sm:text-sm">
                       <SelectValue placeholder="All Churches" />
                     </SelectTrigger>
                     <SelectContent>
@@ -324,19 +324,19 @@ export default function CommunicationPage() {
               {canCreateChurchPost && (
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
-                      <Plus className="h-4 w-4" /> New Church Post
+                    <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 h-8 text-xs sm:h-9 sm:text-sm self-end sm:self-auto">
+                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> New Church Post
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                  <DialogContent className="max-w-sm sm:max-w-2xl max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle className="font-heading">Create Post</DialogTitle>
+                    <DialogTitle className="font-heading text-sm sm:text-base">Create Post</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleSubmit(v => {
                     console.log('Form values:', v);
                     console.log('Form errors:', errors);
                     createMutation.mutate(v);
-                  })} className="space-y-4">
+                  })} className="space-y-3">
                     <ChurchSelect 
                       value={churchId} 
                       onValueChange={value => setValue('churchId', value)}
@@ -345,7 +345,7 @@ export default function CommunicationPage() {
                     {!churchId && <p className="text-xs text-amber-600 mt-1">Please select a church</p>}
                     
                     <div>
-                      <Label>Type</Label>
+                      <Label className="text-xs sm:text-sm">Type</Label>
                       <Select
                         value={formType}
                         onValueChange={v => {
@@ -354,7 +354,7 @@ export default function CommunicationPage() {
                           setValue('type', t, { shouldValidate: true });
                         }}
                       >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="announcement">Announcement</SelectItem>
                           <SelectItem value="prayer_request">Prayer Request</SelectItem>
@@ -363,9 +363,9 @@ export default function CommunicationPage() {
                       </Select>
                     </div>
                     <div>
-                      <Label>Priority</Label>
+                      <Label className="text-xs sm:text-sm">Priority</Label>
                       <Select value={watch('priority') || 'normal'} onValueChange={v => setValue('priority', v as 'normal' | 'urgent', { shouldValidate: true })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="normal">Normal</SelectItem>
                           <SelectItem value="urgent">Urgent</SelectItem>
@@ -373,18 +373,18 @@ export default function CommunicationPage() {
                       </Select>
                     </div>
                     <div>
-                      <Label>Title</Label>
-                      <Input {...register('title')} />
+                      <Label className="text-xs sm:text-sm">Title</Label>
+                      <Input {...register('title')} className="h-8 text-xs sm:h-10 sm:text-sm" />
                       {errors.title && <p className="text-xs text-destructive mt-1">{errors.title.message}</p>}
                     </div>
                     <div>
-                      <Label>{formType === 'prayer_request' ? 'Prayer Request Details' : 'Content'}</Label>
-                      <Textarea {...register('content')} rows={4} />
+                      <Label className="text-xs sm:text-sm">{formType === 'prayer_request' ? 'Prayer Request Details' : 'Content'}</Label>
+                      <Textarea {...register('content')} rows={4} className="text-xs sm:text-sm" />
                       {errors.content && <p className="text-xs text-destructive mt-1">{errors.content.message}</p>}
                     </div>
                     
                     <div>
-                      <Label>Attachments <span className="text-xs text-muted-foreground">(Max 5 files - Images, PDFs, Documents, Videos)</span></Label>
+                      <Label className="text-xs sm:text-sm">Attachments <span className="text-xs text-muted-foreground">(Max 5 files)</span></Label>
                       <div className="space-y-2">
                         <Input
                           type="file"
@@ -392,7 +392,7 @@ export default function CommunicationPage() {
                           accept="image/*,.pdf,.doc,.docx,.mp4,.webm,.mov,.avi"
                           onChange={handleFileSelect}
                           disabled={selectedFiles.length >= 5}
-                          className="cursor-pointer"
+                          className="cursor-pointer text-xs sm:text-sm h-8 sm:h-10"
                         />
                         {selectedFiles.length > 0 && (
                           <div className="space-y-1">
@@ -411,7 +411,7 @@ export default function CommunicationPage() {
                       </div>
                     </div>
                     
-                    <Button type="submit" disabled={createMutation.isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                    <Button type="submit" disabled={createMutation.isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90 h-8 text-xs sm:h-10 sm:text-sm">
                       {createMutation.isPending ? 'Posting...' : 'Post'}
                     </Button>
                   </form>
@@ -455,9 +455,9 @@ export default function CommunicationPage() {
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={open => !open && setViewItem(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-sm sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-heading flex items-center gap-2">
+            <DialogTitle className="font-heading text-sm sm:text-base flex items-center gap-2">
               {viewItem && (() => {
                 const Icon = TYPE_ICON[viewItem.type] ?? Bell;
                 return <Icon className="h-5 w-5 text-accent" />;
@@ -527,19 +527,19 @@ export default function CommunicationPage() {
           resetEdit();
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-sm sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-heading">Edit Post</DialogTitle>
+            <DialogTitle className="font-heading text-sm sm:text-base">Edit Post</DialogTitle>
           </DialogHeader>
           {editItem && (
-            <form onSubmit={handleSubmitEdit(v => updateMutation.mutate({ id: editItem.id, dto: v }))} className="space-y-4">
+            <form onSubmit={handleSubmitEdit(v => updateMutation.mutate({ id: editItem.id, dto: v }))} className="space-y-3">
               <ChurchSelect 
                 value={editItem.churchId} 
                 onValueChange={value => setValueEdit('churchId', value)}
               />
               
               <div>
-                <Label>Type</Label>
+                <Label className="text-xs sm:text-sm">Type</Label>
                 <Select
                   value={editItem.type}
                   onValueChange={v => {
@@ -548,7 +548,7 @@ export default function CommunicationPage() {
                     setValueEdit('type', t);
                   }}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="announcement">Announcement</SelectItem>
                     <SelectItem value="prayer_request">Prayer Request</SelectItem>
@@ -557,9 +557,9 @@ export default function CommunicationPage() {
                 </Select>
               </div>
               <div>
-                <Label>Priority</Label>
+                <Label className="text-xs sm:text-sm">Priority</Label>
                 <Select value={editItem.priority} onValueChange={v => setValueEdit('priority', v as 'normal' | 'urgent')}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="normal">Normal</SelectItem>
                     <SelectItem value="urgent">Urgent</SelectItem>
@@ -567,18 +567,18 @@ export default function CommunicationPage() {
                 </Select>
               </div>
               <div>
-                <Label>Title</Label>
-                <Input {...registerEdit('title')} />
+                <Label className="text-xs sm:text-sm">Title</Label>
+                <Input {...registerEdit('title')} className="h-8 text-xs sm:h-10 sm:text-sm" />
                 {errorsEdit.title && <p className="text-xs text-destructive mt-1">{errorsEdit.title.message}</p>}
               </div>
               <div>
-                <Label>Content</Label>
-                <Textarea {...registerEdit('content')} rows={4} />
+                <Label className="text-xs sm:text-sm">Content</Label>
+                <Textarea {...registerEdit('content')} rows={4} className="text-xs sm:text-sm" />
                 {errorsEdit.content && <p className="text-xs text-destructive mt-1">{errorsEdit.content.message}</p>}
               </div>
               
               <div>
-                <Label>Attachments <span className="text-xs text-muted-foreground">(Max 5 files - Images, PDFs, Documents, Videos)</span></Label>
+                <Label className="text-xs sm:text-sm">Attachments <span className="text-xs text-muted-foreground">(Max 5 files)</span></Label>
                 <div className="space-y-2">
                   {existingFiles.length > 0 && (
                     <div className="space-y-1">
@@ -600,7 +600,7 @@ export default function CommunicationPage() {
                     accept="image/*,.pdf,.doc,.docx,.mp4,.webm,.mov,.avi"
                     onChange={handleFileSelect}
                     disabled={(existingFiles.length + selectedFiles.length) >= 5}
-                    className="cursor-pointer"
+                    className="cursor-pointer text-xs sm:text-sm h-8 sm:h-10"
                   />
                   {selectedFiles.length > 0 && (
                     <div className="space-y-1">
@@ -620,7 +620,7 @@ export default function CommunicationPage() {
                 </div>
               </div>
               
-              <Button type="submit" disabled={updateMutation.isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+              <Button type="submit" disabled={updateMutation.isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90 h-8 text-xs sm:h-10 sm:text-sm">
                 {updateMutation.isPending ? 'Updating...' : 'Update'}
               </Button>
             </form>

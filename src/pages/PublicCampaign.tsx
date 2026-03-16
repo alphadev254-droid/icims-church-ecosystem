@@ -114,23 +114,23 @@ export default function PublicCampaignPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-primary text-primary-foreground py-6">
-        <div className="container max-w-4xl">
-          <p className="text-sm text-primary-foreground/70 uppercase tracking-wide mb-1 capitalize">{campaign.category}</p>
-          <h1 className="text-3xl font-heading font-bold">{campaign.name}</h1>
-          <p className="text-primary-foreground/80 mt-1">{campaign.church?.name}</p>
+      <div className="bg-primary text-primary-foreground py-4 sm:py-6">
+        <div className="container max-w-4xl px-4">
+          <p className="text-xs sm:text-sm text-primary-foreground/70 uppercase tracking-wide mb-1 capitalize">{campaign.category}</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold">{campaign.name}</h1>
+          <p className="text-sm text-primary-foreground/80 mt-1">{campaign.church?.name}</p>
         </div>
       </div>
 
       {/* Content */}
-      <div className="container max-w-4xl py-8 space-y-6">
+      <div className="container max-w-4xl px-4 py-6 sm:py-8 space-y-6">
 
         {/* Description */}
         {campaign.description && (
           <Card>
-            <CardContent className="p-6">
-              <h2 className="font-semibold mb-3">About This Campaign</h2>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+            <CardContent className="p-4 sm:p-6">
+              <h2 className="text-sm sm:text-base font-semibold mb-3">About This Campaign</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                 {campaign.description}
               </p>
             </CardContent>
@@ -139,8 +139,8 @@ export default function PublicCampaignPage() {
 
         {/* Share */}
         <Card>
-          <CardContent className="p-6">
-            <h2 className="font-semibold mb-3 flex items-center gap-2">
+          <CardContent className="p-4 sm:p-6">
+            <h2 className="text-sm sm:text-base font-semibold mb-3 flex items-center gap-2">
               <Share2 className="h-4 w-4" />
               Share This Campaign
             </h2>
@@ -167,9 +167,9 @@ export default function PublicCampaignPage() {
 
         {/* Donate CTA */}
         <Card className="bg-accent/10 border-accent">
-          <CardContent className="p-6 text-center">
-            <p className="text-lg font-semibold mb-2">Support This Campaign</p>
-            <p className="text-sm text-muted-foreground mb-4">Every contribution makes a difference</p>
+          <CardContent className="p-4 sm:p-6 text-center">
+            <p className="text-base sm:text-lg font-semibold mb-2">Support This Campaign</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-4">Every contribution makes a difference</p>
             <Button size="lg" className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
               <HandCoins className="h-4 w-4 mr-2" /> Donate Now
             </Button>

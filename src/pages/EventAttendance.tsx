@@ -59,39 +59,12 @@ export default function EventAttendancePage() {
   });
 
   const handleSaveAttendance = () => {
-    const attendedTickets = eventTickets.filter((t: any) => t.attended);
-    const attendedCount = attendedTickets.length;
-    const maleCount = attendedTickets.filter((t: any) => t.user?.gender === 'male').length;
-    const femaleCount = attendedTickets.filter((t: any) => t.user?.gender === 'female').length;
-    
-    // Calculate age groups
-    const now = new Date();
-    let children = 0, youth = 0, youngAdults = 0, adults = 0, seniors = 0;
-    
-    attendedTickets.forEach((t: any) => {
-      if (t.user?.dateOfBirth) {
-        const age = now.getFullYear() - new Date(t.user.dateOfBirth).getFullYear();
-        if (age <= 12) children++;
-        else if (age <= 17) youth++;
-        else if (age <= 35) youngAdults++;
-        else if (age <= 59) adults++;
-        else seniors++;
-      }
-    });
-    
+    const attendedCount = eventTickets.filter((t: { attended?: boolean }) => t.attended).length;
     createAttendanceMutation.mutate({
       churchId: selectedEvent.churchId,
       eventId: selectedEventId,
       date: new Date().toISOString().split('T')[0],
       totalAttendees: attendedCount,
-      maleCount,
-      femaleCount,
-      children,
-      youth,
-      youngAdults,
-      adults,
-      seniors,
-      newVisitors: 0,
       serviceType: 'Event',
     });
   };
@@ -101,17 +74,18 @@ export default function EventAttendancePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/attendance')}>
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="font-heading text-2xl font-bold">Event Attendance</h1>
-            <p className="text-sm text-muted-foreground">Mark attendance for event tickets</p>
+            <h1 className="font-heading text-xl sm:text-2xl font-bold">Event Attendance</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Mark attendance for event tickets</p>
           </div>
         </div>
         {selectedEventId && eventTickets.length > 0 && (
+          <div className="self-end sm:self-auto">
           <ExportImportButtons
             data={eventTickets.map((t: any) => ({
               name: `${t.user.firstName} ${t.user.lastName}`,
@@ -130,15 +104,16 @@ export default function EventAttendancePage() {
             ]}
             pdfTitle={`Event Attendance - ${selectedEvent?.title || 'Report'}`}
           />
+          </div>
         )}
       </div>
 
       <Card>
-        <CardContent className="pt-6 space-y-4">
+        <CardContent className="pt-4 sm:pt-6 space-y-4">
           <div>
-            <Label>Select Event</Label>
+            <Label className="text-xs sm:text-sm">Select Event</Label>
             <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-              <SelectTrigger><SelectValue placeholder="Choose an event" /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="Choose an event" /></SelectTrigger>
               <SelectContent>
                 {events.map((event: any) => (
                   <SelectItem key={event.id} value={event.id}>
@@ -150,15 +125,15 @@ export default function EventAttendancePage() {
           </div>
 
           {selectedEvent && (
-            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+            <div className="flex items-center justify-between p-3 sm:p-4 bg-muted rounded-lg">
               <div>
-                <p className="font-medium">{selectedEvent.title}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm font-medium">{selectedEvent.title}</p>
+                <p className="text-xs text-muted-foreground">
                   {new Date(selectedEvent.date).toLocaleDateString()} at {selectedEvent.time}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold">{attendedCount}/{eventTickets.length}</p>
+                <p className="text-xl sm:text-2xl font-bold">{attendedCount}/{eventTickets.length}</p>
                 <p className="text-xs text-muted-foreground">Attended</p>
               </div>
             </div>
@@ -175,62 +150,64 @@ export default function EventAttendancePage() {
               </div>
             ) : (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">Attended</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Ticket #</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {eventTickets.map((ticket: any) => (
-                      <TableRow key={ticket.id} className={ticket.attended ? 'bg-green-100 dark:bg-green-950' : ''}>
-                        <TableCell>
-                          <Checkbox
-                            checked={ticket.attended}
-                            disabled={markAttendanceMutation.isPending}
-                            onCheckedChange={(checked) =>
-                              markAttendanceMutation.mutate({
-                                ticketId: ticket.id,
-                                attended: !!checked,
-                              })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {ticket.user.firstName} {ticket.user.lastName}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{ticket.user.email}</TableCell>
-                        <TableCell className="text-xs font-mono">{ticket.ticketNumber}</TableCell>
-                        <TableCell>
-                          {ticket.attended && (
-                            <div className="flex items-center gap-1 text-green-600">
-                              <CheckCircle2 className="h-4 w-4" />
-                              <span className="text-xs">Present</span>
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {eventTickets.length === 0 && (
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[500px]">
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                          No tickets found for this event
-                        </TableCell>
+                        <TableHead className="w-12 text-xs sm:text-sm">Attended</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Email</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Ticket #</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Status</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {eventTickets.map((ticket: any) => (
+                        <TableRow key={ticket.id} className={ticket.attended ? 'bg-green-100 dark:bg-green-950' : ''}>
+                          <TableCell>
+                            <Checkbox
+                              checked={ticket.attended}
+                              disabled={markAttendanceMutation.isPending}
+                              onCheckedChange={(checked) =>
+                                markAttendanceMutation.mutate({
+                                  ticketId: ticket.id,
+                                  attended: !!checked,
+                                })
+                              }
+                            />
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                            {ticket.user.firstName} {ticket.user.lastName}
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{ticket.user.email}</TableCell>
+                          <TableCell className="text-xs font-mono whitespace-nowrap">{ticket.ticketNumber}</TableCell>
+                          <TableCell>
+                            {ticket.attended && (
+                              <div className="flex items-center gap-1 text-green-600">
+                                <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                <span className="text-xs">Present</span>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {eventTickets.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-12 text-xs sm:text-sm text-muted-foreground">
+                            No tickets found for this event
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
 
                 {eventTickets.length > 0 && (
                   <div className="p-4 border-t">
                     <Button
                       onClick={handleSaveAttendance}
                       disabled={createAttendanceMutation.isPending}
-                      className="w-full"
+                      className="w-full h-8 text-xs sm:h-10 sm:text-sm"
                     >
                       {createAttendanceMutation.isPending ? 'Saving...' : 'Save Attendance Record'}
                     </Button>

@@ -41,7 +41,46 @@ export default function RequestWithdrawalPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
 
-  // Block access for non-Malawi accounts
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<WithdrawalForm>({
+    resolver: zodResolver(withdrawalSchema),
+    defaultValues: { method: 'mobile_money', mobileOperator: 'airtel' },
+  });
+
+  const method = watch('method');
+
+  const { data: balance } = useQuery({
+    queryKey: ['wallet-balance'],
+    queryFn: walletService.getBalance,
+    enabled: user?.accountCountry === 'Malawi',
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: walletService.requestWithdrawal,
+    onSuccess: () => {
+      toast.success('Withdrawal request submitted successfully');
+      qc.invalidateQueries({ queryKey: ['wallet-balance'] });
+      qc.invalidateQueries({ queryKey: ['withdrawals'] });
+      navigate(-1);
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      const errorData = (err.response?.data || {}) as Record<string, unknown>;
+      let errorMessage = 'Failed to request withdrawal';
+      if (errorData?.message) {
+        errorMessage = String(errorData.message);
+      } else {
+        const msgs: string[] = [];
+        for (const value of Object.values(errorData)) {
+          if (Array.isArray(value)) msgs.push(...value.map(String));
+        }
+        if (msgs.length > 0) errorMessage = msgs.join('. ');
+      }
+      toast.error(errorMessage);
+    },
+  });
+
+  const formatCurrency = (amount: number) => `MWK ${amount.toLocaleString()}`;
+
+  // Block access for non-Malawi accounts (after all hooks)
   if (user?.accountCountry !== 'Malawi') {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -57,59 +96,15 @@ export default function RequestWithdrawalPage() {
     );
   }
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<WithdrawalForm>({
-    resolver: zodResolver(withdrawalSchema),
-    defaultValues: { method: 'mobile_money', mobileOperator: 'airtel' },
-  });
-
-  const method = watch('method');
-
-  const { data: balance } = useQuery({
-    queryKey: ['wallet-balance'],
-    queryFn: walletService.getBalance,
-  });
-
-  const withdrawMutation = useMutation({
-    mutationFn: walletService.requestWithdrawal,
-    onSuccess: () => {
-      toast.success('Withdrawal request submitted successfully');
-      qc.invalidateQueries({ queryKey: ['wallet-balance'] });
-      qc.invalidateQueries({ queryKey: ['withdrawals'] });
-      navigate(-1);
-    },
-    onError: (err: any) => {
-      const errorData = err.response?.data;
-      let errorMessage = 'Failed to request withdrawal';
-      
-      if (errorData?.message) {
-        errorMessage = errorData.message;
-      } else if (typeof errorData === 'object') {
-        const errors = [];
-        for (const [key, value] of Object.entries(errorData)) {
-          if (Array.isArray(value)) {
-            errors.push(...value);
-          }
-        }
-        if (errors.length > 0) {
-          errorMessage = errors.join('. ');
-        }
-      }
-      
-      toast.error(errorMessage);
-    },
-  });
-
-  const formatCurrency = (amount: number) => `MWK ${amount.toLocaleString()}`;
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="font-heading text-2xl font-bold">Request Withdrawal</h1>
-          <p className="text-sm text-muted-foreground">Withdraw funds from your wallet</p>
+          <h1 className="font-heading text-xl sm:text-2xl font-bold">Request Withdrawal</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Withdraw funds from your wallet</p>
         </div>
       </div>
 
@@ -119,7 +114,7 @@ export default function RequestWithdrawalPage() {
           <Wallet className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold font-heading">
+          <div className="text-xl sm:text-2xl font-bold font-heading">
             {balance ? formatCurrency(balance.balance) : 'MWK 0'}
           </div>
         </CardContent>
@@ -130,23 +125,23 @@ export default function RequestWithdrawalPage() {
           <CardTitle>Withdrawal Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(data => withdrawMutation.mutate(data))} className="space-y-6">
+          <form onSubmit={handleSubmit(data => withdrawMutation.mutate(data))} className="space-y-4">
             <div>
-              <Label>Amount *</Label>
+              <Label className="text-xs sm:text-sm">Amount *</Label>
               <Input 
                 type="number" 
                 step="0.01" 
                 {...register('amount', { valueAsNumber: true })} 
                 placeholder="Enter amount"
-                className="mt-1.5"
+                className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm"
               />
               {errors.amount && <p className="text-xs text-destructive mt-1">{errors.amount.message}</p>}
             </div>
 
             <div>
-              <Label>Withdrawal Method *</Label>
+              <Label className="text-xs sm:text-sm">Withdrawal Method *</Label>
               <Select value={method} onValueChange={(v: any) => setValue('method', v)}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="mobile_money">Mobile Money</SelectItem>
                   <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
@@ -157,9 +152,9 @@ export default function RequestWithdrawalPage() {
             {method === 'mobile_money' && (
               <>
                 <div>
-                  <Label>Mobile Operator *</Label>
+                  <Label className="text-xs sm:text-sm">Mobile Operator *</Label>
                   <Select defaultValue="airtel" onValueChange={(v: any) => setValue('mobileOperator', v)}>
-                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="airtel">Airtel Money</SelectItem>
                       <SelectItem value="tnm">TNM Mpamba</SelectItem>
@@ -167,11 +162,11 @@ export default function RequestWithdrawalPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Mobile Number *</Label>
+                  <Label className="text-xs sm:text-sm">Mobile Number *</Label>
                   <Input 
                     {...register('mobileNumber')} 
                     placeholder="e.g. 0991234567" 
-                    className="mt-1.5"
+                    className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm"
                   />
                 </div>
               </>
@@ -180,16 +175,16 @@ export default function RequestWithdrawalPage() {
             {method === 'bank_transfer' && (
               <>
                 <div>
-                  <Label>Bank Code *</Label>
-                  <Input {...register('bankCode')} placeholder="Bank code" className="mt-1.5" />
+                  <Label className="text-xs sm:text-sm">Bank Code *</Label>
+                  <Input {...register('bankCode')} placeholder="Bank code" className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm" />
                 </div>
                 <div>
-                  <Label>Account Name *</Label>
-                  <Input {...register('accountName')} placeholder="Account holder name" className="mt-1.5" />
+                  <Label className="text-xs sm:text-sm">Account Name *</Label>
+                  <Input {...register('accountName')} placeholder="Account holder name" className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm" />
                 </div>
                 <div>
-                  <Label>Account Number *</Label>
-                  <Input {...register('accountNumber')} placeholder="Account number" className="mt-1.5" />
+                  <Label className="text-xs sm:text-sm">Account Number *</Label>
+                  <Input {...register('accountNumber')} placeholder="Account number" className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm" />
                 </div>
               </>
             )}
@@ -201,14 +196,14 @@ export default function RequestWithdrawalPage() {
                 type="button" 
                 variant="outline" 
                 onClick={() => navigate('/withdrawals')}
-                className="flex-1"
+                className="flex-1 h-8 text-xs sm:h-10 sm:text-sm"
               >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
                 disabled={withdrawMutation.isPending} 
-                className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
+                className="flex-1 h-8 text-xs sm:h-10 sm:text-sm bg-accent text-accent-foreground hover:bg-accent/90"
               >
                 {withdrawMutation.isPending ? 'Processing...' : 'Submit Request'}
               </Button>

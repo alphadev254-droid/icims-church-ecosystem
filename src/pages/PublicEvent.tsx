@@ -107,15 +107,15 @@ export default function PublicEventPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-primary text-primary-foreground py-6">
-        <div className="container max-w-4xl">
-          <h1 className="text-3xl font-heading font-bold">{event.title}</h1>
-          <p className="text-primary-foreground/80 mt-1">{event.church?.name}</p>
+      <div className="bg-primary text-primary-foreground py-4 sm:py-6">
+        <div className="container max-w-4xl px-4">
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold">{event.title}</h1>
+          <p className="text-sm text-primary-foreground/80 mt-1">{event.church?.name}</p>
         </div>
       </div>
 
       {/* Content */}
-      <div className="container max-w-4xl py-8 space-y-6">
+      <div className="container max-w-4xl px-4 py-6 sm:py-8 space-y-6">
         {/* Event Image */}
         {event.imageUrl && (
           <div className="rounded-lg overflow-hidden">
@@ -129,12 +129,12 @@ export default function PublicEventPage() {
 
         {/* Event Details */}
         <Card>
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-4 sm:p-6 space-y-4">
             <div className="flex items-start gap-3">
               <Calendar className="h-5 w-5 text-accent mt-0.5" />
               <div>
-                <p className="font-medium">Date & Time</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm sm:text-base font-medium">Date & Time</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   {new Date(event.date).toLocaleDateString('en-GB', {
                     weekday: 'long',
                     year: 'numeric',
@@ -143,7 +143,7 @@ export default function PublicEventPage() {
                   })}
                 </p>
                 {event.time && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mt-1">
                     <Clock className="h-4 w-4" />
                     {event.time}
                   </p>
@@ -155,8 +155,8 @@ export default function PublicEventPage() {
               <div className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-accent mt-0.5" />
                 <div>
-                  <p className="font-medium">Location</p>
-                  <p className="text-sm text-muted-foreground">{event.location}</p>
+                  <p className="text-sm sm:text-base font-medium">Location</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">{event.location}</p>
                 </div>
               </div>
             )}
@@ -165,8 +165,8 @@ export default function PublicEventPage() {
               <div className="flex items-start gap-3">
                 <Users className="h-5 w-5 text-accent mt-0.5" />
                 <div>
-                  <p className="font-medium">Capacity</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm sm:text-base font-medium">Capacity</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     {event.ticketsSold || 0} / {event.maxAttendees} attendees
                   </p>
                 </div>
@@ -178,9 +178,9 @@ export default function PublicEventPage() {
         {/* Description */}
         {event.description && (
           <Card>
-            <CardContent className="p-6">
-              <h2 className="font-semibold mb-3">About This Event</h2>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+            <CardContent className="p-4 sm:p-6">
+              <h2 className="text-sm sm:text-base font-semibold mb-3">About This Event</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                 {event.description}
               </p>
             </CardContent>
@@ -189,8 +189,8 @@ export default function PublicEventPage() {
 
         {/* Share Buttons */}
         <Card>
-          <CardContent className="p-6">
-            <h2 className="font-semibold mb-3 flex items-center gap-2">
+          <CardContent className="p-4 sm:p-6">
+            <h2 className="text-sm sm:text-base font-semibold mb-3 flex items-center gap-2">
               <Share2 className="h-4 w-4" />
               Share This Event
             </h2>
@@ -218,16 +218,16 @@ export default function PublicEventPage() {
         {/* Get Tickets */}
         {event.requiresTicket && event.allowPublicTicketing && (event.isFree || (event.ticketPrice && event.ticketPrice > 0)) && (
           <Card className="bg-accent/10 border-accent">
-            <CardContent className="p-6 text-center">
+            <CardContent className="p-4 sm:p-6 text-center">
               {event.isFree ? (
-                <p className="text-lg font-semibold mb-2 text-green-600">Free Event</p>
+                <p className="text-base sm:text-lg font-semibold mb-2 text-green-600">Free Event</p>
               ) : (
-                <p className="text-lg font-semibold mb-2">
+                <p className="text-base sm:text-lg font-semibold mb-2">
                   Ticket Price: {event.currency} {event.ticketPrice}
                 </p>
               )}
               {event.totalTickets && (
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-4">
                   {event.totalTickets - (event.ticketsSold || 0)} tickets remaining
                 </p>
               )}

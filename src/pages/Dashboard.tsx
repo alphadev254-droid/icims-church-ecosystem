@@ -118,33 +118,33 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">
+          <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
             Welcome back, {user?.firstName}
           </h1>
-          <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
-            <ScopeIcon className="h-4 w-4" />
+          <div className="flex items-center gap-1.5 mt-1 text-xs sm:text-sm text-muted-foreground">
+            <ScopeIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>
               {roleLabel?.scope}
               {user?.church?.name && ` — ${user.church.name}`}
             </span>
           </div>
         </div>
-        <div className="text-right text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full capitalize">
+        <div className="text-right text-xs text-muted-foreground bg-muted px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full capitalize shrink-0">
           {role?.replace(/_/g, ' ')}
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {statCards.map(s => (
           <Card key={s.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{s.title}</CardTitle>
-              <s.icon className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between p-3 pb-2 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">{s.title}</CardTitle>
+              <s.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold font-heading">{s.value}</div>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-lg sm:text-2xl font-bold font-heading">{s.value}</div>
               {s.change > 0 && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                   <TrendingUp className="h-3 w-3 text-green-500" />
@@ -159,11 +159,11 @@ export default function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {hasPermission('attendance:read') && stats.weeklyAttendance && stats.weeklyAttendance.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Weekly Attendance</CardTitle>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-sm sm:text-base">Weekly Attendance</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={stats.weeklyAttendance}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="week" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
@@ -178,11 +178,11 @@ export default function DashboardPage() {
 
         {hasPermission('giving:read') && stats.monthlyGiving && stats.monthlyGiving.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Monthly Giving (MWK)</CardTitle>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-sm sm:text-base">Monthly Giving (MWK)</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={stats.monthlyGiving}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
@@ -197,23 +197,23 @@ export default function DashboardPage() {
 
         {hasPermission('churches:read') && (
           <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-base">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-sm sm:text-base">
                 {isNational ? 'Ministry Overview' : 'Regional Overview'}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-6 text-center">
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="grid grid-cols-3 gap-3 sm:gap-6 text-center">
                 <div>
-                  <p className="text-3xl font-bold font-heading text-accent">{stats.totalChurches ?? 0}</p>
+                  <p className="text-xl sm:text-3xl font-bold font-heading text-accent">{stats.totalChurches ?? 0}</p>
                   <p className="text-xs text-muted-foreground mt-1">Churches</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold font-heading text-accent">{stats.totalMembers ?? 0}</p>
+                  <p className="text-xl sm:text-3xl font-bold font-heading text-accent">{stats.totalMembers ?? 0}</p>
                   <p className="text-xs text-muted-foreground mt-1">Total Members</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold font-heading text-accent">
+                  <p className="text-xl sm:text-3xl font-bold font-heading text-accent">
                     MWK {Number(stats.totalDonations ?? 0).toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Total Giving</p>
@@ -225,16 +225,16 @@ export default function DashboardPage() {
 
         {isMember && urgentComms.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Bell className="h-4 w-4 text-destructive" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-destructive" />
                 Urgent Communications
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 space-y-3">
               {urgentComms.map((comm: any) => (
                 <div key={comm.id} className="border-l-2 border-destructive pl-3 py-1">
-                  <p className="text-sm font-medium">{comm.title}</p>
+                  <p className="text-xs sm:text-sm font-medium">{comm.title}</p>
                   <p className="text-xs text-muted-foreground line-clamp-2">{comm.content}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {new Date(comm.createdAt).toLocaleDateString()}
@@ -247,16 +247,16 @@ export default function DashboardPage() {
 
         {isMember && recentResources.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 This Week's Resources
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 space-y-3">
               {recentResources.map((resource: any) => (
                 <div key={resource.id} className="border-l-2 border-accent pl-3 py-1">
-                  <p className="text-sm font-medium">{resource.title}</p>
+                  <p className="text-xs sm:text-sm font-medium">{resource.title}</p>
                   <p className="text-xs text-muted-foreground capitalize">{resource.category} • {resource.type}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {new Date(resource.createdAt).toLocaleDateString()}

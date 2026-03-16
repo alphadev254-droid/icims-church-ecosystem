@@ -54,8 +54,8 @@ export default function MyTicketsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-bold">My Tickets</h1>
-        <p className="text-sm text-muted-foreground">{filteredTickets.length} ticket(s)</p>
+        <h1 className="font-heading text-xl sm:text-2xl font-bold">My Tickets</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">{filteredTickets.length} ticket(s)</p>
       </div>
 
       {isLoading ? (
@@ -63,18 +63,18 @@ export default function MyTicketsPage() {
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
       ) : filteredTickets.length > 0 ? (
-        <div className="border rounded-md">
-          <Table>
+        <div className="overflow-x-auto border rounded-md">
+          <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px]"></TableHead>
-                <TableHead>Ticket #</TableHead>
-                <TableHead>Event</TableHead>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Purchased</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
+                <TableHead className="text-xs sm:text-sm">Ticket #</TableHead>
+                <TableHead className="text-xs sm:text-sm">Event</TableHead>
+                <TableHead className="text-xs sm:text-sm">Date & Time</TableHead>
+                <TableHead className="text-xs sm:text-sm">Location</TableHead>
+                <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                <TableHead className="text-xs sm:text-sm">Purchased</TableHead>
+                <TableHead className="w-[80px] sm:w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -86,25 +86,26 @@ export default function MyTicketsPage() {
                         expandedTicket === ticket.id ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
                       )}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{ticket.ticketNumber}</TableCell>
-                    <TableCell className="font-medium">{ticket.event.title}</TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="font-mono text-xs whitespace-nowrap">{ticket.ticketNumber}</TableCell>
+                    <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{ticket.event.title}</TableCell>
+                    <TableCell className="text-xs sm:text-sm whitespace-nowrap">
                       {new Date(ticket.event.date).toLocaleDateString()} • {ticket.event.time}
                     </TableCell>
-                    <TableCell className="text-sm">{ticket.event.location}</TableCell>
+                    <TableCell className="text-xs sm:text-sm whitespace-nowrap">{ticket.event.location}</TableCell>
                     <TableCell>
-                      <Badge variant={statusColor(ticket.status) as any}>{ticket.status}</Badge>
+                      <Badge variant={statusColor(ticket.status) as any} className="text-xs">{ticket.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                       {new Date(ticket.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <Button
                         size="sm"
                         variant="outline"
+                        className="h-7 w-7 p-0 sm:h-8 sm:w-8"
                         onClick={() => handleDownloadTicket(ticket.id, ticket.ticketNumber)}
                       >
-                        <Download className="h-4 w-4" />
+                        <Download className="h-3.5 w-3.5" />
                       </Button>
                     </TableCell>
                   </TableRow>

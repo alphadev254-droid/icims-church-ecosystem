@@ -169,10 +169,10 @@ export default function PackagesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Packages & Billing</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="font-heading text-xl sm:text-2xl font-bold">Packages & Billing</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Current plan:&nbsp;
             <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${PKG_BADGE[currentPkg ?? 'basic'] ?? ''}`}>
               {currentPkg ?? '—'}
@@ -218,23 +218,24 @@ export default function PackagesPage() {
                   <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
                 </div>
               ) : (
-                <Table>
+        <div className="overflow-x-auto">
+              <Table className="min-w-[700px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Package</TableHead>
-                      <TableHead>Base Amount</TableHead>
-                      <TableHead>Transaction Cost</TableHead>
-                      <TableHead>Tax</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Gateway</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Package</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Base Amount</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Transaction Cost</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Tax</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Total</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Gateway</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {payments.map(p => (
                       <TableRow key={p.id}>
-                        <TableCell className="text-sm text-muted-foreground">
+                        <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                           {new Date(p.paidAt || p.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </TableCell>
                         <TableCell>
@@ -242,10 +243,10 @@ export default function PackagesPage() {
                             {p.package?.displayName ?? p.packageName}
                           </span>
                         </TableCell>
-                        <TableCell className="font-medium">{fmt(p.baseAmount || p.amount, p.currency)}</TableCell>
-                        <TableCell className="text-sm">{p.convenienceFee ? fmt(p.convenienceFee, p.currency) : '—'}</TableCell>
-                        <TableCell className="text-sm">{p.systemFeeAmount ? fmt(p.systemFeeAmount, p.currency) : '—'}</TableCell>
-                        <TableCell className="font-semibold">{fmt(p.totalAmount || p.amount, p.currency)}</TableCell>
+                        <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{fmt(p.baseAmount || p.amount, p.currency)}</TableCell>
+                        <TableCell className="text-xs sm:text-sm whitespace-nowrap">{p.convenienceFee ? fmt(p.convenienceFee, p.currency) : '—'}</TableCell>
+                        <TableCell className="text-xs sm:text-sm whitespace-nowrap">{p.systemFeeAmount ? fmt(p.systemFeeAmount, p.currency) : '—'}</TableCell>
+                        <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmt(p.totalAmount || p.amount, p.currency)}</TableCell>
                         <TableCell>
                           <span className="text-xs capitalize">{p.gateway || 'paystack'}</span>
                         </TableCell>
@@ -266,6 +267,7 @@ export default function PackagesPage() {
                     )}
                   </TableBody>
                 </Table>
+              </div>
               )}
             </CardContent>
           </Card>

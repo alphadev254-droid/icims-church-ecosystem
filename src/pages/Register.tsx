@@ -74,33 +74,30 @@ export default function RegisterPage() {
           <p className="text-sm text-muted-foreground mt-1">Start managing your churches from day one</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>First Name</Label>
-              <Input {...register('firstName')} placeholder="James"
-                className={errors.firstName ? 'border-destructive' : ''} />
+              <Label className="text-xs sm:text-sm">First Name</Label>
+              <Input className={errors.firstName ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'} {...register('firstName')} placeholder="James" />
               {errors.firstName && <p className="text-xs text-destructive">{errors.firstName.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Last Name</Label>
-              <Input {...register('lastName')} placeholder="Banda"
-                className={errors.lastName ? 'border-destructive' : ''} />
+              <Label className="text-xs sm:text-sm">Last Name</Label>
+              <Input className={errors.lastName ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'} {...register('lastName')} placeholder="Banda" />
               {errors.lastName && <p className="text-xs text-destructive">{errors.lastName.message}</p>}
             </div>
           </div>
 
           <div className="space-y-1">
-            <Label>Email Address</Label>
-            <Input type="email" {...register('email')} placeholder="admin@church.org"
-              className={errors.email ? 'border-destructive' : ''} />
+            <Label className="text-xs sm:text-sm">Email Address</Label>
+            <Input className={errors.email ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'} type="email" {...register('email')} placeholder="admin@church.org" />
             {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-1">
-            <Label>Country</Label>
+            <Label className="text-xs sm:text-sm">Country</Label>
             <Select value={accountCountry} onValueChange={(v: 'Malawi' | 'Kenya') => { setAccountCountry(v); setValue('accountCountry', v); }}>
-              <SelectTrigger className={errors.accountCountry ? 'border-destructive' : ''}>
+              <SelectTrigger className={errors.accountCountry ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'}>
                 <SelectValue placeholder="Select country" />
               </SelectTrigger>
               <SelectContent>
@@ -112,16 +109,15 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1">
-            <Label>Phone</Label>
-            <Input {...register('phone')} placeholder={accountCountry === 'Kenya' ? '+254 ...' : '+265 ...'}
-              className={errors.phone ? 'border-destructive' : ''} />
+            <Label className="text-xs sm:text-sm">Phone</Label>
+            <Input className={errors.phone ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'} {...register('phone')} placeholder={accountCountry === 'Kenya' ? '+254 ...' : '+265 ...'} />
             {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
           </div>
 
           <div className="space-y-1">
-            <Label>Gender</Label>
+            <Label className="text-xs sm:text-sm">Gender</Label>
             <Select value={gender} onValueChange={(v: 'male' | 'female') => { setGender(v); setValue('gender', v); }}>
-              <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
+              <SelectTrigger className={errors.gender ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'}>
                 <SelectValue placeholder="Select gender" />
               </SelectTrigger>
               <SelectContent>
@@ -133,19 +129,19 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1">
-            <Label>Church Founded Date (Optional)</Label>
-            <Input type="date" {...register('anniversary')} />
+            <Label className="text-xs sm:text-sm">Church Founded Date (Optional)</Label>
+            <Input className="h-8 text-xs sm:h-10 sm:text-sm" type="date" {...register('anniversary')} />
             <p className="text-xs text-muted-foreground">When was your church established?</p>
           </div>
 
           <div className="space-y-1">
-            <Label>Password</Label>
+            <Label className="text-xs sm:text-sm">Password</Label>
             <div className="relative">
               <Input
                 type={showPassword ? 'text' : 'password'}
                 {...register('password')}
                 placeholder="Min 8 chars, 1 uppercase, 1 number"
-                className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
+                className={errors.password ? 'border-destructive pr-10 h-8 text-xs sm:h-10 sm:text-sm' : 'pr-10 h-8 text-xs sm:h-10 sm:text-sm'}
               />
               <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 onClick={() => setShowPassword(v => !v)}>
@@ -156,13 +152,13 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1">
-            <Label>Confirm Password</Label>
+            <Label className="text-xs sm:text-sm">Confirm Password</Label>
             <div className="relative">
               <Input
                 type={showConfirmPassword ? 'text' : 'password'}
                 {...register('confirmPassword')}
                 placeholder="Repeat password"
-                className={errors.confirmPassword ? 'border-destructive pr-10' : 'pr-10'}
+                className={errors.confirmPassword ? 'border-destructive pr-10 h-8 text-xs sm:h-10 sm:text-sm' : 'pr-10 h-8 text-xs sm:h-10 sm:text-sm'}
               />
               <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 onClick={() => setShowConfirmPassword(v => !v)}>

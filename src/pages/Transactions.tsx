@@ -33,7 +33,7 @@ export default function TransactionsPage() {
   const qc = useQueryClient();
   const isMember = role === 'member';
 
-  // Block members from accessing this page
+  // Block members from accessing this page (after all hooks)
   if (isMember) {
     return (
       <div className="space-y-6">
@@ -49,6 +49,7 @@ export default function TransactionsPage() {
     queryKey: ['churches'],
     queryFn: churchesService.getAll,
     staleTime: STALE_TIME.LONG,
+    enabled: !isMember,
   });
 
   const { data, isLoading } = useQuery({ 

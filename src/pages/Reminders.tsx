@@ -175,60 +175,60 @@ const Reminders = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Birthdays</p>
-                <p className="text-2xl font-bold">{stats.birthdays}</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats.birthdays}</p>
               </div>
-              <Cake className="h-8 w-8 text-pink-500 opacity-80" />
+              <Cake className="h-6 w-6 sm:h-8 sm:w-8 text-pink-500 opacity-80" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Weddings</p>
-                <p className="text-2xl font-bold">{stats.weddings}</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats.weddings}</p>
               </div>
-              <Heart className="h-8 w-8 text-red-500 opacity-80" />
+              <Heart className="h-6 w-6 sm:h-8 sm:w-8 text-red-500 opacity-80" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Anniversaries</p>
-                <p className="text-2xl font-bold">{stats.memberAnniversaries}</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats.memberAnniversaries}</p>
               </div>
-              <Gift className="h-8 w-8 text-blue-500 opacity-80" />
+              <Gift className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 opacity-80" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Events</p>
-                <p className="text-2xl font-bold">{stats.events}</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats.events}</p>
               </div>
-              <Calendar className="h-8 w-8 text-green-500 opacity-80" />
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 opacity-80" />
             </div>
           </CardContent>
         </Card>
         {stats.churchFounded > 0 && (
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Church Founded</p>
-                  <p className="text-2xl font-bold">{stats.churchFounded}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.churchFounded}</p>
                 </div>
-                <ChurchIcon className="h-8 w-8 text-purple-500 opacity-80" />
+                <ChurchIcon className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500 opacity-80" />
               </div>
             </CardContent>
           </Card>
@@ -237,20 +237,20 @@ const Reminders = () => {
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 relative min-w-[160px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by name or event..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-8 sm:pl-9 h-8 text-xs sm:h-10 sm:text-sm"
               />
             </div>
             {!isMember && churches.length > 0 && (
               <Select value={selectedChurch} onValueChange={setSelectedChurch}>
-                <SelectTrigger className="w-full md:w-48">
+                <SelectTrigger className="w-full sm:w-44 h-8 text-xs sm:h-10 sm:text-sm">
                   <SelectValue placeholder="All Churches" />
                 </SelectTrigger>
                 <SelectContent>
@@ -264,7 +264,7 @@ const Reminders = () => {
               </Select>
             )}
             <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-full md:w-48">
+              <SelectTrigger className="w-full sm:w-44 h-8 text-xs sm:h-10 sm:text-sm">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -279,7 +279,7 @@ const Reminders = () => {
               </SelectContent>
             </Select>
             <Select value={daysFilter.toString()} onValueChange={(v) => setDaysFilter(Number(v))}>
-              <SelectTrigger className="w-full md:w-40">
+              <SelectTrigger className="w-full sm:w-36 h-8 text-xs sm:h-10 sm:text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
