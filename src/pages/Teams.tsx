@@ -16,7 +16,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Users, Plus, Pencil, Trash2, UserPlus, Crown, ShieldAlert } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, UserPlus, Crown, Lock } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export default function TeamsPage() {
@@ -86,12 +88,18 @@ export default function TeamsPage() {
   if (!hasTeamsFeature && !isMember) {
     return (
       <div className="space-y-6">
-        <h1 className="font-heading text-2xl font-bold">Teams</h1>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Teams management is not available in your current package. Please upgrade to Standard or Premium to access this feature.</p>
-          </CardContent>
-        </Card>
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Teams</h1>
+          <p className="text-sm text-muted-foreground">Manage church teams and members</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Teams Management is not available in your current package.{' '}
+            <Link to="/dashboard/packages" className="font-medium underline">Upgrade now</Link>
+            {' '}to unlock teams management features.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
