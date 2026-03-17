@@ -126,7 +126,7 @@ export function AdminScopeSelector({
     
     return (
       <div className="space-y-2">
-        <Label>Districts <span className="text-destructive">*</span></Label>
+        <Label>Districts/Constituencies <span className="text-destructive">*</span></Label>
         <div className="rounded-md border p-3 space-y-2 max-h-44 overflow-y-auto bg-muted/20">
           <div className="flex items-center gap-2">
             <Checkbox
@@ -135,11 +135,11 @@ export function AdminScopeSelector({
               onCheckedChange={c => onDistrictsChange(c ? ['__all__'] : [])}
             />
             <label htmlFor="district-all" className="text-sm font-medium cursor-pointer">
-              All Districts
+              All Districts/Constituencies
             </label>
           </div>
           <div className="border-t pt-2 space-y-1.5">
-            {allDistricts.map(dist => (
+            {allDistricts.filter(d => d !== '').map(dist => (
               <div key={dist} className="flex items-center gap-2">
                 <Checkbox
                   id={`dist-${dist}`}
@@ -173,7 +173,7 @@ export function AdminScopeSelector({
   return (
     <div className="space-y-3">
       <div className="space-y-2">
-        <Label>District <span className="text-destructive">*</span></Label>
+        <Label>District/Constituency <span className="text-destructive">*</span></Label>
         <Select 
           value={selectedDistrict} 
           onValueChange={(dist) => {
@@ -185,10 +185,10 @@ export function AdminScopeSelector({
           }}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select district" />
+            <SelectValue placeholder="Select district/constituency" />
           </SelectTrigger>
           <SelectContent>
-            {allDistricts.map(d => (
+            {allDistricts.filter(d => d !== '').map(d => (
               <SelectItem key={d} value={d}>{d}</SelectItem>
             ))}
           </SelectContent>
@@ -197,7 +197,7 @@ export function AdminScopeSelector({
 
       {selectedDistrict && (
         <div className="space-y-2">
-          <Label>Traditional Authority(ies) <span className="text-destructive">*</span></Label>
+          <Label>Ward/Traditional Authority(ies) <span className="text-destructive">*</span></Label>
           <div className="rounded-md border p-3 space-y-2 max-h-44 overflow-y-auto bg-muted/20">
             <div className="flex items-center gap-2">
               <Checkbox
@@ -206,11 +206,11 @@ export function AdminScopeSelector({
                 onCheckedChange={c => onTAsChange(c ? ['__all__'] : [])}
               />
               <label htmlFor="ta-all" className="text-sm font-medium cursor-pointer">
-                All Traditional Authorities
+                All Wards/Traditional Authorities
               </label>
             </div>
             <div className="border-t pt-2 space-y-1.5">
-              {availableTAs.map(ta => (
+              {availableTAs.filter(ta => ta !== '').map(ta => (
                 <div key={ta} className="flex items-center gap-2">
                   <Checkbox
                     id={`ta-${ta}`}

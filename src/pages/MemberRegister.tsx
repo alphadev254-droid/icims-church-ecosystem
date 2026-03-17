@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Church, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Church, Eye, EyeOff } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import apiClient from '@/lib/api-client';
@@ -50,6 +50,7 @@ export default function MemberRegisterPage() {
   const [serviceInterests, setServiceInterests] = useState<string[]>([]);
   const [baptized, setBaptized] = useState<boolean | undefined>(undefined);
   const [churchName, setChurchName] = useState<string>('');
+  const [churchLogoUrl, setChurchLogoUrl] = useState<string | null>(null);
   const [loadingChurch, setLoadingChurch] = useState(true);
   const inviteToken = searchParams.get('invite');
 
@@ -69,6 +70,7 @@ export default function MemberRegisterPage() {
         const { data } = await apiClient.get(`/churches/by-invite/${inviteToken}`);
         if (data.success) {
           setChurchName(data.data.name);
+          setChurchLogoUrl(data.data.logoUrl ?? null);
         } else {
           toast.error('Invalid invite link');
           navigate('/login');
@@ -123,10 +125,18 @@ export default function MemberRegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-3">
-            <Church className="h-7 w-7 text-accent" />
+          <div className="inline-flex flex-col items-center gap-2 mb-3">
+            {churchLogoUrl ? (
+              <img
+                src={`${(import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/\/+$/, '')}${churchLogoUrl}`}
+                alt={churchName}
+                className="h-16 w-16 rounded-xl object-cover border shadow-sm"
+              />
+            ) : (
+              <Church className="h-10 w-10 text-accent" />
+            )}
             <span className="font-heading text-xl font-bold">{churchName || 'ICIMS'}</span>
-          </Link>
+          </div>
           <h1 className="font-heading text-2xl font-bold text-foreground">Join as Church Member</h1>
           <p className="text-sm text-muted-foreground mt-1">Create your account to join the church</p>
         </div>

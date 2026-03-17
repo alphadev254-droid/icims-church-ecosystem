@@ -147,17 +147,17 @@ export function LocationSelect({
 
         <div className="space-y-1">
           <Label>
-            District{required.district
+            District/Constituency{required.district
               ? <span className="text-destructive">*</span>
               : <span className="text-muted-foreground text-xs"> (optional)</span>}
           </Label>
           <Select value={selectedDistrict} onValueChange={handleDistrictChange} disabled={!selectedRegion}>
             <SelectTrigger className={errors.district ? 'border-destructive' : ''}>
-              <SelectValue placeholder={loading.districts ? 'Loading...' : 'Select district'} />
+              <SelectValue placeholder={loading.districts ? 'Loading...' : 'Select district/constituency'} />
               {loading.districts && <Loader2 className="h-4 w-4 animate-spin" />}
             </SelectTrigger>
             <SelectContent>
-              {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              {districts.filter(d => d !== '').map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
             </SelectContent>
           </Select>
           {errors.district && <p className="text-xs text-destructive">{errors.district}</p>}
@@ -167,17 +167,17 @@ export function LocationSelect({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label>
-            Traditional Authority{required.traditionalAuthority
+            Ward/Traditional Authority{required.traditionalAuthority
               ? <span className="text-destructive">*</span>
               : <span className="text-muted-foreground text-xs"> (optional)</span>}
           </Label>
           <Select value={selectedTA} onValueChange={handleTAChange} disabled={!selectedDistrict}>
             <SelectTrigger className={errors.traditionalAuthority ? 'border-destructive' : ''}>
-              <SelectValue placeholder={loading.tas ? 'Loading...' : 'Select traditional authority'} />
+              <SelectValue placeholder={loading.tas ? 'Loading...' : 'Select ward/traditional authority'} />
               {loading.tas && <Loader2 className="h-4 w-4 animate-spin" />}
             </SelectTrigger>
             <SelectContent>
-              {traditionalAuthorities.map(ta => <SelectItem key={ta} value={ta}>{ta}</SelectItem>)}
+              {traditionalAuthorities.filter(ta => ta !== '').map(ta => <SelectItem key={ta} value={ta}>{ta}</SelectItem>)}
             </SelectContent>
           </Select>
           {errors.traditionalAuthority && <p className="text-xs text-destructive">{errors.traditionalAuthority}</p>}
@@ -185,13 +185,13 @@ export function LocationSelect({
 
         <div className="space-y-1">
           <Label>Village <span className="text-muted-foreground text-xs">(optional)</span></Label>
-          <Select value={selectedVillage} onValueChange={setSelectedVillage} disabled={!selectedTA}>
+          <Select value={selectedVillage} onValueChange={setSelectedVillage} disabled={!selectedTA || villages.filter(v => v !== '').length === 0}>
             <SelectTrigger>
-              <SelectValue placeholder={loading.villages ? 'Loading...' : 'Select village'} />
+              <SelectValue placeholder={loading.villages ? 'Loading...' : villages.filter(v => v !== '').length === 0 ? 'No villages available' : 'Select village'} />
               {loading.villages && <Loader2 className="h-4 w-4 animate-spin" />}
             </SelectTrigger>
             <SelectContent>
-              {villages.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+              {villages.filter(v => v !== '').map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

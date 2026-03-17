@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,12 +19,18 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Building2, Users, MapPin, Globe, Landmark, Plus, Pencil, Trash2, Lock, Link2, Copy, Check } from 'lucide-react';
+import { Building2, Users, MapPin, Globe, Landmark, Plus, Pencil, Trash2, Lock, Link2, Copy, Check, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate, Link } from 'react-router-dom';
-
 const LEVEL_ICON: Record<string, typeof Globe> = {
   national: Globe, regional: MapPin, district: Landmark, local: Building2,
+};
+
+const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/\/+$/, '');
+const getLogoUrl = (path?: string | null): string => {
+  if (!path) return '';
+  if (path.startsWith('data:') || path.startsWith('http')) return path;
+  return `${STATIC_BASE}${path}`;
 };
 
 // ─── Form schema ──────────────────────────────────────────────────────────────
@@ -43,13 +49,18 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 // ─── Church Form ──────────────────────────────────────────────────────────────
-function ChurchForm({ defaultValues, defaultLocation, onSubmit, isPending, submitLabel }: {
+function ChurchForm({ defaultValues, defaultLocation, existingLogoUrl, onSubmit, isPending, submitLabel }: {
   defaultValues?: Partial<FormValues>;
   defaultLocation?: LocationValue;
-  onSubmit: (v: FormValues) => void;
+  existingLogoUrl?: string | null;
+  onSubmit: (v: FormValues, logoFile: File | null, removeLogo: boolean) => void;
   isPending: boolean;
   submitLabel: string;
 }) {
+  const logoFileRef = useRef<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>(existingLogoUrl ? getLogoUrl(existingLogoUrl) : '');
+  const [removeLogoFlag, setRemoveLogoFlag] = useState(false);
+
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -61,8 +72,47 @@ function ChurchForm({ defaultValues, defaultLocation, onSubmit, isPending, submi
     },
   });
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    logoFileRef.current = file;
+    setRemoveLogoFlag(false);
+    const reader = new FileReader();
+    reader.onloadend = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    logoFileRef.current = null;
+    setLogoPreview('');
+    setRemoveLogoFlag(true);
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(v => onSubmit(v, logoFileRef.current, removeLogoFlag))} className="space-y-4">
+      {/* Logo upload */}
+      <div>
+        <Label>Branch Logo <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        {logoPreview ? (
+          <div className="relative mt-1 w-24 h-24">
+            <img src={logoPreview} alt="Logo preview" className="w-24 h-24 object-cover rounded-lg border" />
+            <button
+              type="button"
+              onClick={handleRemoveLogo}
+              className="absolute -top-1.5 -right-1.5 p-0.5 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ) : (
+          <label className="mt-1 flex items-center gap-2 w-fit cursor-pointer px-3 py-2 border rounded-md hover:bg-accent/50 transition-colors text-sm text-muted-foreground">
+            <Upload className="h-4 w-4" />
+            Upload logo
+            <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+          </label>
+        )}
+      </div>
+
       <div>
         <Label>Branch Name</Label>
         <Input {...register('name')} />
@@ -161,28 +211,28 @@ export default function ChurchesPage() {
   }
 
   const createMutation = useMutation({
-    mutationFn: (dto: FormValues) => {
-      if (!churchLimit.allowed) {
-        throw new Error(churchLimit.message);
-      }
-      return churchesService.create(buildDto(dto));
+    mutationFn: (payload: FormData) => {
+      if (!churchLimit.allowed) throw new Error(churchLimit.message);
+      return churchesService.create(payload);
     },
     onSuccess: () => {
       toast.success('Branch created');
       qc.invalidateQueries({ queryKey: ['churches'] });
       setCreateOpen(false);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || err.message || 'Failed to create branch'),
+    onError: (err: { response?: { data?: { message?: string } }; message?: string }) =>
+      toast.error(err.response?.data?.message || err.message || 'Failed to create branch'),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: ReturnType<typeof buildDto> }) => churchesService.update(id, dto),
+    mutationFn: ({ id, payload }: { id: string; payload: FormData }) => churchesService.update(id, payload),
     onSuccess: () => {
       toast.success('Branch updated');
       qc.invalidateQueries({ queryKey: ['churches'] });
       setEditChurch(null);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update branch'),
+    onError: (err: { response?: { data?: { message?: string } } }) =>
+      toast.error(err.response?.data?.message || 'Failed to update branch'),
   });
 
   const deleteMutation = useMutation({
@@ -192,7 +242,8 @@ export default function ChurchesPage() {
       qc.invalidateQueries({ queryKey: ['churches'] });
       setDeleteChurch(null);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete branch'),
+    onError: (err: { response?: { data?: { message?: string } } }) =>
+      toast.error(err.response?.data?.message || 'Failed to delete branch'),
   });
 
   const generateInviteMutation = useMutation({
@@ -204,7 +255,8 @@ export default function ChurchesPage() {
       setInviteLinkChurch(prev => prev ? { ...prev, inviteToken: data.inviteToken } : null);
       toast.success('Invite link generated');
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to generate invite link'),
+    onError: (err: { response?: { data?: { message?: string } } }) =>
+      toast.error(err.response?.data?.message || 'Failed to generate invite link'),
   });
 
   const copyInviteLink = (token: string, churchId: string) => {
@@ -216,24 +268,25 @@ export default function ChurchesPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  function buildDto(v: FormValues) {
-    // Build a human-readable location string for display
+  function buildFormData(v: FormValues, logoFile: File | null, removeLogo: boolean): FormData {
     const locParts = [v.traditionalAuthority, v.district, v.region].filter(Boolean);
     const locationStr = locParts.join(', ') || 'Malawi';
-    return {
-      name: v.name,
-      location: locationStr,
-      country: 'Malawi',
-      region: v.region,
-      district: v.district,
-      traditionalAuthority: v.traditionalAuthority,
-      village: v.village || undefined,
-      phone: v.phone || undefined,
-      email: v.email || undefined,
-      website: v.website || undefined,
-      address: v.address || undefined,
-      pastorName: v.pastorName || undefined,
-    };
+    const fd = new FormData();
+    fd.append('name', v.name);
+    fd.append('location', locationStr);
+    fd.append('country', 'Malawi');
+    fd.append('region', v.region);
+    fd.append('district', v.district);
+    fd.append('traditionalAuthority', v.traditionalAuthority);
+    if (v.village) fd.append('village', v.village);
+    if (v.phone) fd.append('phone', v.phone);
+    if (v.email) fd.append('email', v.email);
+    if (v.website) fd.append('website', v.website);
+    if (v.address) fd.append('address', v.address);
+    if (v.pastorName) fd.append('pastorName', v.pastorName);
+    if (logoFile) fd.append('logo', logoFile);
+    if (removeLogo) fd.append('removeLogo', 'true');
+    return fd;
   }
 
   return (
@@ -255,7 +308,7 @@ export default function ChurchesPage() {
             <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="font-heading">Add Branch</DialogTitle></DialogHeader>
               <ChurchForm
-                onSubmit={(v) => createMutation.mutate(v)}
+                onSubmit={(v, logoFile, removeLogo) => createMutation.mutate(buildFormData(v, logoFile, removeLogo))}
                 isPending={createMutation.isPending}
                 submitLabel="Create Branch"
               />
@@ -283,9 +336,17 @@ export default function ChurchesPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="p-2 bg-accent/10 rounded-md flex-shrink-0">
-                        <ChurchIcon className="h-4 w-4 text-accent" />
-                      </div>
+                      {church.logoUrl ? (
+                        <img
+                          src={getLogoUrl(church.logoUrl)}
+                          alt={church.name}
+                          className="h-9 w-9 rounded-md object-cover flex-shrink-0 border"
+                        />
+                      ) : (
+                        <div className="p-2 bg-accent/10 rounded-md flex-shrink-0">
+                          <ChurchIcon className="h-4 w-4 text-accent" />
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <CardTitle className="text-sm font-semibold leading-tight truncate">{church.name}</CardTitle>
                         {church.branchCode && <p className="text-xs text-muted-foreground">{church.branchCode}</p>}
@@ -319,11 +380,11 @@ export default function ChurchesPage() {
                     {church.district && (
                       <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{church.district}</span>
                     )}
-                    {(church as any).traditionalAuthority && (
-                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{(church as any).traditionalAuthority}</span>
+                    {church.traditionalAuthority && (
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{church.traditionalAuthority}</span>
                     )}
-                    {(church as any).village && (
-                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{(church as any).village}</span>
+                    {church.village && (
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{church.village}</span>
                     )}
                   </div>
                   {church.location && !church.region && (
@@ -367,19 +428,22 @@ export default function ChurchesPage() {
                 email: editChurch.email ?? '',
                 website: editChurch.website ?? '',
                 address: editChurch.address ?? '',
-                pastorName: (editChurch as any).pastorName ?? '',
+                pastorName: editChurch.pastorName ?? '',
                 region: editChurch.region ?? '',
                 district: editChurch.district ?? '',
-                traditionalAuthority: (editChurch as any).traditionalAuthority ?? '',
-                village: (editChurch as any).village ?? '',
+                traditionalAuthority: editChurch.traditionalAuthority ?? '',
+                village: editChurch.village ?? '',
               }}
               defaultLocation={{
                 region: editChurch.region ?? undefined,
                 district: editChurch.district ?? undefined,
-                traditionalAuthority: (editChurch as any).traditionalAuthority ?? undefined,
-                village: (editChurch as any).village ?? undefined,
+                traditionalAuthority: editChurch.traditionalAuthority ?? undefined,
+                village: editChurch.village ?? undefined,
               }}
-              onSubmit={(v) => updateMutation.mutate({ id: editChurch.id, dto: buildDto(v) })}
+              existingLogoUrl={editChurch.logoUrl}
+              onSubmit={(v, logoFile, removeLogo) =>
+                updateMutation.mutate({ id: editChurch.id, payload: buildFormData(v, logoFile, removeLogo) })
+              }
               isPending={updateMutation.isPending}
               submitLabel="Save Changes"
             />

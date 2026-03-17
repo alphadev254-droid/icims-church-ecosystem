@@ -15,6 +15,8 @@ export interface Church {
   phone?: string | null;
   email?: string | null;
   website?: string | null;
+  pastorName?: string | null;
+  logoUrl?: string | null;
   memberCount: number;
   yearFounded?: number | null;
   parentId?: string | null;
@@ -39,6 +41,7 @@ export interface CreateChurchDto {
   phone?: string;
   email?: string;
   website?: string;
+  pastorName?: string;
   yearFounded?: number;
   parentId?: string;
 }
@@ -54,12 +57,18 @@ export const churchesService = {
     const { data } = await apiClient.get(`/churches/${id}`);
     return data.data;
   },
-  create: async (dto: CreateChurchDto): Promise<Church> => {
-    const { data } = await apiClient.post('/churches', dto);
+  create: async (dto: CreateChurchDto | FormData): Promise<Church> => {
+    const isFormData = dto instanceof FormData;
+    const { data } = await apiClient.post('/churches', dto, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+    });
     return data.data;
   },
-  update: async (id: string, dto: UpdateChurchDto): Promise<Church> => {
-    const { data } = await apiClient.put(`/churches/${id}`, dto);
+  update: async (id: string, dto: UpdateChurchDto | FormData): Promise<Church> => {
+    const isFormData = dto instanceof FormData;
+    const { data } = await apiClient.put(`/churches/${id}`, dto, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+    });
     return data.data;
   },
   delete: async (id: string): Promise<void> => {
