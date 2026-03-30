@@ -9,6 +9,7 @@ import {
   Wrench, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 const IconFacebook = () => (
   <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
@@ -53,6 +54,13 @@ const socials = [
 ];
 
 export default function ContactPage() {
+  usePageMeta({
+    title: 'Contact Us',
+    description: 'Get in touch with the ICIMS team. Reach our sales, support or technical departments. Office hours Mon–Fri 8am–6pm EAT. Email: info@icims.org.',
+    canonical: 'https://churchcentral.church/contact',
+    ogImage: 'https://churchcentral.church/contact.png',
+  });
+
   const [loading, setLoading] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 

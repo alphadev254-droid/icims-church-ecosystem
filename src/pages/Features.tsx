@@ -4,6 +4,7 @@ import {
   BookOpen, ClipboardList, Building2, TrendingUp, Shield, Globe,
   Zap, Lock, Smartphone, FileText
 } from 'lucide-react';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 const modules = [
   { icon: Users, num: '01', title: 'Membership Management', desc: 'Member registration, personal & family profiles, role assignment and membership tracking.' },
@@ -35,6 +36,13 @@ const fadeUp = {
 };
 
 export default function FeaturesPage() {
+  usePageMeta({
+    title: '12 Integrated Modules & Features',
+    description: 'Explore all 12 ICIMS modules: membership, giving, attendance, events, communication, Bible study, revenue management, performance KPIs and more. Enterprise-grade church software.',
+    canonical: 'https://churchcentral.church/features',
+    ogImage: 'https://churchcentral.church/features.png',
+  });
+
   return (
     <div>
       <section className="relative overflow-hidden">

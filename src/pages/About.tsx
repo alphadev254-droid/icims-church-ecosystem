@@ -3,6 +3,7 @@ import { Target, Eye, Heart, Users, Church, Globe, ShieldCheck, ArrowRight, Chec
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import churchCommunity from '@/assets/church-community.jpg';
+import { usePageMeta } from '@/hooks/usePageMeta';
 
 const stats = [
   { value: '500+', label: 'Churches Served' },
@@ -40,6 +41,13 @@ const fadeUp = {
 };
 
 export default function AboutPage() {
+  usePageMeta({
+    title: 'About ICIMS',
+    description: 'Learn about ICIMS — the Integrated Church Management System built by the Strategy Led Church Academy. Our mission, vision, values and the story behind the platform.',
+    canonical: 'https://churchcentral.church/about',
+    ogImage: 'https://churchcentral.church/about.png',
+  });
+
   return (
     <div>
       {/* Hero */}

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { Button } from '@/components/ui/button';
 import {
   Users, Church, Calendar, HandCoins, BarChart3, MessageSquare,
@@ -40,6 +41,13 @@ const fadeUp = {
 };
 
 export default function LandingPage() {
+  usePageMeta({
+    title: 'The Complete Church Management Ecosystem',
+    description: 'ICIMS is a cloud-based church management platform with 12 integrated modules — membership, giving, attendance, events, communication and more. Free 30-day trial.',
+    canonical: 'https://churchcentral.church/',
+    ogImage: 'https://churchcentral.church/about.png',
+  });
+
   return (
     <div>
       {/* Hero */}
