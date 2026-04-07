@@ -99,12 +99,7 @@ export default function LoginPage() {
           <Link to="/register" className="text-accent hover:underline font-medium">Get started free</Link>
         </p>
 
-        {/* Demo credentials */}
-        <div className="mt-4 p-3 rounded-md bg-muted text-xs text-muted-foreground space-y-1">
-          <p className="font-semibold text-foreground">Demo accounts:</p>
-          <p>Ministry Administrator: <span className="font-mono">admin@icims.org</span> / <span className="font-mono">Admin@1234</span></p>
-         
-        </div>
+    
       </div>
     </div>
   );
