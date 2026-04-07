@@ -11,9 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Church, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
+const TITLES = ['Rev', 'Dr', 'Prof', 'Pastor', 'Prophet', 'Seer', 'Sister', 'Brother', 'Father', 'Other'] as const;
+
 const schema = z.object({
+  title: z.enum(TITLES).optional(),
+  titleOther: z.string().optional(),
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
+  ministryName: z.string().optional(),
+  currentMembership: z.coerce.number().int().min(0).optional(),
+  numberOfBranches: z.coerce.number().int().min(0).optional(),
   email: z.string().email('Enter a valid email address'),
   phone: z.string().min(1, 'Phone number is required'),
   gender: z.enum(['male', 'female'], { required_error: 'Gender is required' }),
@@ -37,6 +44,7 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [accountCountry, setAccountCountry] = useState<'Malawi' | 'Kenya' | ''>('');
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
+  const [title, setTitle] = useState<string>('');
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -44,8 +52,13 @@ export default function RegisterPage() {
 
   const onSubmit = async (values: FormValues) => {
     const result = await authRegister({
+      title: values.title,
+      titleOther: values.titleOther,
       firstName: values.firstName,
       lastName: values.lastName,
+      ministryName: values.ministryName,
+      currentMembership: values.currentMembership,
+      numberOfBranches: values.numberOfBranches,
       email: values.email,
       phone: values.phone,
       gender: values.gender,
@@ -62,8 +75,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-10">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-6">
+      <div className="w-full max-w-2xl">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-3">
@@ -74,98 +87,150 @@ export default function RegisterPage() {
           <p className="text-sm text-muted-foreground mt-1">Start managing your churches from day one</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
+          {/* Row 1: Title + titleOther or Ministry Name */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs sm:text-sm">First Name</Label>
-              <Input className={errors.firstName ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'} {...register('firstName')} placeholder="James" />
+              <Label className="text-xs">Title</Label>
+              <Select value={title} onValueChange={(v) => { setTitle(v); setValue('title', v as any); }}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Title (optional)" />
+                </SelectTrigger>
+                <SelectContent className="max-h-48">
+                  {TITLES.map(t => <SelectItem key={t} value={t} className="text-xs py-1">{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">First Name</Label>
+              <Input className={errors.firstName ? 'border-destructive h-8 text-xs' : 'h-8 text-xs'} {...register('firstName')} placeholder="James" />
               {errors.firstName && <p className="text-xs text-destructive">{errors.firstName.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label className="text-xs sm:text-sm">Last Name</Label>
-              <Input className={errors.lastName ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'} {...register('lastName')} placeholder="Banda" />
+              <Label className="text-xs">Last Name</Label>
+              <Input className={errors.lastName ? 'border-destructive h-8 text-xs' : 'h-8 text-xs'} {...register('lastName')} placeholder="Banda" />
               {errors.lastName && <p className="text-xs text-destructive">{errors.lastName.message}</p>}
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs sm:text-sm">Email Address</Label>
-            <Input className={errors.email ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'} type="email" {...register('email')} placeholder="admin@church.org" />
-            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs sm:text-sm">Country</Label>
-            <Select value={accountCountry} onValueChange={(v: 'Malawi' | 'Kenya') => { setAccountCountry(v); setValue('accountCountry', v); }}>
-              <SelectTrigger className={errors.accountCountry ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'}>
-                <SelectValue placeholder="Select country" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Malawi">Malawi</SelectItem>
-                <SelectItem value="Kenya">Kenya</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.accountCountry && <p className="text-xs text-destructive">{errors.accountCountry.message}</p>}
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs sm:text-sm">Phone</Label>
-            <Input className={errors.phone ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'} {...register('phone')} placeholder={accountCountry === 'Kenya' ? '+254 ...' : '+265 ...'} />
-            {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs sm:text-sm">Gender</Label>
-            <Select value={gender} onValueChange={(v: 'male' | 'female') => { setGender(v); setValue('gender', v); }}>
-              <SelectTrigger className={errors.gender ? 'border-destructive h-8 text-xs sm:h-10 sm:text-sm' : 'h-8 text-xs sm:h-10 sm:text-sm'}>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.gender && <p className="text-xs text-destructive">{errors.gender.message}</p>}
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs sm:text-sm">Church Founded Date (Optional)</Label>
-            <Input className="h-8 text-xs sm:h-10 sm:text-sm" type="date" {...register('anniversary')} />
-            <p className="text-xs text-muted-foreground">When was your church established?</p>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs sm:text-sm">Password</Label>
-            <div className="relative">
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                {...register('password')}
-                placeholder="Min 8 chars, 1 uppercase, 1 number"
-                className={errors.password ? 'border-destructive pr-10 h-8 text-xs sm:h-10 sm:text-sm' : 'pr-10 h-8 text-xs sm:h-10 sm:text-sm'}
-              />
-              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                onClick={() => setShowPassword(v => !v)}>
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+          {title === 'Other' && (
+            <div className="space-y-1">
+              <Label className="text-xs">Specify Title</Label>
+              <Input className="h-8 text-xs" {...register('titleOther')} placeholder="e.g. Apostle" />
             </div>
-            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+          )}
+
+          {/* Row 2: Ministry Name */}
+          <div className="space-y-1">
+            <Label className="text-xs">Name of Ministry / Church</Label>
+            <Input className="h-8 text-xs" {...register('ministryName')} placeholder="e.g. Grace Community Church" />
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-xs sm:text-sm">Confirm Password</Label>
-            <div className="relative">
-              <Input
-                type={showConfirmPassword ? 'text' : 'password'}
-                {...register('confirmPassword')}
-                placeholder="Repeat password"
-                className={errors.confirmPassword ? 'border-destructive pr-10 h-8 text-xs sm:h-10 sm:text-sm' : 'pr-10 h-8 text-xs sm:h-10 sm:text-sm'}
-              />
-              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                onClick={() => setShowConfirmPassword(v => !v)}>
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+          {/* Row 3: Membership + Branches */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Current Membership (Optional)</Label>
+              <Input className="h-8 text-xs" type="number" min={0} {...register('currentMembership')} placeholder="e.g. 250" />
             </div>
-            {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
+            <div className="space-y-1">
+              <Label className="text-xs">Number of Branches</Label>
+              <Select onValueChange={(v) => setValue('numberOfBranches', Number(v))}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent className="max-h-40">
+                  {Array.from({ length: 21 }, (_, i) => (
+                    <SelectItem key={i} value={String(i)} className="text-xs py-1">{i === 0 ? '0 (None)' : String(i)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Row 4: Email + Phone */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Email Address</Label>
+              <Input className={errors.email ? 'border-destructive h-8 text-xs' : 'h-8 text-xs'} type="email" {...register('email')} placeholder="admin@church.org" />
+              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Phone</Label>
+              <Input className={errors.phone ? 'border-destructive h-8 text-xs' : 'h-8 text-xs'} {...register('phone')} placeholder={accountCountry === 'Kenya' ? '+254 ...' : '+265 ...'} />
+              {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+            </div>
+          </div>
+
+          {/* Row 5: Country + Gender */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Country</Label>
+              <Select value={accountCountry} onValueChange={(v: 'Malawi' | 'Kenya') => { setAccountCountry(v); setValue('accountCountry', v); }}>
+                <SelectTrigger className={errors.accountCountry ? 'border-destructive h-8 text-xs' : 'h-8 text-xs'}>
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Malawi" className="text-xs">Malawi</SelectItem>
+                  <SelectItem value="Kenya" className="text-xs">Kenya</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.accountCountry && <p className="text-xs text-destructive">{errors.accountCountry.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Gender</Label>
+              <Select value={gender} onValueChange={(v: 'male' | 'female') => { setGender(v); setValue('gender', v); }}>
+                <SelectTrigger className={errors.gender ? 'border-destructive h-8 text-xs' : 'h-8 text-xs'}>
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male" className="text-xs">Male</SelectItem>
+                  <SelectItem value="female" className="text-xs">Female</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.gender && <p className="text-xs text-destructive">{errors.gender.message}</p>}
+            </div>
+          </div>
+
+          {/* Row 6: Founded Date */}
+          <div className="space-y-1">
+            <Label className="text-xs">Church Founded Date (Optional)</Label>
+            <Input className="h-8 text-xs" type="date" {...register('anniversary')} />
+          </div>
+
+          {/* Row 7: Password + Confirm */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Password</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  {...register('password')}
+                  placeholder="Min 8 chars, 1 uppercase, 1 number"
+                  className={errors.password ? 'border-destructive pr-10 h-8 text-xs' : 'pr-10 h-8 text-xs'}
+                />
+                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  onClick={() => setShowPassword(v => !v)}>
+                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  {...register('confirmPassword')}
+                  placeholder="Repeat password"
+                  className={errors.confirmPassword ? 'border-destructive pr-10 h-8 text-xs' : 'pr-10 h-8 text-xs'}
+                />
+                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  onClick={() => setShowConfirmPassword(v => !v)}>
+                  {showConfirmPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
+            </div>
           </div>
 
           <Button type="submit" disabled={isSubmitting} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">

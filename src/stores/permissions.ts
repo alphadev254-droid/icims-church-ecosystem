@@ -5,6 +5,7 @@ import {
 import { useAuthStore } from './authStore';
 
 export type UserRole =
+  | 'system_admin'
   | 'ministry_admin'
   | 'regional_admin'
   | 'district_admin'

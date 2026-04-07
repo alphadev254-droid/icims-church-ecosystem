@@ -15,6 +15,7 @@ export interface AuthUser {
   avatar?: string | null;
   churchId?: string | null;
   accountCountry?: string | null;
+  isSystemAdmin?: boolean;
   church?: {
     id: string;
     name: string;
@@ -46,7 +47,7 @@ interface AuthState {
   allowedRoutes: string[];
   navItems: NavItem[];
 
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string; redirectTo?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   fetchMe: () => Promise<void>;
@@ -56,6 +57,11 @@ interface AuthState {
 export interface RegisterData {
   firstName: string;
   lastName: string;
+  title?: string;
+  titleOther?: string;
+  ministryName?: string;
+  currentMembership?: number;
+  numberOfBranches?: number;
   email: string;
   password: string;
   phone?: string;
@@ -87,12 +93,13 @@ export const useAuthStore = create<AuthState>()(
           const { data } = await apiClient.post('/auth/login', { email, password });
           if (data.success) {
             const permissions: string[] = data.user.permissions ?? [];
+            const isSystemAdmin = data.user.roleName === 'system_admin';
             set({
-              user: data.user,
+              user: { ...data.user, isSystemAdmin },
               ...applyPermissions(permissions, data.user),
               isLoading: false,
             });
-            return { success: true };
+            return { success: true, redirectTo: isSystemAdmin ? '/admin' : '/dashboard' };
           }
           return { success: false, message: data.message };
         } catch (err: any) {
@@ -136,8 +143,13 @@ export const useAuthStore = create<AuthState>()(
           } else {
             set({ user: null, isLoading: false });
           }
-        } catch {
-          set({ user: null, isLoading: false });
+        } catch (err: any) {
+          // 403 = suspended/inactive — clear session
+          if (err.response?.status === 403) {
+            set({ user: null, allowedRoutes: ['/dashboard'], navItems: [], isLoading: false });
+          } else {
+            set({ user: null, isLoading: false });
+          }
         }
       },
     }),

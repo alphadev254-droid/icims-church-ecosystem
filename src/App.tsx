@@ -45,6 +45,13 @@ import PaymentCallback from "./pages/PaymentCallback";
 import MyTickets from "./pages/MyTickets";
 import Subaccount from "./pages/Subaccount";
 import NotFound from "./pages/NotFound";
+import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
+import AdminLayout from "@/components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminUserDetail from "./pages/admin/AdminUserDetail";
+import AdminChurchDetail from "./pages/admin/AdminChurchDetail";
+import AdminTransactions from "./pages/admin/AdminTransactions";
 
 const queryClient = new QueryClient();
 
@@ -101,6 +108,15 @@ const App = () => (
                 <Route path="transactions" element={<Transactions />} />
                 <Route path="withdrawals" element={<Withdrawals />} />
                 <Route path="withdrawals/request" element={<RequestWithdrawal />} />
+              </Route>
+
+              {/* Admin routes */}
+              <Route path="/admin" element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="users/:id" element={<AdminUserDetail />} />
+                <Route path="churches/:id" element={<AdminChurchDetail />} />
+                <Route path="transactions" element={<AdminTransactions />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

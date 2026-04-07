@@ -29,7 +29,7 @@ export default function LoginPage() {
     const result = await login(values.email, values.password);
     if (result.success) {
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      navigate(result.redirectTo || '/dashboard');
     } else {
       toast.error(result.message || 'Login failed');
     }
