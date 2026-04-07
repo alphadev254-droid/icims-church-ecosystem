@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/use-debounce';
+import { ExportImportButtons } from '@/components/ExportImportButtons';
 
 const ROLES = ['ministry_admin', 'regional_admin', 'district_admin', 'branch_admin', 'member'];
 const COUNTRIES = ['Malawi', 'Kenya'];
@@ -87,11 +88,32 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold">Users</h1>
-        <p className="text-sm text-muted-foreground">
-          {pagination ? `${pagination.total.toLocaleString()} total users` : 'All platform users'}
-        </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold">Users</h1>
+          <p className="text-sm text-muted-foreground">
+            {pagination ? `${pagination.total.toLocaleString()} total users` : 'All platform users'}
+          </p>
+        </div>
+        <ExportImportButtons
+          filename="users"
+          pdfTitle="Users Export"
+          data={users.map(u => ({
+            firstName: u.firstName, lastName: u.lastName, email: u.email,
+            phone: u.phone ?? '', role: u.roleName ?? '',
+            country: u.resolvedCountry ?? u.accountCountry ?? '',
+            churches: u.churchCount ?? 0, status: u.status,
+            joined: new Date(u.createdAt).toLocaleDateString(),
+          }))}
+          headers={[
+            { label: 'First Name', key: 'firstName' }, { label: 'Last Name', key: 'lastName' },
+            { label: 'Email', key: 'email' }, { label: 'Phone', key: 'phone' },
+            { label: 'Role', key: 'role' }, { label: 'Country', key: 'country' },
+            { label: 'Churches', key: 'churches' }, { label: 'Status', key: 'status' },
+            { label: 'Joined', key: 'joined' },
+          ]}
+          pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Country', 'Churches', 'Status', 'Joined']}
+        />
       </div>
 
       {/* Filters */}

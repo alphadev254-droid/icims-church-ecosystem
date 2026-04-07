@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDebounce } from '@/hooks/use-debounce';
+import { ExportImportButtons } from '@/components/ExportImportButtons';
 
 const STATUSES = ['completed', 'pending', 'failed'];
 const COUNTRIES = ['Malawi', 'Kenya'];
@@ -52,11 +53,32 @@ export default function AdminTransactions() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold">Package Transactions</h1>
-        <p className="text-sm text-muted-foreground">
-          {pagination ? `${pagination.total.toLocaleString()} total transactions` : 'All package payment transactions'}
-        </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold">Package Transactions</h1>
+          <p className="text-sm text-muted-foreground">
+            {pagination ? `${pagination.total.toLocaleString()} total transactions` : 'All package payment transactions'}
+          </p>
+        </div>
+        <ExportImportButtons
+          filename="transactions"
+          pdfTitle="Package Transactions Export"
+          data={transactions.map((t: any) => ({
+            adminName: t.ministryAdmin ? `${t.ministryAdmin.firstName} ${t.ministryAdmin.lastName}` : '',
+            email: t.ministryAdmin?.email ?? '', package: t.package?.displayName ?? t.packageName ?? '',
+            amount: t.amount, currency: t.currency, status: t.status,
+            gateway: t.gateway ?? '', cycle: t.billingCycle ?? '',
+            country: t.ministryAdmin?.accountCountry ?? '', date: new Date(t.createdAt).toLocaleDateString(),
+          }))}
+          headers={[
+            { label: 'Admin Name', key: 'adminName' }, { label: 'Email', key: 'email' },
+            { label: 'Package', key: 'package' }, { label: 'Amount', key: 'amount' },
+            { label: 'Currency', key: 'currency' }, { label: 'Status', key: 'status' },
+            { label: 'Gateway', key: 'gateway' }, { label: 'Cycle', key: 'cycle' },
+            { label: 'Country', key: 'country' }, { label: 'Date', key: 'date' },
+          ]}
+          pdfColumns={['Admin Name', 'Email', 'Package', 'Amount', 'Currency', 'Status', 'Gateway', 'Cycle', 'Country', 'Date']}
+        />
       </div>
 
       {/* Filters */}

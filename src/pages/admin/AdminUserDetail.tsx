@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { ExportImportButtons } from '@/components/ExportImportButtons';
 
 function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -159,7 +160,7 @@ export default function AdminUserDetail() {
   const isMinistryAdmin = data.roleName === 'ministry_admin';
 
   return (
-    <div className="space-y-4 max-w-4xl">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -188,12 +189,37 @@ export default function AdminUserDetail() {
           <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setDeleteOpen(true)}>
             <Trash2 className="h-3.5 w-3.5" /> Delete
           </Button>
+          <ExportImportButtons
+            filename={`user-${data.firstName}-${data.lastName}`}
+            pdfTitle={`User: ${data.firstName} ${data.lastName}`}
+            data={[{
+              firstName: data.firstName, lastName: data.lastName, title: data.title ?? '',
+              email: data.email, phone: data.phone ?? '', country: data.accountCountry ?? '',
+              role: data.role?.displayName ?? '', status: data.status,
+              joined: new Date(data.createdAt).toLocaleDateString(),
+              ministryName: (data as any).ministryName ?? '',
+              package: data.subscription?.package?.displayName ?? '',
+              subStatus: data.subscription?.status ?? '',
+              subStarts: data.subscription ? new Date(data.subscription.startsAt).toLocaleDateString() : '',
+              subExpires: data.subscription ? new Date(data.subscription.expiresAt).toLocaleDateString() : '',
+            }]}
+            headers={[
+              { label: 'First Name', key: 'firstName' }, { label: 'Last Name', key: 'lastName' },
+              { label: 'Title', key: 'title' }, { label: 'Email', key: 'email' },
+              { label: 'Phone', key: 'phone' }, { label: 'Country', key: 'country' },
+              { label: 'Role', key: 'role' }, { label: 'Status', key: 'status' },
+              { label: 'Joined', key: 'joined' }, { label: 'Ministry Name', key: 'ministryName' },
+              { label: 'Package', key: 'package' }, { label: 'Sub Status', key: 'subStatus' },
+              { label: 'Sub Starts', key: 'subStarts' }, { label: 'Sub Expires', key: 'subExpires' },
+            ]}
+            pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Country', 'Role', 'Status', 'Joined', 'Package', 'Sub Status', 'Sub Expires']}
+          />
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Profile */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader className="pb-2"><CardTitle className="text-sm">Profile</CardTitle></CardHeader>
           <CardContent className="px-4 pb-4">
             <InfoRow label="Full Name" value={`${data.firstName} ${data.lastName}`} />
