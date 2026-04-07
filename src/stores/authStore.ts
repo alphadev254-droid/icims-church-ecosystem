@@ -8,6 +8,8 @@ export interface AuthUser {
   email: string;
   firstName: string;
   lastName: string;
+  title?: string | null;
+  ministryName?: string | null;
   roleName: string;
   role?: string;
   roleId?: string | null;

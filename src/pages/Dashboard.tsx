@@ -121,15 +121,21 @@ export default function DashboardPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-            Welcome back, {user?.firstName}
+            Welcome back, {user?.title ? `${user.title} ` : ''}{user?.firstName}
           </h1>
           <div className="flex items-center gap-1.5 mt-1 text-xs sm:text-sm text-muted-foreground">
             <ScopeIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>
               {roleLabel?.scope}
               {user?.church?.name && ` — ${user.church.name}`}
+              {role === 'ministry_admin' && user?.ministryName && ` — ${user.ministryName}`}
             </span>
           </div>
+          {role === 'ministry_admin' && user?.createdAt && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Member since {new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          )}
         </div>
         <div className="text-right text-xs text-muted-foreground bg-muted px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full capitalize shrink-0">
           {role?.replace(/_/g, ' ')}

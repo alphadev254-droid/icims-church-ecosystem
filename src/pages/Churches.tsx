@@ -295,6 +295,9 @@ export default function ChurchesPage() {
         <div>
           <h1 className="font-heading text-2xl font-bold">Branches</h1>
           <p className="text-sm text-muted-foreground">
+            {user?.ministryName ? (
+              <>{user.ministryName} &mdash; </>
+            ) : null}
             {churches.length} branch{churches.length !== 1 ? 'es' : ''} in your network
           </p>
         </div>
@@ -302,7 +305,7 @@ export default function ChurchesPage() {
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
-                <Plus className="h-4 w-4" /> Add Branch
+                <Plus className="h-4 w-4" /> Add Branch to {user?.ministryName || 'Ministry'}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -324,8 +327,12 @@ export default function ChurchesPage() {
       ) : churches.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Building2 className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">No branch data available</p>
-          {canCreate && <p className="text-sm mt-1">Add your first branch.</p>}
+          <p className="font-medium">No branches yet</p>
+          {canCreate && (
+            <p className="text-sm mt-1">
+              Add branches to your {user?.ministryName ? <strong>{user.ministryName}</strong> : 'ministry'}.
+            </p>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
