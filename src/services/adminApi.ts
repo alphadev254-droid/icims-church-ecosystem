@@ -148,6 +148,42 @@ export interface Pagination {
   totalPages: number;
 }
 
+export interface AdminSystemTransaction {
+  id: string;
+  type: string;
+  amount: number;
+  baseAmount?: number;
+  convenienceFee?: number;
+  systemFeeAmount?: number;
+  totalAmount?: number;
+  currency: string;
+  status: string;
+  paymentMethod?: string;
+  gateway?: string;
+  gatewayCountry?: string;
+  reference?: string;
+  isGuest: boolean;
+  isManual: boolean;
+  guestName?: string;
+  guestEmail?: string;
+  paidAt?: string;
+  createdAt: string;
+  user?: { firstName: string; lastName: string; email: string } | null;
+  church?: { id: string; name: string } | null;
+}
+
+export interface AdminSystemTransactionSummary {
+  total: number;
+  byCurrency: Array<{
+    currency: string;
+    count: number;
+    totalBaseAmount: number;
+    totalSystemFee: number;
+    totalGatewayFee: number;
+    totalCharged: number;
+  }>;
+}
+
 export const adminApi = {
   getStats: () =>
     apiClient.get<{ success: boolean; data: AdminStats }>('/admin/stats'),
@@ -207,4 +243,22 @@ export const adminApi = {
     dateFrom?: string;
     dateTo?: string;
   }) => apiClient.get<{ success: boolean; data: AdminPayment[]; pagination: Pagination }>('/admin/transactions', { params }),
+
+  getSystemTransactions: (params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    type?: string;
+    status?: string;
+    gateway?: string;
+    country?: string;
+    churchId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) => apiClient.get<{
+    success: boolean;
+    data: AdminSystemTransaction[];
+    pagination: Pagination;
+    summary: AdminSystemTransactionSummary;
+  }>('/admin/system-transactions', { params }),
 };

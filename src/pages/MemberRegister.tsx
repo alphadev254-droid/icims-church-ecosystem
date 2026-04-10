@@ -26,7 +26,7 @@ const schema = z.object({
   maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced'], { required_error: 'Marital status is required' }),
   weddingDate: z.string().optional(),
   residentialNeighbourhood: z.string().min(1, 'Neighbourhood is required'),
-  membershipType: z.enum(['visitor', 'member'], { required_error: 'Membership type is required' }),
+  membershipType: z.enum(['member', 'pastor', 'deacon', 'other'], { required_error: 'Membership type is required' }),
   baptizedByImmersion: z.boolean().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
@@ -46,7 +46,7 @@ export default function MemberRegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [maritalStatus, setMaritalStatus] = useState<'single' | 'married' | 'widowed' | 'divorced' | ''>('');
-  const [membershipType, setMembershipType] = useState<'visitor' | 'member' | ''>('');
+  const [membershipType, setMembershipType] = useState<'member' | 'pastor' | 'deacon' | 'other' | ''>('');
   const [serviceInterests, setServiceInterests] = useState<string[]>([]);
   const [baptized, setBaptized] = useState<boolean | undefined>(undefined);
   const [churchName, setChurchName] = useState<string>('');
@@ -225,13 +225,15 @@ export default function MemberRegisterPage() {
 
           <div className="space-y-1">
             <Label>Are you a:</Label>
-            <Select value={membershipType} onValueChange={(v: 'visitor' | 'member') => { setMembershipType(v); setValue('membershipType', v); }}>
+            <Select value={membershipType} onValueChange={(v: 'member' | 'pastor' | 'deacon' | 'other') => { setMembershipType(v); setValue('membershipType', v); }}>
               <SelectTrigger className={errors.membershipType ? 'border-destructive' : ''}>
                 <SelectValue placeholder="Select membership type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="visitor">Visitor</SelectItem>
                 <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="pastor">Pastor</SelectItem>
+                <SelectItem value="deacon">Deacon</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
             {errors.membershipType && <p className="text-xs text-destructive">{errors.membershipType.message}</p>}

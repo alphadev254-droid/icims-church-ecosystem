@@ -51,6 +51,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminUserDetail from "./pages/admin/AdminUserDetail";
 import AdminChurchDetail from "./pages/admin/AdminChurchDetail";
+import AdminPayments from "./pages/admin/AdminPayments";
 import AdminTransactions from "./pages/admin/AdminTransactions";
 
 const queryClient = new QueryClient();
@@ -116,6 +117,7 @@ const App = () => (
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="users/:id" element={<AdminUserDetail />} />
                 <Route path="churches/:id" element={<AdminChurchDetail />} />
+                <Route path="payments" element={<AdminPayments />} />
                 <Route path="transactions" element={<AdminTransactions />} />
               </Route>
 

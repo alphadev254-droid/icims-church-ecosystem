@@ -131,4 +131,21 @@ export const givingService = {
     const { data } = await apiClient.get(`/giving/donations/${donationId}/transaction`);
     return data.data;
   },
+
+  async recordCashDonation(dto: {
+    campaignId: string;
+    donorType: 'member' | 'guest' | 'anonymous';
+    memberId?: string;
+    guestName?: string;
+    guestEmail?: string;
+    guestPhone?: string;
+    amount: number;
+    currency: string;
+    date: string;
+    reference?: string;
+    notes?: string;
+  }): Promise<DonationTransaction> {
+    const { data } = await apiClient.post('/giving/donations/cash', dto);
+    return data.data;
+  },
 };

@@ -77,7 +77,7 @@ const createSchema = z.object({
   maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced']).optional(),
   weddingDate: z.string().optional(),
   residentialNeighbourhood: z.string().optional(),
-  membershipType: z.enum(['visitor', 'member']).optional(),
+  membershipType: z.enum(['member', 'pastor', 'deacon', 'other']).optional(),
   serviceInterest: z.string().optional(),
   baptizedByImmersion: z.boolean().optional(),
   roleName: z.string().default('member'),
@@ -113,7 +113,7 @@ const editSchema = z.object({
   maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced']).optional(),
   weddingDate: z.string().optional(),
   residentialNeighbourhood: z.string().optional(),
-  membershipType: z.enum(['visitor', 'member']).nullable().optional(),
+  membershipType: z.enum(['member', 'pastor', 'deacon', 'other']).nullable().optional(),
   serviceInterest: z.string().optional(),
   baptizedByImmersion: z.boolean().optional(),
   roleName: z.string().default('member'),
@@ -247,8 +247,10 @@ function CreateUserForm({ onSubmit, isPending }: {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="visitor">Visitor</SelectItem>
                 <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="pastor">Pastor</SelectItem>
+                <SelectItem value="deacon">Deacon</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -473,8 +475,10 @@ function EditUserForm({ user, onSubmit, isPending }: {
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="visitor">Visitor</SelectItem>
                 <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="pastor">Pastor</SelectItem>
+                <SelectItem value="deacon">Deacon</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -782,8 +786,8 @@ export default function UsersManagement() {
               phone: u.phone || '',
               gender: (u as any).gender || '',
               dateOfBirth: (u as any).dateOfBirth ? new Date((u as any).dateOfBirth).toLocaleDateString() : '',
+              maritalStatus: (u as any).maritalStatus || '',
               weddingDate: (u as any).weddingDate ? new Date((u as any).weddingDate).toLocaleDateString() : '',
-              anniversary: (u as any).anniversary ? new Date((u as any).anniversary).toLocaleDateString() : '',
               residentialNeighbourhood: (u as any).residentialNeighbourhood || '',
               baptizedByImmersion: (u as any).baptizedByImmersion ? 'Yes' : 'No',
               role: ROLE_DISPLAY[u.roleName] || u.roleName,
@@ -799,8 +803,8 @@ export default function UsersManagement() {
               { label: 'Phone', key: 'phone' },
               { label: 'Gender', key: 'gender' },
               { label: 'Date of Birth', key: 'dateOfBirth' },
+              { label: 'Marital Status', key: 'maritalStatus' },
               { label: 'Wedding Date', key: 'weddingDate' },
-              { label: 'Anniversary', key: 'anniversary' },
               { label: 'Neighbourhood', key: 'residentialNeighbourhood' },
               { label: 'Baptized', key: 'baptizedByImmersion' },
               { label: 'Role', key: 'role' },
