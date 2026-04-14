@@ -21,9 +21,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChurchSelect } from '@/components/ChurchSelect';
 import TeamCommunicationTab from '@/components/TeamCommunicationTab';
-import { Plus, MessageSquare, Bell, Trash2, HandHeart, Pencil, Eye, Paperclip, X, FileText, Image as ImageIcon, Download, Lock } from 'lucide-react';
+import { Plus, MessageSquare, Bell, Trash2, HandHeart, Pencil, Eye, Paperclip, X, FileText, Image as ImageIcon, Download, Lock, Users, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useDebounce } from '@/hooks/use-debounce';
 
 const schema = z.object({
   title: z.string().min(1, 'Title required'),
@@ -204,6 +205,24 @@ export default function CommunicationPage() {
 
   const filterByType = (type: string) => items.filter((i: any) => i.type === type);
 
+  const { data: viewStatsData } = useQuery({
+    queryKey: ['announcement-view-stats', viewItem?.id],
+    queryFn: () => communicationService.getViewStats(viewItem!.id),
+    enabled: !!viewItem && !isMember,
+    staleTime: 30_000,
+  });
+
+  const [viewersDialogId, setViewersDialogId] = useState<string | null>(null);
+  const [viewersSearch, setViewersSearch] = useState('');
+  const debouncedViewersSearch = useDebounce(viewersSearch, 300);
+
+  const { data: viewersListData, isLoading: isLoadingViewers } = useQuery({
+    queryKey: ['announcement-viewers', viewersDialogId, debouncedViewersSearch],
+    queryFn: () => communicationService.getViewers(viewersDialogId!, debouncedViewersSearch || undefined),
+    enabled: !!viewersDialogId,
+    staleTime: 0,
+  });
+
   const ItemCard = ({ item }: { item: any }) => {
     const Icon = TYPE_ICON[item.type] ?? Bell;
     const attachments = item.attachments ? JSON.parse(item.attachments) : [];
@@ -232,7 +251,10 @@ export default function CommunicationPage() {
                     {new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                   <button
-                    onClick={() => setViewItem(item)}
+                    onClick={() => {
+                      setViewItem(item);
+                      communicationService.recordView(item.id).catch(() => {});
+                    }}
                     className="text-xs text-accent hover:underline flex items-center gap-1"
                   >
                     <Eye className="h-3 w-3" /> View
@@ -512,9 +534,70 @@ export default function CommunicationPage() {
                     minute: '2-digit'
                   })}
                 </p>
+                {!isMember && viewStatsData !== undefined && (
+                  <div className="border-t pt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Users className="h-3.5 w-3.5" />
+                      <span>Seen by <span className="font-medium text-foreground">{viewStatsData.count}</span> {viewStatsData.count === 1 ? 'person' : 'people'}</span>
+                    </div>
+                    {viewStatsData.count > 0 && (
+                      <button
+                        onClick={() => setViewersDialogId(viewItem.id)}
+                        className="text-xs text-accent hover:underline"
+                      >
+                        View viewers
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Viewers Dialog */}
+      <Dialog open={!!viewersDialogId} onOpenChange={open => { if (!open) { setViewersDialogId(null); setViewersSearch(''); } }}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-heading flex items-center gap-2">
+              <Users className="h-4 w-4 text-accent" /> Viewers
+            </DialogTitle>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              className="pl-8 h-8 text-xs"
+              placeholder="Search by name or email..."
+              value={viewersSearch}
+              onChange={e => setViewersSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {isLoadingViewers ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+              </div>
+            ) : !viewersListData?.length ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {debouncedViewersSearch ? 'No viewers match your search' : 'No viewers yet'}
+              </p>
+            ) : (
+              <div className="divide-y">
+                {viewersListData.map((v, i) => (
+                  <div key={i} className="flex items-center justify-between py-2.5 px-1">
+                    <div>
+                      <p className="text-sm font-medium">{v.firstName} {v.lastName}</p>
+                      <p className="text-xs text-muted-foreground">{v.email ?? ''}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(v.viewedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

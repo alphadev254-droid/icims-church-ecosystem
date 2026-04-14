@@ -24,10 +24,11 @@ import {
 import { ChurchSelect } from '@/components/ChurchSelect';
 import {
   BookOpen, Search, BookMarked, Video, FileText, Music, ExternalLink,
-  Plus, Pencil, Trash2, Upload, Link, X, Youtube, Eye, ImageIcon, Lock,
+  Plus, Pencil, Trash2, Upload, Link, X, Youtube, Eye, ImageIcon, Lock, Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link as RouterLink } from 'react-router-dom';
+import { useDebounce } from '@/hooks/use-debounce';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -323,11 +324,13 @@ function ResourceForm({ defaultValues, onSubmit, isPending, submitLabel }: {
 
 // ─── ResourceDetailDialog ─────────────────────────────────────────────────────
 
-function ResourceDetailDialog({ resource, open, onClose, backendBase }: {
+function ResourceDetailDialog({ resource, open, onClose, backendBase, viewStatsData, onViewViewers }: {
   resource: Resource | null;
   open: boolean;
   onClose: () => void;
   backendBase: string;
+  viewStatsData?: { count: number };
+  onViewViewers?: () => void;
 }) {
   if (!resource) return null;
 
@@ -465,6 +468,21 @@ function ResourceDetailDialog({ resource, open, onClose, backendBase }: {
               <ExternalLink className="h-4 w-4" /> Open File
             </a>
           )}
+
+          {/* Viewers */}
+          {viewStatsData !== undefined && (
+            <div className="border-t pt-3 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Users className="h-3.5 w-3.5" />
+                <span>Seen by <span className="font-medium text-foreground">{viewStatsData.count}</span> {viewStatsData.count === 1 ? 'person' : 'people'}</span>
+              </div>
+              {viewStatsData.count > 0 && onViewViewers && (
+                <button onClick={onViewViewers} className="text-xs text-accent hover:underline">
+                  View viewers
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -516,7 +534,7 @@ export default function ResourcesPage() {
         description: dto.description || undefined, author: dto.author || undefined,
         duration: dto.duration || undefined, fileUrl: dto.fileUrl || undefined, files,
       }),
-    onSuccess: () => { toast.success('Resource created'); qc.invalidateQueries({ queryKey: ['resources'] }); setCreateOpen(false); },
+    onSuccess: () => { toast.success('Resource created'); qc.invalidateQueries({ queryKey: ['resources'], refetchType: 'all' }); setCreateOpen(false); },
     onError: (err: unknown) => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to create'),
   });
 
@@ -528,13 +546,13 @@ export default function ResourcesPage() {
         duration: dto.duration || undefined, fileUrl: dto.fileUrl || undefined,
         files, keepFilesJson,
       }),
-    onSuccess: () => { toast.success('Resource updated'); qc.invalidateQueries({ queryKey: ['resources'] }); setEditResource(null); },
+    onSuccess: () => { toast.success('Resource updated'); qc.invalidateQueries({ queryKey: ['resources'], refetchType: 'all' }); setEditResource(null); },
     onError: (err: unknown) => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to update'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: resourcesService.delete,
-    onSuccess: () => { toast.success('Resource deleted'); qc.invalidateQueries({ queryKey: ['resources'] }); setDeleteResource(null); },
+    onSuccess: () => { toast.success('Resource deleted'); qc.invalidateQueries({ queryKey: ['resources'], refetchType: 'all' }); setDeleteResource(null); },
     onError: (err: unknown) => toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to delete'),
   });
 
@@ -566,6 +584,24 @@ export default function ResourcesPage() {
   });
 
   const backendBase = import.meta.env.VITE_STATIC_URL ?? 'http://localhost:5000';
+
+  const { data: resourceViewStatsData } = useQuery({
+    queryKey: ['resource-view-stats', viewResource?.id],
+    queryFn: () => resourcesService.getViewStats(viewResource!.id),
+    enabled: !!viewResource && !isMember,
+    staleTime: 30_000,
+  });
+
+  const [resourceViewersDialogId, setResourceViewersDialogId] = useState<string | null>(null);
+  const [resourceViewersSearch, setResourceViewersSearch] = useState('');
+  const debouncedResourceViewersSearch = useDebounce(resourceViewersSearch, 300);
+
+  const { data: resourceViewersList, isLoading: isLoadingResourceViewers } = useQuery({
+    queryKey: ['resource-viewers', resourceViewersDialogId, debouncedResourceViewersSearch],
+    queryFn: () => resourcesService.getViewers(resourceViewersDialogId!, debouncedResourceViewersSearch || undefined),
+    enabled: !!resourceViewersDialogId,
+    staleTime: 0,
+  });
 
   const resolveUrl = (url?: string | null) =>
     url?.startsWith('/uploads/') ? `${backendBase}${url}` : (url ?? null);
@@ -671,7 +707,7 @@ export default function ResourcesPage() {
               <Card
                 key={resource.id}
                 className="hover:shadow-md transition-shadow cursor-pointer group"
-                onClick={() => setViewResource(resource)}
+                onClick={() => { setViewResource(resource); resourcesService.recordView(resource.id).catch(() => {}); }}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
@@ -681,7 +717,7 @@ export default function ResourcesPage() {
                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                       {/* View */}
                       <button
-                        onClick={() => setViewResource(resource)}
+                        onClick={() => { setViewResource(resource); resourcesService.recordView(resource.id).catch(() => {}); }}
                         className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                         title="View resource"
                       >
@@ -758,7 +794,54 @@ export default function ResourcesPage() {
         open={!!viewResource}
         onClose={() => setViewResource(null)}
         backendBase={backendBase}
+        viewStatsData={!isMember ? resourceViewStatsData : undefined}
+        onViewViewers={() => viewResource && setResourceViewersDialogId(viewResource.id)}
       />
+
+      {/* Resource Viewers Dialog */}
+      <Dialog open={!!resourceViewersDialogId} onOpenChange={open => { if (!open) { setResourceViewersDialogId(null); setResourceViewersSearch(''); } }}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-heading flex items-center gap-2">
+              <Users className="h-4 w-4 text-accent" /> Viewers
+            </DialogTitle>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              className="pl-8 h-8 text-xs"
+              placeholder="Search by name or email..."
+              value={resourceViewersSearch}
+              onChange={e => setResourceViewersSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {isLoadingResourceViewers ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+              </div>
+            ) : !resourceViewersList?.length ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {debouncedResourceViewersSearch ? 'No viewers match your search' : 'No viewers yet'}
+              </p>
+            ) : (
+              <div className="divide-y">
+                {resourceViewersList.map((v, i) => (
+                  <div key={i} className="flex items-center justify-between py-2.5 px-1">
+                    <div>
+                      <p className="text-sm font-medium">{v.firstName} {v.lastName}</p>
+                      <p className="text-xs text-muted-foreground">{(v as any).email ?? ''}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(v.viewedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit dialog */}
       <Dialog open={!!editResource} onOpenChange={open => !open && setEditResource(null)}>

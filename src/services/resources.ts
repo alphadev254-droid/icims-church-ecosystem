@@ -96,4 +96,18 @@ export const resourcesService = {
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`${BASE}/${id}`);
   },
+
+  recordView: async (id: string): Promise<void> => {
+    await apiClient.post(`${BASE}/${id}/view`);
+  },
+
+  getViewStats: async (id: string): Promise<{ count: number }> => {
+    const { data } = await apiClient.get(`${BASE}/${id}/view-stats`);
+    return data.data;
+  },
+
+  getViewers: async (id: string, search?: string): Promise<import('./communication').ContentViewer[]> => {
+    const { data } = await apiClient.get(`${BASE}/${id}/viewers`, { params: search ? { search } : undefined });
+    return data.data;
+  },
 };

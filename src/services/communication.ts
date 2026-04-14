@@ -1,5 +1,14 @@
 import apiClient from '@/lib/api-client';
 
+export interface ContentViewer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  avatar?: string | null;
+  viewedAt: string;
+}
+
 export interface Announcement {
   id: string;
   title: string;
@@ -41,5 +50,16 @@ export const communicationService = {
   },
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/announcements/${id}`);
+  },
+  recordView: async (id: string): Promise<void> => {
+    await apiClient.post(`/announcements/${id}/view`);
+  },
+  getViewStats: async (id: string): Promise<{ count: number }> => {
+    const { data } = await apiClient.get(`/announcements/${id}/view-stats`);
+    return data.data;
+  },
+  getViewers: async (id: string, search?: string): Promise<ContentViewer[]> => {
+    const { data } = await apiClient.get(`/announcements/${id}/viewers`, { params: search ? { search } : undefined });
+    return data.data;
   },
 };
