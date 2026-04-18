@@ -155,6 +155,7 @@ export interface AdminSystemTransaction {
   baseAmount?: number;
   convenienceFee?: number;
   systemFeeAmount?: number;
+  ceilRoundingAmount?: number;
   totalAmount?: number;
   currency: string;
   status: string;

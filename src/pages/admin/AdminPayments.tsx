@@ -64,20 +64,40 @@ export default function AdminPayments() {
           filename="transactions"
           pdfTitle="Package Transactions Export"
           data={transactions.map((t: any) => ({
-            adminName: t.ministryAdmin ? `${t.ministryAdmin.firstName} ${t.ministryAdmin.lastName}` : '',
-            email: t.ministryAdmin?.email ?? '', package: t.package?.displayName ?? t.packageName ?? '',
-            amount: t.amount, currency: t.currency, status: t.status,
-            gateway: t.gateway ?? '', cycle: t.billingCycle ?? '',
-            country: t.ministryAdmin?.accountCountry ?? '', date: new Date(t.createdAt).toLocaleDateString(),
+            adminName:       t.ministryAdmin ? `${t.ministryAdmin.firstName} ${t.ministryAdmin.lastName}` : '',
+            email:           t.ministryAdmin?.email ?? '',
+            package:         t.package?.displayName ?? t.packageName ?? '',
+            baseAmount:      t.baseAmount ?? t.amount,
+            transactionCost: (t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0),
+            gatewayFee:      t.convenienceFee ?? 0,
+            systemFee:       t.systemFeeAmount ?? 0,
+            rounding:        t.ceilRoundingAmount ?? 0,
+            total:           t.totalAmount ?? t.amount,
+            currency:        t.currency,
+            status:          t.status,
+            gateway:         t.gateway ?? '',
+            cycle:           t.billingCycle ?? '',
+            country:         t.ministryAdmin?.accountCountry ?? '',
+            date:            new Date(t.createdAt).toLocaleDateString(),
           }))}
           headers={[
-            { label: 'Admin Name', key: 'adminName' }, { label: 'Email', key: 'email' },
-            { label: 'Package', key: 'package' }, { label: 'Amount', key: 'amount' },
-            { label: 'Currency', key: 'currency' }, { label: 'Status', key: 'status' },
-            { label: 'Gateway', key: 'gateway' }, { label: 'Cycle', key: 'cycle' },
-            { label: 'Country', key: 'country' }, { label: 'Date', key: 'date' },
+            { label: 'Admin Name',       key: 'adminName' },
+            { label: 'Email',            key: 'email' },
+            { label: 'Package',          key: 'package' },
+            { label: 'Base Amount',      key: 'baseAmount' },
+            { label: 'Transaction Cost', key: 'transactionCost' },
+            { label: 'Gateway Fee',      key: 'gatewayFee' },
+            { label: 'System Fee',       key: 'systemFee' },
+            { label: 'Rounding',         key: 'rounding' },
+            { label: 'Total',            key: 'total' },
+            { label: 'Currency',         key: 'currency' },
+            { label: 'Status',           key: 'status' },
+            { label: 'Gateway',          key: 'gateway' },
+            { label: 'Cycle',            key: 'cycle' },
+            { label: 'Country',          key: 'country' },
+            { label: 'Date',             key: 'date' },
           ]}
-          pdfColumns={['Admin Name', 'Email', 'Package', 'Amount', 'Currency', 'Status', 'Gateway', 'Cycle', 'Country', 'Date']}
+          pdfColumns={['Admin Name','Email','Package','Base Amount','Transaction Cost','Gateway Fee','System Fee','Rounding','Total','Currency','Status','Gateway','Cycle','Country','Date']}
         />
       </div>
 
@@ -126,6 +146,10 @@ export default function AdminPayments() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Ministry Admin</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Package</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Amount</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Transaction Cost</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Gateway Fee</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ System Fee</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Rounding</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Gateway</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Cycle</th>
@@ -159,7 +183,32 @@ export default function AdminPayments() {
                         <span className="text-xs capitalize">{t.package?.displayName ?? t.packageName}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs font-medium">{t.currency} {t.amount?.toLocaleString()}</span>
+                        <p className="text-xs font-medium">{t.currency} {(t.baseAmount ?? t.amount)?.toLocaleString()}</p>
+                        {t.totalAmount && t.totalAmount !== (t.baseAmount ?? t.amount) && (
+                          <p className="text-xs text-muted-foreground">Total: {t.currency} {t.totalAmount?.toLocaleString()}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <span className="text-xs font-medium">
+                          {(t.convenienceFee != null || t.systemFeeAmount != null)
+                            ? `${t.currency} ${((t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0)).toLocaleString()}`
+                            : '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <span className="text-xs text-muted-foreground">
+                          {t.convenienceFee != null ? `${t.currency} ${t.convenienceFee.toLocaleString()}` : '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <span className="text-xs text-purple-600">
+                          {t.systemFeeAmount != null ? `${t.currency} ${t.systemFeeAmount.toLocaleString()}` : '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <span className="text-xs text-orange-500">
+                          {(t.ceilRoundingAmount ?? 0) > 0 ? `${t.currency} ${(t.ceilRoundingAmount ?? 0).toLocaleString()}` : '—'}
+                        </span>
                       </td>
                       <td className="px-4 py-3">{statusBadge(t.status)}</td>
                       <td className="px-4 py-3 hidden md:table-cell">

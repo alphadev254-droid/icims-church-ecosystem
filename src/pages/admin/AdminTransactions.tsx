@@ -99,30 +99,34 @@ export default function AdminTransactions() {
           filename="system-transactions"
           pdfTitle="System Transactions Export"
           data={transactions.map(t => ({
-            donor:     donorName(t),
-            email:     donorEmail(t),
-            type:      t.type.replace('_', ' '),
-            church:    t.church?.name ?? '',
-            amount:    t.baseAmount ?? t.amount,
-            gatewayFee: t.convenienceFee ?? 0,
-            platformFee: t.systemFeeAmount ?? 0,
-            total:     t.totalAmount ?? t.amount,
-            currency:  t.currency,
-            gateway:   t.gateway ?? '',
-            country:   t.gatewayCountry ?? '',
-            method:    t.paymentMethod ?? '',
-            status:    t.status,
-            reference: t.reference ?? '',
-            date:      new Date(t.createdAt).toLocaleDateString(),
+            donor:       donorName(t),
+            email:       donorEmail(t),
+            type:        t.type.replace('_', ' '),
+            church:      t.church?.name ?? '',
+            baseAmount:  t.baseAmount ?? t.amount,
+            transactionCost: (t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0),
+            gatewayFee:  t.convenienceFee ?? 0,
+            systemFee:   t.systemFeeAmount ?? 0,
+            rounding:    t.ceilRoundingAmount ?? 0,
+            total:       t.totalAmount ?? t.amount,
+            currency:    t.currency,
+            gateway:     t.gateway ?? '',
+            country:     t.gatewayCountry ?? '',
+            method:      t.paymentMethod ?? '',
+            status:      t.status,
+            reference:   t.reference ?? '',
+            date:        new Date(t.createdAt).toLocaleDateString(),
           }))}
           headers={[
             { label: 'Donor',        key: 'donor' },
             { label: 'Email',        key: 'email' },
             { label: 'Type',         key: 'type' },
             { label: 'Church',       key: 'church' },
-            { label: 'Base Amount',  key: 'amount' },
-            { label: 'Gateway Fee',  key: 'gatewayFee' },
-            { label: 'Platform Fee', key: 'platformFee' },
+            { label: 'Base Amount',      key: 'baseAmount' },
+            { label: 'Transaction Cost', key: 'transactionCost' },
+            { label: 'Gateway Fee',      key: 'gatewayFee' },
+            { label: 'System Fee',       key: 'systemFee' },
+            { label: 'Rounding',         key: 'rounding' },
             { label: 'Total',        key: 'total' },
             { label: 'Currency',     key: 'currency' },
             { label: 'Gateway',      key: 'gateway' },
@@ -132,7 +136,7 @@ export default function AdminTransactions() {
             { label: 'Reference',    key: 'reference' },
             { label: 'Date',         key: 'date' },
           ]}
-          pdfColumns={['Donor','Email','Type','Church','Base Amount','Gateway Fee','Platform Fee','Total','Currency','Gateway','Status','Date']}
+          pdfColumns={['Donor','Email','Type','Church','Base Amount','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Status','Date']}
         />
       </div>
 
@@ -223,7 +227,9 @@ export default function AdminTransactions() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Church</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Amount</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Transaction Cost</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Platform Fee</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Gateway Fee</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ System Fee</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Rounding</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Gateway</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Date</th>
@@ -258,14 +264,28 @@ export default function AdminTransactions() {
                           <p className="text-xs text-muted-foreground">Total: {t.currency} {t.totalAmount.toLocaleString()}</p>
                         )}
                       </td>
+                      {/* Transaction Cost = combined */}
                       <td className="px-4 py-3 hidden lg:table-cell">
+                        <span className="text-xs font-medium">
+                          {(t.convenienceFee != null || t.systemFeeAmount != null)
+                            ? `${t.currency} ${((t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0)).toLocaleString()}`
+                            : '—'}
+                        </span>
+                      </td>
+                      {/* Breakdown */}
+                      <td className="px-4 py-3 hidden xl:table-cell">
                         <span className="text-xs text-muted-foreground">
                           {t.convenienceFee != null ? `${t.currency} ${t.convenienceFee.toLocaleString()}` : '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <span className="text-xs font-medium text-purple-600">
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <span className="text-xs text-purple-600">
                           {t.systemFeeAmount != null ? `${t.currency} ${t.systemFeeAmount.toLocaleString()}` : '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <span className="text-xs text-orange-500">
+                          {(t.ceilRoundingAmount ?? 0) > 0 ? `${t.currency} ${(t.ceilRoundingAmount ?? 0).toLocaleString()}` : '—'}
                         </span>
                       </td>
                       <td className="px-4 py-3 hidden xl:table-cell">
