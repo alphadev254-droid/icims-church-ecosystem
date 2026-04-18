@@ -117,10 +117,7 @@ export default function TransactionsPage() {
         </div>
         <ExportImportButtons
           data={transactions.map(t => ({
-            amount: t.amount,
-            baseAmount: t.baseAmount || 0,
-            convenienceFee: (t.convenienceFee || 0) + (t.systemFeeAmount || 0),
-            totalAmount: t.totalAmount || 0,
+            amount: t.baseAmount || t.amount,
             currency: t.currency,
             status: t.status,
             type: t.type,
@@ -135,9 +132,6 @@ export default function TransactionsPage() {
           filename="transactions"
           headers={[
             { label: 'Amount', key: 'amount' },
-            { label: 'Base', key: 'baseAmount' },
-            { label: 'Transaction Cost', key: 'convenienceFee' },
-            { label: 'Total', key: 'totalAmount' },
             { label: 'Currency', key: 'currency' },
             { label: 'Status', key: 'status' },
             { label: 'Type', key: 'type' },
@@ -248,9 +242,6 @@ export default function TransactionsPage() {
               <thead className="bg-muted">
                 <tr>
                   <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Amount</th>
-                  <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Base</th>
-                  <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Transaction Cost</th>
-                  <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Total</th>
                   <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Status</th>
                   <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Type</th>
                   <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Name</th>
@@ -267,19 +258,8 @@ export default function TransactionsPage() {
                 {transactions.map(transaction => (
                   <tr key={transaction.id} className="border-t hover:bg-muted/50">
                     <td className="px-3 py-2 font-medium whitespace-nowrap">
-                      {formatCurrency(transaction.amount, transaction.currency)}
+                      {formatCurrency(transaction.baseAmount ?? transaction.amount, transaction.currency)}
                       {transaction.isManual && <Badge variant="outline" className="ml-1 text-xs px-1 py-0">Manual</Badge>}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {transaction.baseAmount ? formatCurrency(transaction.baseAmount, transaction.currency) : '-'}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {(transaction.convenienceFee || transaction.systemFeeAmount)
-                        ? formatCurrency((transaction.convenienceFee || 0) + (transaction.systemFeeAmount || 0), transaction.currency)
-                        : '-'}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {transaction.totalAmount ? formatCurrency(transaction.totalAmount, transaction.currency) : '-'}
                     </td>
                     <td className="px-3 py-2">
                       <Badge variant={statusVariant(transaction.status)} className="text-xs px-1.5 py-0">{transaction.status}</Badge>

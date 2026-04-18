@@ -367,9 +367,7 @@ export default function EventTicketsPage() {
                             <h4 className="font-semibold">Transaction Details</h4>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                               {transactionData.gateway && <div><span className="font-medium">Gateway:</span> <span className="capitalize">{transactionData.gateway}</span></div>}
-                              {transactionData.baseAmount && <div><span className="font-medium">Base Amount:</span> {transactionData.currency} {transactionData.baseAmount}</div>}
-                              {(transactionData.convenienceFee || transactionData.systemFeeAmount) && <div><span className="font-medium">Transaction Cost:</span> {transactionData.currency} {((transactionData.convenienceFee ?? 0) + (transactionData.systemFeeAmount ?? 0) + (transactionData.ceilRoundingAmount ?? 0)).toLocaleString()}</div>}
-                              {transactionData.totalAmount && <div><span className="font-medium">Total Amount:</span> {transactionData.currency} {transactionData.totalAmount}</div>}
+                              {transactionData.baseAmount && <div><span className="font-medium">Amount:</span> {transactionData.currency} {transactionData.baseAmount}</div>}
                               <div><span className="font-medium">Status:</span> <span className="capitalize">{transactionData.status}</span></div>
                               <div><span className="font-medium">Payment Method:</span> <span className="capitalize">{transactionData.paymentMethod?.replace('_', ' ')}</span></div>
                               {transactionData.reference && <div><span className="font-medium">Reference:</span> <span className="font-mono text-xs">{transactionData.reference}</span></div>}

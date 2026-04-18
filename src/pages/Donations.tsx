@@ -455,20 +455,8 @@ export default function DonationsPage() {
                               )}
                               {transactionData.baseAmount !== undefined && (
                                 <div>
-                                  <div className="text-muted-foreground">Base Amount</div>
+                                  <div className="text-muted-foreground">Amount</div>
                                   <div className="font-medium">{transactionData.currency} {transactionData.baseAmount?.toLocaleString()}</div>
-                                </div>
-                              )}
-                              {(transactionData.convenienceFee !== undefined || transactionData.systemFeeAmount !== undefined) && (
-                                <div>
-                                  <div className="text-muted-foreground">Transaction Cost</div>
-                                  <div className="font-medium">{transactionData.currency} {((transactionData.convenienceFee ?? 0) + (transactionData.systemFeeAmount ?? 0) + (transactionData.ceilRoundingAmount ?? 0)).toLocaleString()}</div>
-                                </div>
-                              )}
-                              {transactionData.totalAmount !== undefined && (
-                                <div>
-                                  <div className="text-muted-foreground">Total Amount</div>
-                                  <div className="font-medium">{transactionData.currency} {transactionData.totalAmount?.toLocaleString()}</div>
                                 </div>
                               )}
                               <div>
