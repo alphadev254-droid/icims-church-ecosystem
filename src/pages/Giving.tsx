@@ -708,7 +708,7 @@ export default function GivingPage() {
                     </div>
                     <div className="flex justify-between text-muted-foreground">
                       <span>Transaction Cost:</span>
-                      <span>{paymentConfirm.details.currency} {((paymentConfirm.details.convenienceFee ?? 0) + (paymentConfirm.details.systemFeeAmount ?? 0)).toFixed(2)}</span>
+                      <span>{paymentConfirm.details.currency} {((paymentConfirm.details.totalAmount ?? 0) - (paymentConfirm.details.baseAmount ?? 0)).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between font-semibold text-base pt-2 border-t">
                       <span>Total Amount:</span>

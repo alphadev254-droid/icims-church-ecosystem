@@ -249,7 +249,7 @@ export default function PublicCampaignPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Transaction cost</span>
-                      <span>{fees.currency} {(fees.convenienceFee + fees.systemFeeAmount).toLocaleString()}</span>
+                      <span>{fees.currency} {(fees.totalAmount - fees.baseAmount).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between font-semibold border-t pt-1 mt-1">
                       <span>Total</span>
