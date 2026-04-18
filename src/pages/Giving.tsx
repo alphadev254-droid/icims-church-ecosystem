@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ChurchSelect } from '@/components/ChurchSelect';
-import { Plus, HandCoins, Target, Users, Pencil, Wallet, Eye, Loader2, StopCircle, PlayCircle, Filter, Lock, Share2, Copy, Check } from 'lucide-react';
+import { Plus, HandCoins, Target, Users, Pencil, Trash2, Wallet, Eye, Loader2, StopCircle, PlayCircle, Filter, Lock, Share2, Copy, Check } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
@@ -145,6 +145,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
 export default function GivingPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editCampaign, setEditCampaign] = useState<GivingCampaign | null>(null);
+  const [deleteCampaign, setDeleteCampaign] = useState<GivingCampaign | null>(null);
   const [donateCampaign, setDonateCampaign] = useState<GivingCampaign | null>(null);
   const [donateAmount, setDonateAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -207,6 +208,16 @@ export default function GivingPage() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update'),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => givingService.deleteCampaign(id),
+    onSuccess: () => {
+      toast.success('Campaign deleted');
+      qc.invalidateQueries({ queryKey: ['campaigns'] });
+      setDeleteCampaign(null);
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete campaign'),
+  });
+
   const endCampaignMutation = useMutation({
     mutationFn: (id: string) => givingService.updateCampaign(id, { status: 'completed' }),
     onSuccess: () => {
@@ -248,6 +259,7 @@ export default function GivingPage() {
 
   const canCreate = hasPermission('campaigns:create') && hasGivingFeature;
   const canUpdate = hasPermission('campaigns:update') && hasGivingFeature;
+  const canDelete = hasPermission('campaigns:delete') && hasGivingFeature;
   const canViewDonations = hasPermission('donations:read');
 
   if (!isMember && !hasGivingFeature) {
@@ -324,6 +336,11 @@ export default function GivingPage() {
                 <button onClick={() => setEditCampaign(campaign)} className="p-1 text-muted-foreground hover:text-foreground rounded" title="Edit">
                   <Pencil className="h-3 w-3" />
                 </button>
+                {canDelete && (
+                  <button onClick={() => setDeleteCampaign(campaign)} className="p-1 text-muted-foreground hover:text-destructive rounded" title="Delete">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
                 {campaign.allowPublicDonations && (
                   <button onClick={() => copyPublicLink(campaign.id)} className="p-1 text-muted-foreground hover:text-foreground rounded" title="Copy public link">
                     {copiedCampaignId === campaign.id ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
@@ -634,6 +651,26 @@ export default function GivingPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => activateCampaignId && activateCampaignMutation.mutate(activateCampaignId)}>
               Activate Campaign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteCampaign} onOpenChange={open => !open && setDeleteCampaign(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteCampaign?.name}</strong>? This will permanently remove the campaign and all its donation records. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteCampaign && deleteMutation.mutate(deleteCampaign.id)}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
