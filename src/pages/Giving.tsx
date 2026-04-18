@@ -40,7 +40,7 @@ const campaignSchema = z.object({
     },
     z.number().positive().optional()
   ),
-  currency: z.enum(['MWK', 'KSH']).default('MWK'),
+  currency: z.enum(['MWK', 'KES']).default('MWK'),
   endDate: z.string().optional(),
   allowPublicDonations: z.boolean().default(false),
 });
@@ -110,7 +110,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
             <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="MWK">MWK</SelectItem>
-              <SelectItem value="KSH">KSH</SelectItem>
+              <SelectItem value="KES">KES</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -588,7 +588,7 @@ export default function GivingPage() {
                 category: editCampaign.category,
                 subcategory: editCampaign.subcategory,
                 targetAmount: editCampaign.targetAmount,
-                currency: editCampaign.currency as 'MWK' | 'KSH',
+                currency: editCampaign.currency as 'MWK' | 'KES',
                 endDate: editCampaign.endDate ? new Date(editCampaign.endDate).toISOString().split('T')[0] : undefined,
                 allowPublicDonations: editCampaign.allowPublicDonations,
               }}

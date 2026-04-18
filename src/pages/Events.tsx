@@ -55,7 +55,7 @@ const schema = z.object({
   requiresTicket: z.boolean().default(false),
   isFree: z.boolean().default(true),
   ticketPrice: z.number().nullable().optional(),
-  currency: z.enum(['MWK', 'KSH']).optional(),
+  currency: z.enum(['MWK', 'KES']).optional(),
   totalTickets: z.preprocess(
     (val) =>
       val === '' || val === null || val === undefined || (typeof val === 'number' && isNaN(val as number))
@@ -367,7 +367,7 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
                   <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MWK">MWK</SelectItem>
-                    <SelectItem value="KSH">KSH</SelectItem>
+                    <SelectItem value="KES">KES</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
