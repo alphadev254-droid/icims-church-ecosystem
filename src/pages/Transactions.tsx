@@ -338,7 +338,7 @@ export default function TransactionsPage() {
           <DialogHeader><DialogTitle className="font-heading text-base sm:text-lg">Transaction Details</DialogTitle></DialogHeader>
           {viewTransaction && (
             <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
-              <div><p className="text-muted-foreground">Amount</p><p className="font-medium">{formatCurrency(viewTransaction.amount, viewTransaction.currency)}</p></div>
+              <div><p className="text-muted-foreground">Amount</p><p className="font-medium">{formatCurrency(viewTransaction.baseAmount ?? viewTransaction.amount, viewTransaction.currency)}</p></div>
               <div><p className="text-muted-foreground">Status</p><Badge variant={statusVariant(viewTransaction.status)} className="text-xs px-1.5 py-0">{viewTransaction.status}</Badge></div>
               <div><p className="text-muted-foreground">Type</p><p className="capitalize">{viewTransaction.type.replace('_', ' ')}</p></div>
               <div><p className="text-muted-foreground">Payment Method</p><p className="capitalize">{viewTransaction.paymentMethod.replace('_', ' ')}</p></div>
