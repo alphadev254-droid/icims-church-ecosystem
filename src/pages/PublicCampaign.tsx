@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { HandCoins, Share2, Copy, Check, Loader2 } from 'lucide-react';
 import { useState } from 'react';
@@ -16,6 +17,7 @@ export default function PublicCampaignPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ guestName: '', guestEmail: '', guestPhone: '', amount: '' });
+  const [cellId, setCellId] = useState('');
   const [fees, setFees] = useState<{ currency: string; baseAmount: number; convenienceFee: number; systemFeeAmount: number; totalAmount: number } | null>(null);
   const [feesLoading, setFeesLoading] = useState(false);
 
@@ -23,6 +25,13 @@ export default function PublicCampaignPage() {
     queryKey: ['public-campaign', id],
     queryFn: () => givingService.getPublicCampaign(id!),
     enabled: !!id,
+  });
+
+  // Load cells for fellowship_offering campaigns
+  const { data: cells = [] } = useQuery({
+    queryKey: ['public-campaign-cells', id],
+    queryFn: () => givingService.getPublicCampaignCells(id!),
+    enabled: !!id && campaign?.category === 'fellowship_offering',
   });
 
   const campaignUrl = window.location.href;
@@ -76,6 +85,10 @@ export default function PublicCampaignPage() {
       toast.error('Please enter a valid amount');
       return;
     }
+    if (campaign?.category === 'fellowship_offering' && !cellId) {
+      toast.error('Please select your cell/fellowship');
+      return;
+    }
     setLoading(true);
     try {
       const result = await givingService.guestDonate({
@@ -84,6 +97,7 @@ export default function PublicCampaignPage() {
         guestName: form.guestName.trim(),
         guestEmail: form.guestEmail.trim(),
         guestPhone: form.guestPhone.trim() || undefined,
+        ...(campaign?.category === 'fellowship_offering' && cellId ? { cellId } : {}),
       });
       window.location.href = result.authorization_url;
     } catch (err: any) {
@@ -220,6 +234,29 @@ export default function PublicCampaignPage() {
                 onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))}
               />
             </div>
+
+            {/* Cell dropdown — only for fellowship_offering */}
+            {campaign?.category === 'fellowship_offering' && (
+              <div className="space-y-1">
+                <Label>Cell / Fellowship <span className="text-destructive">*</span></Label>
+                <Select value={cellId} onValueChange={setCellId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your cell" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cells.length === 0 ? (
+                      <SelectItem value="_none" disabled>No cells available</SelectItem>
+                    ) : (
+                      cells.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}{c.zone ? ` — ${c.zone}` : ''}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">This offering will be recorded under your cell</p>
+              </div>
+            )}
+
             <div className="space-y-1">
               <Label htmlFor="amount">Amount ({campaign.currency}) *</Label>
               <Input

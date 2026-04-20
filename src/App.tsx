@@ -33,6 +33,9 @@ import Settings from "./pages/Settings";
 import UsersManagement from "./pages/UsersManagement";
 import RolesManagement from "./pages/RolesManagement";
 import Teams from "./pages/Teams";
+import Cells from "./pages/Cells";
+import CellDetail from "./pages/CellDetail";
+import CellAttendancePage from "./pages/CellAttendancePage";
 import TeamMembers from "./pages/TeamMembers";
 import Packages from "./pages/Packages";
 import Transactions from "./pages/Transactions";
@@ -105,6 +108,9 @@ const App = () => (
                 <Route path="roles" element={<RolesManagement />} />
                 <Route path="teams" element={<Teams />} />
                 <Route path="teams/:id/members" element={<TeamMembers />} />
+                <Route path="cells" element={<Cells />} />
+                <Route path="cells/:id" element={<CellDetail />} />
+                <Route path="cells/:id/meetings/:meetingId/attendance" element={<CellAttendancePage />} />
                 <Route path="packages" element={<Packages />} />
                 <Route path="transactions" element={<Transactions />} />
                 <Route path="withdrawals" element={<Withdrawals />} />

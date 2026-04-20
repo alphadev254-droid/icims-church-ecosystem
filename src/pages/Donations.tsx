@@ -4,11 +4,13 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { givingService } from '@/services/giving';
 import { usersService } from '@/services/users';
+import { cellsService } from '@/services/cells';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, ChevronDown, ChevronRight, PlusCircle, Search, X } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
@@ -22,9 +24,11 @@ import { useRole } from '@/hooks/useRole';
 function MemberSearchDropdown({
   value,
   onChange,
+  cellMembers,
 }: {
   value: { id: string; label: string } | null;
   onChange: (v: { id: string; label: string } | null) => void;
+  cellMembers?: { userId: string; user?: { firstName: string; lastName: string; email?: string } }[];
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -38,14 +42,27 @@ function MemberSearchDropdown({
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [query]);
 
+  // If cellMembers provided, filter them locally; otherwise search API
+  const useCellFilter = !!cellMembers && cellMembers.length >= 0;
+
   const { data, isFetching } = useQuery({
     queryKey: ['member-search', debouncedQuery],
     queryFn: () => usersService.getAll({ search: debouncedQuery || undefined, role: 'member', limit: 20 }),
-    enabled: open,
+    enabled: open && !useCellFilter,
     staleTime: 0,
   });
 
-  const members = data?.data ?? [];
+  const filteredCellMembers = useCellFilter
+    ? (cellMembers ?? []).filter(m => {
+        if (!query) return true;
+        const name = `${m.user?.firstName} ${m.user?.lastName}`.toLowerCase();
+        return name.includes(query.toLowerCase()) || (m.user?.email ?? '').toLowerCase().includes(query.toLowerCase());
+      })
+    : [];
+
+  const members = useCellFilter
+    ? filteredCellMembers.map(m => ({ id: m.userId, firstName: m.user?.firstName ?? '', lastName: m.user?.lastName ?? '', email: m.user?.email ?? '' }))
+    : (data?.data ?? []);
 
   // Close on outside click
   useEffect(() => {
@@ -83,10 +100,12 @@ function MemberSearchDropdown({
       </div>
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-52 overflow-y-auto">
-          {isFetching ? (
+          {isFetching && !useCellFilter ? (
             <div className="px-3 py-4 text-xs text-center text-muted-foreground">Searching...</div>
           ) : members.length === 0 ? (
-            <div className="px-3 py-4 text-xs text-center text-muted-foreground">No members found</div>
+            <div className="px-3 py-4 text-xs text-center text-muted-foreground">
+              {useCellFilter && !cellMembers?.length ? 'No members in this cell' : 'No members found'}
+            </div>
           ) : (
             members.map((m: any) => (
               <button
@@ -119,11 +138,13 @@ function CashDonationDialog({
   onOpenChange,
   campaignId,
   defaultCurrency,
+  campaignCategory,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   campaignId: string;
   defaultCurrency: string;
+  campaignCategory?: string;
 }) {
   const qc = useQueryClient();
   const [donorType, setDonorType] = useState<DonorType>('member');
@@ -136,11 +157,31 @@ function CashDonationDialog({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [reference, setReference] = useState('');
   const [notes, setNotes] = useState('');
+  const [cellId, setCellId] = useState('');
+
+  const isFellowship = campaignCategory === 'fellowship_offering';
+
+  // Load cells for fellowship_offering
+  const { data: cells = [] } = useQuery({
+    queryKey: ['cash-donation-cells', campaignId],
+    queryFn: () => givingService.getPublicCampaignCells(campaignId),
+    enabled: open && isFellowship,
+    staleTime: 60_000,
+  });
+
+  // Load cell members when a cell is selected (fellowship + member donor type)
+  const { data: cellDetail } = useQuery({
+    queryKey: ['cell-detail-cash', cellId],
+    queryFn: () => cellsService.getOne(cellId),
+    enabled: isFellowship && donorType === 'member' && !!cellId,
+    staleTime: 60_000,
+  });
+  const cellMembers = cellDetail?.members ?? [];
 
   const reset = () => {
     setDonorType('member'); setMember(null);
     setGuestName(''); setGuestEmail(''); setGuestPhone('');
-    setAmount(''); setReference(''); setNotes('');
+    setAmount(''); setReference(''); setNotes(''); setCellId('');
     setDate(new Date().toISOString().split('T')[0]);
   };
 
@@ -157,6 +198,7 @@ function CashDonationDialog({
       date,
       reference: reference || undefined,
       notes: notes || undefined,
+      cellId: campaignCategory === 'fellowship_offering' ? (cellId || undefined) : undefined,
     }),
     onSuccess: () => {
       toast.success('Cash donation recorded');
@@ -183,11 +225,11 @@ function CashDonationDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-heading">Record Cash Donation</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1 overflow-y-auto flex-1 pr-1">
 
           {/* Donor type toggle */}
           <div className="space-y-1.5">
@@ -197,7 +239,7 @@ function CashDonationDialog({
                 <button
                   key={t.value}
                   type="button"
-                  onClick={() => { setDonorType(t.value); setMember(null); }}
+                  onClick={() => { setDonorType(t.value); setMember(null); setCellId(''); }}
                   className={`rounded-md border px-3 py-2 text-left text-xs transition-colors ${
                     donorType === t.value
                       ? 'border-accent bg-accent/10 text-accent font-medium'
@@ -211,11 +253,33 @@ function CashDonationDialog({
             </div>
           </div>
 
-          {/* Member search */}
-          {donorType === 'member' && (
+          {/* Cell dropdown — fellowship_offering + member: show FIRST before member search */}
+          {isFellowship && donorType === 'member' && (
+            <div className="space-y-1.5">
+              <Label>Cell / Fellowship <span className="text-destructive">*</span></Label>
+              <Select value={cellId} onValueChange={v => { setCellId(v); setMember(null); }}>
+                <SelectTrigger><SelectValue placeholder="Select cell first" /></SelectTrigger>
+                <SelectContent>
+                  {(cells as any[]).map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}{c.zone ? ` — ${c.zone}` : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Member search — filtered by cell for fellowship, or global search */}
+          {donorType === 'member' && (!isFellowship || cellId) && (
             <div className="space-y-1.5">
               <Label>Member <span className="text-destructive">*</span></Label>
-              <MemberSearchDropdown value={member} onChange={setMember} />
+              <MemberSearchDropdown
+                value={member}
+                onChange={setMember}
+                cellMembers={isFellowship && cellId ? cellMembers : undefined}
+              />
+              {isFellowship && cellId && cellMembers.length === 0 && (
+                <p className="text-xs text-muted-foreground">No members found in this cell.</p>
+              )}
             </div>
           )}
 
@@ -246,6 +310,21 @@ function CashDonationDialog({
             </p>
           )}
 
+          {/* Cell dropdown — guest/anonymous for fellowship_offering */}
+          {isFellowship && donorType !== 'member' && (
+            <div className="space-y-1.5">
+              <Label>Cell / Fellowship <span className="text-destructive">*</span></Label>
+              <Select value={cellId} onValueChange={setCellId}>
+                <SelectTrigger><SelectValue placeholder="Select cell" /></SelectTrigger>
+                <SelectContent>
+                  {(cells as any[]).map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}{c.zone ? ` — ${c.zone}` : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Amount + currency */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -254,7 +333,13 @@ function CashDonationDialog({
             </div>
             <div className="space-y-1.5">
               <Label>Currency</Label>
-              <Input value={currency} onChange={e => setCurrency(e.target.value)} />
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MWK">MWK</SelectItem>
+                  <SelectItem value="KES">KES</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -303,8 +388,9 @@ export default function DonationsPage() {
     staleTime: STALE_TIME.DEFAULT,
   });
 
-  // Grab campaign currency from first donation, fallback to MWK
+  // Grab campaign currency and category from first donation
   const defaultCurrency = (donations[0] as any)?.currency ?? 'MWK';
+  const campaignCategory = (donations[0] as any)?.campaign?.category;
 
   const { data: transactionData, isLoading: isLoadingTransaction } = useQuery({
     queryKey: ['donation-transaction', expandedDonation],
@@ -326,7 +412,20 @@ export default function DonationsPage() {
           </Button>
           <div>
             <h1 className="font-heading text-xl sm:text-2xl font-bold">Donations/Giving</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">{donations.length} total donations</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              {donations.length} donations
+              {donations.length > 0 && (() => {
+                // Group totals by currency
+                const totals: Record<string, number> = {};
+                donations.forEach((d: any) => {
+                  if (d.status === 'completed') {
+                    totals[d.currency] = (totals[d.currency] ?? 0) + d.amount;
+                  }
+                });
+                const parts = Object.entries(totals).map(([cur, amt]) => `${cur} ${amt.toLocaleString()}`);
+                return parts.length > 0 ? ` · ${parts.join(' + ')}` : '';
+              })()}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -338,8 +437,7 @@ export default function DonationsPage() {
             >
               <PlusCircle className="h-3.5 w-3.5" /> Record Cash
             </Button>
-          )}
-          <ExportImportButtons
+          )}          <ExportImportButtons
           data={donations.map((d: any) => ({
             donor: d.isAnonymous ? 'Anonymous' : (d.isGuest ? d.guestName : (d.donorName || `${d.user?.firstName} ${d.user?.lastName}`)),
             email: d.isAnonymous ? '' : (d.isGuest ? d.guestEmail : (d.donorEmail || d.user?.email || '')),
@@ -529,6 +627,7 @@ export default function DonationsPage() {
           onOpenChange={setCashDialogOpen}
           campaignId={campaignId}
           defaultCurrency={defaultCurrency}
+          campaignCategory={campaignCategory}
         />
       )}
     </div>

@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
 import { givingService, type GivingCampaign } from '@/services/giving';
+import { cellsService } from '@/services/cells';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useAuthStore } from '@/stores/authStore';
@@ -30,7 +31,7 @@ const campaignSchema = z.object({
   churchId: z.string().min(1, 'Church required'),
   name: z.string().min(1, 'Campaign name required'),
   description: z.string().optional(),
-  category: z.enum(['tithe', 'offering', 'partnership', 'welfare', 'missions']),
+  category: z.enum(['tithe', 'offering', 'fellowship_offering', 'partnership', 'welfare', 'missions']),
   subcategory: z.string().optional(),
   targetAmount: z.preprocess(
     (val) => {
@@ -80,6 +81,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
           <SelectContent>
             <SelectItem value="tithe">Tithe</SelectItem>
             <SelectItem value="offering">Offering</SelectItem>
+            <SelectItem value="fellowship_offering">Fellowship Offering</SelectItem>
             <SelectItem value="partnership">Partnership</SelectItem>
             <SelectItem value="welfare">Welfare</SelectItem>
             <SelectItem value="missions">Missions</SelectItem>
@@ -148,6 +150,7 @@ export default function GivingPage() {
   const [deleteCampaign, setDeleteCampaign] = useState<GivingCampaign | null>(null);
   const [donateCampaign, setDonateCampaign] = useState<GivingCampaign | null>(null);
   const [donateAmount, setDonateAmount] = useState('');
+  const [donateCellId, setDonateCellId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentConfirm, setPaymentConfirm] = useState<{ campaign: GivingCampaign; details: any } | null>(null);
   const [endCampaignId, setEndCampaignId] = useState<string | null>(null);
@@ -172,10 +175,10 @@ export default function GivingPage() {
     staleTime: STALE_TIME.DEFAULT,
   });
 
-  const campaigns = Array.isArray(campaignsResponse) && campaignsResponse[0]?.label
-    ? campaignsResponse.flatMap((group: any) => group.posts || [])
+  const campaigns = Array.isArray(campaignsResponse) && (campaignsResponse as any[])[0]?.label
+    ? (campaignsResponse as any[]).flatMap((group: any) => group.posts || [])
     : campaignsResponse;
-  const groupedCampaigns = Array.isArray(campaignsResponse) && campaignsResponse[0]?.label
+  const groupedCampaigns = Array.isArray(campaignsResponse) && (campaignsResponse as any[])[0]?.label
     ? campaignsResponse
     : [];
 
@@ -186,6 +189,14 @@ export default function GivingPage() {
       return data.data || [];
     },
     enabled: !isMember,
+  });
+
+  // Load member's cells for fellowship_offering donate dialog — lightweight endpoint
+  const { data: memberCells = [] } = useQuery({
+    queryKey: ['my-cells-simple'],
+    queryFn: () => cellsService.getSimple(),
+    enabled: isMember,
+    staleTime: STALE_TIME.DEFAULT,
   });
 
   const createMutation = useMutation({
@@ -286,15 +297,22 @@ export default function GivingPage() {
     const amount = parseFloat(donateAmount);
     if (amount <= 0) return toast.error('Invalid amount');
 
+    // Fellowship offering requires a cell selection
+    if (donateCampaign.category === 'fellowship_offering' && !donateCellId) {
+      return toast.error('Please select your cell/fellowship');
+    }
+
     setIsProcessing(true);
     try {
       const response = await givingService.donate({
         campaignId: donateCampaign.id,
         amount,
+        ...(donateCampaign.category === 'fellowship_offering' && donateCellId ? { cellId: donateCellId } : {}),
       });
       setPaymentConfirm({ campaign: donateCampaign, details: response });
       setDonateCampaign(null);
       setDonateAmount('');
+      setDonateCellId('');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to initialize donation');
     } finally {
@@ -469,6 +487,7 @@ export default function GivingPage() {
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="tithe">Tithe</SelectItem>
                 <SelectItem value="offering">Offering</SelectItem>
+                <SelectItem value="fellowship_offering">Fellowship Offering</SelectItem>
                 <SelectItem value="partnership">Partnership</SelectItem>
                 <SelectItem value="welfare">Welfare</SelectItem>
                 <SelectItem value="missions">Missions</SelectItem>
@@ -526,7 +545,7 @@ export default function GivingPage() {
                 <CampaignForm
                   onSubmit={v => {
                     console.log('Campaign form values:', v);
-                    createMutation.mutate(v);
+                    createMutation.mutate(v as any);
                   }}
                   isPending={createMutation.isPending}
                   submitLabel="Create"
@@ -617,7 +636,7 @@ export default function GivingPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!donateCampaign} onOpenChange={open => !open && setDonateCampaign(null)}>
+      <Dialog open={!!donateCampaign} onOpenChange={open => { if (!open) { setDonateCampaign(null); setDonateCellId(''); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Donate to {donateCampaign?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">
@@ -625,6 +644,27 @@ export default function GivingPage() {
               <Label>Amount ({donateCampaign?.currency})</Label>
               <Input type="number" value={donateAmount} onChange={e => setDonateAmount(e.target.value)} placeholder="Enter amount" />
             </div>
+
+            {/* Cell dropdown — only for fellowship_offering campaigns */}
+            {donateCampaign?.category === 'fellowship_offering' && (
+              <div>
+                <Label>Your Cell / Fellowship *</Label>
+                <Select value={donateCellId} onValueChange={setDonateCellId}>
+                  <SelectTrigger><SelectValue placeholder="Select your cell" /></SelectTrigger>
+                  <SelectContent>
+                    {memberCells.length === 0 ? (
+                      <SelectItem value="_none" disabled>No cells found — contact your admin</SelectItem>
+                    ) : (
+                      memberCells.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}{c.zone ? ` — ${c.zone}` : ''}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-0.5">This offering will be recorded under your cell</p>
+              </div>
+            )}
+
             <Button onClick={handleDonate} disabled={isProcessing} className="w-full">
               {isProcessing ? (
                 <>

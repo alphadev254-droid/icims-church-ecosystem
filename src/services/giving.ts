@@ -5,7 +5,7 @@ export interface GivingCampaign {
   churchId: string;
   name: string;
   description?: string;
-  category: 'tithe' | 'offering' | 'partnership' | 'welfare' | 'missions';
+  category: 'tithe' | 'offering' | 'fellowship_offering' | 'partnership' | 'welfare' | 'missions';
   subcategory?: string;
   targetAmount?: number;
   currency: string;
@@ -14,6 +14,7 @@ export interface GivingCampaign {
   endDate?: string;
   imageUrl?: string;
   allowPublicDonations: boolean;
+  cellId?: string;
   createdAt: string;
   updatedAt: string;
   church?: { name: string };
@@ -33,6 +34,8 @@ export interface CreateCampaignDto {
   currency?: string;
   endDate?: string;
   imageUrl?: string;
+  allowPublicDonations?: boolean;
+  cellId?: string;
 }
 
 export interface UpdateCampaignDto {
@@ -74,6 +77,7 @@ export interface CreateDonationDto {
   donorEmail?: string;
   donorPhone?: string;
   notes?: string;
+  cellId?: string;
 }
 
 export const givingService = {
@@ -82,7 +86,12 @@ export const givingService = {
     return data.data;
   },
 
-  async guestDonate(dto: { campaignId: string; amount: number; guestName: string; guestEmail: string; guestPhone?: string }): Promise<any> {
+  async getPublicCampaignCells(campaignId: string): Promise<{ id: string; name: string; zone?: string | null }[]> {
+    const { data } = await apiClient.get(`/giving/campaigns/${campaignId}/cells`);
+    return data.data;
+  },
+
+  async guestDonate(dto: { campaignId: string; amount: number; guestName: string; guestEmail: string; guestPhone?: string; cellId?: string }): Promise<any> {
     const { data } = await apiClient.post('/giving/guest-donate', dto);
     return data.data;
   },
@@ -144,6 +153,7 @@ export const givingService = {
     date: string;
     reference?: string;
     notes?: string;
+    cellId?: string;
   }): Promise<DonationTransaction> {
     const { data } = await apiClient.post('/giving/donations/cash', dto);
     return data.data;

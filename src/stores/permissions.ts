@@ -30,6 +30,7 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   // People Management
   { permission: 'users:read',         item: { to: '/dashboard/users',         label: 'Users',         icon: UserCog } },
   { permission: 'teams:read',         item: { to: '/dashboard/teams',         label: 'Teams',         icon: Users } },
+  { permission: 'cells:read',         item: { to: '/dashboard/cells',         label: 'Cells',         icon: Users } },
   
   // Activities & Engagement
   { permission: 'events:read',        item: { to: '/dashboard/events',        label: 'Events',        icon: Calendar } },
@@ -78,6 +79,11 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
       if (item.to === '/dashboard/teams') {
         return true;
       }
+
+      // Show cells to all users (members see their cell, leaders manage it)
+      if (item.to === '/dashboard/cells') {
+        return true;
+      }
       
       // Show reminders for all users (page handles upgrade prompt)
       
@@ -104,6 +110,11 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
       }
       // Show teams route to all users (members see read-only view)
       if (item.to === '/dashboard/teams') {
+        routes.push(item.to);
+        continue;
+      }
+      // Show cells route to all users
+      if (item.to === '/dashboard/cells') {
         routes.push(item.to);
         continue;
       }
