@@ -7,6 +7,7 @@ import { usersService, type AppUser } from '@/services/users';
 import { rolesService } from '@/services/roles';
 import { churchesService } from '@/services/churches';
 import { locationsService } from '@/services/locations';
+import { cellsService } from '@/services/cells';
 import { AdminScopeSelector } from '@/components/AdminScopeSelector';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
@@ -573,6 +574,7 @@ export default function UsersManagement() {
   const [limit, setLimit] = useState(100);
   const [churchFilter, setChurchFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [cellFilter, setCellFilter] = useState<string>('all');
   const [minAge, setMinAge] = useState<number | undefined>();
   const [maxAge, setMaxAge] = useState<number | undefined>();
   const [createOpen, setCreateOpen] = useState(false);
@@ -589,13 +591,14 @@ export default function UsersManagement() {
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', page, limit, search, churchFilter, roleFilter, minAge, maxAge],
+    queryKey: ['users', page, limit, search, churchFilter, roleFilter, cellFilter, minAge, maxAge],
     queryFn: () => usersService.getAll({ 
       page, 
       limit, 
       search: search || undefined,
       churchId: churchFilter !== 'all' ? churchFilter : undefined,
       role: roleFilter !== 'all' ? roleFilter : undefined,
+      cellId: cellFilter !== 'all' ? cellFilter : undefined,
       minAge,
       maxAge,
     }),
@@ -605,6 +608,14 @@ export default function UsersManagement() {
   const { data: churches = [] } = useQuery({
     queryKey: ['churches-for-filter'],
     queryFn: churchesService.getAll,
+  });
+
+  // Cells for filter dropdown — use simple endpoint
+  const { data: cellsForFilter = [] } = useQuery({
+    queryKey: ['cells-simple-for-filter'],
+    queryFn: () => cellsService.getSimple(),
+    enabled: hasUsers,
+    staleTime: 60_000,
   });
 
   const createMutation = useMutation({
@@ -792,6 +803,7 @@ export default function UsersManagement() {
               baptizedByImmersion: (u as any).baptizedByImmersion ? 'Yes' : 'No',
               role: ROLE_DISPLAY[u.roleName] || u.roleName,
               teams: (u as any).teams?.join(', ') || '',
+              cells: (u as any).cells?.map((c: any) => c.name).join(', ') || '',
               status: u.status,
               joined: new Date(u.createdAt).toLocaleDateString(),
             }))}
@@ -809,6 +821,7 @@ export default function UsersManagement() {
               { label: 'Baptized', key: 'baptizedByImmersion' },
               { label: 'Role', key: 'role' },
               { label: 'Teams', key: 'teams' },
+              { label: 'Cells', key: 'cells' },
               { label: 'Status', key: 'status' },
               { label: 'Joined', key: 'joined' },
             ]}
@@ -816,6 +829,21 @@ export default function UsersManagement() {
           />
           {canCreate && (
           <>
+          <Button variant="outline" className="gap-2" onClick={() => {
+            // Use ="..." wrapper for phone/date fields so Excel preserves them as text
+            const headers = ['firstName','lastName','email','password','phone','gender','dateOfBirth','maritalStatus','weddingDate','residentialNeighbourhood','membershipType','serviceInterest','baptizedByImmersion'];
+            const notes =   ['# First Name','# Last Name','# Email','# Min 8 chars','# Phone — keep ="..." wrapper so Excel preserves digits','# male or female','# Date — keep ="..." wrapper','# single/married/widowed/divorced','# Date if married — keep ="..." wrapper','# e.g. Area 47','# member/pastor/deacon/other','# e.g. Choir','# true or false'];
+            const example = ['John','Banda','john.banda@example.com','Password123!','="265999000111"','male','="1990-05-15"','married','="2018-06-20"','Area 47','member','Choir','false'];
+            const csv = [headers.join(','), notes.join(','), example.join(',')].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'users-import-template.csv'; a.click();
+            URL.revokeObjectURL(url);
+          }}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            Template
+          </Button>
           <Button variant="outline" className="gap-2" onClick={() => document.getElementById('csv-upload')?.click()}>
             <Plus className="h-4 w-4" /> Upload CSV
           </Button>
@@ -832,10 +860,78 @@ export default function UsersManagement() {
                   const text = event.target?.result as string;
                   const rows = text.split('\n').map(row => row.split(','));
                   const headers = rows[0].map(h => h.trim());
-                  const data = rows.slice(1).filter(row => row.length > 1).map((row, idx) => {
+
+                  // Normalize dates from Excel formats (M/D/YYYY, D/M/YYYY, DD-Mon-YY) to YYYY-MM-DD
+                  const normalizeDate = (val: string): string => {
+                    if (!val) return '';
+                    // Already YYYY-MM-DD
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+                    // Try parsing as a date
+                    const d = new Date(val);
+                    if (!isNaN(d.getTime())) {
+                      return d.toISOString().split('T')[0];
+                    }
+                    // M/D/YYYY or D/M/YYYY — try both
+                    const parts = val.split(/[\/\-\.]/);
+                    if (parts.length === 3) {
+                      const [a, b, c] = parts;
+                      // If c is 4 digits it's the year
+                      if (c.length === 4) {
+                        // Assume M/D/YYYY (US) — most common from Excel
+                        const attempt = new Date(`${c}-${a.padStart(2,'0')}-${b.padStart(2,'0')}`);
+                        if (!isNaN(attempt.getTime())) return attempt.toISOString().split('T')[0];
+                      }
+                    }
+                    return val; // return as-is if can't parse
+                  };
+
+                  const DATE_FIELDS = ['dateOfBirth', 'weddingDate'];
+                  const PHONE_FIELDS = ['phone'];
+
+                  // Strip Excel ="..." formula wrapper and handle scientific notation
+                  const normalizeField = (val: string, isPhone: boolean, isDate: boolean): { value: string; warning?: string } => {
+                    if (!val) return { value: '' };
+
+                    // Strip ="..." wrapper (our template uses this to preserve digits)
+                    let v = val;
+                    if (v.startsWith('="') && v.endsWith('"')) {
+                      v = v.slice(2, -1);
+                      return { value: v };
+                    }
+
+                    if (isPhone) {
+                      // Scientific notation — precision already lost by Excel
+                      const sciMatch = v.match(/^(\d+\.?\d*)[eE]\+?(\d+)$/);
+                      if (sciMatch) {
+                        const digits = sciMatch[1].replace('.', '');
+                        const exp = parseInt(sciMatch[2]);
+                        const padded = digits.padEnd(exp + 1, '0');
+                        // Warn if trailing zeros suggest precision loss
+                        const warning = /0{4,}$/.test(padded)
+                          ? `Phone "${padded}" may have lost digits (Excel precision issue). Please verify.`
+                          : undefined;
+                        return { value: padded, warning };
+                      }
+                    }
+
+                    if (isDate) {
+                      return { value: normalizeDate(v) };
+                    }
+
+                    return { value: v };
+                  };
+
+                  const precisionWarnings: Record<number, string> = {};
+
+                  const data = rows.slice(1).filter(row => row.length > 1 && !row[0]?.trim().startsWith('#')).map((row, idx) => {
                     const obj: any = { _rowIndex: idx };
                     headers.forEach((header, i) => {
-                      obj[header] = row[i]?.trim() || '';
+                      const raw = row[i]?.trim() || '';
+                      const isPhone = PHONE_FIELDS.includes(header);
+                      const isDate = DATE_FIELDS.includes(header);
+                      const { value, warning } = normalizeField(raw, isPhone, isDate);
+                      obj[header] = value;
+                      if (warning) precisionWarnings[idx] = warning;
                     });
                     return obj;
                   });
@@ -923,6 +1019,18 @@ export default function UsersManagement() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={cellFilter} onValueChange={(v) => { setCellFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-44 h-8 text-xs sm:h-10 sm:text-sm">
+            <SelectValue placeholder="All Cells" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Cells</SelectItem>
+            <SelectItem value="none">No Cell</SelectItem>
+            {(cellsForFilter as any[]).map((c: any) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}{c.zone ? ` (${c.zone})` : ''}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={String(limit)} onValueChange={(v) => { setLimit(Math.max(100, parseInt(v))); setPage(1); }}>
           <SelectTrigger className="w-full sm:w-28 h-8 text-xs sm:h-10 sm:text-sm">
             <SelectValue />
@@ -956,6 +1064,7 @@ export default function UsersManagement() {
                   <TableHead className="hidden 2xl:table-cell">Baptized</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead className="hidden xl:table-cell">Teams</TableHead>
+                  <TableHead className="hidden xl:table-cell">Cell</TableHead>
                   <TableHead className="hidden lg:table-cell">Joined</TableHead>
                   {(canUpdate || canDelete) && <TableHead className="w-20">Actions</TableHead>}
                 </TableRow>
@@ -975,7 +1084,7 @@ export default function UsersManagement() {
                     : scopeItems.join(', ');
 
                   return (
-                    <TableRow key={user.id}>
+                    <TableRow key={user.id} className="h-9 text-xs sm:text-sm">
                       <TableCell className="font-medium">
                         {user.firstName} {user.lastName}
                         {isSelf && <span className="ml-1.5 text-xs text-muted-foreground font-normal">(you)</span>}
@@ -997,6 +1106,11 @@ export default function UsersManagement() {
                       </TableCell>
                       <TableCell className="hidden xl:table-cell text-xs text-muted-foreground max-w-[150px] truncate">
                         {(user as any).teams?.length > 0 ? (user as any).teams.join(', ') : '—'}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-muted-foreground max-w-[120px] truncate">
+                        {(user as any).cells?.length > 0
+                          ? (user as any).cells.map((c: any) => c.name).join(', ')
+                          : '—'}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">
                         {new Date(user.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -1077,7 +1191,7 @@ export default function UsersManagement() {
 
       {/* View dialog */}
       <Dialog open={!!viewUser} onOpenChange={open => !open && setViewUser(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="font-heading">User Details</DialogTitle></DialogHeader>
           {viewUser && (
             <div className="space-y-4">
@@ -1141,6 +1255,12 @@ export default function UsersManagement() {
                 <div>
                   <Label className="text-muted-foreground">Teams</Label>
                   <p className="font-medium">{(viewUser as any).teams.join(', ')}</p>
+                </div>
+              )}
+              {(viewUser as any).cells?.length > 0 && (
+                <div>
+                  <Label className="text-muted-foreground">Cell / Fellowship</Label>
+                  <p className="font-medium">{(viewUser as any).cells.map((c: any) => c.name).join(', ')}</p>
                 </div>
               )}
               {viewUser.roleName === 'district_admin' && viewUser.districts && viewUser.districts.length > 0 && (

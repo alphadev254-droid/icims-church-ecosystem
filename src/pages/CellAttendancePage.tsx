@@ -30,6 +30,7 @@ interface AttendanceRow {
   isAssistant?: boolean;
   visitorName?: string;
   visitorPhone?: string;
+  visitorEmail?: string;
   isFirstTime?: boolean;
   status: AttendanceStatus;
   notes?: string;
@@ -145,6 +146,7 @@ export default function CellAttendancePage() {
       isGuest: true,
       visitorName: g.visitorName ?? '',
       visitorPhone: g.visitorPhone ?? '',
+      visitorEmail: g.visitorEmail ?? '',
       isFirstTime: g.isFirstTime ?? true,
       status: 'present' as AttendanceStatus,
       notes: '',
@@ -186,7 +188,7 @@ export default function CellAttendancePage() {
   };
 
   const addGuest = () => {
-    setRows(r => [...r, { key: `guest-new-${Date.now()}`, isGuest: true, visitorName: '', visitorPhone: '', isFirstTime: true, status: 'present', notes: '' }]);
+    setRows(r => [...r, { key: `guest-new-${Date.now()}`, isGuest: true, visitorName: '', visitorPhone: '', visitorEmail: '', isFirstTime: true, status: 'present', notes: '' }]);
     setSaved(false);
   };
 
@@ -195,7 +197,7 @@ export default function CellAttendancePage() {
   const mutation = useMutation({
     mutationFn: (currentRows: typeof rows) => {
       const records = currentRows.map(row => row.isGuest
-        ? { isVisitor: true, status: row.status, visitorName: row.visitorName, visitorPhone: row.visitorPhone, isFirstTime: row.isFirstTime ?? true, notes: row.notes || undefined }
+        ? { isVisitor: true, status: row.status, visitorName: row.visitorName, visitorPhone: row.visitorPhone, visitorEmail: row.visitorEmail || undefined, isFirstTime: row.isFirstTime ?? true, notes: row.notes || undefined }
         : { userId: row.userId, status: row.status, isVisitor: false, notes: row.notes || undefined }
       );
       return cellsService.submitAttendance(meetingId!, records);
@@ -213,7 +215,7 @@ export default function CellAttendancePage() {
 
   const exportData = rows.map(r => ({
     Name: r.isGuest ? (r.visitorName ?? '') : `${r.firstName} ${r.lastName}`,
-    Email: r.isGuest ? '' : (r.email ?? ''),
+    Email: r.isGuest ? (r.visitorEmail ?? '') : (r.email ?? ''),
     Phone: r.isGuest ? (r.visitorPhone ?? '') : (r.phone ?? ''),
     Type: r.isGuest ? 'Guest' : (r.isLeader ? 'Leader' : r.isAssistant ? 'Assistant' : 'Member'),
     Status: r.status,
@@ -222,9 +224,13 @@ export default function CellAttendancePage() {
   }));
 
   const exportHeaders = [
-    { label: 'Name', key: 'Name' }, { label: 'Email', key: 'Email' }, { label: 'Phone', key: 'Phone' },
-    { label: 'Type', key: 'Type' }, { label: 'Status', key: 'Status' },
-    { label: 'Excuse Reason', key: 'ExcuseReason' }, { label: 'First Time', key: 'FirstTime' },
+    { label: 'Name', key: 'Name' },
+    { label: 'Email', key: 'Email' },
+    { label: 'Phone', key: 'Phone' },
+    { label: 'Type', key: 'Type' },
+    { label: 'Status', key: 'Status' },
+    { label: 'Excuse Reason', key: 'ExcuseReason' },
+    { label: 'First Time', key: 'FirstTime' },
   ];
 
   const filteredRows = rows.filter(r => {
@@ -311,118 +317,118 @@ export default function CellAttendancePage() {
         </div>
       </div>
 
-      {/* Attendance list — mobile-first card layout */}
-      <div className="space-y-2">
-        {filteredRows.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">No records match this filter.</p>
-        )}
-        {filteredRows.map(row => (
-          <div key={row.key} className={`border rounded-lg p-3 sm:p-4 transition-colors ${
-            row.status === 'present' ? 'border-green-200 bg-green-50/30' :
-            row.status === 'excused' ? 'border-yellow-200 bg-yellow-50/30' :
-            'bg-background'
-          }`}>
-            <div className="flex items-start gap-3">
-              {/* Name + info */}
-              <div className="flex-1 min-w-0">
-                {row.isGuest ? (
-                  canManage ? (
-                    <Input
-                      value={row.visitorName ?? ''}
-                      onChange={e => updateGuest(row.key, 'visitorName', e.target.value)}
-                      placeholder="Guest name *"
-                      className="h-8 text-sm font-medium mb-1"
-                    />
+      {/* Attendance table */}
+      <div className="border rounded-lg overflow-x-auto">
+        <table className="w-full text-xs sm:text-sm min-w-[700px]">
+          <thead className="bg-muted">
+            <tr>
+              <th className="text-left px-3 py-2 font-medium">Name</th>
+              <th className="text-left px-3 py-2 font-medium">Email</th>
+              <th className="text-left px-3 py-2 font-medium">Phone</th>
+              <th className="text-left px-3 py-2 font-medium">Type</th>
+              <th className="text-left px-3 py-2 font-medium">Status</th>
+              <th className="text-left px-3 py-2 font-medium">Excuse Reason</th>
+              <th className="text-left px-3 py-2 font-medium">First Visit</th>
+              <th className="w-8"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {filteredRows.length === 0 && (
+              <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground text-xs">No records match this filter.</td></tr>
+            )}
+            {filteredRows.map(row => (
+              <tr key={row.key} className={`hover:bg-muted/30 ${row.status === 'present' ? 'bg-green-50/30' : row.status === 'excused' ? 'bg-yellow-50/30' : ''}`}>
+                {/* Name */}
+                <td className="px-3 py-1.5 font-medium whitespace-nowrap">
+                  {row.isGuest && canManage ? (
+                    <Input value={row.visitorName ?? ''} onChange={e => updateGuest(row.key, 'visitorName', e.target.value)} placeholder="Guest name *" className="h-7 text-xs w-36" />
                   ) : (
-                    <p className="font-medium text-sm">{row.visitorName || '—'}</p>
-                  )
-                ) : (
-                  <p className="font-medium text-sm">{row.firstName} {row.lastName}</p>
-                )}
-
-                {/* Sub-info row */}
-                <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                  {row.isGuest ? (
-                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-300 bg-blue-50">Guest</Badge>
-                  ) : row.isLeader ? (
-                    <Badge className="text-xs bg-accent/10 text-accent border-accent/30">Leader</Badge>
-                  ) : row.isAssistant ? (
-                    <Badge variant="outline" className="text-xs">Asst.</Badge>
-                  ) : null}
-
-                  {/* Phone — prominent on mobile */}
-                  {row.isGuest ? (
-                    canManage ? (
-                      <Input
-                        value={row.visitorPhone ?? ''}
-                        onChange={e => updateGuest(row.key, 'visitorPhone', e.target.value)}
-                        placeholder="Phone"
-                        className="h-7 text-xs w-32"
-                      />
-                    ) : row.visitorPhone ? (
-                      <a href={`tel:${row.visitorPhone}`} className="text-xs text-accent underline">{row.visitorPhone}</a>
-                    ) : null
-                  ) : row.phone ? (
-                    <a href={`tel:${row.phone}`} className="text-xs text-muted-foreground hover:text-accent">{row.phone}</a>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">{row.email}</span>
+                    <span>{row.isGuest ? (row.visitorName || '—') : `${row.firstName} ${row.lastName}`}</span>
                   )}
+                </td>
 
-                  {/* First time checkbox for guests */}
+                {/* Email */}
+                <td className="px-3 py-1.5 text-muted-foreground">
+                  {row.isGuest && canManage ? (
+                    <Input value={row.visitorEmail ?? ''} onChange={e => updateGuest(row.key, 'visitorEmail', e.target.value)} placeholder="Email" className="h-7 text-xs w-36" />
+                  ) : (
+                    <span>{row.isGuest ? (row.visitorEmail || '—') : (row.email ?? '—')}</span>
+                  )}
+                </td>
+
+                {/* Phone */}
+                <td className="px-3 py-1.5 whitespace-nowrap">
+                  {row.isGuest && canManage ? (
+                    <Input value={row.visitorPhone ?? ''} onChange={e => updateGuest(row.key, 'visitorPhone', e.target.value)} placeholder="Phone" className="h-7 text-xs w-28" />
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {row.isGuest ? (row.visitorPhone || '—') : (row.phone ? <a href={`tel:${row.phone}`} className="hover:text-accent">{row.phone}</a> : '—')}
+                    </span>
+                  )}
+                </td>
+
+                {/* Type */}
+                <td className="px-3 py-1.5">
+                  {row.isGuest
+                    ? <Badge variant="outline" className="text-xs text-blue-600 border-blue-300 bg-blue-50">Guest</Badge>
+                    : row.isLeader
+                    ? <Badge className="text-xs bg-accent/10 text-accent border-accent/30">Leader</Badge>
+                    : row.isAssistant
+                    ? <Badge variant="outline" className="text-xs">Asst.</Badge>
+                    : <Badge variant="outline" className="text-xs">Member</Badge>}
+                </td>
+
+                {/* Status */}
+                <td className="px-3 py-1.5">
+                  {canManage ? (
+                    <div className="flex gap-1">
+                      {(['present', 'absent', 'excused'] as const).map(s => (
+                        <button key={s} onClick={() => setStatus(row.key, s)}
+                          className={`px-2 py-0.5 text-xs rounded border transition-colors capitalize ${row.status === s ? STATUS_STYLES[s] : 'border-border text-muted-foreground hover:bg-muted'}`}>
+                          {s.charAt(0).toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <Badge variant="outline" className={`text-xs capitalize ${STATUS_STYLES[row.status]}`}>{row.status}</Badge>
+                  )}
+                </td>
+
+                {/* Excuse reason */}
+                <td className="px-3 py-1.5 max-w-[140px]">
+                  {row.status === 'excused' && (
+                    <button
+                      onClick={() => canManage && setExcuseKey(row.key)}
+                      className={`text-xs text-left truncate block max-w-full ${canManage ? 'text-yellow-700 hover:underline cursor-pointer' : 'text-muted-foreground cursor-default'}`}
+                      title={row.notes || 'No reason given'}
+                    >
+                      {row.notes || <span className="italic text-muted-foreground">{canManage ? 'Add reason' : 'No reason'}</span>}
+                    </button>
+                  )}
+                </td>
+
+                {/* First visit */}
+                <td className="px-3 py-1.5">
                   {row.isGuest && (
                     <label className="flex items-center gap-1 text-xs cursor-pointer">
                       <input type="checkbox" checked={row.isFirstTime ?? true} onChange={e => updateGuest(row.key, 'isFirstTime', e.target.checked)} disabled={!canManage} className="h-3 w-3" />
-                      First time
+                      {row.isFirstTime ? 'Yes' : 'No'}
                     </label>
                   )}
-                </div>
+                </td>
 
-                {/* Excuse reason */}
-                {row.status === 'excused' && (
-                  <button
-                    onClick={() => canManage && setExcuseKey(row.key)}
-                    className={`mt-1 text-xs text-left ${canManage ? 'text-yellow-700 hover:underline cursor-pointer' : 'text-muted-foreground cursor-default'}`}
-                    title={row.notes || 'No reason given'}
-                  >
-                    {row.notes
-                      ? <span>📝 {row.notes.length > 50 ? row.notes.slice(0, 50) + '…' : row.notes}</span>
-                      : canManage ? <span className="italic text-muted-foreground">Tap to add reason</span>
-                      : <span className="italic text-muted-foreground">No reason given</span>
-                    }
-                  </button>
-                )}
-              </div>
-
-              {/* Status buttons — large tap targets */}
-              <div className="flex flex-col gap-1 shrink-0">
-                {canManage ? (
-                  <div className="flex gap-1">
-                    {(['present', 'absent', 'excused'] as const).map(s => (
-                      <button
-                        key={s}
-                        onClick={() => setStatus(row.key, s)}
-                        className={`px-2.5 py-1.5 text-xs rounded-md border font-medium transition-colors min-w-[52px] sm:min-w-[60px] ${
-                          row.status === s ? STATUS_STYLES[s] : 'border-border text-muted-foreground hover:bg-muted'
-                        }`}
-                      >
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <Badge variant="outline" className={`text-xs capitalize ${STATUS_STYLES[row.status]}`}>{row.status}</Badge>
-                )}
-
-                {/* Remove guest */}
-                {row.isGuest && canManage && (
-                  <button onClick={() => removeGuest(row.key)} className="text-xs text-muted-foreground hover:text-destructive text-right mt-0.5">
-                    <Trash2 className="h-3.5 w-3.5 ml-auto" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
+                {/* Remove guests */}
+                <td className="px-2 py-1.5">
+                  {row.isGuest && canManage && (
+                    <button onClick={() => removeGuest(row.key)} className="p-1 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Excuse dialog */}

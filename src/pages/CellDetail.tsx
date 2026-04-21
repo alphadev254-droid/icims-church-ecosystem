@@ -36,8 +36,9 @@ export default function CellDetailPage() {
   const [newMeetingOpen, setNewMeetingOpen] = useState(false);
   const [editMember, setEditMember] = useState<CellMember | null>(null);
   const [addMemberQuery, setAddMemberQuery] = useState('');
+  const [addMemberPage, setAddMemberPage] = useState(1);
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [isLeader, setIsLeader] = useState(false);
+  const debouncedAddMemberQuery = useDebounce(addMemberQuery, 300);  const [isLeader, setIsLeader] = useState(false);
   const [isAssistant, setIsAssistant] = useState(false);
   const [meetingForm, setMeetingForm] = useState({ date: '', topic: '', notes: '' });
 
@@ -132,12 +133,18 @@ export default function CellDetailPage() {
     staleTime: STALE_TIME.DEFAULT,
   });
 
-  const { data: memberSearchResults } = useQuery({
-    queryKey: ['user-search-cell', addMemberQuery],
-    queryFn: () => usersService.getAll({ search: addMemberQuery || undefined, role: 'member', limit: 20 }),
-    enabled: addMemberOpen && addMemberQuery.length > 0,
-    staleTime: 0,
+  const { data: churchMembersResponse, isFetching: churchMembersFetching } = useQuery({
+    queryKey: ['cell-church-members', id, debouncedAddMemberQuery, addMemberPage],
+    queryFn: () => cellsService.getChurchMembers(id!, {
+      search: debouncedAddMemberQuery || undefined,
+      page: addMemberPage,
+      limit: 100,
+    }),
+    enabled: addMemberOpen && !!id,
+    staleTime: 30_000,
   });
+  const churchMembersList = churchMembersResponse?.data ?? [];
+  const churchMembersPagination = churchMembersResponse?.pagination;
 
   const addMemberMutation = useMutation({
     mutationFn: () => cellsService.addMember(id!, { userId: selectedUserId, isLeader, isAssistant }),
@@ -146,7 +153,7 @@ export default function CellDetailPage() {
       qc.invalidateQueries({ queryKey: ['cell-members', id] });
       qc.invalidateQueries({ queryKey: ['cell-detail', id] });
       setAddMemberOpen(false);
-      setSelectedUserId(''); setIsLeader(false); setIsAssistant(false); setAddMemberQuery('');
+      setSelectedUserId(''); setIsLeader(false); setIsAssistant(false); setAddMemberQuery(''); setAddMemberPage(1);
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to add member'),
   });
@@ -298,13 +305,13 @@ export default function CellDetailPage() {
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="new_convert">New Convert</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={memberRole || 'all'} onValueChange={v => { setMemberRole(v === 'all' ? '' : v); setMemberPage(1); }}>
                 <SelectTrigger className="h-8 w-28 text-xs"><SelectValue placeholder="Role" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="member">Member</SelectItem>
                   <SelectItem value="leader">Leader</SelectItem>
                   <SelectItem value="assistant">Assistant</SelectItem>
                 </SelectContent>
@@ -345,33 +352,54 @@ export default function CellDetailPage() {
           ) : members.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No members found.</p>
           ) : (
-            <div className="divide-y border rounded-lg">
-              {members.map((m: CellMember) => (
-                <div key={m.id} className="flex items-center justify-between px-4 py-3 gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{m.user?.firstName} {m.user?.lastName}</p>
-                    <p className="text-xs text-muted-foreground">{m.user?.email}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap justify-end">
-                    {m.isLeader && <Badge className="text-xs bg-accent/10 text-accent border-accent/30">Leader</Badge>}
-                    {m.isAssistant && <Badge variant="outline" className="text-xs hidden sm:inline-flex">Asst.</Badge>}
-                    <Badge variant="outline" className="text-xs capitalize">{m.status}</Badge>
-                    <span className="text-xs text-muted-foreground hidden md:inline">
-                      {new Date(m.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </span>
-                    {effectiveCanManage && (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => setEditMember(m)} className="p-1 text-muted-foreground hover:text-foreground" title="Edit role">
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button onClick={() => removeMemberMutation.mutate(m.id)} className="p-1 text-muted-foreground hover:text-destructive" title="Remove">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="border rounded-lg overflow-x-auto">
+              <table className="w-full text-xs sm:text-sm min-w-[640px]">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium">Name</th>
+                    <th className="text-left px-3 py-2 font-medium">Email</th>
+                    <th className="text-left px-3 py-2 font-medium">Phone</th>
+                    <th className="text-left px-3 py-2 font-medium">Role</th>
+                    <th className="text-left px-3 py-2 font-medium">Status</th>
+                    <th className="text-left px-3 py-2 font-medium">Joined</th>
+                    {effectiveCanManage && <th className="w-16"></th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {members.map((m: CellMember) => (
+                    <tr key={m.id} className="hover:bg-muted/30">
+                      <td className="px-3 py-2 font-medium whitespace-nowrap">{m.user?.firstName} {m.user?.lastName}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{m.user?.email ?? '—'}</td>
+                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{m.user?.phone ?? '—'}</td>
+                      <td className="px-3 py-2">
+                        {m.isLeader
+                          ? <Badge className="text-xs bg-accent/10 text-accent border-accent/30">Leader</Badge>
+                          : m.isAssistant
+                          ? <Badge variant="outline" className="text-xs">Assistant</Badge>
+                          : <Badge variant="outline" className="text-xs">Member</Badge>}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className="text-xs capitalize">{m.status}</Badge>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                        {new Date(m.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </td>
+                      {effectiveCanManage && (
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setEditMember(m)} className="p-1 text-muted-foreground hover:text-foreground" title="Edit role">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => removeMemberMutation.mutate(m.id)} className="p-1 text-muted-foreground hover:text-destructive" title="Remove">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
@@ -693,6 +721,29 @@ export default function CellDetailPage() {
                 <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Visitors</p><p className="text-2xl font-bold">{stats.totalVisitors}</p></CardContent></Card>
               </div>
 
+              {/* Guest conversion rate — always shown */}
+              <div className="grid grid-cols-3 gap-3">
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">Unique Visitors</p>
+                    <p className="text-2xl font-bold">{stats.guestConversion?.totalUniqueVisitors ?? 0}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">Converted to Members</p>
+                    <p className="text-2xl font-bold text-green-600">{stats.guestConversion?.convertedCount ?? 0}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">Conversion Rate</p>
+                    <p className="text-2xl font-bold text-accent">{stats.guestConversion?.conversionRate ?? 0}%</p>
+                    <p className="text-xs text-muted-foreground">guest → member</p>
+                  </CardContent>
+                </Card>
+              </div>
+
               {/* Attendance trend chart */}
               {stats.attendanceTrend?.length > 0 && (
                 <Card>
@@ -834,6 +885,50 @@ export default function CellDetailPage() {
                 </Card>
               </div>
 
+              {/* Repeat visitors */}
+              {stats && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      🔄 Repeat Visitors
+                      <span className="text-xs font-normal text-muted-foreground">— attended 2+ times</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {!stats.repeatVisitors?.length ? (
+                      <p className="text-xs text-muted-foreground px-4 py-4">No repeat visitors yet. Guests who attend 2+ meetings will appear here.</p>
+                    ) : (
+                      <div className="overflow-y-auto max-h-72 sm:max-h-96">
+                        <table className="w-full text-xs sm:text-sm">
+                          <thead className="bg-muted sticky top-0 z-10">
+                            <tr>
+                              <th className="text-left px-3 py-2 font-medium">Name</th>
+                              <th className="text-left px-3 py-2 font-medium">Phone</th>
+                              <th className="text-left px-3 py-2 font-medium">Email</th>
+                              <th className="text-left px-3 py-2 font-medium">Visits</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {stats.repeatVisitors.map((v: any, i: number) => (
+                              <tr key={i} className="hover:bg-muted/30">
+                                <td className="px-3 py-1.5 font-medium">{v.name || '—'}</td>
+                                <td className="px-3 py-1.5 text-muted-foreground">
+                                  {v.phone ? <a href={`tel:${v.phone}`} className="hover:text-accent">{v.phone}</a> : '—'}
+                                </td>
+                                <td className="px-3 py-1.5 text-muted-foreground">{v.email || '—'}</td>
+                                <td className="px-3 py-1.5">
+                                  <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">{v.visits}×</Badge>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Age distribution */}
               {stats.ageDistribution?.some((b: any) => b.count > 0) && (
                 <Card>
@@ -866,52 +961,61 @@ export default function CellDetailPage() {
 
       {/* Edit Member Dialog */}
       <Dialog open={!!editMember} onOpenChange={open => !open && setEditMember(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Edit Member Role</DialogTitle></DialogHeader>
+        <DialogContent className="w-full max-w-md sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Member Role</DialogTitle>
+            {editMember && <p className="text-sm text-muted-foreground">{editMember.user?.firstName} {editMember.user?.lastName}</p>}
+          </DialogHeader>
           {editMember && (
             <div className="space-y-4 pt-1">
-              <p className="text-sm font-medium">{editMember.user?.firstName} {editMember.user?.lastName}</p>
-              <div className="space-y-2">
-                <label className="flex items-center justify-between rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
-                  <div>
-                    <p className="text-sm font-medium">Cell Leader</p>
-                    <p className="text-xs text-muted-foreground">Responsible for leading this cell</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={editMember.isLeader}
-                    onChange={e => setEditMember(m => m ? { ...m, isLeader: e.target.checked, isAssistant: e.target.checked ? false : m.isAssistant } : null)}
-                  />
-                </label>
-                <label className="flex items-center justify-between rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
-                  <div>
-                    <p className="text-sm font-medium">Assistant Leader</p>
-                    <p className="text-xs text-muted-foreground">Supports the cell leader</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={editMember.isAssistant}
-                    onChange={e => setEditMember(m => m ? { ...m, isAssistant: e.target.checked, isLeader: e.target.checked ? false : m.isLeader } : null)}
-                  />
-                </label>
-                <div>
-                  <Label className="text-xs">Status</Label>
-                  <Select value={editMember.status} onValueChange={v => setEditMember(m => m ? { ...m, status: v } : null)}>
-                    <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="new_convert">New Convert</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* Role — same radio style as Add Member */}
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Role</Label>
+                <div className="flex flex-wrap gap-3 mt-2">
+                  {[
+                    { label: 'Member', value: 'member' },
+                    { label: 'Cell Leader', value: 'leader' },
+                    { label: 'Assistant Leader', value: 'assistant' },
+                  ].map(opt => {
+                    const isSelected =
+                      opt.value === 'leader' ? editMember.isLeader :
+                      opt.value === 'assistant' ? editMember.isAssistant :
+                      !editMember.isLeader && !editMember.isAssistant;
+                    return (
+                      <label key={opt.value} className={`flex items-center gap-2 text-sm cursor-pointer rounded-md border px-4 py-2.5 transition-colors ${isSelected ? 'border-accent bg-accent/10 text-accent font-medium' : 'border-border hover:bg-muted'}`}>
+                        <input
+                          type="radio"
+                          name="editMemberRole"
+                          className="h-4 w-4"
+                          checked={isSelected}
+                          onChange={() => setEditMember(m => m ? {
+                            ...m,
+                            isLeader: opt.value === 'leader',
+                            isAssistant: opt.value === 'assistant',
+                          } : null)}
+                        />
+                        {opt.label}
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" size="sm" onClick={() => setEditMember(null)}>Cancel</Button>
+
+              {/* Status */}
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status</Label>
+                <Select value={editMember.status} onValueChange={v => setEditMember(m => m ? { ...m, status: v } : null)}>
+                  <SelectTrigger className="mt-2 h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={() => setEditMember(null)}>Cancel</Button>
                 <Button
-                  size="sm"
                   className="bg-accent text-accent-foreground hover:bg-accent/90"
                   disabled={updateMemberMutation.isPending}
                   onClick={() => updateMemberMutation.mutate({
@@ -928,37 +1032,120 @@ export default function CellDetailPage() {
       </Dialog>
 
       {/* Add Member Dialog */}
-      <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Add Member to Cell</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Search Member</Label>
-              <Input className="mt-1" placeholder="Name or email..." value={addMemberQuery} onChange={e => setAddMemberQuery(e.target.value)} />
-              {memberSearchResults?.data && memberSearchResults.data.length > 0 && (
-                <div className="border rounded-md mt-1 max-h-48 overflow-y-auto">
-                  {memberSearchResults.data.map((u: any) => (
-                    <button key={u.id} type="button"
-                      className={`w-full text-left px-3 py-2.5 text-sm hover:bg-muted ${selectedUserId === u.id ? 'bg-accent/10' : ''}`}
-                      onClick={() => { setSelectedUserId(u.id); setAddMemberQuery(`${u.firstName} ${u.lastName}`); }}>
-                      <p className="font-medium">{u.firstName} {u.lastName}</p>
-                      <p className="text-xs text-muted-foreground">{u.email}</p>
+      <Dialog open={addMemberOpen} onOpenChange={v => { setAddMemberOpen(v); if (!v) { setAddMemberQuery(''); setSelectedUserId(''); setAddMemberPage(1); } }}>
+        <DialogContent className="w-full max-w-xl sm:max-w-2xl h-[95vh] sm:h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Add Member to Cell</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              {churchMembersPagination ? `${churchMembersPagination.total} members in this church` : ''}
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-3 flex-1 flex flex-col min-h-0">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                className="pl-8 h-9"
+                placeholder="Search by name, email or phone..."
+                value={addMemberQuery}
+                onChange={e => { setAddMemberQuery(e.target.value); setAddMemberPage(1); setSelectedUserId(''); }}
+              />
+            </div>
+
+            {/* Selected member indicator */}
+            {selectedUserId && (
+              <div className="flex items-center justify-between rounded-md border border-accent bg-accent/5 px-3 py-2 text-sm">
+                <span className="font-medium text-accent">
+                  {churchMembersList.find(u => u.id === selectedUserId)
+                    ? `${churchMembersList.find(u => u.id === selectedUserId)!.firstName} ${churchMembersList.find(u => u.id === selectedUserId)!.lastName}`
+                    : 'Selected'}
+                </span>
+                <button onClick={() => setSelectedUserId('')} className="text-xs text-muted-foreground hover:text-foreground">✕ Clear</button>
+              </div>
+            )}
+
+            {/* Scrollable member list */}
+            <div className="flex-1 border rounded-lg overflow-y-auto min-h-0">
+              {churchMembersFetching ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="h-5 w-5 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+                </div>
+              ) : churchMembersList.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  {addMemberQuery ? 'No members match your search.' : 'No members found in this church.'}
+                </p>
+              ) : (
+                <div className="divide-y">
+                  {churchMembersList.map(u => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => setSelectedUserId(u.id)}
+                      className={`w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors ${selectedUserId === u.id ? 'bg-accent/10 border-l-2 border-accent' : ''}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{u.firstName} {u.lastName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                        </div>
+                        {u.phone && <span className="text-xs text-muted-foreground shrink-0">{u.phone}</span>}
+                      </div>
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <div className="flex gap-6">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={isLeader} onChange={e => setIsLeader(e.target.checked)} className="h-4 w-4" />
-                Cell Leader
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={isAssistant} onChange={e => setIsAssistant(e.target.checked)} className="h-4 w-4" />
-                Assistant Leader
-              </label>
+
+            {/* Pagination */}
+            {churchMembersPagination && churchMembersPagination.pages > 1 && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Page {churchMembersPagination.page} of {churchMembersPagination.pages}</span>
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline" className="h-7 w-7 p-0" disabled={addMemberPage <= 1} onClick={() => setAddMemberPage(p => p - 1)}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 w-7 p-0" disabled={addMemberPage >= churchMembersPagination.pages} onClick={() => setAddMemberPage(p => p + 1)}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Role — Member is default, leader/assistant are exclusive upgrades */}
+            <div className="flex flex-wrap gap-3 pt-1">
+              {[
+                { label: 'Member', value: 'member' },
+                { label: 'Cell Leader', value: 'leader' },
+                { label: 'Assistant Leader', value: 'assistant' },
+              ].map(opt => {
+                const isSelected =
+                  opt.value === 'leader' ? isLeader :
+                  opt.value === 'assistant' ? isAssistant :
+                  !isLeader && !isAssistant;
+                return (
+                  <label key={opt.value} className={`flex items-center gap-2 text-sm cursor-pointer rounded-md border px-3 py-2 transition-colors ${isSelected ? 'border-accent bg-accent/10 text-accent font-medium' : 'border-border hover:bg-muted'}`}>
+                    <input
+                      type="radio"
+                      name="memberRole"
+                      className="h-4 w-4 accent-current"
+                      checked={isSelected}
+                      onChange={() => {
+                        setIsLeader(opt.value === 'leader');
+                        setIsAssistant(opt.value === 'assistant');
+                      }}
+                    />
+                    {opt.label}
+                  </label>
+                );
+              })}
             </div>
-            <Button className="w-full" disabled={!selectedUserId || addMemberMutation.isPending} onClick={() => addMemberMutation.mutate()}>
+
+            <Button
+              className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+              disabled={!selectedUserId || addMemberMutation.isPending}
+              onClick={() => addMemberMutation.mutate()}
+            >
               {addMemberMutation.isPending ? 'Adding...' : 'Add Member'}
             </Button>
           </div>

@@ -46,6 +46,7 @@ export interface CellAttendanceRecord {
   isVisitor?: boolean;
   visitorName?: string;
   visitorPhone?: string;
+  visitorEmail?: string;
   isFirstTime?: boolean;
   invitedByUserId?: string;
   notes?: string;
@@ -123,6 +124,14 @@ export const cellsService = {
     pagination: { total: number; page: number; limit: number; pages: number };
   }> => {
     const { data } = await apiClient.get(`${BASE}/${id}/members`, { params });
+    return data;
+  },
+
+  getChurchMembers: async (cellId: string, params?: { search?: string; page?: number; limit?: number }): Promise<{
+    data: { id: string; firstName: string; lastName: string; email: string; phone?: string | null }[];
+    pagination: { total: number; page: number; limit: number; pages: number };
+  }> => {
+    const { data } = await apiClient.get(`${BASE}/${cellId}/church-members`, { params });
     return data;
   },
 

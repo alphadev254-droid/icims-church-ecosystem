@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { cellsService, type Cell } from '@/services/cells';
+import { churchesService } from '@/services/churches';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useAuthStore } from '@/stores/authStore';
@@ -85,6 +86,7 @@ export default function CellsPage() {
   const [deleteCell, setDeleteCell] = useState<Cell | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [churchFilter, setChurchFilter] = useState('');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 350);
 
@@ -93,10 +95,11 @@ export default function CellsPage() {
   const canDelete = hasPermission('cells:delete');
 
   const { data: cellsResponse, isLoading } = useQuery({
-    queryKey: ['cells', debouncedSearch, statusFilter, page],
+    queryKey: ['cells', debouncedSearch, statusFilter, churchFilter, page],
     queryFn: () => cellsService.getAll({
       search: debouncedSearch || undefined,
       status: statusFilter || undefined,
+      churchId: churchFilter || undefined,
       page,
       limit: 50,
     }),
@@ -108,6 +111,13 @@ export default function CellsPage() {
   const { data: overviewStats } = useQuery({
     queryKey: ['cells-overview-stats'],
     queryFn: () => cellsService.getOverviewStats(),
+    enabled: !isMember,
+    staleTime: STALE_TIME.DEFAULT,
+  });
+
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches-for-cells-filter'],
+    queryFn: churchesService.getAll,
     enabled: !isMember,
     staleTime: STALE_TIME.DEFAULT,
   });
@@ -165,6 +175,17 @@ export default function CellsPage() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input className="pl-8 h-8 text-xs sm:h-9 sm:text-sm" placeholder="Search by name or zone..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
           </div>
+          {churches.length > 1 && (
+            <Select value={churchFilter || 'all'} onValueChange={v => { setChurchFilter(v === 'all' ? '' : v); setPage(1); }}>
+              <SelectTrigger className="h-8 w-40 text-xs sm:h-9 sm:text-sm"><SelectValue placeholder="All Churches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {(churches as any[]).map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select value={statusFilter || 'all'} onValueChange={v => { setStatusFilter(v === 'all' ? '' : v); setPage(1); }}>
             <SelectTrigger className="h-8 w-28 text-xs sm:h-9 sm:text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>

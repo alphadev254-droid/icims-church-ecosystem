@@ -65,6 +65,11 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
     .filter(({ permission, item }) => {
       if (!permSet.has(permission)) return false;
       
+      // Hide users from members
+      if (item.to === '/dashboard/users') {
+        return currentUser?.roleName !== 'member';
+      }
+
       // Hide withdrawals for non-Malawi accounts and members
       if (item.to === '/dashboard/withdrawals') {
         return currentUser?.accountCountry === 'Malawi' && currentUser?.roleName !== 'member';
@@ -102,6 +107,10 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
     if (permSet.has(permission) && !routes.includes(item.to)) {
       // Hide withdrawals route for non-Malawi accounts and members
       if (item.to === '/dashboard/withdrawals' && (currentUser?.accountCountry !== 'Malawi' || currentUser?.roleName === 'member')) {
+        continue;
+      }
+      // Hide users route from members
+      if (item.to === '/dashboard/users' && currentUser?.roleName === 'member') {
         continue;
       }
       // Hide transactions route from members
