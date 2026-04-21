@@ -12,6 +12,10 @@ export interface Cell {
   church?: { id: string; name: string };
   members?: CellMember[];
   _count?: { members: number; meetings: number };
+  // quick stats from getCells enrichment
+  lastMeetingDate?: string | null;
+  attendanceRate?: number | null;
+  conversionRate?: number | null;
   // injected for member view
   isLeader?: boolean;
   isAssistant?: boolean;

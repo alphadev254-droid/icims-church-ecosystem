@@ -201,7 +201,7 @@ export default function CellsPage() {
       {!isMember && overviewStats && (
         <div className="space-y-4">
           {/* KPI cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
             {[
               { label: 'Total Cells',     value: overviewStats.totalCells },
               { label: 'Active Cells',    value: overviewStats.activeCells },
@@ -209,11 +209,12 @@ export default function CellsPage() {
               { label: 'Total Meetings',  value: overviewStats.totalMeetings },
               { label: 'Attendance Rate', value: `${overviewStats.attendanceRate}%` },
               { label: 'Total Visitors',  value: overviewStats.totalVisitors },
+              { label: 'Conversion Rate', value: `${overviewStats.cumulativeConversionRate ?? 0}%`, highlight: true },
             ].map(s => (
-              <Card key={s.label}>
+              <Card key={s.label} className={(s as any).highlight ? 'border-accent' : ''}>
                 <CardContent className="p-3">
                   <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="text-xl font-bold">{s.value}</p>
+                  <p className={`text-xl font-bold ${(s as any).highlight ? 'text-accent' : ''}`}>{s.value}</p>
                 </CardContent>
               </Card>
             ))}
@@ -322,23 +323,54 @@ export default function CellsPage() {
                   <Badge variant={cell.status === 'active' ? 'default' : 'secondary'} className="text-xs capitalize">{cell.status}</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {cell._count?.members ?? 0} members</span>
+              <CardContent className="space-y-2">
+                {/* Quick stats row */}
+                <div className="grid grid-cols-4 gap-1 text-center">
+                  <div className="rounded bg-muted/50 px-1 py-1">
+                    <p className="text-sm font-bold">{cell._count?.members ?? 0}</p>
+                    <p className="text-xs text-muted-foreground">Members</p>
+                  </div>
+                  <div className="rounded bg-muted/50 px-1 py-1">
+                    <p className="text-sm font-bold">{cell._count?.meetings ?? 0}</p>
+                    <p className="text-xs text-muted-foreground">Meetings</p>
+                  </div>
+                  <div className="rounded bg-muted/50 px-1 py-1">
+                    <p className={`text-sm font-bold ${(cell as any).attendanceRate != null ? ((cell as any).attendanceRate >= 70 ? 'text-green-600' : (cell as any).attendanceRate >= 40 ? 'text-yellow-600' : 'text-red-500') : ''}`}>
+                      {(cell as any).attendanceRate != null ? `${(cell as any).attendanceRate}%` : '—'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Attendance</p>
+                  </div>
+                  <div className="rounded bg-muted/50 px-1 py-1">
+                    <p className={`text-sm font-bold ${(cell as any).conversionRate != null ? 'text-accent' : ''}`}>
+                      {(cell as any).conversionRate != null ? `${(cell as any).conversionRate}%` : '—'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Conversion</p>
+                  </div>
+                </div>
+
+                {/* Leader + last meeting */}
+                <div className="space-y-0.5">
+                  {cell.members && cell.members.length > 0 && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      Leader: {cell.members[0]?.user?.firstName} {cell.members[0]?.user?.lastName}
+                    </p>
+                  )}
+                  {(cell as any).lastMeetingDate && (
+                    <p className="text-xs text-muted-foreground">
+                      Last met: {new Date((cell as any).lastMeetingDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
                   {cell.meetingDay && (
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {cell.meetingDay} {cell.meetingTime}</span>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> {cell.meetingDay}{cell.meetingTime ? ` · ${cell.meetingTime}` : ''}
+                    </p>
                   )}
                 </div>
-                {cell.members && cell.members.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Leader: {cell.members[0]?.user?.firstName} {cell.members[0]?.user?.lastName}
-                  </p>
-                )}
-                <div className="flex gap-1.5">
+
+                <div className="flex gap-1.5 pt-1">
                   <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1" onClick={() => navigate(`/dashboard/cells/${cell.id}`)}>
                     <Eye className="h-3 w-3" /> View
                   </Button>
-                  {/* Members: only leader can edit. Admins: canManage */}
                   {(isMember ? (cell as any).isLeader : canManage) && (
                     <button onClick={() => setEditCell(cell)} className="p-1.5 text-muted-foreground hover:text-foreground border rounded">
                       <Pencil className="h-3.5 w-3.5" />

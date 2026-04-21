@@ -185,7 +185,7 @@ export default function PublicCampaignPage() {
             <p className="text-base sm:text-lg font-semibold mb-2">Support This Campaign</p>
             <p className="text-xs sm:text-sm text-muted-foreground mb-4">Every contribution makes a difference</p>
             <Button size="lg" className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
-              <HandCoins className="h-4 w-4 mr-2" /> Donate Now
+              <HandCoins className="h-4 w-4 mr-2" /> Give Now
             </Button>
           </CardContent>
         </Card>
@@ -195,7 +195,7 @@ export default function PublicCampaignPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Donate to {campaign.name}</DialogTitle>
+            <DialogTitle>Give to {campaign.name}</DialogTitle>
             <p className="text-sm text-muted-foreground pt-1">
               Fill in your details to proceed to payment. A receipt will be sent to your email.
             </p>
@@ -281,7 +281,7 @@ export default function PublicCampaignPage() {
                 ) : fees ? (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Donation amount</span>
+                      <span className="text-muted-foreground">Giving amount</span>
                       <span>{fees.currency} {fees.baseAmount.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">

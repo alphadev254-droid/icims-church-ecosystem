@@ -132,8 +132,8 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
           className="h-4 w-4"
         />
         <div>
-          <Label htmlFor="allowPublicDonations" className="cursor-pointer font-medium text-xs sm:text-sm">Allow Public Donations</Label>
-          <p className="text-xs text-muted-foreground">Generate a public link so anyone can donate without logging in</p>
+          <Label htmlFor="allowPublicDonations" className="cursor-pointer font-medium text-xs sm:text-sm">Allow Public Giving</Label>
+          <p className="text-xs text-muted-foreground">Generate a public link so anyone can give without logging in</p>
         </div>
       </div>
 
@@ -278,12 +278,12 @@ export default function GivingPage() {
       <div className="space-y-6">
         <div>
           <h1 className="font-heading text-2xl font-bold">Giving Campaigns</h1>
-          <p className="text-sm text-muted-foreground">Manage giving and donations</p>
+          <p className="text-sm text-muted-foreground">Manage giving </p>
         </div>
         <Alert className="border-amber-200 bg-amber-50">
           <Lock className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-800">
-            Giving & Donations is not available in your current package.{' '}
+            Giving is not available in your current package.{' '}
             <Link to="/dashboard/packages" className="font-medium underline">Upgrade now</Link>
             {' '}to unlock giving management features.
           </AlertDescription>
@@ -406,7 +406,7 @@ export default function GivingPage() {
               )}
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Users className="h-3 w-3" />
-                <span>{campaign.donorCount} donors</span>
+                <span>{campaign.donorCount} givers</span>
               </div>
             </>
           )}
@@ -415,7 +415,7 @@ export default function GivingPage() {
           {campaign.allowPublicDonations && !isMember && (
             <div className="rounded-md border bg-muted/40 p-2 space-y-1.5">
               <p className="text-xs font-medium flex items-center gap-1">
-                <Share2 className="h-3 w-3 shrink-0" /> Public donation link
+                <Share2 className="h-3 w-3 shrink-0" /> Public giving link
               </p>
               <div className="flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 min-w-0">
                 <span className="text-xs text-muted-foreground truncate flex-1 font-mono min-w-0">{publicUrl}</span>
@@ -439,17 +439,17 @@ export default function GivingPage() {
           {isMember ? (
             <div className="flex gap-1.5 pt-1">
               <Button size="sm" className="flex-1 h-7 text-xs" onClick={() => setDonateCampaign(campaign)}>
-                <Wallet className="h-3 w-3 mr-1" /> Donate
+                <Wallet className="h-3 w-3 mr-1" /> Give
               </Button>
               {campaign.userHasDonated && (
                 <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => navigate(`/dashboard/donations?campaignId=${campaign.id}`)}>
-                  <Eye className="h-3 w-3 mr-1" /> My Donations
+                  <Eye className="h-3 w-3 mr-1" /> My Givings
                 </Button>
               )}
             </div>
           ) : canViewDonations ? (
             <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => navigate(`/dashboard/donations?campaignId=${campaign.id}`)}>
-              <Eye className="h-3 w-3 mr-1" /> View Donations
+              <Eye className="h-3 w-3 mr-1" /> View Givings
             </Button>
           ) : null}
         </CardContent>
@@ -638,7 +638,7 @@ export default function GivingPage() {
 
       <Dialog open={!!donateCampaign} onOpenChange={open => { if (!open) { setDonateCampaign(null); setDonateCellId(''); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Donate to {donateCampaign?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Give to {donateCampaign?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Amount ({donateCampaign?.currency})</Label>
@@ -684,7 +684,7 @@ export default function GivingPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Activate Campaign</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to activate this campaign? This will allow the campaign to accept donations again.
+              Are you sure you want to activate this campaign? This will allow the campaign to accept givings again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -721,7 +721,7 @@ export default function GivingPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>End Campaign</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to end this campaign? This action will mark the campaign as completed and stop accepting new donations.
+              Are you sure you want to end this campaign? This action will mark the campaign as completed and stop accepting new Givings.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

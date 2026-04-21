@@ -227,7 +227,7 @@ function CashDonationDialog({
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
       <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-heading">Record Cash Donation</DialogTitle>
+          <DialogTitle className="font-heading">Record Cash Giving</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-1 overflow-y-auto flex-1 pr-1">
 
@@ -411,7 +411,7 @@ export default function DonationsPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="font-heading text-xl sm:text-2xl font-bold">Donations/Giving</h1>
+            <h1 className="font-heading text-xl sm:text-2xl font-bold">Giving Records</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">
               {donations.length} donations
               {donations.length > 0 && (() => {
@@ -435,7 +435,7 @@ export default function DonationsPage() {
               className="h-8 text-xs gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90"
               onClick={() => setCashDialogOpen(true)}
             >
-              <PlusCircle className="h-3.5 w-3.5" /> Record Cash
+              <PlusCircle className="h-3.5 w-3.5" /> Record Giving
             </Button>
           )}          <ExportImportButtons
           data={donations.map((d: any) => ({

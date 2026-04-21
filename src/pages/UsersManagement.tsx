@@ -31,6 +31,7 @@ import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { AgeRangeFilter } from '@/components/AgeRangeFilter';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 
 // ─── Role display helpers ─────────────────────────────────────────────────────
 const ROLE_DISPLAY: Record<string, string> = {
@@ -584,6 +585,7 @@ export default function UsersManagement() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string>>>({});
+  const [precisionWarnings, setPrecisionWarnings] = useState<Record<number, string>>({});
   const [bulkChurchId, setBulkChurchId] = useState<string>('');
   const { hasPermission } = useRole();
   const hasUsers = useHasFeature('users_management');
@@ -669,6 +671,7 @@ export default function UsersManagement() {
       setUploadOpen(false);
       setCsvData([]);
       setValidationErrors({});
+      setPrecisionWarnings({});
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Bulk upload failed'),
   });
@@ -827,138 +830,214 @@ export default function UsersManagement() {
             ]}
             pdfTitle="Users Report"
           />
+          <Button variant="outline" size="sm" className="gap-1.5 h-8 sm:h-9 text-xs sm:text-sm" onClick={() => {
+            const headers = ['First Name','Last Name','Email','Phone','Gender','Date of Birth','Marital Status','Wedding Date','Neighbourhood','Baptized','Role','Teams','Cells','Status','Joined'];
+            const rows = users.map(u => [
+              u.firstName, u.lastName, u.email,
+              u.phone || '',
+              (u as any).gender || '',
+              (u as any).dateOfBirth ? new Date((u as any).dateOfBirth).toISOString().split('T')[0] : '',
+              (u as any).maritalStatus || '',
+              (u as any).weddingDate ? new Date((u as any).weddingDate).toISOString().split('T')[0] : '',
+              (u as any).residentialNeighbourhood || '',
+              (u as any).baptizedByImmersion ? 'Yes' : 'No',
+              ROLE_DISPLAY[u.roleName] || u.roleName,
+              (u as any).teams?.join(', ') || '',
+              (u as any).cells?.map((c: any) => c.name).join(', ') || '',
+              u.status,
+              new Date(u.createdAt).toLocaleDateString(),
+            ]);
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+            // Format phone column as text
+            const phoneCol = headers.indexOf('Phone');
+            for (let r = 1; r <= rows.length; r++) {
+              const ref = XLSX.utils.encode_cell({ r, c: phoneCol });
+              if (ws[ref]) ws[ref].z = '@';
+            }
+            ws['!cols'] = headers.map(() => ({ wch: 20 }));
+            XLSX.utils.book_append_sheet(wb, ws, 'Users');
+            XLSX.writeFile(wb, 'users-export.xlsx');
+          }}>
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            Excel
+          </Button>
           {canCreate && (
           <>
           <Button variant="outline" className="gap-2" onClick={() => {
-            // Use ="..." wrapper for phone/date fields so Excel preserves them as text
+            // Generate Excel template using SheetJS — phone/date columns formatted as text
             const headers = ['firstName','lastName','email','password','phone','gender','dateOfBirth','maritalStatus','weddingDate','residentialNeighbourhood','membershipType','serviceInterest','baptizedByImmersion'];
-            const notes =   ['# First Name','# Last Name','# Email','# Min 8 chars','# Phone — keep ="..." wrapper so Excel preserves digits','# male or female','# Date — keep ="..." wrapper','# single/married/widowed/divorced','# Date if married — keep ="..." wrapper','# e.g. Area 47','# member/pastor/deacon/other','# e.g. Choir','# true or false'];
-            const example = ['John','Banda','john.banda@example.com','Password123!','="265999000111"','male','="1990-05-15"','married','="2018-06-20"','Area 47','member','Choir','false'];
-            const csv = [headers.join(','), notes.join(','), example.join(',')].join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'users-import-template.csv'; a.click();
-            URL.revokeObjectURL(url);
+            const notes =   ['First Name','Last Name','Email','Min 8 chars','Phone e.g. 265999000111','male or female','YYYY-MM-DD e.g. 1990-05-15','single/married/widowed/divorced','YYYY-MM-DD if married','e.g. Area 47','member/pastor/deacon/other','e.g. Choir','true or false'];
+            const example = ['John','Banda','john.banda@example.com','Password123!','265999000111','male','1990-05-15','married','2018-06-20','Area 47','member','Choir','false'];
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet([headers, notes, example]);
+
+            // Force text format on phone and date columns to prevent Excel auto-conversion
+            const textColNames = ['phone','dateOfBirth','weddingDate'];
+            textColNames.forEach(name => {
+              const colIdx = headers.indexOf(name);
+              if (colIdx < 0) return;
+              for (let r = 0; r <= 100; r++) {
+                const ref = XLSX.utils.encode_cell({ r, c: colIdx });
+                if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+                ws[ref].z = '@';
+              }
+            });
+
+            ws['!cols'] = headers.map(() => ({ wch: 22 }));
+            XLSX.utils.book_append_sheet(wb, ws, 'Users Template');
+            XLSX.writeFile(wb, 'users-import-template.xlsx');
           }}>
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
             Template
           </Button>
           <Button variant="outline" className="gap-2" onClick={() => document.getElementById('csv-upload')?.click()}>
-            <Plus className="h-4 w-4" /> Upload CSV
+            <Plus className="h-4 w-4" /> Upload CSV / Excel
           </Button>
           <input
             id="csv-upload"
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx,.xls"
             className="hidden"
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
-              if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                  const text = event.target?.result as string;
-                  const rows = text.split('\n').map(row => row.split(','));
-                  const headers = rows[0].map(h => h.trim());
+              if (!file) return;
 
-                  // Normalize dates from Excel formats (M/D/YYYY, D/M/YYYY, DD-Mon-YY) to YYYY-MM-DD
-                  const normalizeDate = (val: string): string => {
-                    if (!val) return '';
-                    // Already YYYY-MM-DD
-                    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-                    // Try parsing as a date
-                    const d = new Date(val);
-                    if (!isNaN(d.getTime())) {
-                      return d.toISOString().split('T')[0];
-                    }
-                    // M/D/YYYY or D/M/YYYY — try both
-                    const parts = val.split(/[\/\-\.]/);
-                    if (parts.length === 3) {
-                      const [a, b, c] = parts;
-                      // If c is 4 digits it's the year
-                      if (c.length === 4) {
-                        // Assume M/D/YYYY (US) — most common from Excel
-                        const attempt = new Date(`${c}-${a.padStart(2,'0')}-${b.padStart(2,'0')}`);
-                        if (!isNaN(attempt.getTime())) return attempt.toISOString().split('T')[0];
-                      }
-                    }
-                    return val; // return as-is if can't parse
-                  };
+              const ext = file.name.split('.').pop()?.toLowerCase();
 
-                  const DATE_FIELDS = ['dateOfBirth', 'weddingDate'];
-                  const PHONE_FIELDS = ['phone'];
+              // ── Shared helpers ──────────────────────────────────────────────
+              const normalizeDate = (val: string): string => {
+                if (!val) return '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+                const d = new Date(val);
+                if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+                const parts = val.split(/[\/\-\.]/);
+                if (parts.length === 3) {
+                  const [a, b, c] = parts;
+                  if (c.length === 4) {
+                    const attempt = new Date(`${c}-${a.padStart(2,'0')}-${b.padStart(2,'0')}`);
+                    if (!isNaN(attempt.getTime())) return attempt.toISOString().split('T')[0];
+                  }
+                }
+                return val;
+              };
 
-                  // Strip Excel ="..." formula wrapper and handle scientific notation
-                  const normalizeField = (val: string, isPhone: boolean, isDate: boolean): { value: string; warning?: string } => {
-                    if (!val) return { value: '' };
+              const normalizePhone = (raw: any): { value: string; warning?: string } => {
+                if (typeof raw === 'number') {
+                  // SheetJS raw numeric value — full precision preserved
+                  if (Number.isFinite(raw) && Math.abs(raw) <= Number.MAX_SAFE_INTEGER) {
+                    return { value: Math.round(raw).toString() };
+                  }
+                }
+                const v = String(raw ?? '').trim();
+                if (!v) return { value: '' };
+                // Strip ="..." wrapper
+                if (v.startsWith('="') && v.endsWith('"')) return { value: v.slice(2, -1) };
+                // Scientific notation from CSV
+                const sciMatch = v.match(/^(\d+\.?\d*)[eE]\+?(\d+)$/);
+                if (sciMatch) {
+                  const num = parseFloat(v);
+                  if (Number.isFinite(num) && Math.abs(num) <= Number.MAX_SAFE_INTEGER) {
+                    const result = Math.round(num).toString();
+                    const warning = /0{4,}$/.test(result)
+                      ? `Phone "${result}" — digits may be truncated. Upload the .xlsx file directly (not CSV) to preserve all digits.`
+                      : undefined;
+                    return { value: result, warning };
+                  }
+                }
+                return { value: v };
+              };
 
-                    // Strip ="..." wrapper (our template uses this to preserve digits)
-                    let v = val;
-                    if (v.startsWith('="') && v.endsWith('"')) {
-                      v = v.slice(2, -1);
-                      return { value: v };
-                    }
+              const validateAndOpen = (data: any[], warnings: Record<number, string>) => {
+                const errors: Record<number, Record<string, string>> = {};
+                data.forEach((row, idx) => {
+                  const rowErrors: Record<string, string> = {};
+                  if (!row.firstName) rowErrors.firstName = 'Required';
+                  if (!row.lastName) rowErrors.lastName = 'Required';
+                  if (!row.email) rowErrors.email = 'Required';
+                  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) rowErrors.email = 'Invalid email';
+                  if (!row.phone) rowErrors.phone = 'Required';
+                  if (!row.dateOfBirth) rowErrors.dateOfBirth = 'Required';
+                  if (!row.maritalStatus) rowErrors.maritalStatus = 'Required';
+                  if (!row.residentialNeighbourhood) rowErrors.residentialNeighbourhood = 'Required';
+                  if (!row.churchId || row.churchId === 'CHURCH_ID_HERE') rowErrors.churchId = 'Valid church required';
+                  if (Object.keys(rowErrors).length > 0) errors[idx] = rowErrors;
+                });
+                setCsvData(data);
+                setValidationErrors(errors);
+                setPrecisionWarnings(warnings);
+                setUploadOpen(true);
+                e.target.value = '';
+              };
 
-                    if (isPhone) {
-                      // Scientific notation — precision already lost by Excel
-                      const sciMatch = v.match(/^(\d+\.?\d*)[eE]\+?(\d+)$/);
-                      if (sciMatch) {
-                        const digits = sciMatch[1].replace('.', '');
-                        const exp = parseInt(sciMatch[2]);
-                        const padded = digits.padEnd(exp + 1, '0');
-                        // Warn if trailing zeros suggest precision loss
-                        const warning = /0{4,}$/.test(padded)
-                          ? `Phone "${padded}" may have lost digits (Excel precision issue). Please verify.`
-                          : undefined;
-                        return { value: padded, warning };
-                      }
-                    }
+              // ── Excel path (SheetJS) ────────────────────────────────────────
+              if (ext === 'xlsx' || ext === 'xls') {
+                const buffer = await file.arrayBuffer();
+                const workbook = XLSX.read(buffer, { type: 'array', cellText: false, cellDates: true });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows: any[] = XLSX.utils.sheet_to_json(sheet, { raw: true, defval: '' });
+                const warnings: Record<number, string> = {};
+                const data = rows
+                  .filter(row => !String(row.firstName ?? '').startsWith('#'))
+                  .map((row, idx) => {
+                    const { value: phone, warning } = normalizePhone(row.phone ?? row.Phone ?? '');
+                    if (warning) warnings[idx] = warning;
+                    return {
+                      ...row,
+                      phone,
+                      dateOfBirth: row.dateOfBirth ? normalizeDate(
+                        row.dateOfBirth instanceof Date
+                          ? row.dateOfBirth.toISOString().split('T')[0]
+                          : String(row.dateOfBirth)
+                      ) : '',
+                      weddingDate: row.weddingDate ? normalizeDate(
+                        row.weddingDate instanceof Date
+                          ? row.weddingDate.toISOString().split('T')[0]
+                          : String(row.weddingDate)
+                      ) : '',
+                    };
+                  });
+                validateAndOpen(data, warnings);
+                return;
+              }
 
-                    if (isDate) {
-                      return { value: normalizeDate(v) };
-                    }
+              // ── CSV path ────────────────────────────────────────────────────
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                const text = event.target?.result as string;
+                const rows = text.split('\n').map(row => row.split(','));
+                const headers = rows[0].map(h => h.trim());
+                const DATE_FIELDS = ['dateOfBirth', 'weddingDate'];
+                const PHONE_FIELDS = ['phone'];
+                const warnings: Record<number, string> = {};
 
-                    return { value: v };
-                  };
-
-                  const precisionWarnings: Record<number, string> = {};
-
-                  const data = rows.slice(1).filter(row => row.length > 1 && !row[0]?.trim().startsWith('#')).map((row, idx) => {
+                const data = rows.slice(1)
+                  .filter(row => row.length > 1 && !row[0]?.trim().startsWith('#'))
+                  .map((row, idx) => {
                     const obj: any = { _rowIndex: idx };
                     headers.forEach((header, i) => {
                       const raw = row[i]?.trim() || '';
-                      const isPhone = PHONE_FIELDS.includes(header);
-                      const isDate = DATE_FIELDS.includes(header);
-                      const { value, warning } = normalizeField(raw, isPhone, isDate);
-                      obj[header] = value;
-                      if (warning) precisionWarnings[idx] = warning;
+                      if (PHONE_FIELDS.includes(header)) {
+                        const { value, warning } = normalizePhone(raw);
+                        obj[header] = value;
+                        if (warning) warnings[idx] = warning;
+                      } else if (DATE_FIELDS.includes(header)) {
+                        let v = raw;
+                        if (v.startsWith('="') && v.endsWith('"')) v = v.slice(2, -1);
+                        obj[header] = normalizeDate(v);
+                      } else {
+                        let v = raw;
+                        if (v.startsWith('="') && v.endsWith('"')) v = v.slice(2, -1);
+                        obj[header] = v;
+                      }
                     });
                     return obj;
                   });
-                  
-                  // Validate immediately on load
-                  const errors: Record<number, Record<string, string>> = {};
-                  data.forEach((row, idx) => {
-                    const rowErrors: Record<string, string> = {};
-                    if (!row.firstName) rowErrors.firstName = 'Required';
-                    if (!row.lastName) rowErrors.lastName = 'Required';
-                    if (!row.email) rowErrors.email = 'Required';
-                    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) rowErrors.email = 'Invalid email';
-                    if (!row.phone) rowErrors.phone = 'Required';
-                    if (!row.dateOfBirth) rowErrors.dateOfBirth = 'Required';
-                    if (!row.maritalStatus) rowErrors.maritalStatus = 'Required';
-                    if (!row.residentialNeighbourhood) rowErrors.residentialNeighbourhood = 'Required';
-                    if (!row.churchId || row.churchId === 'CHURCH_ID_HERE' || row.churchId.includes('placeholder')) rowErrors.churchId = 'Valid church required';
-                    if (Object.keys(rowErrors).length > 0) errors[idx] = rowErrors;
-                  });
-                  
-                  setCsvData(data);
-                  setValidationErrors(errors);
-                  setUploadOpen(true);
-                  e.target.value = '';
-                };
-                reader.readAsText(file);
-              }
+
+                validateAndOpen(data, warnings);
+              };
+              reader.readAsText(file);
             }}
           />
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -1310,6 +1389,15 @@ export default function UsersManagement() {
           <DialogHeader>
             <DialogTitle>Review CSV Data ({csvData.length} users)</DialogTitle>
           </DialogHeader>
+          {Object.keys(precisionWarnings).length > 0 && (
+            <div className="mx-1 mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 space-y-1">
+              <p className="font-semibold">⚠️ Phone number precision warning</p>
+              {Object.entries(precisionWarnings).map(([idx, msg]) => (
+                <p key={idx}>Row {parseInt(idx) + 1}: {msg}</p>
+              ))}
+              <p className="text-amber-600">Fix: Upload the <strong>.xlsx file directly</strong> instead of saving as CSV — SheetJS will read the full number correctly.</p>
+            </div>
+          )}
           <div className="flex-1 overflow-auto">
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[1200px]">
