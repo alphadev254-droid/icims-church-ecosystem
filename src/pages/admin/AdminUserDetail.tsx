@@ -99,7 +99,7 @@ export default function AdminUserDetail() {
 
   const resetMutation = useMutation({
     mutationFn: () => adminApi.resetPassword(id!, newPassword),
-    onSuccess: () => { toast.success('Password reset'); setResetOpen(false); setNewPassword(''); },
+    onSuccess: () => { toast.success('Password reset successfully'); setNewPassword(''); setResetOpen(false); },
     onError: () => toast.error('Reset failed'),
   });
 
@@ -497,15 +497,25 @@ export default function AdminUserDetail() {
       </Dialog>
 
       {/* Reset password dialog */}
-      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+      <Dialog
+        open={resetOpen}
+        onOpenChange={open => { if (!open && !resetMutation.isPending) { setResetOpen(false); setNewPassword(''); } }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle className="text-base">Reset Password</DialogTitle></DialogHeader>
           <div className="space-y-1">
             <Label className="text-xs">New Password</Label>
-            <Input className="h-8 text-xs" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min 8 characters" />
+            <Input
+              className="h-8 text-xs"
+              type="password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="Min 8 characters"
+              autoComplete="new-password"
+            />
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setResetOpen(false)}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => { setResetOpen(false); setNewPassword(''); }}>Cancel</Button>
             <Button size="sm" disabled={newPassword.length < 8 || resetMutation.isPending} onClick={() => resetMutation.mutate()}>
               {resetMutation.isPending ? 'Resetting...' : 'Reset'}
             </Button>

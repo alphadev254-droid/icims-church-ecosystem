@@ -179,7 +179,7 @@ export default function PublicCampaignPage() {
           </CardContent>
         </Card>
 
-        {/* Donate CTA */}
+        {/* Give CTA */}
         <Card className="bg-accent/10 border-accent">
           <CardContent className="p-4 sm:p-6 text-center">
             <p className="text-base sm:text-lg font-semibold mb-2">Support This Campaign</p>
@@ -191,7 +191,7 @@ export default function PublicCampaignPage() {
         </Card>
       </div>
 
-      {/* Guest Donation Dialog */}
+      {/* Give Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -295,7 +295,7 @@ export default function PublicCampaignPage() {
                   </>
                 ) : (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Donation amount</span>
+                    <span className="text-muted-foreground">Giving amount</span>
                     <span>{campaign.currency} {parseFloat(form.amount).toLocaleString()}</span>
                   </div>
                 )}

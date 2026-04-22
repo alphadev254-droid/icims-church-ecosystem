@@ -134,7 +134,7 @@ export default function PaymentCallbackPage() {
         <div className="text-center space-y-6 max-w-md w-full">
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
           <div>
-            <h1 className="text-2xl font-bold">Donation Successful!</h1>
+            <h1 className="text-2xl font-bold">Giving Successful!</h1>
             {txData?.campaignName && (
               <p className="text-muted-foreground mt-1">{txData.campaignName}</p>
             )}
@@ -149,7 +149,7 @@ export default function PaymentCallbackPage() {
             )}
             {displayAmount && displayCurrency && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Amount donated</span>
+                <span className="text-muted-foreground">Amount given</span>
                 <span className="font-medium">{displayCurrency} {Number(displayAmount).toLocaleString()}</span>
               </div>
             )}
@@ -167,7 +167,7 @@ export default function PaymentCallbackPage() {
               <p className="font-medium text-green-800 dark:text-green-300">Receipt sent to your email</p>
               {displayEmail && (
                 <p className="text-green-700 dark:text-green-400 mt-0.5">
-                  Your donation receipt has been sent to <strong>{displayEmail}</strong>. Check your inbox.
+                  Your giving receipt has been sent to <strong>{displayEmail}</strong>. Check your inbox.
                 </p>
               )}
             </div>
@@ -256,10 +256,10 @@ export default function PaymentCallbackPage() {
       <div className="text-center space-y-4">
         <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
         <h1 className="text-2xl font-bold">
-          {isPackage ? 'Subscription Successful!' : isDonation ? 'Donation Successful!' : 'Payment Successful!'}
+          {isPackage ? 'Subscription Successful!' : isDonation ? 'Giving Successful!' : 'Payment Successful!'}
         </h1>
         <p className="text-muted-foreground">
-          {isPackage ? 'Your package subscription has been activated.' : isDonation ? 'Thank you for your generous donation.' : 'Your ticket has been confirmed.'}
+          {isPackage ? 'Your package subscription has been activated.' : isDonation ? 'Thank you for your generous giving.' : 'Your ticket has been confirmed.'}
         </p>
         {reference && <p className="text-sm text-muted-foreground">Ref: {reference}</p>}
         <p className="text-sm text-muted-foreground">Redirecting...</p>

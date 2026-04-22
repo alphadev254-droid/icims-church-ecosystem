@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Check, CreditCard, Package2, Zap } from 'lucide-react';
+import { Check, CreditCard, Package2, Zap, Building2, Users, Calendar, HandCoins, Users2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -47,60 +47,101 @@ function PackageCard({ pkg, isCurrent, allFeatures, onUpgrade }: {
   allFeatures: (PackageFeature & { packages: { packageId: string }[] })[];
   onUpgrade: (pkgId: string, pkgName: string) => void;
 }) {
-  const includedFeatureIds = new Set(pkg.features.map(f => f.feature.id));
-  const limitFeatures = ['max_members', 'max_churches', 'max_events_per_month'];
+  const includedFeatureIds = new Set(pkg.features.map((f: any) => f.name ?? f.feature?.name));
+  const p = pkg as any;
+
+  const limits = [
+    { label: 'Churches', value: p.maxChurches, icon: Building2 },
+    { label: 'Members', value: p.maxMembers, icon: Users },
+    { label: 'Events/mo', value: p.maxEvents, icon: Calendar },
+    { label: 'Campaigns', value: p.maxGivings, icon: HandCoins },
+    { label: 'Cells', value: p.maxCells, icon: Users2 },
+  ].filter(l => l.value != null);
+
+  const displayLimit = (v: number) => v >= 999999 ? '∞' : v.toLocaleString();
+
+  const accentMap: Record<string, string> = {
+    basic: 'from-slate-500 to-slate-600',
+    standard: 'from-blue-500 to-blue-600',
+    premium: 'from-purple-500 to-purple-700',
+  };
+  const gradient = accentMap[pkg.name] ?? 'from-gray-500 to-gray-600';
 
   return (
-    <Card className={`relative border-2 ${PKG_COLOR[pkg.name] ?? ''} ${isCurrent ? 'ring-2 ring-accent' : ''}`}>
+    <Card className={`relative flex flex-col overflow-hidden border-2 transition-shadow hover:shadow-lg ${isCurrent ? 'ring-2 ring-accent shadow-md' : ''} ${PKG_COLOR[pkg.name] ?? ''}`}>
       {isCurrent && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="bg-accent text-accent-foreground text-xs font-semibold px-3 py-1 rounded-full">Current Plan</span>
+        <div className="absolute top-0 right-0">
+          <div className="bg-accent text-accent-foreground text-xs font-semibold px-3 py-1 rounded-bl-lg">
+            Current Plan
+          </div>
         </div>
       )}
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PKG_BADGE[pkg.name] ?? ''}`}>
-            {pkg.displayName}
-          </span>
+
+      {/* Header gradient band */}
+      <div className={`bg-gradient-to-r ${gradient} px-5 py-4 text-white`}>
+        <div className="flex items-center gap-2 mb-2">
+          <Package2 className="h-4 w-4 opacity-80" />
+          <span className="text-xs font-semibold uppercase tracking-widest opacity-90">{pkg.displayName}</span>
         </div>
-        <CardTitle className="text-2xl font-bold mt-2">
-          {fmt(pkg.priceMonthly, (pkg as any).currency)}
-          <span className="text-sm font-normal text-muted-foreground">/mo</span>
-        </CardTitle>
-        <CardDescription className="text-xs">{fmt(pkg.priceYearly, (pkg as any).currency)}/yr · Save {Math.round((1 - pkg.priceYearly / (pkg.priceMonthly * 12)) * 100)}%</CardDescription>
-        {pkg.description && <p className="text-xs text-muted-foreground mt-1">{pkg.description}</p>}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Feature list */}
-        <div className="space-y-1.5">
-          {allFeatures.map(feat => {
-            const included = includedFeatureIds.has(feat.id);
-            const isLimit = limitFeatures.includes(feat.name);
-            const pkgFeature = pkg.features.find(f => f.feature.id === feat.id);
-            const limitValue = pkgFeature?.limitValue;
-            
+        <div className="flex items-end gap-1">
+          <span className="text-3xl font-bold">{fmt(pkg.priceMonthly, p.currency)}</span>
+          <span className="text-sm opacity-75 mb-1">/mo</span>
+        </div>
+        <p className="text-xs opacity-70 mt-0.5">
+          {fmt(pkg.priceYearly, p.currency)}/yr · Save {Math.round((1 - pkg.priceYearly / (pkg.priceMonthly * 12)) * 100)}%
+        </p>
+      </div>
+
+      <CardContent className="flex-1 flex flex-col gap-4 p-4">
+        {pkg.description && (
+          <p className="text-xs text-muted-foreground">{pkg.description}</p>
+        )}
+
+        {/* Features */}
+        <div className="space-y-1.5 flex-1">
+          {allFeatures.filter(feat => feat.category !== 'limit').map(feat => {
+            const included = includedFeatureIds.has(feat.name);
             return (
-              <div key={feat.id} className={`flex items-center gap-2 text-sm ${included ? '' : 'opacity-35'}`}>
-                <Check className={`h-3.5 w-3.5 flex-shrink-0 ${included ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
-                <span>
-                  {feat.displayName}
-                  {isLimit && included && limitValue !== null && (
-                    <span className="text-muted-foreground"> ({limitValue >= 999999 ? 'Unlimited' : limitValue.toLocaleString()})</span>
-                  )}
-                </span>
+              <div key={feat.id ?? feat.name} className={`flex items-center gap-2 text-sm ${included ? '' : 'opacity-30'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${included ? 'bg-green-100 dark:bg-green-900/40' : 'bg-muted'}`}>
+                  <Check className={`h-2.5 w-2.5 ${included ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
+                </div>
+                <span className={included ? 'text-foreground' : 'text-muted-foreground line-through'}>{feat.displayName}</span>
               </div>
             );
           })}
         </div>
-        {!isCurrent && (
+
+        {/* Limits grid */}
+        {limits.length > 0 && (
+          <div className="border rounded-lg p-3 bg-muted/30 space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Limits</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+              {limits.map(l => (
+                <div key={l.label} className="flex items-center justify-between gap-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <l.icon className="h-3 w-3 shrink-0" />{l.label}
+                  </span>
+                  <span className="text-xs font-bold">{displayLimit(l.value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* CTA */}
+        {isCurrent ? (
+          <div className="flex items-center justify-center gap-1.5 py-2 rounded-md bg-accent/10 text-accent text-sm font-medium">
+            <Check className="h-4 w-4" /> Active Plan
+          </div>
+        ) : (
           <Button
-            variant="outline"
             size="sm"
-            className="w-full gap-1.5"
+            className={`w-full gap-1.5 bg-gradient-to-r ${gradient} text-white border-0 hover:opacity-90`}
             onClick={() => onUpgrade(pkg.id, pkg.name)}
           >
             <Zap className="h-3.5 w-3.5" />
-            Switch to {pkg.displayName}
+            Upgrade to {pkg.displayName}
           </Button>
         )}
       </CardContent>

@@ -201,7 +201,6 @@ For a standalone congregation registering one church at one location.
 6. Accept Terms of Service & Privacy Policy
 7. Submit → Email verification sent
 8. Verify email → Account activated
-9. 30-day free trial begins (no credit card required)
 10. After trial → Enter payment details to continue
 
 **Step 2 — Configure the Church**

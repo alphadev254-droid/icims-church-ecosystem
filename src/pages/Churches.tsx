@@ -516,7 +516,7 @@ export default function ChurchesPage() {
                 <ul className="text-sm space-y-1 text-muted-foreground">
                   <li>• All branch members and their records</li>
                   <li>• All events and attendance records</li>
-                  <li>• All giving and donation records</li>
+                  <li>• All giving records</li>
                   <li>• All announcements and communications</li>
                   <li>• All resources and documents</li>
                   <li>• All user accounts linked to this branch</li>

@@ -129,7 +129,7 @@ function MemberSearchDropdown({
   );
 }
 
-// ─── Cash donation dialog ─────────────────────────────────────────────────────
+// ─── Cash giving dialog ───────────────────────────────────────────────────────
 
 type DonorType = 'member' | 'guest' | 'anonymous';
 
@@ -201,12 +201,12 @@ function CashDonationDialog({
       cellId: campaignCategory === 'fellowship_offering' ? (cellId || undefined) : undefined,
     }),
     onSuccess: () => {
-      toast.success('Cash donation recorded');
+      toast.success('Cash giving recorded');
       qc.invalidateQueries({ queryKey: ['donations', campaignId] });
       onOpenChange(false);
       reset();
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to record donation'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to record giving'),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -306,7 +306,7 @@ function CashDonationDialog({
           {/* Anonymous — no extra fields, just a note */}
           {donorType === 'anonymous' && (
             <p className="text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
-              No donor details will be stored. The donation will appear as Anonymous.
+              No donor details will be stored. The giving will appear as Anonymous.
             </p>
           )}
 
@@ -361,7 +361,7 @@ function CashDonationDialog({
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={() => { onOpenChange(false); reset(); }}>Cancel</Button>
             <Button type="submit" disabled={mutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">
-              {mutation.isPending ? 'Saving...' : 'Record Donation'}
+              {mutation.isPending ? 'Saving...' : 'Record Giving'}
             </Button>
           </div>
         </form>
@@ -413,7 +413,7 @@ export default function DonationsPage() {
           <div>
             <h1 className="font-heading text-xl sm:text-2xl font-bold">Giving Records</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              {donations.length} donations
+              {donations.length} giving records
               {donations.length > 0 && (() => {
                 // Group totals by currency
                 const totals: Record<string, number> = {};

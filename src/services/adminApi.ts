@@ -139,6 +139,24 @@ export interface AdminChurch {
   _count: { users: number; events: number; givingCampaigns: number };
   users: AdminUser[];
   userPagination: { page: number; limit: number; total: number; totalPages: number };
+  teams: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    color?: string;
+    createdAt: string;
+    _count: { members: number };
+    members: Array<{ isLeader: boolean; user: { id: string; firstName: string; lastName: string } }>;
+  }>;
+  cells: Array<{
+    id: string;
+    name: string;
+    zone?: string;
+    status: string;
+    createdAt: string;
+    _count: { members: number };
+    members: Array<{ isLeader: boolean; isAssistant: boolean; user: { id: string; firstName: string; lastName: string } }>;
+  }>;
 }
 
 export interface Pagination {

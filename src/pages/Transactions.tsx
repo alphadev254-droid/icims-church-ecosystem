@@ -18,6 +18,11 @@ import { STALE_TIME } from '@/lib/query-config';
 import { Link } from 'react-router-dom';
 
 export default function TransactionsPage() {
+  const TYPE_LABEL: Record<string, string> = {
+    donation: 'Giving',
+    event_ticket: 'Event Ticket',
+    subscription: 'Subscription',
+  };
   const [viewTransaction, setViewTransaction] = useState<Transaction | null>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(100);
@@ -171,7 +176,7 @@ export default function TransactionsPage() {
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="event_ticket">Event Ticket</SelectItem>
-              <SelectItem value="donation">Donation</SelectItem>
+              <SelectItem value="donation">Giving</SelectItem>
               <SelectItem value="subscription">Subscription</SelectItem>
             </SelectContent>
           </Select>
@@ -264,7 +269,7 @@ export default function TransactionsPage() {
                     <td className="px-3 py-2">
                       <Badge variant={statusVariant(transaction.status)} className="text-xs px-1.5 py-0">{transaction.status}</Badge>
                     </td>
-                    <td className="px-3 py-2 capitalize whitespace-nowrap">{transaction.type.replace('_', ' ')}</td>
+                    <td className="px-3 py-2 capitalize whitespace-nowrap">{TYPE_LABEL[transaction.type] ?? transaction.type.replace('_', ' ')}</td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       {transaction.user ? `${transaction.user.firstName} ${transaction.user.lastName}` : transaction.isGuest ? transaction.guestName : '-'}
                     </td>
@@ -340,7 +345,7 @@ export default function TransactionsPage() {
             <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
               <div><p className="text-muted-foreground">Amount</p><p className="font-medium">{formatCurrency(viewTransaction.baseAmount ?? viewTransaction.amount, viewTransaction.currency)}</p></div>
               <div><p className="text-muted-foreground">Status</p><Badge variant={statusVariant(viewTransaction.status)} className="text-xs px-1.5 py-0">{viewTransaction.status}</Badge></div>
-              <div><p className="text-muted-foreground">Type</p><p className="capitalize">{viewTransaction.type.replace('_', ' ')}</p></div>
+              <div><p className="text-muted-foreground">Type</p><p className="capitalize">{TYPE_LABEL[viewTransaction.type] ?? viewTransaction.type.replace('_', ' ')}</p></div>
               <div><p className="text-muted-foreground">Payment Method</p><p className="capitalize">{viewTransaction.paymentMethod.replace('_', ' ')}</p></div>
               {viewTransaction.reference && (
                 <div className="col-span-2"><p className="text-muted-foreground">Reference</p><p className="font-mono break-all">{viewTransaction.reference}</p></div>

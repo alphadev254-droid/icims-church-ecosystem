@@ -1,113 +1,128 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Sun, Moon, Menu, X, Church, Mail, Phone } from 'lucide-react';
+import { Sun, Moon, Menu, X, Mail, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
-
-const IconFacebook = () => (
-  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
-    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-  </svg>
-);
-const IconX = () => (
-  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
-    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-  </svg>
-);
-const IconLinkedin = () => (
-  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
-    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" />
-    <circle cx="4" cy="4" r="2" />
-  </svg>
-);
+import { useState, useEffect } from 'react';
 
 export default function PublicHeader() {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   const navLinks = [
-    { to: '/', label: 'Home' },
+    { to: '/',         label: 'Home' },
     { to: '/features', label: 'Features' },
-    { to: '/about', label: 'About' },
-    { to: '/contact', label: 'Contact' },
+    { to: '/pricing',  label: 'Pricing' },
+    { to: '/about',    label: 'About' },
+    { to: '/contact',  label: 'Contact' },
   ];
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {/* Top bar */}
-      <div className="bg-accent dark:bg-card">
+    <header className={`sticky top-0 z-50 transition-all duration-200 border-b ${
+      scrolled ? 'bg-background/95 backdrop-blur border-border shadow-sm' : 'bg-background border-border'
+    }`}>
+      {/* Top info bar */}
+      <div className="bg-accent hidden sm:block">
         <div className="container flex h-8 items-center justify-between">
-          <div className="hidden sm:flex items-center gap-5 text-foreground/70 dark:text-foreground/60">
-            <a href="mailto:info@icims.org" className="flex items-center gap-1.5 text-xs hover:text-foreground dark:hover:text-foreground transition-colors">
-              <Mail className="h-3 w-3" /> info@icims.org
+          <div className="flex items-center gap-5">
+            <a href="mailto:support@churchcentral.church" className="flex items-center gap-1.5 text-xs text-accent-foreground/80 hover:text-accent-foreground transition-colors">
+              <Mail className="h-3 w-3" /> support@churchcentral.church
             </a>
-            <a href="tel:+254700000000" className="flex items-center gap-1.5 text-xs hover:text-foreground dark:hover:text-foreground transition-colors">
-              <Phone className="h-3 w-3" /> +254 700 000 000
+            <a href="tel:+254113765336" className="flex items-center gap-1.5 text-xs text-accent-foreground/80 hover:text-accent-foreground transition-colors">
+              <Phone className="h-3 w-3" /> +254113765336
             </a>
           </div>
-          <div className="flex items-center gap-3 ml-auto text-foreground/60 dark:text-foreground/50">
-            {[
-              { icon: IconFacebook, label: 'Facebook' },
-              { icon: IconX, label: 'X / Twitter' },
-              { icon: IconLinkedin, label: 'LinkedIn' },
-            ].map(s => (
-              <a key={s.label} href="#" aria-label={s.label} className="hover:text-foreground dark:hover:text-foreground transition-colors">
-                <s.icon />
-              </a>
-            ))}
-          </div>
+          <p className="text-xs text-accent-foreground/60">Integrated Church Information Management System</p>
         </div>
       </div>
 
-      <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <Church className="h-7 w-7 text-accent" />
-          <span className="font-heading text-xl font-bold text-foreground">ICIMS</span>
+      <div className="container flex h-16 items-center justify-between gap-6">
+
+        {/* Brand — logo + wordmark + descriptor */}
+        <Link to="/" className="flex items-center gap-3 shrink-0 group">
+          <img
+            src="/icims-logo.jpg"
+            alt="ICIMS"
+            className="h-14 w-auto object-contain rounded-2xl transition-transform group-hover:scale-105"
+          />
+          <div className="hidden sm:block">
+            <p className="font-heading text-base font-bold text-foreground leading-tight">ICIMS</p>
+            <p className="text-xs text-muted-foreground leading-tight">Church Management</p>
+          </div>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1">
+        {/* Desktop nav — underline style */}
+        <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
           {navLinks.map(link => (
             <Link
               key={link.to}
               to={link.to}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`relative px-4 py-2 text-sm font-medium transition-colors ${
                 isActive(link.to)
-                  ? 'text-accent'
+                  ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {link.label}
+              {isActive(link.to) && (
+                <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-accent rounded-full" />
+              )}
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground">
+        {/* Right actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="text-muted-foreground h-9 w-9"
+          >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
           {user ? (
             <Link to="/dashboard">
-              <Button size="sm">Dashboard</Button>
+              <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                Dashboard
+              </Button>
             </Link>
           ) : (
             <div className="hidden md:flex items-center gap-2">
               <Link to="/login">
-                <Button variant="ghost" size="sm">Sign In</Button>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  Sign in
+                </Button>
               </Link>
               <Link to="/register">
-                <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">Get Started</Button>
+                <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 px-5">
+                  Get started
+                </Button>
               </Link>
             </div>
           )}
 
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-9 w-9"
+            onClick={() => setMobileOpen(v => !v)}
+            aria-label="Toggle menu"
+          >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
@@ -115,26 +130,30 @@ export default function PublicHeader() {
 
       {/* Mobile nav */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-background p-4 space-y-2">
+        <div className="md:hidden border-t border-border bg-background px-4 py-3 space-y-1">
           {navLinks.map(link => (
             <Link
               key={link.to}
               to={link.to}
-              onClick={() => setMobileOpen(false)}
-              className={`block px-3 py-2 rounded-md text-sm font-medium ${
-                isActive(link.to) ? 'text-accent bg-accent/10' : 'text-muted-foreground'
+              className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                isActive(link.to)
+                  ? 'text-foreground bg-muted'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
               }`}
             >
               {link.label}
+              {isActive(link.to) && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
             </Link>
           ))}
           {!user && (
-            <div className="pt-2 space-y-2 border-t border-border">
-              <Link to="/login" onClick={() => setMobileOpen(false)}>
-                <Button variant="ghost" size="sm" className="w-full justify-start">Sign In</Button>
+            <div className="pt-3 pb-1 flex flex-col gap-2 border-t border-border mt-2">
+              <Link to="/login">
+                <Button variant="outline" size="sm" className="w-full">Sign in</Button>
               </Link>
-              <Link to="/register" onClick={() => setMobileOpen(false)}>
-                <Button size="sm" className="w-full bg-accent text-accent-foreground">Get Started</Button>
+              <Link to="/register">
+                <Button size="sm" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                  Get started
+                </Button>
               </Link>
             </div>
           )}

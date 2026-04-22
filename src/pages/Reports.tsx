@@ -279,7 +279,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Giving Report',
-      description: 'All donation records including type, method, amount, and status.',
+      description: 'All giving records including type, method, amount, and status.',
       icon: HandCoins,
       count: stats?.totalDonations ? Math.round(stats.totalDonations) : 0,
       unit: 'MWK',

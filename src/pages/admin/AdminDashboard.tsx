@@ -57,8 +57,8 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold">System Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Platform-wide overview</p>
+        <h1 className="font-heading text-xl sm:text-2xl font-bold">System Dashboard</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Platform-wide overview</p>
       </div>
 
       {/* Users & Churches */}

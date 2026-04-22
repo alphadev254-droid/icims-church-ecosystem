@@ -10,6 +10,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Features from "./pages/Features";
+import Pricing from "./pages/Pricing";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
@@ -56,6 +57,7 @@ import AdminUserDetail from "./pages/admin/AdminUserDetail";
 import AdminChurchDetail from "./pages/admin/AdminChurchDetail";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminTransactions from "./pages/admin/AdminTransactions";
+import AdminPackages from "./pages/admin/AdminPackages";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +74,7 @@ const App = () => (
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<Index />} />
                 <Route path="/features" element={<Features />} />
+                <Route path="/pricing" element={<Pricing />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/events/:id" element={<PublicEvent />} />
@@ -125,6 +128,7 @@ const App = () => (
                 <Route path="churches/:id" element={<AdminChurchDetail />} />
                 <Route path="payments" element={<AdminPayments />} />
                 <Route path="transactions" element={<AdminTransactions />} />
+                <Route path="packages" element={<AdminPackages />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

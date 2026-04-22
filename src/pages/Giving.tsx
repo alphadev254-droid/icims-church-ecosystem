@@ -579,7 +579,7 @@ export default function GivingPage() {
           <Card>
             <CardContent className="flex items-center justify-between p-3 sm:p-4">
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Donors</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Givers</p>
                 <p className="text-sm sm:text-base font-bold">{totalDonors}</p>
               </div>
               <Users className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
@@ -701,7 +701,7 @@ export default function GivingPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteCampaign?.name}</strong>? This will permanently remove the campaign and all its donation records. This cannot be undone.
+              Are you sure you want to delete <strong>{deleteCampaign?.name}</strong>? This will permanently remove the campaign and all its giving records. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -736,10 +736,10 @@ export default function GivingPage() {
       <AlertDialog open={!!paymentConfirm} onOpenChange={() => setPaymentConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Donation</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Giving</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <p>You are about to donate to <strong>{paymentConfirm?.campaign.name}</strong></p>
+                <p>You are about to give to <strong>{paymentConfirm?.campaign.name}</strong></p>
                 {paymentConfirm?.details && (
                   <div className="bg-muted p-3 rounded-md space-y-1 text-sm">
                     <div className="flex justify-between">
