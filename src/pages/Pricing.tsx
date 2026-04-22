@@ -8,53 +8,16 @@ import { usePageMeta } from '@/hooks/usePageMeta';
 import apiClient from '@/lib/api-client';
 import pricingHero from '@/assets/prices.png';
 
-interface PkgFeature {
-  name: string;
-  displayName: string;
-  category: string;
-}
-
+interface PkgFeature { name: string; displayName: string; category: string; }
 interface Package {
-  id: string;
-  name: string;
-  displayName: string;
-  description?: string;
-  priceMonthly: number;
-  priceYearly: number;
-  currency: string;
-  maxChurches?: number | null;
-  maxMembers?: number | null;
-  maxEvents?: number | null;
-  maxGivings?: number | null;
-  maxCells?: number | null;
+  id: string; name: string; displayName: string; description?: string;
+  priceMonthly: number; priceYearly: number; currency: string;
+  maxChurches?: number | null; maxMembers?: number | null;
+  maxEvents?: number | null; maxGivings?: number | null; maxCells?: number | null;
   features: PkgFeature[];
 }
-
-interface Feature {
-  id: string;
-  name: string;
-  displayName: string;
-  description?: string;
-  category: string;
-}
-
-interface Rates {
-  kesRate: number;
-  mwkRate: number;
-  kenyaDiscount: number;
-  malawiDiscount: number;
-}
-
+interface Feature { id: string; name: string; displayName: string; description?: string; category: string; }
 type Country = 'Kenya' | 'Malawi';
-
-function fmtCurrency(usd: number, country: Country, rates: Rates) {
-  if (country === 'Kenya') {
-    const val = Math.round(usd * rates.kesRate * rates.kenyaDiscount);
-    return `KES ${val.toLocaleString()}`;
-  }
-  const val = Math.round(usd * rates.mwkRate * rates.malawiDiscount);
-  return `MWK ${val.toLocaleString()}`;
-}
 
 function limitLabel(v: number | null | undefined) {
   if (v == null) return '∞';
@@ -72,7 +35,6 @@ const BADGE: Record<string, string> = {
   standard: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
   premium:  'bg-accent/20 text-accent',
 };
-
 const inView = {
   hidden: { opacity: 0, y: 20 },
   visible: (i = 0) => ({ opacity: 1, y: 0, transition: { delay: i * 0.1, duration: 0.4 } }),
@@ -81,47 +43,39 @@ const inView = {
 export default function PricingPage() {
   usePageMeta({
     title: 'Pricing — ICIMS',
-    description: 'Simple, transparent pricing for every ministry size. Choose the plan that fits your church.',
+    description: 'Simple, transparent pricing for every ministry size.',
     canonical: 'https://churchcentral.church/pricing',
   });
 
   const [country, setCountry] = useState<Country>('Kenya');
 
   const { data: packages = [], isLoading } = useQuery<Package[]>({
-    queryKey: ['public-packages'],
-    queryFn: async () => { const { data } = await apiClient.get('/packages'); return data.data; },
+    queryKey: ['public-packages', country],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/packages', { params: { country } });
+      return data.data;
+    },
     staleTime: 5 * 60_000,
   });
 
   const { data: allFeatures = [] } = useQuery<Feature[]>({
     queryKey: ['public-features'],
-    queryFn: async () => { const { data } = await apiClient.get('/packages/features'); return data.data; },
+    queryFn: async () => {
+      const { data } = await apiClient.get('/packages/features');
+      return data.data;
+    },
     staleTime: 5 * 60_000,
   });
 
-  const { data: rates } = useQuery<Rates>({
-    queryKey: ['public-rates'],
-    queryFn: async () => { const { data } = await apiClient.get('/packages/rates'); return data.data; },
-    staleTime: 60 * 60_000,
-  });
-
-  // Default rates if not loaded yet
-  const r: Rates = rates ?? { kesRate: 129, mwkRate: 1730, kenyaDiscount: 1, malawiDiscount: 0.5 };
-
-  // Only non-limit features for comparison table
   const displayFeatures = allFeatures.filter(f => f.category !== 'limit');
 
   return (
     <div className="overflow-x-hidden">
 
-      {/* ── HERO with background image ──────────────────────────────────── */}
+      {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <img
-            src={pricingHero}
-            alt="Church congregation"
-            className="h-full w-full object-cover object-center"
-          />
+          <img src={pricingHero} alt="Church congregation" className="h-full w-full object-cover object-center" />
           <div className="absolute inset-0 bg-black/65" />
         </div>
         <div className="container relative z-10 py-28 md:py-36 text-center max-w-2xl mx-auto">
@@ -134,7 +88,7 @@ export default function PricingPage() {
               No hidden fees. No surprises. Pick the plan that fits your ministry and scale as you grow.
             </p>
             <div className="flex flex-wrap justify-center gap-5 text-sm text-white/60">
-              {['Affordable Prices', 'Dedicated support', 'Full feature access'].map(t => (
+              {['Affordable prices', 'Dedicated support', 'Full feature access'].map(t => (
                 <span key={t} className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-4 w-4 text-accent" /> {t}
                 </span>
@@ -144,7 +98,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── COUNTRY TOGGLE + CARDS ──────────────────────────────────────── */}
+      {/* COUNTRY TOGGLE + CARDS */}
       <section className="py-20 bg-muted/30">
         <div className="container">
 
@@ -173,11 +127,12 @@ export default function PricingPage() {
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+            <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto items-stretch">
               {packages.map((pkg, i) => {
                 const isPremium = pkg.name === 'premium';
-                const monthly = fmtCurrency(pkg.priceMonthly, country, r);
-                const yearly  = fmtCurrency(pkg.priceYearly,  country, r);
+                const currency = pkg.currency ?? (country === 'Kenya' ? 'KES' : 'MWK');
+                const monthly = `${currency} ${pkg.priceMonthly.toLocaleString()}`;
+                const yearly  = `${currency} ${pkg.priceYearly.toLocaleString()}`;
                 const saving  = pkg.priceMonthly > 0
                   ? Math.round((1 - pkg.priceYearly / (pkg.priceMonthly * 12)) * 100)
                   : 0;
@@ -190,9 +145,9 @@ export default function PricingPage() {
                     whileInView="visible"
                     viewport={{ once: true }}
                     variants={inView}
-                    className={`relative flex flex-col rounded-2xl border-2 bg-card overflow-hidden transition-transform ${
+                    className={`relative flex flex-col h-full rounded-2xl border-2 bg-card overflow-hidden ${
                       ACCENT[pkg.name] ?? 'border-border'
-                    } ${isPremium ? 'shadow-xl scale-[1.02]' : ''}`}
+                    } ${isPremium ? 'shadow-xl' : ''}`}
                   >
                     {isPremium && (
                       <div className="bg-accent text-accent-foreground text-xs font-semibold text-center py-1.5 tracking-wide uppercase">
@@ -200,27 +155,39 @@ export default function PricingPage() {
                       </div>
                     )}
 
-                    <div className="p-7 flex-1 flex flex-col">
+                    <div className="p-7 flex flex-col gap-5 flex-1">
                       {/* Header */}
-                      <div className="mb-6">
+                      <div>
                         <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full mb-3 ${BADGE[pkg.name] ?? ''}`}>
                           {pkg.displayName}
                         </span>
                         {pkg.description && (
-                          <p className="text-sm text-muted-foreground mb-4">{pkg.description}</p>
+                          <p className="text-xs md:text-sm text-muted-foreground mb-3">{pkg.description}</p>
                         )}
+                        {/* Monthly — big */}
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-4xl font-bold text-foreground">{monthly}</span>
                           <span className="text-muted-foreground text-sm">/mo</span>
                         </div>
+                        {/* Yearly — small */}
                         <p className="text-xs text-muted-foreground mt-1">
                           {yearly}/yr
                           {saving > 0 && <span className="ml-1.5 text-accent font-medium">· Save {saving}%</span>}
                         </p>
                       </div>
 
+                      {/* Features — column-fill: fills col 1 first, col 2 only if needed */}
+                      <div className="columns-2 gap-x-3 flex-1">
+                        {pkg.features.map(f => (
+                          <div key={f.name} className="flex items-center gap-1.5 text-xs md:text-sm mb-1.5 break-inside-avoid">
+                            <Check className="h-3 w-3 md:h-3.5 md:w-3.5 text-accent shrink-0" />
+                            <span className="text-foreground leading-tight">{f.displayName}</span>
+                          </div>
+                        ))}
+                      </div>
+
                       {/* Limits */}
-                      <div className="border border-border rounded-xl p-4 bg-muted/30 mb-5 space-y-2">
+                      <div className="border border-border rounded-xl p-4 bg-muted/30 space-y-2">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Limits</p>
                         {[
                           { label: 'Churches',  value: pkg.maxChurches },
@@ -229,24 +196,11 @@ export default function PricingPage() {
                           { label: 'Campaigns', value: pkg.maxGivings },
                           { label: 'Cells',     value: pkg.maxCells },
                         ].filter(l => l.value !== undefined).map(l => (
-                          <div key={l.label} className="flex items-center justify-between text-xs">
+                          <div key={l.label} className="flex items-center justify-between text-xs md:text-sm">
                             <span className="text-muted-foreground">{l.label}</span>
                             <span className="font-bold">{limitLabel(l.value)}</span>
                           </div>
                         ))}
-                      </div>
-
-                      {/* Features */}
-                      <div className="space-y-2 flex-1 mb-6">
-                        {pkg.features.slice(0, 8).map(f => (
-                          <div key={f.name} className="flex items-center gap-2 text-sm">
-                            <Check className="h-3.5 w-3.5 text-accent shrink-0" />
-                            <span className="text-foreground">{f.displayName}</span>
-                          </div>
-                        ))}
-                        {pkg.features.length > 8 && (
-                          <p className="text-xs text-muted-foreground pl-5">+{pkg.features.length - 8} more features</p>
-                        )}
                       </div>
 
                       {/* CTA */}
@@ -267,7 +221,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── FEATURE COMPARISON TABLE ────────────────────────────────────── */}
+      {/* FEATURE COMPARISON TABLE */}
       {!isLoading && packages.length > 0 && displayFeatures.length > 0 && (
         <section className="py-20 bg-background border-t border-border">
           <div className="container">
@@ -319,7 +273,7 @@ export default function PricingPage() {
         </section>
       )}
 
-      {/* ── CTA ─────────────────────────────────────────────────────────── */}
+      {/* CTA */}
       <section className="py-20 bg-foreground dark:bg-accent">
         <div className="container text-center max-w-xl mx-auto">
           <h2 className="font-heading text-4xl font-bold text-background dark:text-accent-foreground leading-tight mb-4">
@@ -335,7 +289,7 @@ export default function PricingPage() {
               </Button>
             </Link>
             <Link to="/contact">
-              <Button size="lg" variant="outline" className="border-background/30 dark:border-accent-foreground/30  dark:text-accent-foreground h-12 px-8">
+              <Button size="lg" variant="outline" className="border-background/30 dark:border-accent-foreground/30 text-background dark:text-accent-foreground h-12 px-8">
                 Talk to sales
               </Button>
             </Link>
