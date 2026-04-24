@@ -19,29 +19,29 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 const modules = [
   // Core
-  { icon: Users,        cat: 'core',          num: '01', title: 'Members Management',           desc: 'Member registration, personal & family profiles, role assignment and membership tracking.' },
-  { icon: Calendar,     cat: 'core',          num: '02', title: 'Events Management',             desc: 'Event creation, registration, volunteer coordination and post-event reporting.' },
-  { icon: HandCoins,    cat: 'core',          num: '03', title: 'Giving & Donations',            desc: 'Online & offline giving, giver history, automated receipts and reconciliation.' },
-  { icon: ClipboardList,cat: 'core',          num: '04', title: 'Attendance Tracking',           desc: 'Service scheduling, attendance recording, real-time dashboards and demographics.' },
-  { icon: BookOpen,     cat: 'core',          num: '05', title: 'Resources Library',             desc: 'Digital resources, study plans, sermon library and downloadable materials.' },
-  { icon: Church,       cat: 'core',          num: '06', title: 'Churches Management',           desc: 'Multi-level hierarchy, church profiles and branch administration.' },
-  { icon: Receipt,      cat: 'core',          num: '07', title: 'Transactions View',             desc: 'Consolidated transaction history, audit trails and financial records.' },
-  { icon: Users2,       cat: 'core',          num: '08', title: 'Cell & Fellowship Management',  desc: 'Manage cells, fellowships, meetings, attendance and member assignments.' },
+  { icon: Users,        cat: 'core',          num: '01', title: 'Members Management',           desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
+  { icon: Calendar,     cat: 'core',          num: '02', title: 'Events Management',             desc: 'This module allows you to create church events and share them with all your church members. It also issues tickets for all ticketed events.' },
+  { icon: HandCoins,    cat: 'core',          num: '03', title: 'Giving & Donations',            desc: "Online giving is made easy! You can now manage your church's giving online." },
+  { icon: ClipboardList,cat: 'core',          num: '04', title: 'Attendance Tracking',           desc: 'Report every church meeting and retrieve the data at any time in the future.' },
+  { icon: BookOpen,     cat: 'core',          num: '05', title: 'Resources Library',             desc: 'This module gives you a platform to keep resource materials that can be accessed by all church members.' },
+  { icon: Church,       cat: 'core',          num: '06', title: 'Churches Management',           desc: 'Create your church and manage how data flows from the churches under you in this module.' },
+  { icon: Receipt,      cat: 'core',          num: '07', title: 'Transactions View',             desc: 'View all the giving transactions on your account as they happen.' },
+  { icon: Users2,       cat: 'core',          num: '08', title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
   // Management
-  { icon: Users2,       cat: 'management',    num: '09', title: 'Users Management',              desc: 'Create and manage user accounts, assign roles and control access levels.' },
-  { icon: ShieldCheck,  cat: 'management',    num: '10', title: 'Roles & Permissions',           desc: 'Granular role-based access control across all modules and church levels.' },
-  { icon: Users2,       cat: 'management',    num: '11', title: 'Cell & Fellowship Management',  desc: 'Manage cells, fellowships, meetings, attendance and member assignments.' },
+  { icon: Users2,       cat: 'management',    num: '09', title: 'Users Management',              desc: 'Manage the users using this module.' },
+  { icon: ShieldCheck,  cat: 'management',    num: '10', title: 'Roles & Permissions',           desc: 'Assign roles and permissions to the users using this module.' },
+  { icon: Users2,       cat: 'management',    num: '11', title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
   // Communication
-  { icon: MessageSquare,cat: 'communication', num: '12', title: 'Communication & Announcements', desc: 'Announcements, newsletters, prayer requests and targeted notifications.' },
-  { icon: UsersRound,   cat: 'communication', num: '13', title: 'Teams Management',              desc: 'Ministry and volunteer teams, task assignment and team communication.' },
-  { icon: Bell,         cat: 'communication', num: '14', title: 'Reminders Management',          desc: 'Automated reminders for birthdays, anniversaries, events and follow-ups.' },
+  { icon: MessageSquare,cat: 'communication', num: '12', title: 'Communication & Announcements', desc: 'This module helps you manage your communication within the church. You communicate directly with your targeted audience in the church/ministry.' },
+  { icon: UsersRound,   cat: 'communication', num: '13', title: 'Teams Management',              desc: "Assign your church members to teams to ensure they are engaged in the ministry's work." },
+  { icon: Bell,         cat: 'communication', num: '14', title: 'Reminders Management',          desc: 'This module reminds you of special days, including anniversaries, birthdays, and ministry events, so that you do not miss any.' },
   // Reporting
-  { icon: BarChart3,    cat: 'reporting',     num: '15', title: 'Reports & Analytics',           desc: 'Exportable reports on giving, attendance, membership and more.' },
-  { icon: TrendingUp,   cat: 'reporting',     num: '16', title: 'Performance Dashboard',         desc: 'KPI tracking, target setting and automated performance measurement.' },
-  { icon: FileText,     cat: 'reporting',     num: '17', title: 'Advanced Reports',              desc: 'Custom report builder, cross-module analytics and scheduled exports.' },
+  { icon: BarChart3,    cat: 'reporting',     num: '15', title: 'Reports & Analytics',           desc: 'Access all your giving, attendance, and membership reports using this module.' },
+  { icon: TrendingUp,   cat: 'reporting',     num: '16', title: 'Performance Dashboard',         desc: 'Track all your Key Performance Indicators using this module.' },
+  { icon: FileText,     cat: 'reporting',     num: '17', title: 'Advanced Reports',              desc: 'Export and analyze your data using other analytical softwares.' },
   // Events
-  { icon: Ticket,       cat: 'events',        num: '18', title: 'Event Ticketing',               desc: 'Paid and free ticketing, QR code check-in and guest management.' },
-  { icon: ClipboardList,cat: 'events',        num: '19', title: 'Event Attendance Tracking',     desc: 'Real-time event check-in, attendance reports and capacity management.' },
+  { icon: Ticket,       cat: 'events',        num: '18', title: 'Event Ticketing',               desc: 'Issue tickets for your events using this module.' },
+  { icon: ClipboardList,cat: 'events',        num: '19', title: 'Event Attendance Tracking',     desc: 'Report your service attendance using this module.' },
 ];
 
 const techSpecs = [

@@ -10,21 +10,21 @@ import {
 import heroImage from '@/assets/hero-church.jpg';
 
 const modules = [
-  { icon: Users,        title: 'Members Management',           desc: 'Profiles, families & role tracking' },
-  { icon: Calendar,     title: 'Events Management',            desc: 'Scheduling, registration & reporting' },
-  { icon: HandCoins,    title: 'Giving & Donations',           desc: 'Tithes, offerings & pledges' },
-  { icon: ClipboardList,title: 'Attendance Tracking',          desc: 'Service scheduling & real-time tracking' },
-  { icon: BookOpen,     title: 'Resources Library',            desc: 'Digital resources & study plans' },
-  { icon: Church,       title: 'Churches Management',          desc: 'Multi-level church hierarchy' },
-  { icon: BarChart3,    title: 'Transactions View',            desc: 'Consolidated tracking & audit trails' },
-  { icon: Building2,    title: 'Cell & Fellowship Management', desc: 'Cells, meetings & member assignments' },
-  { icon: Users,        title: 'Users Management',             desc: 'Accounts, roles & access control' },
-  { icon: MessageSquare,title: 'Communication',                desc: 'Announcements & prayer requests' },
-  { icon: Users,        title: 'Teams Management',             desc: 'Ministry teams & task assignment' },
-  { icon: TrendingUp,   title: 'Performance Dashboard',        desc: 'KPI tracking & automated measurement' },
-  { icon: BarChart3,    title: 'Reports & Analytics',          desc: 'Exportable reports across all modules' },
-  { icon: Calendar,     title: 'Event Ticketing',              desc: 'Paid & free tickets, QR check-in' },
-  { icon: ClipboardList,title: 'Reminders Management',         desc: 'Birthdays, anniversaries & follow-ups' },
+  { icon: Users,        title: 'Members Management',            desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
+  { icon: Calendar,     title: 'Events Management',             desc: 'This module allows you to create church events and share them with all your church members. It also issues tickets for all ticketed events.' },
+  { icon: HandCoins,    title: 'Giving & Donations',            desc: "Online giving is made easy! You can now manage your church's giving online." },
+  { icon: ClipboardList,title: 'Attendance Tracking',           desc: 'Report every church meeting and retrieve the data at any time in the future.' },
+  { icon: BookOpen,     title: 'Resources Library',             desc: 'This module gives you a platform to keep resource materials that can be accessed by all church members.' },
+  { icon: Church,       title: 'Churches Management',           desc: 'Create your church and manage how data flows from the churches under you in this module.' },
+  { icon: BarChart3,    title: 'Transactions View',             desc: 'View all the giving transactions on your account as they happen.' },
+  { icon: Building2,    title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
+  { icon: Users,        title: 'Users Management',              desc: 'Manage the users using this module.' },
+  { icon: MessageSquare,title: 'Communication & Announcements', desc: 'This module helps you manage your communication within the church. You communicate directly with your targeted audience in the church/ministry.' },
+  { icon: Users,        title: 'Teams Management',              desc: "Assign your church members to teams to ensure they are engaged in the ministry's work." },
+  { icon: TrendingUp,   title: 'Performance Dashboard',         desc: 'Track all your Key Performance Indicators using this module.' },
+  { icon: BarChart3,    title: 'Reports & Analytics',           desc: 'Access all your giving, attendance, and membership reports using this module.' },
+  { icon: Calendar,     title: 'Event Ticketing',               desc: 'Issue tickets for your events using this module.' },
+  { icon: ClipboardList,title: 'Reminders Management',          desc: 'This module reminds you of special days, including anniversaries, birthdays, and ministry events, so that you do not miss any.' },
 ];
 
 const stats = [
