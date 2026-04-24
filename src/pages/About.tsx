@@ -14,12 +14,41 @@ const values = [
 ];
 
 const milestones = [
-  { year: '2020', title: 'Founded',             desc: 'Conceived after observing fragmented administration challenges in local churches across East Africa.' },
-  { year: '2023', title: 'First modules',        desc: 'Launched membership and giving modules, onboarding our first 10 pilot churches.' },
-  { year: '2024', title: 'Platform expansion',   desc: 'Added 8 additional modules including attendance, events, and communication.' },
-  { year: '2024', title: 'National rollout',     desc: 'Scaled to support full ministry hierarchies — national, regional, district, and local.' },
-  { year: '2025', title: 'Cloud infrastructure', desc: 'Migrated to enterprise cloud supporting 5,000+ concurrent users at 99.5% uptime.' },
-  { year: '2025', title: 'Growing community',    desc: 'Now serving 100+ churches and expanding across multiple countries.' },
+  {
+    year: '2015/16',
+    title: 'The spark',
+    desc: 'After leading a successful change management project at a leading Non-Governmental Organization in Malawi, the brain behind this platform was impressed by the Spirit to use the skills and lessons to support church ministry.',
+  },
+  {
+    year: '2016/17',
+    title: 'The Strategy-Led Church',
+    desc: 'The Strategy-Led Church was created to help churches apply strategic management tools in the pursuit of their calling — a set of resources including a workbook to guide Pastors in formulating church strategy.',
+  },
+  {
+    year: '2020',
+    title: 'ICIMS conceived',
+    desc: 'The Integrated Church Management Information System was conceived as part of the Strategy-Led Church resources, bringing digital tools to support every aspect of ministry management.',
+  },
+  {
+    year: '2021',
+    title: 'Platform expansion',
+    desc: 'Added modules covering attendance, events, communication, and more.',
+  },
+  {
+    year: '2022',
+    title: 'National rollout',
+    desc: 'Scaled to support full ministry hierarchies — national, regional, district, and local.',
+  },
+  {
+    year: '2023',
+    title: 'Cloud infrastructure',
+    desc: 'Migrated to enterprise cloud supporting 5,000+ concurrent users at 99.5% uptime.',
+  },
+  {
+    year: '2024',
+    title: 'Growing community',
+    desc: 'Now serving 500+ churches and expanding across multiple countries.',
+  },
 ];
 
 const inView = {

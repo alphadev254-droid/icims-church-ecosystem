@@ -114,7 +114,7 @@ export default function ContactPage() {
               <div className="space-y-4">
                 {[
                   { icon: Mail,   label: 'Email',   value: 'support@churchcentral.church' },
-                  { icon: Phone,  label: 'Phone',   value: '+254 700 000 000' },
+                  { icon: Phone,  label: 'Phone',   value: '+254 720 874 025 / WhatsApp +265 998 951 510' },
                   { icon: MapPin, label: 'Address', value: 'Nairobi, Kenya' },
                 ].map(c => (
                   <div key={c.label} className="flex items-start gap-4">

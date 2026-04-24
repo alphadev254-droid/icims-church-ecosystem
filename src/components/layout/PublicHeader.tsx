@@ -41,8 +41,8 @@ export default function PublicHeader() {
             <a href="mailto:support@churchcentral.church" className="flex items-center gap-1.5 text-xs text-accent-foreground/80 hover:text-accent-foreground transition-colors">
               <Mail className="h-3 w-3" /> support@churchcentral.church
             </a>
-            <a href="tel:+254113765336" className="flex items-center gap-1.5 text-xs text-accent-foreground/80 hover:text-accent-foreground transition-colors">
-              <Phone className="h-3 w-3" /> +254113765336
+            <a href="tel:+254720874025" className="flex items-center gap-1.5 text-xs text-accent-foreground/80 hover:text-accent-foreground transition-colors">
+              <Phone className="h-3 w-3" /> +254 720 874 025 / WhatsApp +265 998 951 510
             </a>
           </div>
           <p className="text-xs text-accent-foreground/60">Integrated Church Information Management System</p>
