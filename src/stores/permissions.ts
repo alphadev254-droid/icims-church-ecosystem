@@ -52,10 +52,10 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   { permission: 'reports:read',       item: { to: '/dashboard/reports',       label: 'Reports',       icon: BarChart3 } },
   
   // System & Configuration
-  { permission: 'roles:manage',       item: { to: '/dashboard/roles',           label: 'Roles',          icon: Shield } },
-  { permission: 'packages:view',      item: { to: '/dashboard/packages',        label: 'Packages',       icon: Package2 } },
-  { permission: 'settings:read',      item: { to: '/dashboard/settings',        label: 'Settings',       icon: Settings } },
-  { permission: 'settings:read',      item: { to: '/dashboard/church-profile',  label: 'Church Website', icon: Globe } },
+  { permission: 'roles:manage',            item: { to: '/dashboard/roles',           label: 'Roles',          icon: Shield } },
+  { permission: 'packages:view',           item: { to: '/dashboard/packages',        label: 'Packages',       icon: Package2 } },
+  { permission: 'settings:read',           item: { to: '/dashboard/settings',        label: 'Settings',       icon: Settings } },
+  { permission: 'church_website:manage',   item: { to: '/dashboard/church-profile',  label: 'Church Website', icon: Globe } },
 ];
 
 /** Build sidebar nav items from the user's permission array */
@@ -97,9 +97,10 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
         return true;
       }
 
-      // Church website — ministry_admin only
+      // Church website — shown to anyone with church_website:manage permission
+      // (only ministry_admin gets this from seed)
       if (item.to === '/dashboard/church-profile') {
-        return currentUser?.roleName === 'ministry_admin';
+        return true;
       }
       
       // Show reminders for all users (page handles upgrade prompt)
