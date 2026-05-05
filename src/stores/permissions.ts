@@ -1,6 +1,6 @@
 import {
   Home, Calendar, HandCoins, ClipboardList, MessageSquare,
-  BookOpen, Building2, TrendingUp, BarChart3, Settings, Shield, UserCog, Package2, Receipt, Wallet, Users, Bell, type LucideIcon,
+  BookOpen, Building2, TrendingUp, BarChart3, Settings, Shield, UserCog, Package2, Receipt, Wallet, Users, Bell, Handshake, Globe, type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from './authStore';
 
@@ -43,6 +43,7 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   
   // Finance
   { permission: 'giving:read',        item: { to: '/dashboard/giving',        label: 'Giving',        icon: HandCoins } },
+  { permission: 'pledges:read',       item: { to: '/dashboard/pledges',       label: 'Pledges',       icon: Handshake } },
   { permission: 'transactions:read',  item: { to: '/dashboard/transactions',  label: 'Transactions',  icon: Receipt } },
   { permission: 'withdrawals:read',   item: { to: '/dashboard/withdrawals',   label: 'Withdrawals',   icon: Wallet } },
   
@@ -51,9 +52,10 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   { permission: 'reports:read',       item: { to: '/dashboard/reports',       label: 'Reports',       icon: BarChart3 } },
   
   // System & Configuration
-  { permission: 'roles:manage',       item: { to: '/dashboard/roles',         label: 'Roles',         icon: Shield } },
-  { permission: 'packages:read',      item: { to: '/dashboard/packages',      label: 'Packages',      icon: Package2 } },
-  { permission: 'settings:read',      item: { to: '/dashboard/settings',      label: 'Settings',      icon: Settings } },
+  { permission: 'roles:manage',       item: { to: '/dashboard/roles',           label: 'Roles',          icon: Shield } },
+  { permission: 'packages:view',      item: { to: '/dashboard/packages',        label: 'Packages',       icon: Package2 } },
+  { permission: 'settings:read',      item: { to: '/dashboard/settings',        label: 'Settings',       icon: Settings } },
+  { permission: 'settings:read',      item: { to: '/dashboard/church-profile',  label: 'Church Website', icon: Globe } },
 ];
 
 /** Build sidebar nav items from the user's permission array */
@@ -88,6 +90,16 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
       // Show cells to all users (members see their cell, leaders manage it)
       if (item.to === '/dashboard/cells') {
         return true;
+      }
+
+      // Show pledges to all users who have the permission (members + admins)
+      if (item.to === '/dashboard/pledges') {
+        return true;
+      }
+
+      // Church website — ministry_admin only
+      if (item.to === '/dashboard/church-profile') {
+        return currentUser?.roleName === 'ministry_admin';
       }
       
       // Show reminders for all users (page handles upgrade prompt)
@@ -125,6 +137,18 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
       // Show cells route to all users
       if (item.to === '/dashboard/cells') {
         routes.push(item.to);
+        continue;
+      }
+      // Show pledges route to all users who have the permission
+      if (item.to === '/dashboard/pledges') {
+        routes.push(item.to);
+        continue;
+      }
+      // Church website — ministry_admin only (settings:read is already scoped)
+      if (item.to === '/dashboard/church-profile') {
+        if (currentUser?.roleName === 'ministry_admin') {
+          routes.push(item.to);
+        }
         continue;
       }
       routes.push(item.to);

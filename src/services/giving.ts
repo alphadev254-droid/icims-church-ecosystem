@@ -14,6 +14,7 @@ export interface GivingCampaign {
   endDate?: string;
   imageUrl?: string;
   allowPublicDonations: boolean;
+  allowPledging: boolean;
   cellId?: string;
   createdAt: string;
   updatedAt: string;
@@ -35,6 +36,7 @@ export interface CreateCampaignDto {
   endDate?: string;
   imageUrl?: string;
   allowPublicDonations?: boolean;
+  allowPledging?: boolean;
   cellId?: string;
 }
 
@@ -46,6 +48,8 @@ export interface UpdateCampaignDto {
   status?: string;
   endDate?: string;
   imageUrl?: string;
+  allowPublicDonations?: boolean;
+  allowPledging?: boolean;
 }
 
 export interface DonationTransaction {
@@ -78,6 +82,41 @@ export interface CreateDonationDto {
   donorPhone?: string;
   notes?: string;
   cellId?: string;
+  pledgeId?: string;
+}
+
+// ─── Pledge types ─────────────────────────────────────────────────────────────
+
+export type PledgeStatus = 'pending' | 'partial' | 'fulfilled' | 'overdue';
+
+export interface Pledge {
+  id: string;
+  campaignId: string;
+  churchId: string;
+  userId?: string;
+  pledgerName?: string;
+  pledgerEmail?: string;
+  pledgerPhone?: string;
+  pledgedAmount: number;
+  currency: string;
+  amountPaid: number;
+  status: PledgeStatus;
+  fulfillmentDeadline?: string;
+  notes?: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  campaign?: { id: string; name: string; category: string; currency: string; status: string; allowPledging?: boolean };
+  church?: { name: string };
+  user?: { firstName: string; lastName: string; email: string; phone?: string };
+  payments?: { id: string; amount: number; currency: string; createdAt: string; paymentMethod?: string; reference?: string }[];
+}
+
+export interface CreatePledgeDto {
+  campaignId: string;
+  pledgedAmount: number;
+  fulfillmentDeadline?: string;
+  notes?: string;
 }
 
 export const givingService = {
@@ -156,6 +195,35 @@ export const givingService = {
     cellId?: string;
   }): Promise<DonationTransaction> {
     const { data } = await apiClient.post('/giving/donations/cash', dto);
+    return data.data;
+  },
+
+  // ─── Pledges ───────────────────────────────────────────────────────────────
+
+  async createPledge(dto: CreatePledgeDto): Promise<Pledge> {
+    const { data } = await apiClient.post('/giving/pledges', dto);
+    return data.data;
+  },
+
+  async getMyPledges(params?: { status?: string; sortBy?: string; page?: number; limit?: number }): Promise<{
+    data: Pledge[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  }> {
+    const { data } = await apiClient.get('/giving/pledges/my', { params });
+    return data;
+  },
+
+  async getMinistryPledges(params?: { campaignId?: string; status?: string; churchId?: string; sortBy?: string; page?: number; limit?: number }): Promise<{
+    data: Pledge[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+    summary: { totalPledged: number; totalPaid: number; outstanding: number; count: number };
+  }> {
+    const { data } = await apiClient.get('/giving/pledges', { params });
+    return data;
+  },
+
+  async getPledge(id: string): Promise<Pledge> {
+    const { data } = await apiClient.get(`/giving/pledges/${id}`);
     return data.data;
   },
 };

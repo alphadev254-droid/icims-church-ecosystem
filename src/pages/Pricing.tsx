@@ -7,6 +7,7 @@ import { Check, X, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import apiClient from '@/lib/api-client';
 import pricingHero from '@/assets/prices.png';
+import { BookDemoDialog } from '@/components/BookDemoDialog';
 
 interface PkgFeature { name: string; displayName: string; category: string; }
 interface Package {
@@ -289,7 +290,7 @@ export default function PricingPage() {
               </Button>
             </Link>
             <Link to="/contact">
-              <Button size="lg" variant="outline" className="border-background/30 dark:border-accent-foreground/30 text-background dark:text-accent-foreground h-12 px-8">
+              <Button size="lg" variant="outline" className="border-background/30 dark:border-accent-foreground/30 text-gray-900 dark:text-accent-foreground h-12 px-8">
                 Talk to sales
               </Button>
             </Link>

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { usePageMeta } from '@/hooks/usePageMeta';
@@ -8,6 +9,7 @@ import {
   ArrowRight, CheckCircle2, ChevronRight,
 } from 'lucide-react';
 import heroImage from '@/assets/hero-church.jpg';
+import { BookDemoDialog } from '@/components/BookDemoDialog';
 
 const modules = [
   { icon: Users,        title: 'Members Management',            desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
@@ -66,6 +68,8 @@ const inView = {
 };
 
 export default function LandingPage() {
+  const [demoOpen, setDemoOpen] = useState(false);
+
   usePageMeta({
     title: 'The Complete Church Management Ecosystem',
     description: 'ICIMS is a cloud-based church management platform with 12 integrated modules — membership, giving, attendance, events, communication and more.',
@@ -124,11 +128,14 @@ export default function LandingPage() {
                   Start for free <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link to="/features">
-                <Button size="lg" variant="outline" className="border-white/30 hover:text-white hover:bg-white/10 h-12 px-7 text-base">
-                  See all features
-                </Button>
-              </Link>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white/30 text-gray hover:text-white  h-12 px-7 text-base"
+                onClick={() => setDemoOpen(true)}
+              >
+                Book a demo
+              </Button>
             </motion.div>
 
             <motion.div
@@ -339,15 +346,20 @@ export default function LandingPage() {
                   Start free trial <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link to="/contact">
-                <Button size="lg" variant="outline" className="border-background/30 dark:border-accent-foreground/30 hover:text-white dark:text-accent-foreground hover:bg-background/10 dark:hover:bg-accent-foreground/10 h-12 px-8 text-base">
-                  Talk to sales
-                </Button>
-              </Link>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-background/30 dark:border-accent-foreground/30 text-background dark:text-accent-foreground bg-background/10 dark:hover:bg-accent-foreground/10 h-12 px-8 text-white"
+                onClick={() => setDemoOpen(true)}
+              >
+                Book a demo
+              </Button>
             </div>
           </div>
         </div>
       </section>
+
+      <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
 
     </div>
   );

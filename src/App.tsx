@@ -23,6 +23,9 @@ import Events from "./pages/Events";
 import Reminders from "./pages/Reminders";
 import Giving from "./pages/Giving";
 import Donations from "./pages/Donations";
+import Pledges from "./pages/Pledges";
+import PledgeDetail from "./pages/PledgeDetail";
+import ChurchProfileSettings from "./pages/ChurchProfileSettings";
 import Attendance from "./pages/Attendance";
 import EventAttendance from "./pages/EventAttendance";
 import Communication from "./pages/Communication";
@@ -98,6 +101,9 @@ const App = () => (
                 <Route path="reminders" element={<Reminders />} />
                 <Route path="giving" element={<Giving />} />
                 <Route path="donations" element={<Donations />} />
+                <Route path="pledges" element={<Pledges />} />
+                <Route path="pledges/:id" element={<PledgeDetail />} />
+                <Route path="church-profile" element={<ChurchProfileSettings />} />
                 <Route path="attendance" element={<Attendance />} />
                 <Route path="event-attendance" element={<EventAttendance />} />
                 <Route path="communication" element={<Communication />} />

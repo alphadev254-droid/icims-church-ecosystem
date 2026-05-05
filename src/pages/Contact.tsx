@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Mail, Phone, MapPin, Clock, HeadphonesIcon, ShoppingCart, Wrench, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, HeadphonesIcon, ShoppingCart, Wrench, ChevronDown, ChevronUp, ArrowRight, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { BookDemoDialog } from '@/components/BookDemoDialog';
 
 const IconFacebook = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
@@ -52,6 +53,7 @@ export default function ContactPage() {
 
   const [loading, setLoading] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [demoOpen, setDemoOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -146,6 +148,29 @@ export default function ContactPage() {
                   ))}
                 </div>
               </div>
+              {/* Book a Demo card */}
+              <div className="rounded-xl border border-accent/30 bg-accent/5 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-9 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
+                    <Calendar className="h-4 w-4 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Book a live demo</p>
+                    <p className="text-xs text-muted-foreground">See ICIMS in action — 45 min session</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Get a personalised walkthrough of all 15+ modules with one of our team members. No commitment required.
+                </p>
+                <Button
+                  size="sm"
+                  className="w-full bg-accent text-accent-foreground hover:bg-accent/90 gap-2"
+                  onClick={() => setDemoOpen(true)}
+                >
+                  <Calendar className="h-3.5 w-3.5" /> Book a demo
+                </Button>
+              </div>
+
               <div>
                 <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wide font-semibold">Follow us</p>
                 <div className="flex gap-2">
@@ -260,6 +285,8 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
+
+      <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
 
     </div>
   );

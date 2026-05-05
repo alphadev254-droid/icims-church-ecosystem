@@ -8,18 +8,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Church, Eye, EyeOff, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Church, Eye, EyeOff, CheckCircle2, ArrowRight, ArrowLeft, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import heroImage from '@/assets/hero-church.jpg';
 
 const TITLES = ['Rev', 'Dr', 'Prof', 'Pastor', 'Prophet', 'Seer', 'Sister', 'Brother', 'Father', 'Other'] as const;
+
+/** Convert a string to a DNS-safe slug */
+function toSlug(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+const DOMAIN = 'churchcentral.church';
 
 const schema = z.object({
   title: z.enum(TITLES).optional(),
   titleOther: z.string().optional(),
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  ministryName: z.string().optional(),
+  ministryName: z.string().min(2, 'Ministry / church name is required'),
+  subdomain: z.string().optional(),
   currentMembership: z.coerce.number().int().min(0).optional(),
   numberOfBranches: z.coerce.number().int().min(0).optional(),
   email: z.string().email('Enter a valid email address'),
@@ -54,6 +68,8 @@ export default function RegisterPage() {
   const [accountCountry, setAccountCountry] = useState<'Malawi' | 'Kenya' | ''>('');
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [title, setTitle] = useState<string>('');
+  const [subdomainSlug, setSubdomainSlug] = useState('');
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, trigger, getValues } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -63,7 +79,7 @@ export default function RegisterPage() {
   const nextStep = async () => {
     const fields: (keyof FormValues)[] = step === 1
       ? ['firstName', 'lastName', 'email', 'phone', 'gender', 'accountCountry']
-      : ['ministryName'];
+      : ['ministryName', 'subdomain'];
     const valid = await trigger(fields);
     if (valid) setStep(s => s + 1);
   };
@@ -75,6 +91,7 @@ export default function RegisterPage() {
       firstName: values.firstName,
       lastName: values.lastName,
       ministryName: values.ministryName,
+      subdomain: values.subdomain || toSlug(values.ministryName),
       currentMembership: values.currentMembership,
       numberOfBranches: values.numberOfBranches,
       email: values.email,
@@ -267,8 +284,62 @@ export default function RegisterPage() {
             {step === 2 && (
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Name of ministry / church</Label>
-                  <Input {...register('ministryName')} placeholder="e.g. Grace Community Church" />
+                  <Label>
+                    Name of ministry / church <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    {...register('ministryName')}
+                    placeholder="e.g. Grace Community Church"
+                    className={errors.ministryName ? 'border-destructive' : ''}
+                    onChange={e => {
+                      register('ministryName').onChange(e);
+                      if (!slugManuallyEdited) {
+                        const slug = toSlug(e.target.value);
+                        setSubdomainSlug(slug);
+                        setValue('subdomain', slug);
+                      }
+                    }}
+                  />
+                  {errors.ministryName && <p className="text-xs text-destructive">{errors.ministryName.message}</p>}
+                </div>
+
+                {/* Subdomain slug field */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    Your ministry URL <span className="text-muted-foreground text-xs font-normal">(optional — auto-filled from name)</span>
+                  </Label>
+                  <div className="flex items-center rounded-md border border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 overflow-hidden">
+                    <span className="px-3 py-2 text-sm text-muted-foreground bg-muted border-r border-input shrink-0 select-none">
+                      https://
+                    </span>
+                    <input
+                      className="flex-1 px-3 py-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
+                      placeholder="grace-community-church"
+                      value={subdomainSlug}
+                      onChange={e => {
+                        const slug = toSlug(e.target.value);
+                        setSubdomainSlug(slug);
+                        setValue('subdomain', slug);
+                        setSlugManuallyEdited(true);
+                      }}
+                    />
+                    <span className="px-3 py-2 text-sm text-muted-foreground bg-muted border-l border-input shrink-0 select-none">
+                      .{DOMAIN}
+                    </span>
+                  </div>
+                  {subdomainSlug && (
+                    <div className="flex items-center gap-2 rounded-md bg-accent/10 border border-accent/20 px-3 py-2">
+                      <Globe className="h-3.5 w-3.5 text-accent shrink-0" />
+                      <span className="text-xs text-muted-foreground">Your site will be at:</span>
+                      <span className="text-xs font-medium text-accent break-all">
+                        https://{subdomainSlug}.{DOMAIN}
+                      </span>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Only letters, numbers, and hyphens. This is where your ministry portal will be accessible.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -296,7 +367,7 @@ export default function RegisterPage() {
 
                 <div className="flex gap-3">
                   <Button type="button" variant="outline" onClick={() => setStep(1)} className="flex-1 h-11">
-                    Back
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Back
                   </Button>
                   <Button type="button" onClick={nextStep} className="flex-1 h-11 bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
                     Continue <ArrowRight className="h-4 w-4" />

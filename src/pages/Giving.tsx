@@ -22,8 +22,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ChurchSelect } from '@/components/ChurchSelect';
-import { Plus, HandCoins, Target, Users, Pencil, Trash2, Wallet, Eye, Loader2, StopCircle, PlayCircle, Filter, Lock, Share2, Copy, Check } from 'lucide-react';
+import { Plus, HandCoins, Target, Users, Pencil, Trash2, Wallet, Eye, Loader2, StopCircle, PlayCircle, Filter, Lock, Share2, Copy, Check, Handshake } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
+import { PledgeDialog } from '@/components/PledgeDialog';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 
@@ -44,6 +45,7 @@ const campaignSchema = z.object({
   currency: z.enum(['MWK', 'KES']).default('MWK'),
   endDate: z.string().optional(),
   allowPublicDonations: z.boolean().default(false),
+  allowPledging: z.boolean().default(false),
 });
 
 type CampaignFormValues = z.infer<typeof campaignSchema>;
@@ -56,12 +58,13 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
 }) {
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<CampaignFormValues>({
     resolver: zodResolver(campaignSchema),
-    defaultValues: { category: 'tithe', currency: 'MWK', allowPublicDonations: false, ...defaultValues },
+    defaultValues: { category: 'tithe', currency: 'MWK', allowPublicDonations: false, allowPledging: false, ...defaultValues },
   });
 
   const churchId = watch('churchId');
   const category = watch('category');
   const allowPublicDonations = watch('allowPublicDonations');
+  const allowPledging = watch('allowPledging');
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
@@ -137,6 +140,20 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
         </div>
       </div>
 
+      <div className="flex items-center gap-3 rounded-md border p-2 sm:p-3">
+        <input
+          type="checkbox"
+          id="allowPledging"
+          checked={allowPledging}
+          onChange={e => setValue('allowPledging', e.target.checked)}
+          className="h-4 w-4"
+        />
+        <div>
+          <Label htmlFor="allowPledging" className="cursor-pointer font-medium text-xs sm:text-sm">Allow Pledging</Label>
+          <p className="text-xs text-muted-foreground">Members can commit to give a specific amount by a deadline</p>
+        </div>
+      </div>
+
       <Button type="submit" size="sm" disabled={isPending} className="w-full h-8 text-xs sm:h-10 sm:text-sm">
         {isPending ? 'Saving...' : submitLabel}
       </Button>
@@ -149,6 +166,7 @@ export default function GivingPage() {
   const [editCampaign, setEditCampaign] = useState<GivingCampaign | null>(null);
   const [deleteCampaign, setDeleteCampaign] = useState<GivingCampaign | null>(null);
   const [donateCampaign, setDonateCampaign] = useState<GivingCampaign | null>(null);
+  const [pledgeCampaign, setPledgeCampaign] = useState<GivingCampaign | null>(null);
   const [donateAmount, setDonateAmount] = useState('');
   const [donateCellId, setDonateCellId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -161,6 +179,7 @@ export default function GivingPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const { hasPermission } = useRole();
   const hasGivingFeature = useHasFeature('giving_tracking');
+  const hasPledgesFeature = useHasFeature('pledges_management');
   const user = useAuthStore(state => state.user);
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -441,6 +460,11 @@ export default function GivingPage() {
               <Button size="sm" className="flex-1 h-7 text-xs" onClick={() => setDonateCampaign(campaign)}>
                 <Wallet className="h-3 w-3 mr-1" /> Give
               </Button>
+              {campaign.allowPledging && hasPledgesFeature && (
+                <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => setPledgeCampaign(campaign)}>
+                  <Handshake className="h-3 w-3 mr-1" /> Pledge
+                </Button>
+              )}
               {campaign.userHasDonated && (
                 <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => navigate(`/dashboard/donations?campaignId=${campaign.id}`)}>
                   <Eye className="h-3 w-3 mr-1" /> My Givings
@@ -448,9 +472,16 @@ export default function GivingPage() {
               )}
             </div>
           ) : canViewDonations ? (
-            <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => navigate(`/dashboard/donations?campaignId=${campaign.id}`)}>
-              <Eye className="h-3 w-3 mr-1" /> View Givings
-            </Button>
+            <div className="flex gap-1.5 pt-1">
+              <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => navigate(`/dashboard/donations?campaignId=${campaign.id}`)}>
+                <Eye className="h-3 w-3 mr-1" /> View Givings
+              </Button>
+              {campaign.allowPledging && hasPledgesFeature && (
+                <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => navigate(`/dashboard/pledges?campaignId=${campaign.id}`)}>
+                  <Handshake className="h-3 w-3 mr-1" /> View Pledges
+                </Button>
+              )}
+            </div>
           ) : null}
         </CardContent>
       </Card>
@@ -767,6 +798,15 @@ export default function GivingPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Pledge dialog — member pledging to a campaign */}
+      {pledgeCampaign && (
+        <PledgeDialog
+          campaign={pledgeCampaign}
+          open={!!pledgeCampaign}
+          onOpenChange={open => { if (!open) setPledgeCampaign(null); }}
+        />
+      )}
     </div>
   );
 }
