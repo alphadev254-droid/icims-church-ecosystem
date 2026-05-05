@@ -18,7 +18,7 @@ import { STALE_TIME } from '@/lib/query-config';
 
 // ─── Image upload picker component ───────────────────────────────────────────
 
-const BACKEND_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') ?? '';
+const BACKEND_URL = (import.meta.env.VITE_STATIC_URL as string) || import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || '';
 
 function ImageUploadPicker({
   label,

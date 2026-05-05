@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { ExternalLink, MapPin, Phone, Mail, Clock, Facebook, Youtube, MessageCircle, Calendar, HandCoins, ChevronRight } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
+const STATIC_BASE = (import.meta.env.VITE_STATIC_URL as string) || API_BASE.replace('/api', '');
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -147,7 +148,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
   const hasCampaigns = campaigns.length > 0;
 
   const FRONTEND = 'https://churchcentral.church';
-  const BACKEND  = API_BASE.replace('/api', '');
+  const BACKEND  = STATIC_BASE;
 
   // Resolve image URLs — handle both absolute URLs and local /uploads/ paths
   const resolveImg = (url?: string) =>
@@ -251,7 +252,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
 
       {/* ── SERVICE TIMES ── */}
       {hasServices && (
-        <Section id="services" style={{ background: '#f9fafb' }}>
+        <Section id="services" className="bg-gray-50">
           <SectionLabel text="Join Us" color={accent} />
           <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 800, color: '#111', marginBottom: 32 }}>Service Times</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
@@ -312,7 +313,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
 
       {/* ── GIVE ONLINE ── */}
       {hasCampaigns && (
-        <Section id="give" style={{ background: '#f9fafb' }}>
+        <Section id="give" className="bg-gray-50">
           <SectionLabel text="Support the Ministry" color={accent} />
           <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 800, color: '#111', marginBottom: 32 }}>Give Online</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
