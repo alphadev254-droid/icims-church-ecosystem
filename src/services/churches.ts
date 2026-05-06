@@ -23,6 +23,8 @@ export interface Church {
   leaderId?: string | null;
   branchCode?: string | null;
   inviteToken?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   createdAt: string;
   updatedAt: string;
   _count?: { members: number; users: number; events?: number };

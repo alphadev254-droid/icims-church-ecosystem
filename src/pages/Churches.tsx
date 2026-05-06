@@ -489,6 +489,8 @@ export default function ChurchesPage() {
                 district: editChurch.district ?? '',
                 traditionalAuthority: editChurch.traditionalAuthority ?? '',
                 village: editChurch.village ?? '',
+                latitude: editChurch.latitude ?? ('' as any),
+                longitude: editChurch.longitude ?? ('' as any),
               }}
               defaultLocation={{
                 region: editChurch.region ?? undefined,
