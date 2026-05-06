@@ -50,7 +50,7 @@ interface AuthState {
   navItems: NavItem[];
 
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; redirectTo?: string }>;
-  register: (data: RegisterData) => Promise<{ success: boolean; message?: string }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; message?: string; isNewRegistration?: boolean; subdomain?: string | null }>;
   logout: () => Promise<void>;
   fetchMe: () => Promise<void>;
   setLoading: (v: boolean) => void;
@@ -119,7 +119,11 @@ export const useAuthStore = create<AuthState>()(
               ...applyPermissions(permissions, data.user),
               isLoading: false,
             });
-            return { success: true };
+            return {
+              success: true,
+              isNewRegistration: true,
+              subdomain: data.user.subdomain ?? null,
+            };
           }
           return { success: false, message: data.message };
         } catch (err: any) {

@@ -25,7 +25,13 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
     const result = await login(email, password);
     setLoading(false);
     if (result.success) {
-      window.location.href = result.redirectTo ?? '/dashboard';
+      const isSubdomain = window.location.hostname !== 'churchcentral.church' && window.location.hostname !== 'localhost';
+      const redirectPath = result.redirectTo ?? '/dashboard';
+      if (isSubdomain) {
+        window.location.href = `https://churchcentral.church${redirectPath}`;
+      } else {
+        window.location.href = redirectPath;
+      }
     } else {
       setError(result.message || 'Invalid email or password');
     }

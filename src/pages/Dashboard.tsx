@@ -1,9 +1,11 @@
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import apiClient from '@/lib/api-client';
-import { Users, Building2, HandCoins, Calendar, TrendingUp, Globe, MapPin, Landmark, DollarSign, Ticket, Bell, BookOpen } from 'lucide-react';
+import { Users, Building2, HandCoins, Calendar, TrendingUp, Globe, MapPin, Landmark, DollarSign, Ticket, Bell, BookOpen, ExternalLink, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line,
@@ -27,6 +29,16 @@ const ROLE_LABELS: Record<string, { scope: string; icon: typeof Globe }> = {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { roleName: role, isNational, isLocal, hasPermission } = useRole();
+
+  const [welcomeData, setWelcomeData] = useState<{ subdomain: string; ministryName: string } | null>(null);
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem('newRegistration');
+    if (raw) {
+      try { setWelcomeData(JSON.parse(raw)); } catch { /* ignore */ }
+      sessionStorage.removeItem('newRegistration');
+    }
+  }, []);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats', user?.churchId],
@@ -118,6 +130,44 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* ── Welcome dialog for new registrations ── */}
+      {welcomeData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-card border rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 relative">
+            <button
+              onClick={() => setWelcomeData(null)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold tracking-widest uppercase text-accent">Welcome to ICIMS 🎉</p>
+              <h2 className="font-heading text-xl font-bold">{welcomeData.ministryName}</h2>
+              <p className="text-sm text-muted-foreground">Your account is ready. Your public ministry website is being set up.</p>
+            </div>
+            <div className="rounded-lg bg-muted p-3 space-y-1">
+              <p className="text-xs text-muted-foreground">Your site URL</p>
+              <p className="text-sm font-medium break-all">
+                https://{welcomeData.subdomain}.churchcentral.church
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Your site is being activated — this usually takes a few minutes. If the link doesn't open yet, wait a moment and try again.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setWelcomeData(null)}>
+                Go to Dashboard
+              </Button>
+              <Button
+                className="flex-1 gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                onClick={() => window.open(`https://${welcomeData.subdomain}.churchcentral.church`, '_blank')}
+              >
+                Visit Site <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">

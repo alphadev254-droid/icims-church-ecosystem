@@ -102,6 +102,13 @@ export default function RegisterPage() {
       password: values.password,
     });
     if (result.success) {
+      if (result.isNewRegistration && result.subdomain) {
+        // Store subdomain in sessionStorage so Dashboard can show the welcome dialog
+        sessionStorage.setItem('newRegistration', JSON.stringify({
+          subdomain: result.subdomain,
+          ministryName: values.ministryName,
+        }));
+      }
       toast.success('Account created! Welcome to ICIMS.');
       navigate('/dashboard');
     } else {

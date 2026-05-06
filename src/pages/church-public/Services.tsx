@@ -37,15 +37,18 @@ export function Services({ serviceTimes, accent }: ServicesProps) {
 
         {/* Service cards grid */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+          display: 'flex',
           gap: 1,
+          overflowX: 'auto',
           background: '#e8e4de',
           border: '1px solid #e8e4de',
+          scrollbarWidth: 'thin' as const,
+          scrollbarColor: '#ccc transparent',
         }}>
           {serviceTimes.map((s, i) => (
             <div key={i} style={{
               background: '#fff',
+              minWidth: 220, flexShrink: 0,
               padding: '36px 32px',
               position: 'relative',
             }}>
