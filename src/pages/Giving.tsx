@@ -56,7 +56,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
   isPending: boolean;
   submitLabel: string;
 }) {
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<CampaignFormValues>({
+  const { register, handleSubmit, setValue, watch, formState: { errors, isValid } } = useForm<CampaignFormValues>({
     resolver: zodResolver(campaignSchema),
     defaultValues: { category: 'tithe', currency: 'MWK', allowPublicDonations: false, allowPledging: false, ...defaultValues },
   });
@@ -66,9 +66,22 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
   const allowPublicDonations = watch('allowPublicDonations');
   const allowPledging = watch('allowPledging');
 
+  // Log form state whenever it changes — visible in browser console
+  const allValues = watch();
+  console.log('[CampaignForm] values:', allValues, '| errors:', errors, '| isValid:', isValid);
+
+  const handleFormSubmit = (v: CampaignFormValues) => {
+    console.log('[CampaignForm] ✓ submit fired with values:', v);
+    onSubmit(v);
+  };
+
+  const handleInvalid = (errs: any) => {
+    console.log('[CampaignForm] ✗ validation failed — errors:', errs);
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
-      <ChurchSelect value={churchId} onValueChange={v => setValue('churchId', v)} />
+    <form onSubmit={handleSubmit(handleFormSubmit, handleInvalid)} className="space-y-3 sm:space-y-4">
+      <ChurchSelect value={churchId} onValueChange={v => setValue('churchId', v, { shouldValidate: true })} />
       {errors.churchId && <p className="text-xs text-destructive">{errors.churchId.message}</p>}
 
       <div>
@@ -658,6 +671,7 @@ export default function GivingPage() {
                 currency: editCampaign.currency as 'MWK' | 'KES',
                 endDate: editCampaign.endDate ? new Date(editCampaign.endDate).toISOString().split('T')[0] : undefined,
                 allowPublicDonations: editCampaign.allowPublicDonations,
+                allowPledging: editCampaign.allowPledging,
               }}
               onSubmit={v => updateMutation.mutate({ id: editCampaign.id, dto: v })}
               isPending={updateMutation.isPending}

@@ -74,8 +74,8 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
   const navLinks: NavLink[] = [
     { label: 'About',    href: '#about',    show: hasAbout },
     { label: 'Services', href: '#services', show: hasServices },
-    { label: 'Events',   href: '#events',   show: hasEvents },
     { label: 'Give',     href: '#give',     show: hasCampaigns },
+    { label: 'Events',   href: '#events',   show: hasEvents },
     { label: 'Contact',  href: '#contact',  show: hasContact },
   ].filter(l => l.show);
 
@@ -130,9 +130,9 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
 
       {hasAbout    && <About    profile={profile} pastorSrc={pastorSrc} accent={accent} />}
       {hasServices && <Services serviceTimes={serviceTimes} accent={accent} />}
-      {hasEvents   && <Events   events={events} accent={accent} />}
-      {hasCampaigns && <Give    campaigns={campaigns} accent={accent} />}
-      {hasContact  && <Contact  profile={profile} accent={accent} />}
+      {hasCampaigns && <Give   campaigns={campaigns} accent={accent} />}
+      {hasEvents   && <Events  events={events} accent={accent} />}
+      {hasContact  && <Contact profile={profile} accent={accent} />}
 
       <Footer
         ministryName={ministryName}
