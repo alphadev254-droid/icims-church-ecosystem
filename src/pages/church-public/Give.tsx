@@ -11,7 +11,7 @@ interface GiveProps {
 export function Give({ campaigns, accent }: GiveProps) {
   return (
     <section id="give" style={{ background: '#faf9f7', padding: '100px 40px' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         <p style={{
           fontSize: 10, fontWeight: 600, letterSpacing: '0.22em',

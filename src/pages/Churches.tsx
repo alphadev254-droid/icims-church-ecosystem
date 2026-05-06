@@ -45,6 +45,8 @@ const schema = z.object({
   district: z.string().min(1, 'District is required'),
   traditionalAuthority: z.string().min(1, 'Traditional Authority is required'),
   village: z.string().optional().default(''),
+  latitude: z.coerce.number().optional().or(z.literal('')),
+  longitude: z.coerce.number().optional().or(z.literal('')),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -60,17 +62,33 @@ function ChurchForm({ defaultValues, defaultLocation, existingLogoUrl, onSubmit,
   const logoFileRef = useRef<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>(existingLogoUrl ? getLogoUrl(existingLogoUrl) : '');
   const [removeLogoFlag, setRemoveLogoFlag] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       phone: '', email: '', website: '', address: '', village: '', pastorName: '',
+      latitude: '' as any, longitude: '' as any,
       region: defaultLocation?.region || '',
       district: defaultLocation?.district || '',
       traditionalAuthority: defaultLocation?.traditionalAuthority || '',
       ...defaultValues
     },
   });
+
+  const handleAutodetect = () => {
+    if (!navigator.geolocation) return;
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setValue('latitude', pos.coords.latitude as any);
+        setValue('longitude', pos.coords.longitude as any);
+        setDetectingLocation(false);
+      },
+      () => setDetectingLocation(false),
+      { timeout: 10000 }
+    );
+  };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -157,6 +175,35 @@ function ChurchForm({ defaultValues, defaultLocation, existingLogoUrl, onSubmit,
         <Label>Address <span className="text-muted-foreground text-xs">(optional)</span></Label>
         <Input {...register('address')} />
       </div>
+
+      {/* Coordinates */}
+      <div className="rounded-lg border p-3 space-y-3 bg-muted/30">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Location Coordinates</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            disabled={detectingLocation}
+            onClick={handleAutodetect}
+          >
+            {detectingLocation ? 'Detecting…' : '⊕ Autodetect'}
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs">Latitude</Label>
+            <Input {...register('latitude')} placeholder="e.g. -1.2921" className="h-8 text-xs" />
+          </div>
+          <div>
+            <Label className="text-xs">Longitude</Label>
+            <Input {...register('longitude')} placeholder="e.g. 36.8219" className="h-8 text-xs" />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">Used to show an accurate map pin on your public church page.</p>
+      </div>
+
       <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
         {isPending ? 'Saving...' : submitLabel}
       </Button>
@@ -284,6 +331,8 @@ export default function ChurchesPage() {
     if (v.website) fd.append('website', v.website);
     if (v.address) fd.append('address', v.address);
     if (v.pastorName) fd.append('pastorName', v.pastorName);
+    if (v.latitude !== '' && v.latitude != null) fd.append('latitude', String(v.latitude));
+    if (v.longitude !== '' && v.longitude != null) fd.append('longitude', String(v.longitude));
     if (logoFile) fd.append('logo', logoFile);
     if (removeLogo) fd.append('removeLogo', 'true');
     return fd;

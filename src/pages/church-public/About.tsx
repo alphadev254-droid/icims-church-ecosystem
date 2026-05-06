@@ -9,7 +9,7 @@ interface AboutProps {
 export function About({ profile, pastorSrc, accent }: AboutProps) {
   return (
     <section id="about" style={{ background: '#faf9f7', padding: '100px 40px' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         {/* Section label */}
         <p style={{

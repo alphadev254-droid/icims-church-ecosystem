@@ -57,6 +57,15 @@ export interface PageData {
   ministryName: string;
   events: PublicEvent[];
   campaigns: PublicCampaign[];
+  churches: PublicChurch[];
+}
+
+export interface PublicChurch {
+  id: string;
+  name: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface NavLink {

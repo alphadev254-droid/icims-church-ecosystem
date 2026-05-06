@@ -31,7 +31,7 @@ export function Hero({
 
       <div style={{
         position: 'relative', zIndex: 1,
-        maxWidth: 1200, margin: '0 auto',
+        maxWidth: 1400, margin: '0 auto',
         padding: '0 40px 80px',
         width: '100%',
       }}>

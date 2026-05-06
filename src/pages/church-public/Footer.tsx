@@ -13,24 +13,22 @@ export function Footer({ ministryName, profile }: FooterProps) {
 
   return (
     <footer style={{
-      background: '#0a0a0a',
-      padding: '40px 40px',
+      background: '#1c2340',
+      borderTop: '1px solid rgba(255,255,255,0.08)',
+      padding: '32px 40px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       flexWrap: 'wrap', gap: 12,
     }}>
-      <p style={{
-        fontSize: 12, color: 'rgba(255,255,255,0.45)',
-        letterSpacing: '0.05em',
-      }}>
+      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em' }}>
         © {year} {ministryName}{profile.address ? `, ${profile.address.split(',').pop()?.trim()}` : ''}.
       </p>
       <p style={{
         fontFamily: 'Georgia, serif',
         fontSize: 11, color: 'rgba(255,255,255,0.25)',
-        letterSpacing: '0.2em', textTransform: 'uppercase',
+        letterSpacing: '0.15em', textTransform: 'uppercase',
         fontStyle: 'italic',
       }}>
-        Soli Deo Gloria
+        "For where two or three gather in my name, there am I." — Matt. 18:20
       </p>
       <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.05em' }}>
         Powered by{' '}

@@ -35,13 +35,14 @@ export function Navbar({
 
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-        background: scrolled ? 'rgba(10,10,10,0.96)' : 'transparent',
+        background: scrolled ? 'rgba(255,255,255,0.97)' : 'transparent',
         backdropFilter: scrolled ? 'blur(12px)' : 'none',
+        boxShadow: scrolled ? '0 1px 0 rgba(0,0,0,0.08)' : 'none',
         transition: 'background 0.4s',
         padding: '0 40px',
       }}>
         <div style={{
-          maxWidth: 1200, margin: '0 auto',
+          maxWidth: 1400, margin: '0 auto',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           height: 72,
         }}>
@@ -63,7 +64,8 @@ export function Navbar({
             <span style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
               fontSize: 15, fontWeight: 700, letterSpacing: '0.05em',
-              color: '#fff',
+              color: scrolled ? '#1c2340' : '#fff',
+              transition: 'color 0.3s',
             }}>{ministryName}</span>
           </a>
 
@@ -72,11 +74,11 @@ export function Navbar({
             {navLinks.map(link => (
               <a key={link.href} href={link.href} style={{
                 fontSize: 13, fontWeight: 500, letterSpacing: '0.06em',
-                color: 'rgba(255,255,255,0.80)', textDecoration: 'none',
-                transition: 'color 0.2s',
+                color: scrolled ? '#374151' : 'rgba(255,255,255,0.80)',
+                textDecoration: 'none', transition: 'color 0.2s',
               }}
-              onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#fff'}
-              onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.80)'}
+              onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = scrolled ? '#1c2340' : '#fff'}
+              onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = scrolled ? '#374151' : 'rgba(255,255,255,0.80)'}
               >{link.label}</a>
             ))}
           </div>
@@ -88,28 +90,25 @@ export function Navbar({
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 fontSize: 13, fontWeight: 500, letterSpacing: '0.06em',
-                color: 'rgba(255,255,255,0.80)', padding: 0,
-                transition: 'color 0.2s',
+                color: scrolled ? '#374151' : 'rgba(255,255,255,0.80)',
+                padding: 0, transition: 'color 0.2s',
               }}
-              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = '#fff'}
-              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.80)'}
+              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = scrolled ? '#1c2340' : '#fff'}
+              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = scrolled ? '#374151' : 'rgba(255,255,255,0.80)'}
             >
               Sign In
             </button>
             <a href="#services" style={{
               fontSize: 13, fontWeight: 600, letterSpacing: '0.06em',
-              color: '#fff', textDecoration: 'none',
-              border: '1px solid rgba(255,255,255,0.6)',
-              padding: '8px 20px',
-              transition: 'background 0.2s, border-color 0.2s',
+              color: scrolled ? '#1c2340' : '#fff', textDecoration: 'none',
+              border: `1px solid ${scrolled ? '#1c2340' : 'rgba(255,255,255,0.6)'}`,
+              padding: '8px 20px', transition: 'background 0.2s, border-color 0.2s',
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.1)';
-              (e.currentTarget as HTMLAnchorElement).style.borderColor = '#fff';
+              (e.currentTarget as HTMLAnchorElement).style.background = scrolled ? 'rgba(28,35,64,0.08)' : 'rgba(255,255,255,0.1)';
             }}
             onMouseLeave={e => {
               (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-              (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.6)';
             }}
             >Plan a Visit ↗</a>
           </div>

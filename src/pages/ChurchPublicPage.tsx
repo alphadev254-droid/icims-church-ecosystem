@@ -32,7 +32,7 @@ function ScriptureBreak({ bannerSrc, accent }: { bannerSrc: string; accent: stri
         position: 'absolute', inset: 0,
         background: 'rgba(0,0,0,0.72)',
       }} />
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: 680, margin: '0 auto' }}>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 800, margin: '0 auto' }}>
         <p style={{
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontSize: 'clamp(1.2rem, 3vw, 1.8rem)',
@@ -101,7 +101,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
     );
   }
 
-  const { profile, ministryName, events, campaigns } = data;
+  const { profile, ministryName, events, campaigns, churches } = data;
   const accent       = profile.primaryColor || '#8b6f47';
   const serviceTimes = parseServiceTimes(profile.serviceTimes);
 
@@ -164,7 +164,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
 
       {hasCampaigns && <Give    campaigns={campaigns} accent={accent} />}
       {hasEvents    && <Events  events={events} accent={accent} />}
-      {hasContact   && <Contact profile={profile} accent={accent} />}
+      {hasContact   && <Contact profile={profile} accent={accent} churches={churches ?? []} />}
 
       <Footer
         ministryName={ministryName}
