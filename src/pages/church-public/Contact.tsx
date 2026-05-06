@@ -45,7 +45,7 @@ function getGoogleMapsUrl(church: PublicChurch | null, fallbackAddress?: string)
   return 'https://maps.google.com';
 }
 
-export function Contact({ profile, churches }: ContactProps) {
+export function Contact({ profile, accent, churches }: ContactProps) {
   // Default to first church that has coordinates or address, else null
   const defaultChurch = churches.find(c => c.latitude || c.address) ?? churches[0] ?? null;
   const [selectedChurch, setSelectedChurch] = useState<PublicChurch | null>(defaultChurch);
