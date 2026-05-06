@@ -81,6 +81,11 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
       if (item.to === '/dashboard/transactions') {
         return currentUser?.roleName !== 'member';
       }
+
+      // Hide packages from members — they have no subscription to manage
+      if (item.to === '/dashboard/packages') {
+        return currentUser?.roleName !== 'member';
+      }
       
       // Show teams to all users (members see read-only view of their teams)
       if (item.to === '/dashboard/teams') {
@@ -128,6 +133,10 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
       }
       // Hide transactions route from members
       if (item.to === '/dashboard/transactions' && currentUser?.roleName === 'member') {
+        continue;
+      }
+      // Hide packages route from members
+      if (item.to === '/dashboard/packages' && currentUser?.roleName === 'member') {
         continue;
       }
       // Show teams route to all users (members see read-only view)

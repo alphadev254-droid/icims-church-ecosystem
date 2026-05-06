@@ -50,11 +50,12 @@ const campaignSchema = z.object({
 
 type CampaignFormValues = z.infer<typeof campaignSchema>;
 
-function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
+function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditing = false }: {
   defaultValues?: Partial<CampaignFormValues>;
   onSubmit: (v: CampaignFormValues) => void;
   isPending: boolean;
   submitLabel: string;
+  isEditing?: boolean;
 }) {
   const { register, handleSubmit, setValue, watch, formState: { errors, isValid } } = useForm<CampaignFormValues>({
     resolver: zodResolver(campaignSchema),
@@ -81,8 +82,11 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel }: {
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit, handleInvalid)} className="space-y-3 sm:space-y-4">
-      <ChurchSelect value={churchId} onValueChange={v => setValue('churchId', v, { shouldValidate: true })} />
-      {errors.churchId && <p className="text-xs text-destructive">{errors.churchId.message}</p>}
+      <div className={isEditing ? 'opacity-60 pointer-events-none' : ''}>
+        <ChurchSelect value={churchId} onValueChange={v => setValue('churchId', v, { shouldValidate: true })} />
+        {isEditing && <p className="text-xs text-muted-foreground mt-1">Church cannot be changed after creation.</p>}
+        {!isEditing && errors.churchId && <p className="text-xs text-destructive">{errors.churchId.message}</p>}
+      </div>
 
       <div>
         <Label className="text-xs sm:text-sm">Campaign Name *</Label>
@@ -676,6 +680,7 @@ export default function GivingPage() {
               onSubmit={v => updateMutation.mutate({ id: editCampaign.id, dto: v })}
               isPending={updateMutation.isPending}
               submitLabel="Update"
+              isEditing={true}
             />
           )}
         </DialogContent>
