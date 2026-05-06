@@ -35,7 +35,7 @@ export function Navbar({
 
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-        background: scrolled ? '#362e2e' : 'transparent',
+        background: scrolled ? '#111822' : 'transparent',
         backdropFilter: scrolled ? 'blur(12px)' : 'none',
         boxShadow: scrolled ? '0 1px 0 rgba(0,0,0,0.2)' : 'none',
         transition: 'background 0.4s',

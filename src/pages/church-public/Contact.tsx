@@ -106,7 +106,7 @@ export function Contact({ profile, accent, churches }: ContactProps) {
                 <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', color: DIM, marginBottom: 14 }}>
                   Our Locations
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
                   {churches.map(c => {
                     const isSelected = selectedChurch?.id === c.id;
                     return (
