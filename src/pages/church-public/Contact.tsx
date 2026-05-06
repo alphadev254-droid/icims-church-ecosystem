@@ -56,7 +56,7 @@ export function Contact({ profile, churches }: ContactProps) {
   const showChurchList = churches.length > 1;
 
   return (
-    <section id="contact" style={{ background: '#1c2340', padding: '100px 40px' }}>
+    <section id="contact" style={{ background: accent, padding: '100px 40px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         <p style={{
