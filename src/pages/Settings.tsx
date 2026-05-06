@@ -245,10 +245,10 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">{user.church.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">
+                  <p className="text-xs text-muted-foreground">
                     {user?.roleName === 'member'
-                      ? `${user.church.level} · ${user.church.location}`
-                      : `${user.church.level} · ${user.church.package} package · ${user.church.location}`}
+                      ? user.church.location || 'Your Church'
+                      : [user.church.level, user.church.package ? `${user.church.package} package` : null, user.church.location].filter(Boolean).join(' · ')}
                   </p>
                 </div>
               </div>

@@ -1,4 +1,3 @@
-import { Clock, MapPin } from 'lucide-react';
 import type { ServiceTime } from './types';
 
 interface ServicesProps {
@@ -8,39 +7,80 @@ interface ServicesProps {
 
 export function Services({ serviceTimes, accent }: ServicesProps) {
   return (
-    <section id="services" style={{ background: '#f8f7f5', padding: '80px 24px' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <p style={{ color: accent, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
-          Join Us
+    <section id="services" style={{ background: '#fff', padding: '100px 40px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
+        <p style={{
+          fontSize: 10, fontWeight: 600, letterSpacing: '0.22em',
+          textTransform: 'uppercase', color: '#888', marginBottom: 20,
+        }}>Join Us</p>
+
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap', gap: 16,
+        }}>
+          <h2 style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontSize: 'clamp(2rem, 4vw, 3rem)',
+            fontWeight: 400, color: '#0a0a0a',
+            lineHeight: 1.15, letterSpacing: '-0.01em',
+            margin: 0,
+          }}>Service times.</h2>
+        </div>
+
+        <p style={{
+          fontSize: 14, color: '#888', lineHeight: 1.7,
+          marginBottom: 56, maxWidth: 480,
+        }}>
+          Doors open thirty minutes before each service. All are welcome — come as you are.
         </p>
-        <h2 style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', fontWeight: 800, color: '#111', marginBottom: 40 }}>
-          Service Times
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20 }}>
+
+        {/* Service cards grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+          gap: 1,
+          background: '#e8e4de',
+          border: '1px solid #e8e4de',
+        }}>
           {serviceTimes.map((s, i) => (
             <div key={i} style={{
-              background: '#fff', borderRadius: 14, padding: '28px 24px',
-              border: '1px solid #ede9e3', borderTop: `4px solid ${accent}`,
-              transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'default',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)';
-              (e.currentTarget as HTMLDivElement).style.boxShadow = '0 12px 32px rgba(0,0,0,0.10)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-              (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-            }}
-            >
-              <p style={{ fontWeight: 700, fontSize: 17, color: '#111', marginBottom: 12 }}>{s.name}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#6b7280', fontSize: 13, marginBottom: 6 }}>
-                <Clock size={14} /> {s.day}
-              </div>
-              <p style={{ fontSize: 22, fontWeight: 800, color: accent, marginBottom: s.location ? 10 : 0 }}>{s.time}</p>
+              background: '#fff',
+              padding: '36px 32px',
+              position: 'relative',
+            }}>
+              {/* Number */}
+              <p style={{
+                fontSize: 11, fontWeight: 400, letterSpacing: '0.15em',
+                color: '#bbb', marginBottom: 20,
+                fontFamily: 'Georgia, serif',
+              }}>
+                {String(i).padStart(2, '0')}
+              </p>
+
+              {/* Service name */}
+              <h3 style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: 18, fontWeight: 400, color: '#0a0a0a',
+                marginBottom: 16, lineHeight: 1.3,
+              }}>{s.name}</h3>
+
+              {/* Time — large */}
+              <p style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: 28, fontWeight: 400, color: '#0a0a0a',
+                marginBottom: 8, letterSpacing: '-0.01em',
+              }}>{s.time}</p>
+
+              {/* Day */}
+              <p style={{
+                fontSize: 12, color: '#888', letterSpacing: '0.1em',
+                textTransform: 'uppercase', marginBottom: s.location ? 6 : 0,
+              }}>{s.day}</p>
+
+              {/* Location */}
               {s.location && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#9ca3af', fontSize: 13 }}>
-                  <MapPin size={13} /> {s.location}
-                </div>
+                <p style={{ fontSize: 12, color: '#aaa' }}>{s.location}</p>
               )}
             </div>
           ))}

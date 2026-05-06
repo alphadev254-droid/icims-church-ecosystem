@@ -1,4 +1,3 @@
-import { HandCoins, ChevronRight } from 'lucide-react';
 import type { PublicCampaign } from './types';
 import { resolveImg } from './utils';
 
@@ -11,62 +10,92 @@ interface GiveProps {
 
 export function Give({ campaigns, accent }: GiveProps) {
   return (
-    <section id="give" style={{ background: `${accent}14`, padding: '80px 24px' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <p style={{ color: accent, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
-          Support the Ministry
+    <section id="give" style={{ background: '#faf9f7', padding: '100px 40px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
+        <p style={{
+          fontSize: 10, fontWeight: 600, letterSpacing: '0.22em',
+          textTransform: 'uppercase', color: '#888', marginBottom: 20,
+        }}>Support the Ministry</p>
+
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap', gap: 16,
+        }}>
+          <h2 style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontSize: 'clamp(2rem, 4vw, 3rem)',
+            fontWeight: 400, color: '#0a0a0a',
+            lineHeight: 1.15, letterSpacing: '-0.01em',
+            margin: 0,
+          }}>Give online.</h2>
+        </div>
+
+        <p style={{
+          fontSize: 14, color: '#888', lineHeight: 1.7,
+          marginBottom: 56, maxWidth: 520,
+        }}>
+          Your generosity makes a difference. Every gift helps us serve our community, advance the mission, and proclaim the gospel.
         </p>
-        <h2 style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', fontWeight: 800, color: '#111', marginBottom: 12 }}>
-          Give Online
-        </h2>
-        <p style={{ fontSize: 16, color: '#6b7280', lineHeight: 1.7, maxWidth: 560, marginBottom: 44 }}>
-          Your generosity makes a difference. Every gift helps us serve our community.
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
+
+        {/* Campaign grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: 1,
+          background: '#e8e4de',
+          border: '1px solid #e8e4de',
+        }}>
           {campaigns.map(c => {
             const cImg = resolveImg(c.imageUrl);
             return (
-              <div key={c.id} style={{
-                background: '#fff', borderRadius: 16,
-                overflow: 'hidden', border: '1px solid #ede9e3',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-              }}>
-                {cImg && (
-                  <img src={cImg} alt={c.name} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
-                )}
-                <div style={{ padding: '22px' }}>
-                  <span style={{
-                    display: 'inline-block',
-                    background: `${accent}22`, color: accent,
-                    fontSize: 11, fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.1em',
-                    padding: '3px 10px', borderRadius: 9999, marginBottom: 10,
+              <div key={c.id} style={{ background: '#fff', padding: '32px 28px' }}>
+                {/* Category */}
+                <p style={{
+                  fontSize: 10, fontWeight: 600, letterSpacing: '0.2em',
+                  textTransform: 'uppercase', color: '#888', marginBottom: 14,
+                }}>
+                  {c.category.replace(/_/g, ' ')}
+                </p>
+
+                {/* Name */}
+                <h3 style={{
+                  fontFamily: 'Georgia, serif',
+                  fontSize: 20, fontWeight: 400, color: '#0a0a0a',
+                  marginBottom: 12, lineHeight: 1.3,
+                }}>{c.name}</h3>
+
+                {/* Description */}
+                {c.description && (
+                  <p style={{
+                    fontSize: 13, color: '#666', lineHeight: 1.7,
+                    marginBottom: 24,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
                   }}>
-                    {c.category.replace(/_/g, ' ')}
-                  </span>
-                  <h3 style={{ fontWeight: 700, fontSize: 17, color: '#111', marginBottom: 8 }}>{c.name}</h3>
-                  {c.description && (
-                    <p style={{
-                      fontSize: 13, color: '#6b7280', lineHeight: 1.65, marginBottom: 18,
-                      display: '-webkit-box', WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                    }}>
-                      {c.description}
-                    </p>
-                  )}
-                  <a
-                    href={`${FRONTEND}/giving/${c.id}`}
-                    target="_blank" rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      background: accent, color: '#fff',
-                      padding: '10px 20px', borderRadius: 8,
-                      fontSize: 13, fontWeight: 700, textDecoration: 'none',
-                    }}
-                  >
-                    <HandCoins size={15} /> Give Now <ChevronRight size={14} />
-                  </a>
-                </div>
+                    {c.description}
+                  </p>
+                )}
+
+                {/* Give link */}
+                <a
+                  href={`${FRONTEND}/giving/${c.id}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{
+                    fontSize: 12, fontWeight: 600, letterSpacing: '0.1em',
+                    textTransform: 'uppercase', color: '#0a0a0a',
+                    textDecoration: 'none',
+                    borderBottom: '1px solid #0a0a0a',
+                    paddingBottom: 2,
+                    transition: 'opacity 0.2s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.opacity = '0.5'}
+                  onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.opacity = '1'}
+                >
+                  Give Now →
+                </a>
               </div>
             );
           })}

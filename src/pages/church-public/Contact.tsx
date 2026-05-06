@@ -1,15 +1,19 @@
-import { Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
 import type { Profile } from './types';
 
-// SVG social icons (lucide Facebook/Youtube are deprecated)
+// SVG social icons
 const IconFacebook = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
   </svg>
 );
 const IconYoutube = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
     <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.95C5.12 20 12 20 12 20s6.88 0 8.59-.47a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58zM9.75 15.02V8.98L15.5 12z" />
+  </svg>
+);
+const IconWhatsApp = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
   </svg>
 );
 
@@ -18,134 +22,134 @@ interface ContactProps {
   accent: string;
 }
 
-function SocialBtn({ href, title, children, accent }: { href: string; title: string; children: React.ReactNode; accent: string }) {
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer" title={title}
-      style={{
-        width: 44, height: 44, borderRadius: 12,
-        background: '#f3f0eb', display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-        color: '#374151', textDecoration: 'none',
-        transition: 'background 0.15s, color 0.15s',
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLAnchorElement).style.background = accent;
-        (e.currentTarget as HTMLAnchorElement).style.color = '#fff';
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLAnchorElement).style.background = '#f3f0eb';
-        (e.currentTarget as HTMLAnchorElement).style.color = '#374151';
-      }}
-    >
-      {children}
-    </a>
-  );
-}
-
-function ContactRow({ href, icon, label, value, accent }: {
-  href?: string; icon: React.ReactNode; label: string; value: string; accent: string;
-}) {
-  const inner = (
-    <>
-      <div style={{
-        width: 44, height: 44, borderRadius: 12,
-        background: `${accent}18`, flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        {icon}
-      </div>
-      <div>
-        <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 2, fontWeight: 600 }}>{label}</p>
-        <p style={{ fontWeight: 700, fontSize: 15 }}>{value}</p>
-      </div>
-    </>
-  );
-
-  const rowStyle: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', gap: 16,
-    padding: '16px 20px', borderRadius: 12,
-    border: '1px solid #f3f0eb',
-    transition: 'background 0.15s',
-    color: '#374151',
-  };
-
-  if (href) {
-    return (
-      <a href={href} style={{ ...rowStyle, textDecoration: 'none' }}
-        onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = '#fafaf9'}
-        onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'}
-      >
-        {inner}
-      </a>
-    );
-  }
-  return <div style={rowStyle}>{inner}</div>;
-}
-
 export function Contact({ profile, accent }: ContactProps) {
+  const mapsUrl = profile.address
+    ? `https://maps.google.com/?q=${encodeURIComponent(profile.address)}`
+    : null;
+
   return (
-    <section id="contact" style={{ background: '#fff', padding: '80px 24px' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <p style={{ color: accent, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
-          Get in Touch
+    <section id="contact" style={{ background: '#fff', padding: '100px 40px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
+        <p style={{
+          fontSize: 10, fontWeight: 600, letterSpacing: '0.22em',
+          textTransform: 'uppercase', color: '#888', marginBottom: 20,
+        }}>Get in Touch</p>
+
+        <h2 style={{
+          fontFamily: 'Georgia, "Times New Roman", serif',
+          fontSize: 'clamp(2rem, 4vw, 3rem)',
+          fontWeight: 400, color: '#0a0a0a',
+          lineHeight: 1.15, letterSpacing: '-0.01em',
+          marginBottom: 16,
+        }}>We'd love to hear from you.</h2>
+
+        <p style={{
+          fontSize: 14, color: '#888', lineHeight: 1.7,
+          marginBottom: 64, maxWidth: 480,
+        }}>
+          Reach out anytime — whether you're planning a visit, looking for prayer, or want to learn more about our community.
         </p>
-        <h2 style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', fontWeight: 800, color: '#111', marginBottom: 48 }}>
-          Contact Us
-        </h2>
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: profile.address ? '1fr 1fr' : '1fr',
-          gap: 48, alignItems: 'start',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 80, alignItems: 'start',
         }}>
-          {/* Left: contact rows */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Left: contact details */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
             {profile.phone && (
-              <ContactRow href={`tel:${profile.phone}`} label="Phone" value={profile.phone} accent={accent}
-                icon={<Phone size={20} color={accent} />} />
+              <a href={`tel:${profile.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <p style={{
+                  fontSize: 10, fontWeight: 600, letterSpacing: '0.2em',
+                  textTransform: 'uppercase', color: '#888', marginBottom: 6,
+                }}>Phone</p>
+                <p style={{ fontSize: 16, color: '#0a0a0a', fontWeight: 500 }}>{profile.phone}</p>
+              </a>
             )}
+
             {profile.email && (
-              <ContactRow href={`mailto:${profile.email}`} label="Email" value={profile.email} accent={accent}
-                icon={<Mail size={20} color={accent} />} />
+              <a href={`mailto:${profile.email}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <p style={{
+                  fontSize: 10, fontWeight: 600, letterSpacing: '0.2em',
+                  textTransform: 'uppercase', color: '#888', marginBottom: 6,
+                }}>Email</p>
+                <p style={{ fontSize: 16, color: '#0a0a0a', fontWeight: 500 }}>{profile.email}</p>
+              </a>
             )}
+
             {profile.address && (
-              <ContactRow label="Address" value={profile.address} accent={accent}
-                icon={<MapPin size={20} color={accent} />} />
+              <div>
+                <p style={{
+                  fontSize: 10, fontWeight: 600, letterSpacing: '0.2em',
+                  textTransform: 'uppercase', color: '#888', marginBottom: 6,
+                }}>Address</p>
+                <p style={{ fontSize: 16, color: '#0a0a0a', fontWeight: 500, marginBottom: 8 }}>
+                  {profile.address}
+                </p>
+                {mapsUrl && (
+                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={{
+                    fontSize: 12, fontWeight: 600, letterSpacing: '0.1em',
+                    textTransform: 'uppercase', color: '#0a0a0a',
+                    textDecoration: 'none',
+                    borderBottom: '1px solid #0a0a0a',
+                    paddingBottom: 2,
+                    transition: 'opacity 0.2s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.opacity = '0.5'}
+                  onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.opacity = '1'}
+                  >
+                    Get directions →
+                  </a>
+                )}
+              </div>
             )}
 
             {/* Social */}
             {(profile.facebookUrl || profile.youtubeUrl || profile.whatsappNumber) && (
-              <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+              <div style={{ display: 'flex', gap: 16, paddingTop: 8 }}>
                 {profile.facebookUrl && (
-                  <SocialBtn href={profile.facebookUrl} title="Facebook" accent={accent}>
+                  <a href={profile.facebookUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#555', textDecoration: 'none', transition: 'color 0.2s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#0a0a0a'}
+                    onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = '#555'}
+                    title="Facebook"
+                  >
                     <IconFacebook />
-                  </SocialBtn>
+                  </a>
                 )}
                 {profile.youtubeUrl && (
-                  <SocialBtn href={profile.youtubeUrl} title="YouTube" accent={accent}>
+                  <a href={profile.youtubeUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#555', textDecoration: 'none', transition: 'color 0.2s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#0a0a0a'}
+                    onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = '#555'}
+                    title="YouTube"
+                  >
                     <IconYoutube />
-                  </SocialBtn>
+                  </a>
                 )}
                 {profile.whatsappNumber && (
-                  <SocialBtn href={`https://wa.me/${profile.whatsappNumber.replace(/\D/g, '')}`} title="WhatsApp" accent={accent}>
-                    <MessageCircle size={20} />
-                  </SocialBtn>
+                  <a href={`https://wa.me/${profile.whatsappNumber.replace(/\D/g, '')}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#555', textDecoration: 'none', transition: 'color 0.2s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#0a0a0a'}
+                    onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = '#555'}
+                    title="WhatsApp"
+                  >
+                    <IconWhatsApp />
+                  </a>
                 )}
               </div>
             )}
           </div>
 
-          {/* Right: map */}
+          {/* Right: map embed */}
           {profile.address && (
-            <div style={{
-              borderRadius: 16, overflow: 'hidden',
-              border: '1px solid #ede9e3', height: 340,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.07)',
-            }}>
+            <div style={{ height: 360, background: '#f0ece6', overflow: 'hidden' }}>
               <iframe
                 title="Church location"
                 width="100%" height="100%"
-                style={{ border: 0 }}
+                style={{ border: 0, filter: 'grayscale(30%)' }}
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 src={`https://www.google.com/maps?q=${encodeURIComponent(profile.address)}&output=embed`}

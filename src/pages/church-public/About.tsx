@@ -8,76 +8,106 @@ interface AboutProps {
 
 export function About({ profile, pastorSrc, accent }: AboutProps) {
   return (
-    <section id="about" style={{ background: '#fff', padding: '80px 24px' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <p style={{ color: accent, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
-          About Us
-        </p>
-        <h2 style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', fontWeight: 800, color: '#111', marginBottom: 48 }}>
-          Who We Are
-        </h2>
+    <section id="about" style={{ background: '#faf9f7', padding: '100px 40px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
+        {/* Section label */}
+        <p style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: 10, fontWeight: 400, letterSpacing: '0.22em',
+          textTransform: 'uppercase', color: '#888',
+          marginBottom: 20,
+        }}>About Us</p>
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: profile.pastorName ? 'minmax(0,1.4fr) minmax(0,1fr)' : '1fr',
-          gap: 56, alignItems: 'start',
+          gridTemplateColumns: profile.pastorName ? '1fr 1fr' : '1fr',
+          gap: 80, alignItems: 'start',
         }}>
-          {/* Left: text + vision/mission */}
+          {/* Left: text */}
           <div>
+            <h2 style={{
+              fontFamily: 'Georgia, "Times New Roman", serif',
+              fontSize: 'clamp(2rem, 4vw, 3rem)',
+              fontWeight: 400, color: '#0a0a0a',
+              lineHeight: 1.15, marginBottom: 32,
+              letterSpacing: '-0.01em',
+            }}>Who we are.</h2>
+
             {profile.aboutText && (
-              <p style={{ fontSize: 17, lineHeight: 1.8, color: '#374151', marginBottom: 36, whiteSpace: 'pre-wrap' }}>
+              <p style={{
+                fontSize: 16, lineHeight: 1.85, color: '#444',
+                marginBottom: 36, whiteSpace: 'pre-wrap',
+              }}>
                 {profile.aboutText}
               </p>
             )}
+
+            {/* Vision / Mission */}
             {(profile.visionText || profile.missionText) && (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: profile.visionText && profile.missionText ? '1fr 1fr' : '1fr',
-                gap: 16,
-              }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {profile.visionText && (
-                  <div style={{ background: '#fafaf9', borderLeft: `4px solid ${accent}`, padding: '20px 22px', borderRadius: '0 10px 10px 0' }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Vision</p>
-                    <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7 }}>{profile.visionText}</p>
+                  <div>
+                    <p style={{
+                      fontSize: 10, fontWeight: 600, letterSpacing: '0.2em',
+                      textTransform: 'uppercase', color: '#888', marginBottom: 8,
+                    }}>Vision</p>
+                    <p style={{ fontSize: 15, color: '#333', lineHeight: 1.7 }}>{profile.visionText}</p>
                   </div>
                 )}
                 {profile.missionText && (
-                  <div style={{ background: '#fafaf9', borderLeft: `4px solid ${accent}`, padding: '20px 22px', borderRadius: '0 10px 10px 0' }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Mission</p>
-                    <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7 }}>{profile.missionText}</p>
+                  <div>
+                    <p style={{
+                      fontSize: 10, fontWeight: 600, letterSpacing: '0.2em',
+                      textTransform: 'uppercase', color: '#888', marginBottom: 8,
+                    }}>Mission</p>
+                    <p style={{ fontSize: 15, color: '#333', lineHeight: 1.7 }}>{profile.missionText}</p>
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Right: pastor card */}
+          {/* Right: pastor */}
           {profile.pastorName && (
-            <div style={{
-              background: '#fafaf9', borderRadius: 20, padding: '36px 28px',
-              textAlign: 'center', border: `1px solid ${accent}22`,
-              boxShadow: `0 4px 24px ${accent}11`,
-            }}>
+            <div>
               {pastorSrc ? (
                 <img src={pastorSrc} alt={profile.pastorName} style={{
-                  width: 120, height: 120, borderRadius: '50%', objectFit: 'cover',
-                  display: 'block', margin: '0 auto 20px',
-                  border: `4px solid ${accent}`, boxShadow: `0 4px 16px ${accent}44`,
+                  width: '100%', maxHeight: 420, objectFit: 'cover',
+                  display: 'block', marginBottom: 24,
+                  filter: 'grayscale(15%)',
                 }} />
               ) : (
                 <div style={{
-                  width: 120, height: 120, borderRadius: '50%',
-                  background: `${accent}22`, border: `4px solid ${accent}`,
+                  width: '100%', height: 320,
+                  background: '#e8e4de',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 20px', fontSize: 44,
-                }}>👤</div>
+                  marginBottom: 24, fontSize: 48, color: '#bbb',
+                }}>✝</div>
               )}
-              <p style={{ fontWeight: 800, fontSize: 20, color: '#111', marginBottom: 4 }}>{profile.pastorName}</p>
-              <p style={{ fontSize: 11, color: accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>
-                Lead Pastor
-              </p>
+              <p style={{
+                fontSize: 10, fontWeight: 600, letterSpacing: '0.2em',
+                textTransform: 'uppercase', color: '#888', marginBottom: 6,
+              }}>Lead Pastor</p>
+              <h3 style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: 22, fontWeight: 400, color: '#0a0a0a',
+                marginBottom: 12,
+              }}>{profile.pastorName}</h3>
               {profile.pastorBio && (
-                <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.75 }}>{profile.pastorBio}</p>
+                <p style={{ fontSize: 14, color: '#555', lineHeight: 1.75 }}>
+                  {profile.pastorBio}
+                </p>
+              )}
+              {profile.visionText && (
+                <p style={{
+                  fontFamily: 'Georgia, serif',
+                  fontSize: 14, fontStyle: 'italic', color: '#888',
+                  marginTop: 20, borderTop: '1px solid #e0dbd4',
+                  paddingTop: 16,
+                }}>
+                  "{profile.visionText}"
+                </p>
               )}
             </div>
           )}

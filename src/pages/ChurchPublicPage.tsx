@@ -1,23 +1,55 @@
 /**
  * ChurchPublicPage — rendered when visiting a subdomain like
  * grace-community-church.churchcentral.church
- *
- * No auth, no dashboard layout. Fetches from GET /api/p/:slug.
  */
 
 import { useEffect, useState } from 'react';
 import type { PageData, NavLink } from './church-public/types';
 import { parseServiceTimes, resolveImg } from './church-public/utils';
-import { Navbar }   from './church-public/Navbar';
-import { Hero }     from './church-public/Hero';
-import { About }    from './church-public/About';
-import { Services } from './church-public/Services';
-import { Events }   from './church-public/Events';
-import { Give }     from './church-public/Give';
-import { Contact }  from './church-public/Contact';
-import { Footer }   from './church-public/Footer';
+import { Navbar }        from './church-public/Navbar';
+import { Hero }          from './church-public/Hero';
+import { About }         from './church-public/About';
+import { Services }      from './church-public/Services';
+import { Events }        from './church-public/Events';
+import { Give }          from './church-public/Give';
+import { Contact }       from './church-public/Contact';
+import { Footer }        from './church-public/Footer';
+import { SignInDialog }  from './church-public/SignInDialog';
+import defaultHero from '@/assets/hero-church-subdomain.png';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
+
+// Scripture break — full-width dark image with a quote
+function ScriptureBreak({ bannerSrc, accent }: { bannerSrc: string; accent: string }) {
+  return (
+    <div style={{
+      position: 'relative',
+      background: `url(${bannerSrc}) center/cover no-repeat`,
+      padding: '100px 40px',
+      textAlign: 'center',
+    }}>
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'rgba(0,0,0,0.72)',
+      }} />
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 680, margin: '0 auto' }}>
+        <p style={{
+          fontFamily: 'Georgia, "Times New Roman", serif',
+          fontSize: 'clamp(1.2rem, 3vw, 1.8rem)',
+          fontWeight: 400, fontStyle: 'italic',
+          color: 'rgba(255,255,255,0.88)',
+          lineHeight: 1.65, marginBottom: 20,
+        }}>
+          "Not forsaking the assembling of ourselves together — but exhorting one another."
+        </p>
+        <p style={{
+          fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase',
+          color: 'rgba(255,255,255,0.4)',
+        }}>— Hebrews 10:25</p>
+      </div>
+    </div>
+  );
+}
 
 export default function ChurchPublicPage({ slug }: { slug: string }) {
   const [data, setData]         = useState<PageData | null>(null);
@@ -25,6 +57,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
   const [notFound, setNotFound] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/p/${slug}`)
@@ -34,31 +67,42 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
   }, [slug]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => setScrolled(window.scrollY > 60);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: '#888' }}>
-        Loading...
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100vh', fontFamily: 'Georgia, serif', color: '#888',
+        background: '#0a0a0a',
+      }}>
+        <p style={{ letterSpacing: '0.15em', fontSize: 13, textTransform: 'uppercase' }}>Loading…</p>
       </div>
     );
   }
 
   if (notFound || !data) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', gap: 12 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#111' }}>Page not found</h1>
-        <p style={{ color: '#888', fontSize: 14 }}>This church page doesn't exist or hasn't been published yet.</p>
-        <a href="https://churchcentral.church" style={{ color: '#d4a574', fontSize: 14 }}>← Back to ICIMS</a>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', minHeight: '100vh',
+        fontFamily: 'Georgia, serif', gap: 16, background: '#faf9f7',
+      }}>
+        <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#aaa' }}>404</p>
+        <h1 style={{ fontSize: 28, fontWeight: 400, color: '#0a0a0a' }}>Page not found</h1>
+        <p style={{ fontSize: 14, color: '#888' }}>This church page doesn't exist or hasn't been published yet.</p>
+        <a href="https://churchcentral.church" style={{ fontSize: 12, color: '#555', letterSpacing: '0.1em' }}>
+          ← Back to ICIMS
+        </a>
       </div>
     );
   }
 
   const { profile, ministryName, events, campaigns } = data;
-  const accent       = profile.primaryColor || '#d4a574';
+  const accent       = profile.primaryColor || '#8b6f47';
   const serviceTimes = parseServiceTimes(profile.serviceTimes);
 
   const hasAbout     = !!(profile.aboutText || profile.pastorName || profile.visionText || profile.missionText);
@@ -68,7 +112,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
   const hasCampaigns = campaigns.length > 0;
 
   const logoSrc   = resolveImg(profile.logoUrl);
-  const bannerSrc = resolveImg(profile.bannerUrl);
+  const bannerSrc = resolveImg(profile.bannerUrl) ?? defaultHero;
   const pastorSrc = resolveImg(profile.pastorPhoto);
 
   const navLinks: NavLink[] = [
@@ -81,8 +125,8 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
 
   return (
     <div style={{
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
-      color: '#1f2937',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#0a0a0a',
       background: '#fff',
       overflowX: 'hidden',
     }}>
@@ -95,6 +139,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
         onMenuToggle={() => setMenuOpen(o => !o)}
         onMenuClose={() => setMenuOpen(false)}
         navLinks={navLinks}
+        onSignIn={() => setSignInOpen(true)}
       />
 
       <Hero
@@ -109,30 +154,17 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
         hasCampaigns={hasCampaigns}
       />
 
-      {/* Welcome strip */}
-      <div style={{
-        background: `${accent}1a`,
-        borderTop: `1px solid ${accent}33`,
-        borderBottom: `1px solid ${accent}33`,
-        padding: '32px 24px',
-        textAlign: 'center',
-      }}>
-        <p style={{
-          fontStyle: 'italic',
-          fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
-          color: '#374151',
-          maxWidth: 680, margin: '0 auto',
-          lineHeight: 1.7,
-        }}>
-          "{profile.tagline || 'Everyone is welcome here.'}"
-        </p>
-      </div>
-
       {hasAbout    && <About    profile={profile} pastorSrc={pastorSrc} accent={accent} />}
       {hasServices && <Services serviceTimes={serviceTimes} accent={accent} />}
-      {hasCampaigns && <Give   campaigns={campaigns} accent={accent} />}
-      {hasEvents   && <Events  events={events} accent={accent} />}
-      {hasContact  && <Contact profile={profile} accent={accent} />}
+
+      {/* Scripture break between services and giving */}
+      {(hasServices || hasAbout) && (hasCampaigns || hasEvents) && (
+        <ScriptureBreak bannerSrc={bannerSrc} accent={accent} />
+      )}
+
+      {hasCampaigns && <Give    campaigns={campaigns} accent={accent} />}
+      {hasEvents    && <Events  events={events} accent={accent} />}
+      {hasContact   && <Contact profile={profile} accent={accent} />}
 
       <Footer
         ministryName={ministryName}
@@ -140,6 +172,14 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
         profile={profile}
         accent={accent}
         navLinks={navLinks}
+      />
+
+      <SignInDialog
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        accent={accent}
+        ministryName={ministryName}
+        logoInitial={ministryName.charAt(0).toUpperCase()}
       />
     </div>
   );
