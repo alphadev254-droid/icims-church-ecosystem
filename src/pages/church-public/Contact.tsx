@@ -17,9 +17,9 @@ const IconWhatsApp = () => (
   </svg>
 );
 
-const DIM   = 'rgba(255,255,255,0.45)';
-const LIGHT = 'rgba(255,255,255,0.75)';
-const WHITE = '#fff';
+const DIM   = 'rgba(0,0,0,0.35)';
+const LIGHT = 'rgba(0,0,0,0.60)';
+const WHITE = '#0a0a0a';
 
 interface ContactProps {
   profile: Profile;
@@ -56,7 +56,7 @@ export function Contact({ profile, accent, churches }: ContactProps) {
   const showChurchList = churches.length > 1;
 
   return (
-    <section id="contact" style={{ background: accent, padding: '100px 40px' }}>
+    <section id="contact" style={{ background: '#fff', padding: '100px 40px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         <p style={{
@@ -114,14 +114,14 @@ export function Contact({ profile, accent, churches }: ContactProps) {
                         key={c.id}
                         onClick={() => setSelectedChurch(c)}
                         style={{
-                          background: isSelected ? 'rgba(255,255,255,0.08)' : 'transparent',
+                          background: isSelected ? 'rgba(0,0,0,0.06)' : 'transparent',
                           border: 'none', cursor: 'pointer',
                           padding: '12px 16px', textAlign: 'left',
-                          borderLeft: `2px solid ${isSelected ? WHITE : 'rgba(255,255,255,0.15)'}`,
+                          borderLeft: `2px solid ${isSelected ? '#0a0a0a' : 'rgba(0,0,0,0.15)'}`,
                           transition: 'background 0.2s, border-color 0.2s',
                         }}
                         onMouseEnter={e => {
-                          if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)';
+                          if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.03)';
                         }}
                         onMouseLeave={e => {
                           if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
@@ -156,21 +156,21 @@ export function Contact({ profile, accent, churches }: ContactProps) {
                 {profile.facebookUrl && (
                   <a href={profile.facebookUrl} target="_blank" rel="noopener noreferrer" title="Facebook"
                     style={{ color: DIM, textDecoration: 'none', transition: 'color 0.2s' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = WHITE}
+                    onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#0a0a0a'}
                     onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = DIM}
                   ><IconFacebook /></a>
                 )}
                 {profile.youtubeUrl && (
                   <a href={profile.youtubeUrl} target="_blank" rel="noopener noreferrer" title="YouTube"
                     style={{ color: DIM, textDecoration: 'none', transition: 'color 0.2s' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = WHITE}
+                    onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#0a0a0a'}
                     onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = DIM}
                   ><IconYoutube /></a>
                 )}
                 {profile.whatsappNumber && (
                   <a href={`https://wa.me/${profile.whatsappNumber.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" title="WhatsApp"
                     style={{ color: DIM, textDecoration: 'none', transition: 'color 0.2s' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = WHITE}
+                    onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#0a0a0a'}
                     onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = DIM}
                   ><IconWhatsApp /></a>
                 )}
@@ -201,19 +201,19 @@ export function Contact({ profile, accent, churches }: ContactProps) {
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   fontSize: 12, fontWeight: 600, letterSpacing: '0.1em',
                   textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.55)',
+                  color: 'rgba(0,0,0,0.55)',
                   textDecoration: 'none',
-                  borderBottom: '1px solid rgba(255,255,255,0.2)',
+                  borderBottom: '1px solid rgba(0,0,0,0.2)',
                   paddingBottom: 2,
                   transition: 'color 0.2s, border-color 0.2s',
                 }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLAnchorElement).style.color = WHITE;
-                  (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.6)';
+                  (e.currentTarget as HTMLAnchorElement).style.color = '#0a0a0a';
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(0,0,0,0.6)';
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.55)';
-                  (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.2)';
+                  (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(0,0,0,0.55)';
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(0,0,0,0.2)';
                 }}
               >
                 Open in Google Maps ↗
