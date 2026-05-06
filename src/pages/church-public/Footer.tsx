@@ -13,7 +13,7 @@ export function Footer({ ministryName, profile }: FooterProps) {
 
   return (
     <footer style={{
-      background: '#1c2340',
+      background: '#362e2e',
       borderTop: '1px solid rgba(255,255,255,0.08)',
       padding: '32px 40px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
