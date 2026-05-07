@@ -217,12 +217,14 @@ export const givingService = {
     return data;
   },
 
-  async getMinistryPledges(params?: { campaignId?: string; status?: string; churchId?: string; sortBy?: string; page?: number; limit?: number }): Promise<{
+  async getMinistryPledges(params?: { campaignId?: string; status?: string; churchId?: string; sortBy?: string; page?: number; limit?: number; export?: boolean }): Promise<{
     data: Pledge[];
     pagination: { page: number; limit: number; total: number; totalPages: number };
     summary: { totalPledged: number; totalPaid: number; outstanding: number; count: number };
   }> {
-    const { data } = await apiClient.get('/giving/pledges', { params });
+    const queryParams: any = { ...params };
+    if (params?.export) queryParams.export = 'true';
+    const { data } = await apiClient.get('/giving/pledges', { params: queryParams });
     return data;
   },
 

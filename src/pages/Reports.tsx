@@ -5,6 +5,8 @@ import { givingService } from '@/services/giving';
 import { attendanceService } from '@/services/attendance';
 import { kpiService, KPI, CreateKPIData } from '@/services/kpi';
 import { churchesService } from '@/services/churches';
+import { transactionsService } from '@/services/transactions';
+import { cellsService } from '@/services/cells';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useRole } from '@/hooks/useRole';
@@ -18,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle } from 'lucide-react';
+import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle, UserX, Group, CreditCard, Handshake } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -52,6 +54,18 @@ export default function ReportsPage() {
   const [givingChurchFilter, setGivingChurchFilter] = useState('all');
   const [attendanceServiceFilter, setAttendanceServiceFilter] = useState('all');
   const [attendanceChurchFilter, setAttendanceChurchFilter] = useState('all');
+  // New report filters
+  const [inactiveMemberChurchFilter, setInactiveMemberChurchFilter] = useState('all');
+  const [pledgeChurchFilter, setPledgeChurchFilter] = useState('all');
+  const [pledgeStatusFilter, setPledgeStatusFilter] = useState('all');
+  const [txChurchFilter, setTxChurchFilter] = useState('all');
+  const [txTypeFilter, setTxTypeFilter] = useState('all');
+  const [txStartDate, setTxStartDate] = useState('');
+  const [txEndDate, setTxEndDate] = useState('');
+  const [givingByMemberChurchFilter, setGivingByMemberChurchFilter] = useState('all');
+  const [givingByMemberStartDate, setGivingByMemberStartDate] = useState('');
+  const [givingByMemberEndDate, setGivingByMemberEndDate] = useState('');
+  const [cellChurchFilter, setCellChurchFilter] = useState('all');
 
   const { data: stats } = useQuery({ queryKey: ['dashboard-stats'], queryFn: () => dashboardService.getStats(), enabled: !!user && hasReports });
   const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: () => churchesService.getAll(), enabled: hasReports });
@@ -259,13 +273,125 @@ export default function ReportsPage() {
     );
   };
 
+  // ── New report export handlers ─────────────────────────────────────────────
+
+  const handleExportInactiveMembers = async () => {
+    const response = await membersService.getAll({
+      ...(inactiveMemberChurchFilter !== 'all' ? { churchId: inactiveMemberChurchFilter } : {}),
+      status: 'inactive',
+      export: true,
+    } as any);
+    const members = response || [];
+    downloadCSV(
+      'inactive-members-report.csv',
+      members.map((m: any) => [
+        m.firstName, m.lastName, m.email ?? '', m.phone ?? '',
+        m.gender ?? '', m.church?.name ?? '', m.roleName ?? '',
+        m.status, new Date(m.createdAt).toLocaleDateString(),
+      ]),
+      ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Church', 'Role', 'Status', 'Joined'],
+    );
+  };
+
+  const handleExportPledges = async () => {
+    const response = await givingService.getMinistryPledges({
+      ...(pledgeChurchFilter !== 'all' ? { churchId: pledgeChurchFilter } : {}),
+      ...(pledgeStatusFilter !== 'all' ? { status: pledgeStatusFilter } : {}),
+      export: true,
+    });
+    const pledges = response?.data || [];
+    downloadCSV(
+      'pledges-report.csv',
+      pledges.map((p: any) => [
+        p.user ? `${p.user.firstName} ${p.user.lastName}` : (p.pledgerName || 'Walk-in'),
+        p.user?.email || p.pledgerEmail || '',
+        p.user?.phone || p.pledgerPhone || '',
+        p.campaign?.name || '',
+        p.campaign?.category || '',
+        p.church?.name || '',
+        p.pledgedAmount.toString(),
+        p.amountPaid.toString(),
+        (p.pledgedAmount - p.amountPaid).toString(),
+        p.currency,
+        p.status,
+        p.fulfillmentDeadline ? new Date(p.fulfillmentDeadline).toLocaleDateString() : '',
+        new Date(p.createdAt).toLocaleDateString(),
+      ]),
+      ['Name', 'Email', 'Phone', 'Campaign', 'Category', 'Church', 'Pledged', 'Paid', 'Outstanding', 'Currency', 'Status', 'Deadline', 'Date'],
+    );
+  };
+
+  const handleExportTransactions = async () => {
+    const params: any = {};
+    if (txChurchFilter !== 'all') params.churchId = txChurchFilter;
+    if (txTypeFilter !== 'all') params.type = txTypeFilter;
+    if (txStartDate) params.startDate = txStartDate;
+    if (txEndDate) params.endDate = txEndDate;
+    const transactions = await transactionsService.exportAll(params);
+    downloadCSV(
+      'transactions-report.csv',
+      (transactions || []).map((t: any) => [
+        t.user ? `${t.user.firstName} ${t.user.lastName}` : (t.guestName || 'Guest'),
+        t.user?.email || t.guestEmail || '',
+        t.amount.toString(),
+        t.baseAmount?.toString() || '',
+        t.currency,
+        t.type,
+        t.paymentMethod,
+        t.status,
+        t.gateway || '',
+        t.church?.name || '',
+        t.isManual ? 'Manual' : 'Online',
+        t.reference || '',
+        t.paidAt ? new Date(t.paidAt).toLocaleDateString() : '',
+        new Date(t.createdAt).toLocaleDateString(),
+      ]),
+      ['Name', 'Email', 'Amount', 'Base Amount', 'Currency', 'Type', 'Method', 'Status', 'Gateway', 'Church', 'Entry', 'Reference', 'Paid At', 'Date'],
+    );
+  };
+
+  const handleExportGivingByMember = async () => {
+    const params: any = {};
+    if (givingByMemberChurchFilter !== 'all') params.churchId = givingByMemberChurchFilter;
+    if (givingByMemberStartDate) params.startDate = givingByMemberStartDate;
+    if (givingByMemberEndDate) params.endDate = givingByMemberEndDate;
+    const data = await transactionsService.getGivingByMember(params);
+    downloadCSV(
+      'giving-by-member-report.csv',
+      (data || []).map((r: any) => [
+        r.firstName, r.lastName, r.email, r.phone || '',
+        r.church, r.totalGiven.toString(), r.donationCount.toString(),
+      ]),
+      ['First Name', 'Last Name', 'Email', 'Phone', 'Church', 'Total Given', 'Donations'],
+    );
+  };
+
+  const handleExportCellGroups = async () => {
+    const params: any = {};
+    if (cellChurchFilter !== 'all') params.churchId = cellChurchFilter;
+    params.limit = 1000;
+    const response = await cellsService.getAll(params);
+    const cells = response?.data || [];
+    downloadCSV(
+      'cell-groups-report.csv',
+      cells.map((c: any) => [
+        c.name, c.zone || '', c.church?.name || '',
+        c._count?.members?.toString() || '0',
+        c._count?.meetings?.toString() || '0',
+        c.attendanceRate != null ? `${c.attendanceRate}%` : 'N/A',
+        c.conversionRate != null ? `${c.conversionRate}%` : 'N/A',
+        c.lastMeetingDate ? new Date(c.lastMeetingDate).toLocaleDateString() : 'Never',
+        c.status, c.meetingDay || '', c.meetingTime || '',
+      ]),
+      ['Cell Name', 'Zone', 'Church', 'Members', 'Meetings', 'Attendance Rate', 'Conversion Rate', 'Last Meeting', 'Status', 'Meeting Day', 'Meeting Time'],
+    );
+  };
+
   const reportCards = [
     {
       title: 'Membership Report',
       description: 'Complete list of all registered members with status and contact info.',
       icon: Users,
-      count: stats?.totalMembers || 0,
-      unit: 'members',
       onExport: handleExportMembers,
       filterComponent: (
         <div className="mb-3">
@@ -283,11 +409,29 @@ export default function ReportsPage() {
       ),
     },
     {
+      title: 'Inactive Members',
+      description: 'Members with inactive status — useful for pastoral follow-up.',
+      icon: UserX,
+      onExport: handleExportInactiveMembers,
+      filterComponent: (
+        <div className="mb-3">
+          <Label className="text-xs">Filter by Church</Label>
+          <Select value={inactiveMemberChurchFilter} onValueChange={setInactiveMemberChurchFilter}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Churches</SelectItem>
+              {(churches as any[]).map(church => (
+                <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ),
+    },
+    {
       title: 'Giving Report',
       description: 'All giving records including type, method, amount, and status.',
       icon: HandCoins,
-      count: stats?.totalDonations ? Math.round(stats.totalDonations) : 0,
-      unit: 'MWK',
       onExport: handleExportGiving,
       filterComponent: (
         <div className="space-y-2 mb-3">
@@ -319,11 +463,76 @@ export default function ReportsPage() {
       ),
     },
     {
+      title: 'Giving by Member',
+      description: 'Total giving per member — top contributors and stewardship overview.',
+      icon: Handshake,
+      onExport: handleExportGivingByMember,
+      filterComponent: (
+        <div className="space-y-2 mb-3">
+          <div>
+            <Label className="text-xs">Filter by Church</Label>
+            <Select value={givingByMemberChurchFilter} onValueChange={setGivingByMemberChurchFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {(churches as any[]).map(church => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">From</Label>
+              <Input type="date" className="h-8 text-xs" value={givingByMemberStartDate} onChange={e => setGivingByMemberStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">To</Label>
+              <Input type="date" className="h-8 text-xs" value={givingByMemberEndDate} onChange={e => setGivingByMemberEndDate(e.target.value)} />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Pledge Report',
+      description: 'All pledges with outstanding balances, status, and deadlines.',
+      icon: Target,
+      onExport: handleExportPledges,
+      filterComponent: (
+        <div className="space-y-2 mb-3">
+          <div>
+            <Label className="text-xs">Filter by Status</Label>
+            <Select value={pledgeStatusFilter} onValueChange={setPledgeStatusFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="partial">Partial</SelectItem>
+                <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Church</Label>
+            <Select value={pledgeChurchFilter} onValueChange={setPledgeChurchFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {(churches as any[]).map(church => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      ),
+    },
+    {
       title: 'Attendance Report',
       description: 'Service attendance records with visitor counts and notes.',
       icon: ClipboardList,
-      count: stats?.averageAttendance || 0,
-      unit: 'avg',
       onExport: handleExportAttendance,
       filterComponent: (
         <div className="space-y-2 mb-3">
@@ -353,6 +562,70 @@ export default function ReportsPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Cell Groups Report',
+      description: 'All cell groups with member counts, attendance rates, and conversion stats.',
+      icon: Group,
+      onExport: handleExportCellGroups,
+      filterComponent: (
+        <div className="mb-3">
+          <Label className="text-xs">Filter by Church</Label>
+          <Select value={cellChurchFilter} onValueChange={setCellChurchFilter}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Churches</SelectItem>
+              {(churches as any[]).map(church => (
+                <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ),
+    },
+    {
+      title: 'Transactions Report',
+      description: 'All payment transactions — tickets, donations, and subscriptions.',
+      icon: CreditCard,
+      onExport: handleExportTransactions,
+      filterComponent: (
+        <div className="space-y-2 mb-3">
+          <div>
+            <Label className="text-xs">Filter by Type</Label>
+            <Select value={txTypeFilter} onValueChange={setTxTypeFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Types" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="donation">Donation</SelectItem>
+                <SelectItem value="event_ticket">Event Ticket</SelectItem>
+                <SelectItem value="subscription">Subscription</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Church</Label>
+            <Select value={txChurchFilter} onValueChange={setTxChurchFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {(churches as any[]).map(church => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">From</Label>
+              <Input type="date" className="h-8 text-xs" value={txStartDate} onChange={e => setTxStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">To</Label>
+              <Input type="date" className="h-8 text-xs" value={txEndDate} onChange={e => setTxEndDate(e.target.value)} />
+            </div>
           </div>
         </div>
       ),
@@ -573,7 +846,7 @@ export default function ReportsPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {reportCards.map(card => {
               const Icon = card.icon;
               return (
@@ -589,10 +862,6 @@ export default function ReportsPage() {
                   <CardContent className="space-y-3">
                     <p className="text-xs text-muted-foreground">{card.description}</p>
                     {(card as any).filterComponent}
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{card.count} {card.unit}</span>
-                    </div>
                     <Button
                       size="sm"
                       variant="outline"
