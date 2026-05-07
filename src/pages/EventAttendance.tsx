@@ -21,15 +21,11 @@ export default function EventAttendancePage() {
   const [selectedEventId, setSelectedEventId] = useState(searchParams.get('eventId') || '');
   const qc = useQueryClient();
 
-  const { data: eventsResponse = [] } = useQuery({
-    queryKey: ['events'],
-    queryFn: eventsService.getAll,
+  const { data: events = [] } = useQuery({
+    queryKey: ['events-simple'],
+    queryFn: () => eventsService.getSimple(),
     staleTime: STALE_TIME.DEFAULT,
   });
-
-  const events = Array.isArray(eventsResponse) && eventsResponse[0]?.label
-    ? eventsResponse.flatMap((group: any) => group.posts || [])
-    : eventsResponse;
 
   const { data: eventTickets = [], isLoading: isLoadingTickets } = useQuery({
     queryKey: ['event-tickets', selectedEventId],

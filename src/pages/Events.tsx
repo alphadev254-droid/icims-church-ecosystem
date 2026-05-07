@@ -455,13 +455,16 @@ export default function EventsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const events = Array.isArray(eventsResponse) 
-    ? eventsResponse.flatMap((group: any) => group.posts || [])
-    : [];
-  
-  const groupedEvents = Array.isArray(eventsResponse) && eventsResponse[0]?.label 
-    ? eventsResponse
-    : [];
+  const flattenGrouped = (resp: any): any[] => {
+    if (!resp) return [];
+    if (Array.isArray(resp)) return resp.flatMap((g: any) => g.posts || []);
+    return Object.values(resp as Record<string, any>).flatMap((g: any) =>
+      Array.isArray(g) ? g : (g?.posts || [])
+    );
+  };
+
+  const events = flattenGrouped(eventsResponse);
+  const groupedEvents = eventsResponse ?? [];
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],

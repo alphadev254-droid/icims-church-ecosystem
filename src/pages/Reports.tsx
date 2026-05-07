@@ -927,18 +927,12 @@ function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
     }
   }, [isRecurring]);
 
-  // Fetch all accessible events (backend filters by user's accessible churches)
-  const { data: eventsResponse = {} } = useQuery({
-    queryKey: ['events'],
-    queryFn: () => eventsService.getAll(),
+  // Fetch all accessible events for dropdown — lightweight simple mode
+  const { data: events = [] } = useQuery({
+    queryKey: ['events-simple'],
+    queryFn: () => eventsService.getSimple(),
     enabled: category === 'Attendance' && attendanceType === 'event',
   });
-  // eventsService.getAll returns grouped object — flatten to array
-  const events = Array.isArray(eventsResponse)
-    ? (eventsResponse as any[]).flatMap((g: any) => g.posts || [])
-    : Object.values(eventsResponse as Record<string, any>).flatMap((g: any) =>
-        Array.isArray(g) ? g : (g?.posts || [])
-      );
 
   const metricOptions: Record<string, { value: string; label: string; unit: string }[]> = {
     Attendance: [
