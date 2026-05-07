@@ -43,13 +43,13 @@ export default function PerformancePage() {
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats', user?.churchId],
-    queryFn: () => dashboardService.getStats(user?.churchId),
+    queryFn: () => dashboardService.getStats(),
     enabled: !!user && hasPerformance,
   });
 
-  const { data: attendanceRaw = [], isLoading: attLoading } = useQuery({
-    queryKey: ['attendance'],
-    queryFn: attendanceService.getAll,
+  const { data: attendanceResponse, isLoading: attLoading } = useQuery({
+    queryKey: ['attendance', 'performance'],
+    queryFn: () => attendanceService.getAll({ limit: 12 }),
     enabled: hasPerformance,
   });
 
@@ -74,6 +74,7 @@ export default function PerformancePage() {
     );
   }
 
+  const attendanceRaw = (attendanceResponse as any) ?? [];
   const attendance = attendanceRaw.slice(0, 12).reverse();
   const isLoading = statsLoading || attLoading;
 
@@ -85,13 +86,22 @@ export default function PerformancePage() {
     );
   }
 
+  // Monthly giving = last month's total from monthlyGiving array (last entry)
+  const monthlyGivingArr = (stats as any).monthlyGiving ?? [];
+  const thisMonthGiving = monthlyGivingArr.length > 0
+    ? monthlyGivingArr[monthlyGivingArr.length - 1]?.amount ?? 0
+    : 0;
+  const prevMonthGiving = monthlyGivingArr.length > 1
+    ? monthlyGivingArr[monthlyGivingArr.length - 2]?.amount ?? 0
+    : 0;
+
   // Derived KPIs from real data
   const kpis: KPI[] = [
     {
       label: 'Total Members',
       value: stats.totalMembers,
-      target: Math.round(stats.totalMembers * 1.15),
-      progress: Math.min(100, Math.round((stats.totalMembers / (stats.totalMembers * 1.15)) * 100)),
+      // Target: last month's count + growth projection (or just show retention rate as progress)
+      progress: Math.min(100, stats.retentionRate),
       trend: stats.memberGrowth > 0 ? 'up' : stats.memberGrowth < 0 ? 'down' : 'flat',
       change: stats.memberGrowth ? `${stats.memberGrowth}%` : undefined,
       icon: Users,
@@ -99,18 +109,23 @@ export default function PerformancePage() {
     {
       label: 'Avg. Attendance',
       value: stats.averageAttendance,
-      target: Math.round(stats.totalMembers * 0.7),
+      // Target: 70% of total members is a healthy attendance rate
+      target: `${Math.round(stats.totalMembers * 0.7)} people`,
       progress: stats.totalMembers > 0
         ? Math.min(100, Math.round((stats.averageAttendance / (stats.totalMembers * 0.7)) * 100))
         : 0,
-      trend: stats.averageAttendance >= stats.totalMembers * 0.6 ? 'up' : 'down',
+      trend: stats.attendanceRate >= 60 ? 'up' : stats.attendanceRate >= 40 ? 'flat' : 'down',
+      change: `${stats.attendanceRate}% rate`,
       icon: ClipboardList,
     },
     {
-      label: 'Monthly Giving (MWK)',
-      value: `MWK ${Number(stats.totalDonations).toLocaleString()}`,
-      target: `MWK ${Number(Math.round(stats.totalDonations * 1.1)).toLocaleString()}`,
-      progress: Math.min(100, Math.round((stats.totalDonations / (stats.totalDonations * 1.1)) * 100)),
+      label: 'Giving This Month',
+      value: `MWK ${Number(thisMonthGiving).toLocaleString()}`,
+      // Target: 10% above last month
+      target: prevMonthGiving > 0 ? `MWK ${Number(Math.round(prevMonthGiving * 1.1)).toLocaleString()}` : undefined,
+      progress: prevMonthGiving > 0
+        ? Math.min(100, Math.round((thisMonthGiving / (prevMonthGiving * 1.1)) * 100))
+        : thisMonthGiving > 0 ? 100 : 0,
       trend: stats.donationGrowth > 0 ? 'up' : stats.donationGrowth < 0 ? 'down' : 'flat',
       change: stats.donationGrowth ? `${stats.donationGrowth}%` : undefined,
       icon: HandCoins,
@@ -118,8 +133,8 @@ export default function PerformancePage() {
     {
       label: 'Upcoming Events',
       value: stats.upcomingEvents ?? 0,
-      progress: 100,
-      trend: 'flat',
+      progress: Math.min(100, ((stats.upcomingEvents ?? 0) / 5) * 100), // 5 events = 100%
+      trend: (stats.upcomingEvents ?? 0) > 0 ? 'up' : 'flat',
       icon: Calendar,
     },
   ];

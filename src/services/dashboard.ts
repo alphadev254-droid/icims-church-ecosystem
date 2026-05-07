@@ -16,9 +16,8 @@ export interface DashboardStats {
 }
 
 export const dashboardService = {
-  getStats: async (churchId?: string | null): Promise<DashboardStats> => {
-    const params = churchId ? `?churchId=${churchId}` : '';
-    const { data } = await apiClient.get(`/dashboard/stats${params}`);
+  getStats: async (): Promise<DashboardStats> => {
+    const { data } = await apiClient.get('/dashboard/stats');
     return data.data;
   },
 };

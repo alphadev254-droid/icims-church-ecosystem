@@ -53,15 +53,16 @@ export default function ReportsPage() {
   const [attendanceServiceFilter, setAttendanceServiceFilter] = useState('all');
   const [attendanceChurchFilter, setAttendanceChurchFilter] = useState('all');
 
-  const { data: stats } = useQuery({ queryKey: ['dashboard-stats', user?.churchId], queryFn: () => dashboardService.getStats(user?.churchId), enabled: !!user && hasReports });
-  const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: churchesService.getAll, enabled: hasReports });
-  const { data: campaigns = [] } = useQuery({ queryKey: ['campaigns'], queryFn: givingService.getCampaigns, enabled: hasReports });
+  const { data: stats } = useQuery({ queryKey: ['dashboard-stats'], queryFn: () => dashboardService.getStats(), enabled: !!user && hasReports });
+  const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: () => churchesService.getAll(), enabled: hasReports });
+  const { data: campaigns = [] } = useQuery({ queryKey: ['campaigns'], queryFn: () => givingService.getCampaigns(), enabled: hasReports });
 
   // Flatten grouped campaigns if needed
-  const flatCampaigns = Array.isArray(campaigns) && campaigns[0]?.label
-    ? campaigns.flatMap((group: any) => group.posts || [])
-    : campaigns;
-  const { data: kpis = [], isLoading: kl } = useQuery({ queryKey: ['kpis'], queryFn: kpiService.getAll, enabled: hasReports });
+  const flatCampaigns = Array.isArray(campaigns) && (campaigns as any[])[0]?.label
+    ? (campaigns as any[]).flatMap((group: any) => group.posts || [])
+    : (campaigns as any[]);
+  const { data: kpisData = [], isLoading: kl } = useQuery({ queryKey: ['kpis'], queryFn: () => kpiService.getAll(), enabled: hasReports });
+  const kpis = kpisData as KPI[];
 
   const calculateMutation = useMutation({
     mutationFn: kpiService.calculate,
@@ -129,7 +130,10 @@ export default function ReportsPage() {
   const isLoading = false;
 
   const handleExportMembers = async () => {
-    const response = await membersService.getAll(memberChurchFilter !== 'all' ? { churchId: memberChurchFilter } : undefined);
+    const response = await membersService.getAll({
+      ...(memberChurchFilter !== 'all' ? { churchId: memberChurchFilter } : {}),
+      export: true,
+    });
     const members = response || [];
     downloadCSV(
       'members-report.csv',
@@ -177,9 +181,10 @@ export default function ReportsPage() {
   const handleExportGiving = async () => {
     const response = await givingService.getDonations(
       givingCampaignFilter !== 'all' ? givingCampaignFilter : undefined,
-      givingChurchFilter !== 'all' ? givingChurchFilter : undefined
+      givingChurchFilter !== 'all' ? givingChurchFilter : undefined,
+      { export: true }
     );
-    const donations = response || [];
+    const donations = response ?? [];
     
     downloadCSV(
       'giving-report.csv',
@@ -199,12 +204,12 @@ export default function ReportsPage() {
   };
 
   const handleExportAttendance = async () => {
-    const params: any = {};
+    const params: any = { export: true };
     if (attendanceServiceFilter !== 'all') params.serviceType = attendanceServiceFilter;
     if (attendanceChurchFilter !== 'all') params.churchId = attendanceChurchFilter;
     
-    const response = await attendanceService.getAll(Object.keys(params).length > 0 ? params : undefined);
-    const attendance = response || [];
+    const response = await attendanceService.getAll(params);
+    const attendance = response ?? [];
     downloadCSV(
       'attendance-report.csv',
       attendance.map(a => [
@@ -219,8 +224,8 @@ export default function ReportsPage() {
         ((a as any).youngAdults ?? 0).toString(),
         ((a as any).adults ?? 0).toString(),
         ((a as any).seniors ?? 0).toString(),
-        (a.newVisitors ?? 0).toString(),
-        a.notes ?? ''
+        ((a as any).newVisitors ?? 0).toString(),
+        (a as any).notes ?? ''
       ]),
       ['Date', 'Church', 'Service Type', 'Total', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'New Visitors', 'Notes'],
     );
@@ -593,7 +598,6 @@ export default function ReportsPage() {
                       variant="outline"
                       className="w-full gap-2"
                       onClick={card.onExport}
-                      disabled={card.count === 0}
                     >
                       <Download className="h-3.5 w-3.5" /> Export CSV
                     </Button>
@@ -655,11 +659,17 @@ function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
   }, [isRecurring]);
 
   // Fetch all accessible events (backend filters by user's accessible churches)
-  const { data: events = [] } = useQuery({
+  const { data: eventsResponse = {} } = useQuery({
     queryKey: ['events'],
-    queryFn: eventsService.getAll,
+    queryFn: () => eventsService.getAll(),
     enabled: category === 'Attendance' && attendanceType === 'event',
   });
+  // eventsService.getAll returns grouped object — flatten to array
+  const events = Array.isArray(eventsResponse)
+    ? (eventsResponse as any[]).flatMap((g: any) => g.posts || [])
+    : Object.values(eventsResponse as Record<string, any>).flatMap((g: any) =>
+        Array.isArray(g) ? g : (g?.posts || [])
+      );
 
   const metricOptions: Record<string, { value: string; label: string; unit: string }[]> = {
     Attendance: [

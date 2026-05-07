@@ -159,14 +159,18 @@ export const givingService = {
     await apiClient.delete(`/giving/campaigns/${id}`);
   },
 
-  async getDonations(campaignId?: string, churchId?: string): Promise<DonationTransaction[]> {
-    const params: any = {};
-    if (campaignId) params.campaignId = campaignId;
-    if (churchId) params.churchId = churchId;
+  async getDonations(campaignId?: string, churchId?: string, params?: { limit?: number; page?: number; export?: boolean }): Promise<DonationTransaction[]> {
+    const queryParams: any = {};
+    if (campaignId) queryParams.campaignId = campaignId;
+    if (churchId) queryParams.churchId = churchId;
+    if (params?.limit) queryParams.limit = params.limit;
+    if (params?.page) queryParams.page = params.page;
+    if (params?.export) queryParams.export = 'true';
     
     const { data } = await apiClient.get('/giving/donations', {
-      params: Object.keys(params).length > 0 ? params : undefined,
+      params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
     });
+    // export=true returns { success, data: [] } without pagination wrapper
     return data.data;
   },
 
