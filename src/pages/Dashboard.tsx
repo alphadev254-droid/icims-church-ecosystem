@@ -143,7 +143,7 @@ export default function DashboardPage() {
             <div className="space-y-1">
               <p className="text-xs font-semibold tracking-widest uppercase text-accent">Welcome to ICIMS 🎉</p>
               <h2 className="font-heading text-xl font-bold">{welcomeData.ministryName}</h2>
-              <p className="text-sm text-muted-foreground">Your account is ready. Your public ministry website is being set up.</p>
+              <p className="text-sm text-muted-foreground">Your account is ready. Here's how to get started:</p>
             </div>
             <div className="rounded-lg bg-muted p-3 space-y-1">
               <p className="text-xs text-muted-foreground">Your site URL</p>
@@ -154,6 +154,12 @@ export default function DashboardPage() {
                 Your site is being activated — this usually takes a few minutes. If the link doesn't open yet, wait a moment and try again.
               </p>
             </div>
+            <ul className="text-sm text-muted-foreground space-y-1.5 list-none p-0 m-0">
+              <li>1. Choose a package under <strong className="text-foreground">Packages</strong></li>
+              <li>2. Edit your public church page under <strong className="text-foreground">Church Website</strong></li>
+              <li>3. Add your branches under <strong className="text-foreground">Branches</strong></li>
+              <li>4. Invite your team under <strong className="text-foreground">Users</strong></li>
+            </ul>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setWelcomeData(null)}>
                 Go to Dashboard
