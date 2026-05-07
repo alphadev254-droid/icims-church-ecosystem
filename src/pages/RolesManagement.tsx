@@ -126,7 +126,9 @@ export default function RolesManagementPage() {
         {/* Role list */}
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Roles</h2>
-          {roles.map((role: any) => (
+          {roles
+            .filter((role: any) => role.isEditable !== false)
+            .map((role: any) => (
             <button
               key={role.id}
               onClick={() => handleSelectRole(role.id)}
@@ -170,7 +172,7 @@ export default function RolesManagementPage() {
                       <Users className="h-3 w-3 mr-1" />{currentRole?.userCount} users
                     </Badge>
                   </CardTitle>
-                  {canManage && (
+                  {canManage && (currentRole as any)?.isEditable !== false && (
                     <Button
                       size="sm"
                       onClick={savePermissions}
@@ -184,6 +186,11 @@ export default function RolesManagementPage() {
                 </div>
                 {!canManage && (
                   <p className="text-xs text-muted-foreground mt-1">You have view-only access to role permissions.</p>
+                )}
+                {canManage && (currentRole as any)?.isEditable === false && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This role is global and cannot be customised per ministry.
+                  </p>
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
