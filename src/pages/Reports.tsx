@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle, UserX, Group, CreditCard, Handshake } from 'lucide-react';
+import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle, UserX, Group, CreditCard, Handshake, UserCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -66,10 +66,22 @@ export default function ReportsPage() {
   const [givingByMemberStartDate, setGivingByMemberStartDate] = useState('');
   const [givingByMemberEndDate, setGivingByMemberEndDate] = useState('');
   const [cellChurchFilter, setCellChurchFilter] = useState('all');
+  const [givingCategoryFilter, setGivingCategoryFilter] = useState('all');
+  const [givingStartDate, setGivingStartDate] = useState('');
+  const [givingEndDate, setGivingEndDate] = useState('');
+  const [attendanceStartDate, setAttendanceStartDate] = useState('');
+  const [attendanceEndDate, setAttendanceEndDate] = useState('');
+  const [pledgeStartDate, setPledgeStartDate] = useState('');
+  const [pledgeEndDate, setPledgeEndDate] = useState('');
+  const [visitorChurchFilter, setVisitorChurchFilter] = useState('all');
+  const [visitorCellFilter, setVisitorCellFilter] = useState('all');
+  const [visitorStartDate, setVisitorStartDate] = useState('');
+  const [visitorEndDate, setVisitorEndDate] = useState('');
 
   const { data: stats } = useQuery({ queryKey: ['dashboard-stats'], queryFn: () => dashboardService.getStats(), enabled: !!user && hasReports });
   const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: () => churchesService.getAll(), enabled: hasReports });
   const { data: campaigns = [] } = useQuery({ queryKey: ['campaigns'], queryFn: () => givingService.getCampaigns(), enabled: hasReports });
+  const { data: simpleCells = [] } = useQuery({ queryKey: ['cells-simple'], queryFn: () => cellsService.getSimple(), enabled: hasReports });
 
   // Flatten grouped campaigns if needed
   const flatCampaigns = Array.isArray(campaigns) && (campaigns as any[])[0]?.label
@@ -196,7 +208,12 @@ export default function ReportsPage() {
     const response = await givingService.getDonations(
       givingCampaignFilter !== 'all' ? givingCampaignFilter : undefined,
       givingChurchFilter !== 'all' ? givingChurchFilter : undefined,
-      { export: true }
+      {
+        export: true,
+        category: givingCategoryFilter !== 'all' ? givingCategoryFilter : undefined,
+        startDate: givingStartDate || undefined,
+        endDate: givingEndDate || undefined,
+      }
     );
     const donations = response ?? [];
     
@@ -221,6 +238,8 @@ export default function ReportsPage() {
     const params: any = { export: true };
     if (attendanceServiceFilter !== 'all') params.serviceType = attendanceServiceFilter;
     if (attendanceChurchFilter !== 'all') params.churchId = attendanceChurchFilter;
+    if (attendanceStartDate) params.startDate = attendanceStartDate;
+    if (attendanceEndDate) params.endDate = attendanceEndDate;
     
     const response = await attendanceService.getAll(params);
     const attendance = response ?? [];
@@ -297,6 +316,8 @@ export default function ReportsPage() {
     const response = await givingService.getMinistryPledges({
       ...(pledgeChurchFilter !== 'all' ? { churchId: pledgeChurchFilter } : {}),
       ...(pledgeStatusFilter !== 'all' ? { status: pledgeStatusFilter } : {}),
+      ...(pledgeStartDate ? { startDate: pledgeStartDate } : {}),
+      ...(pledgeEndDate ? { endDate: pledgeEndDate } : {}),
       export: true,
     });
     const pledges = response?.data || [];
@@ -337,6 +358,8 @@ export default function ReportsPage() {
         t.baseAmount?.toString() || '',
         t.currency,
         t.type,
+        t.campaignName || '',
+        t.campaignCategory || '',
         t.paymentMethod,
         t.status,
         t.gateway || '',
@@ -346,7 +369,7 @@ export default function ReportsPage() {
         t.paidAt ? new Date(t.paidAt).toLocaleDateString() : '',
         new Date(t.createdAt).toLocaleDateString(),
       ]),
-      ['Name', 'Email', 'Amount', 'Base Amount', 'Currency', 'Type', 'Method', 'Status', 'Gateway', 'Church', 'Entry', 'Reference', 'Paid At', 'Date'],
+      ['Name', 'Email', 'Amount', 'Base Amount', 'Currency', 'Type', 'Campaign', 'Category', 'Method', 'Status', 'Gateway', 'Church', 'Entry', 'Reference', 'Paid At', 'Date'],
     );
   };
 
@@ -384,6 +407,33 @@ export default function ReportsPage() {
         c.status, c.meetingDay || '', c.meetingTime || '',
       ]),
       ['Cell Name', 'Zone', 'Church', 'Members', 'Meetings', 'Attendance Rate', 'Conversion Rate', 'Last Meeting', 'Status', 'Meeting Day', 'Meeting Time'],
+    );
+  };
+
+  const handleExportVisitors = async () => {
+    const response = await cellsService.getVisitors({
+      ...(visitorChurchFilter !== 'all' ? { churchId: visitorChurchFilter } : {}),
+      ...(visitorCellFilter !== 'all' ? { cellId: visitorCellFilter } : {}),
+      ...(visitorStartDate ? { startDate: visitorStartDate } : {}),
+      ...(visitorEndDate ? { endDate: visitorEndDate } : {}),
+      export: true,
+    });
+    const visitors = response?.data ?? [];
+    downloadCSV(
+      'visitors-report.csv',
+      visitors.map((v: any) => [
+        v.visitorName || '',
+        v.visitorPhone || '',
+        v.visitorEmail || '',
+        v.isFirstTime ? 'First Time' : 'Returning',
+        v.meeting?.cell?.name || '',
+        v.meeting?.cell?.zone || '',
+        v.meeting?.cell?.church?.name || '',
+        v.meeting?.date ? new Date(v.meeting.date).toLocaleDateString() : '',
+        v.meeting?.topic || '',
+        v.notes || '',
+      ]),
+      ['Name', 'Phone', 'Email', 'Visit Type', 'Cell', 'Zone', 'Church', 'Meeting Date', 'Meeting Topic', 'Notes'],
     );
   };
 
@@ -436,6 +486,21 @@ export default function ReportsPage() {
       filterComponent: (
         <div className="space-y-2 mb-3">
           <div>
+            <Label className="text-xs">Filter by Category</Label>
+            <Select value={givingCategoryFilter} onValueChange={setGivingCategoryFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Categories" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="tithe">Tithe</SelectItem>
+                <SelectItem value="offering">Offering</SelectItem>
+                <SelectItem value="fellowship_offering">Fellowship Offering</SelectItem>
+                <SelectItem value="partnership">Partnership</SelectItem>
+                <SelectItem value="welfare">Welfare</SelectItem>
+                <SelectItem value="missions">Missions</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label className="text-xs">Filter by Campaign</Label>
             <Select value={givingCampaignFilter} onValueChange={setGivingCampaignFilter}>
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Campaigns" /></SelectTrigger>
@@ -458,6 +523,16 @@ export default function ReportsPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">From</Label>
+              <Input type="date" className="h-8 text-xs" value={givingStartDate} onChange={e => setGivingStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">To</Label>
+              <Input type="date" className="h-8 text-xs" value={givingEndDate} onChange={e => setGivingEndDate(e.target.value)} />
+            </div>
           </div>
         </div>
       ),
@@ -526,6 +601,16 @@ export default function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">From</Label>
+              <Input type="date" className="h-8 text-xs" value={pledgeStartDate} onChange={e => setPledgeStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">To</Label>
+              <Input type="date" className="h-8 text-xs" value={pledgeEndDate} onChange={e => setPledgeEndDate(e.target.value)} />
+            </div>
+          </div>
         </div>
       ),
     },
@@ -563,6 +648,16 @@ export default function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">From</Label>
+              <Input type="date" className="h-8 text-xs" value={attendanceStartDate} onChange={e => setAttendanceStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">To</Label>
+              <Input type="date" className="h-8 text-xs" value={attendanceEndDate} onChange={e => setAttendanceEndDate(e.target.value)} />
+            </div>
+          </div>
         </div>
       ),
     },
@@ -583,6 +678,50 @@ export default function ReportsPage() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+      ),
+    },
+    {
+      title: 'Visitors Report',
+      description: 'All cell meeting visitors — first-time and returning guests with contact details.',
+      icon: UserCheck,
+      onExport: handleExportVisitors,
+      filterComponent: (
+        <div className="space-y-2 mb-3">
+          <div>
+            <Label className="text-xs">Filter by Church</Label>
+            <Select value={visitorChurchFilter} onValueChange={setVisitorChurchFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {(churches as any[]).map(church => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Cell</Label>
+            <Select value={visitorCellFilter} onValueChange={setVisitorCellFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Cells" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cells</SelectItem>
+                {simpleCells.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}{c.zone ? ` — ${c.zone}` : ''}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">From</Label>
+              <Input type="date" className="h-8 text-xs" value={visitorStartDate} onChange={e => setVisitorStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">To</Label>
+              <Input type="date" className="h-8 text-xs" value={visitorEndDate} onChange={e => setVisitorEndDate(e.target.value)} />
+            </div>
+          </div>
         </div>
       ),
     },

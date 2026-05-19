@@ -1,5 +1,17 @@
 import apiClient from '@/lib/api-client';
 
+export interface AttendanceVisitor {
+  id?: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  residentialArea?: string;
+  gender?: string;
+  ageBracket?: string;
+  howHeard?: string;
+  notes?: string;
+}
+
 export interface AttendanceRecord {
   id: string;
   churchId: string;
@@ -18,6 +30,7 @@ export interface AttendanceRecord {
   eventId?: string;
   createdAt?: string;
   church?: { id: string; name: string };
+  _count?: { visitors: number };
 }
 
 export interface CreateAttendanceDto {
@@ -28,6 +41,7 @@ export interface CreateAttendanceDto {
   notes?: string;
   eventId?: string;
   churchId: string;
+  visitors?: AttendanceVisitor[];
 }
 
 export const attendanceService = {
@@ -46,5 +60,16 @@ export const attendanceService = {
   },
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/attendance/${id}`);
+  },
+  getVisitors: async (id: string, params?: { page?: number; limit?: number }): Promise<{ data: AttendanceVisitor[]; total: number; hasMore: boolean }> => {
+    const { data } = await apiClient.get(`/attendance/${id}/visitors`, { params });
+    return { data: data.data, total: data.total ?? data.data.length, hasMore: data.hasMore ?? false };
+  },
+  addVisitor: async (id: string, visitor: AttendanceVisitor): Promise<AttendanceVisitor> => {
+    const { data } = await apiClient.post(`/attendance/${id}/visitors`, visitor);
+    return data.data;
+  },
+  deleteVisitor: async (id: string, visitorId: string): Promise<void> => {
+    await apiClient.delete(`/attendance/${id}/visitors/${visitorId}`);
   },
 };

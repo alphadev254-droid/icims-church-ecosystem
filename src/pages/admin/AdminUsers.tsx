@@ -32,6 +32,7 @@ export default function AdminUsers() {
   const [role, setRole] = useState('');
   const [country, setCountry] = useState('');
   const [status, setStatus] = useState('');
+  const [ministry, setMinistry] = useState('');
   const [page, setPage] = useState(1);
 
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
@@ -42,13 +43,20 @@ export default function AdminUsers() {
 
   const debouncedSearch = useDebounce(search, 400);
 
+  const { data: ministriesData } = useQuery({
+    queryKey: ['admin-ministries'],
+    queryFn: () => adminApi.getMinistries().then(r => r.data.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-users', debouncedSearch, role, country, status, page],
+    queryKey: ['admin-users', debouncedSearch, role, country, status, ministry, page],
     queryFn: () => adminApi.getUsers({
       search: debouncedSearch || undefined,
       role: role || undefined,
       country: country || undefined,
       status: status || undefined,
+      ministry: ministry || undefined,
       page,
       limit: 70,
     }).then(r => r.data),
@@ -101,6 +109,7 @@ export default function AdminUsers() {
           data={users.map(u => ({
             firstName: u.firstName, lastName: u.lastName, email: u.email,
             phone: u.phone ?? '', role: u.roleName ?? '',
+            ministry: u.resolvedMinistryName ?? u.ministryName ?? '',
             country: u.resolvedCountry ?? u.accountCountry ?? '',
             churches: u.churchCount ?? 0, status: u.status,
             joined: new Date(u.createdAt).toLocaleDateString(),
@@ -108,11 +117,12 @@ export default function AdminUsers() {
           headers={[
             { label: 'First Name', key: 'firstName' }, { label: 'Last Name', key: 'lastName' },
             { label: 'Email', key: 'email' }, { label: 'Phone', key: 'phone' },
-            { label: 'Role', key: 'role' }, { label: 'Country', key: 'country' },
+            { label: 'Role', key: 'role' }, { label: 'Ministry', key: 'ministry' },
+            { label: 'Country', key: 'country' },
             { label: 'Churches', key: 'churches' }, { label: 'Status', key: 'status' },
             { label: 'Joined', key: 'joined' },
           ]}
-          pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Country', 'Churches', 'Status', 'Joined']}
+          pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Ministry', 'Country', 'Churches', 'Status', 'Joined']}
         />
       </div>
 
@@ -148,6 +158,15 @@ export default function AdminUsers() {
             {STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs capitalize">{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={ministry} onValueChange={v => { setMinistry(v === 'all' ? '' : v); setPage(1); }}>
+          <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="All ministries" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All ministries</SelectItem>
+            {(ministriesData ?? []).map(m => (
+              <SelectItem key={m.id} value={m.id} className="text-xs">{m.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
@@ -157,9 +176,11 @@ export default function AdminUsers() {
             <thead className="bg-muted/50 border-b">
               <tr>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Name</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden sm:table-cell">Phone</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Role</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Ministry</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Country</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Churches</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Churches</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Joined</th>
                 <th className="px-4 py-2.5 w-10" />
@@ -169,7 +190,7 @@ export default function AdminUsers() {
               {isLoading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 7 }).map((_, j) => (
+                      {Array.from({ length: 9 }).map((_, j) => (
                         <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded w-24" /></td>
                       ))}
                     </tr>
@@ -182,13 +203,19 @@ export default function AdminUsers() {
                           <p className="text-xs text-muted-foreground">{user.email}</p>
                         </div>
                       </td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        <span className="text-xs text-muted-foreground">{user.phone || '—'}</span>
+                      </td>
                       <td className="px-4 py-3 hidden md:table-cell">
-                        <Badge variant="outline" className="text-xs capitalize">{user.roleName?.replace('_', ' ')}</Badge>
+                        <Badge variant="outline" className="text-xs capitalize">{user.roleName?.replace(/_/g, ' ')}</Badge>
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <span className="text-xs">{user.resolvedMinistryName || user.ministryName || '—'}</span>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs">{user.resolvedCountry || user.accountCountry || '—'}</span>
                       </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
+                      <td className="px-4 py-3 hidden xl:table-cell">
                         <span className="text-xs">{user.churchCount ?? 0}</span>
                       </td>
                       <td className="px-4 py-3">{statusBadge(user.status)}</td>

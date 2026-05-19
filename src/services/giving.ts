@@ -159,13 +159,16 @@ export const givingService = {
     await apiClient.delete(`/giving/campaigns/${id}`);
   },
 
-  async getDonations(campaignId?: string, churchId?: string, params?: { limit?: number; page?: number; export?: boolean }): Promise<DonationTransaction[]> {
+  async getDonations(campaignId?: string, churchId?: string, params?: { limit?: number; page?: number; export?: boolean; category?: string; startDate?: string; endDate?: string }): Promise<DonationTransaction[]> {
     const queryParams: any = {};
     if (campaignId) queryParams.campaignId = campaignId;
     if (churchId) queryParams.churchId = churchId;
     if (params?.limit) queryParams.limit = params.limit;
     if (params?.page) queryParams.page = params.page;
     if (params?.export) queryParams.export = 'true';
+    if (params?.category) queryParams.category = params.category;
+    if (params?.startDate) queryParams.startDate = params.startDate;
+    if (params?.endDate) queryParams.endDate = params.endDate;
     
     const { data } = await apiClient.get('/giving/donations', {
       params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
@@ -217,7 +220,7 @@ export const givingService = {
     return data;
   },
 
-  async getMinistryPledges(params?: { campaignId?: string; status?: string; churchId?: string; sortBy?: string; page?: number; limit?: number; export?: boolean }): Promise<{
+  async getMinistryPledges(params?: { campaignId?: string; status?: string; churchId?: string; sortBy?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean }): Promise<{
     data: Pledge[];
     pagination: { page: number; limit: number; total: number; totalPages: number };
     summary: { totalPledged: number; totalPaid: number; outstanding: number; count: number };

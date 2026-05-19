@@ -154,6 +154,14 @@ export const cellsService = {
   },
 
   // Meetings
+  getVisitors: async (params?: { cellId?: string; churchId?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean }): Promise<{
+    data: any[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  }> => {
+    const { data } = await apiClient.get(`${BASE}/visitors`, { params });
+    return data;
+  },
+
   getMeetings: async (cellId: string, params?: { dateFrom?: string; dateTo?: string; page?: number; limit?: number }): Promise<{
     data: CellMeeting[];
     pagination: { total: number; page: number; limit: number; pages: number };

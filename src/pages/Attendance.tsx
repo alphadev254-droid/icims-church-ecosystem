@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { attendanceService } from '@/services/attendance';
 import { churchesService } from '@/services/churches';
 import { useRole } from '@/hooks/useRole';
@@ -12,19 +12,23 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ChurchSelect } from '@/components/ChurchSelect';
-import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, UserCheck, Eye } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
 import { STALE_TIME } from '@/lib/query-config';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { RegularServiceForm } from '@/components/attendance/RegularServiceForm';
+import { EditAttendanceForm } from '@/components/attendance/EditAttendanceForm';
+import { VisitorsManageDialog } from '@/components/attendance/VisitorsManageDialog';
+import { ViewAttendanceDialog } from '@/components/attendance/ViewAttendanceDialog';
 
 export default function AttendancePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editRecord, setEditRecord] = useState<any | null>(null);
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
+  const [visitorsRecord, setVisitorsRecord] = useState<any | null>(null);
+  const [viewRecord, setViewRecord] = useState<any | null>(null);
   const [churchFilter, setChurchFilter] = useState('all');
   const [serviceTypeFilter, setServiceTypeFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
@@ -162,7 +166,7 @@ export default function AttendancePage() {
                 <Plus className="h-4 w-4" /> Record Attendance
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-heading">Record Attendance</DialogTitle>
               </DialogHeader>
@@ -324,10 +328,28 @@ export default function AttendancePage() {
                     <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).youngAdults ?? 0}</TableCell>
                     <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).adults ?? 0}</TableCell>
                     <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).seniors ?? 0}</TableCell>
-                    <TableCell className="text-right hidden xl:table-cell text-muted-foreground">{r.newVisitors ?? 0}</TableCell>
+                    <TableCell className="text-right hidden xl:table-cell text-muted-foreground">
+                      {(r as any)._count?.visitors > 0
+                        ? `${(r as any)._count.visitors} (detailed)`
+                        : r.newVisitors ?? 0}
+                    </TableCell>
                     {(canUpdate || canDelete) && (
                       <TableCell>
                         <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setViewRecord(r)}
+                            className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                            title="View details"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setVisitorsRecord(r)}
+                            className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                            title="View / manage visitors"
+                          >
+                            <UserCheck className="h-3.5 w-3.5" />
+                          </button>
                           {canUpdate && (
                             <button
                               onClick={() => setEditRecord(r)}
@@ -366,34 +388,36 @@ export default function AttendancePage() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editRecord} onOpenChange={open => !open && setEditRecord(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading">Edit Attendance</DialogTitle>
           </DialogHeader>
           {editRecord && (
-            <RegularServiceForm
-              key={editRecord.id}
-              defaultValues={{
-                churchId: editRecord.churchId,
-                date: new Date(editRecord.date).toISOString().split('T')[0],
-                serviceType: editRecord.serviceType,
-                maleCount: (editRecord as any).maleCount ?? 0,
-                femaleCount: (editRecord as any).femaleCount ?? 0,
-                children: (editRecord as any).children ?? 0,
-                youth: (editRecord as any).youth ?? 0,
-                youngAdults: (editRecord as any).youngAdults ?? 0,
-                adults: (editRecord as any).adults ?? 0,
-                seniors: (editRecord as any).seniors ?? 0,
-                newVisitors: editRecord.newVisitors ?? 0,
-                notes: editRecord.notes ?? '',
-              }}
+            <EditAttendanceForm
+              record={editRecord}
               onSubmit={(data) => updateAttendanceMutation.mutate({ id: editRecord.id, data })}
               isPending={updateAttendanceMutation.isPending}
-              submitLabel="Update Record"
             />
           )}
         </DialogContent>
       </Dialog>
+
+      {/* View Attendance Dialog */}
+      {viewRecord && (
+        <ViewAttendanceDialog
+          record={viewRecord}
+          onClose={() => setViewRecord(null)}
+        />
+      )}
+
+      {/* Visitors Manage Dialog */}
+      {visitorsRecord && (
+        <VisitorsManageDialog
+          record={visitorsRecord}
+          canUpdate={canUpdate}
+          onClose={() => setVisitorsRecord(null)}
+        />
+      )}
 
       <AlertDialog open={!!deleteRecord} onOpenChange={open => !open && setDeleteRecord(null)}>
         <AlertDialogContent>
@@ -415,146 +439,5 @@ export default function AttendancePage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-function RegularServiceForm({ onSubmit, isPending, defaultValues, submitLabel = 'Save Record' }: { 
-  onSubmit: (data: any) => void; 
-  isPending: boolean;
-  defaultValues?: any;
-  submitLabel?: string;
-}) {
-  const [churchId, setChurchId] = useState(defaultValues?.churchId ?? '');
-  const [date, setDate] = useState(defaultValues?.date ?? '');
-  const [serviceType, setServiceType] = useState(defaultValues?.serviceType ?? 'Sunday Service');
-  const [maleCount, setMaleCount] = useState(defaultValues?.maleCount?.toString() ?? '');
-  const [femaleCount, setFemaleCount] = useState(defaultValues?.femaleCount?.toString() ?? '');
-  const [children, setChildren] = useState(defaultValues?.children?.toString() ?? '');
-  const [youth, setYouth] = useState(defaultValues?.youth?.toString() ?? '');
-  const [youngAdults, setYoungAdults] = useState(defaultValues?.youngAdults?.toString() ?? '');
-  const [adults, setAdults] = useState(defaultValues?.adults?.toString() ?? '');
-  const [seniors, setSeniors] = useState(defaultValues?.seniors?.toString() ?? '');
-  const [newVisitors, setNewVisitors] = useState(defaultValues?.newVisitors?.toString() ?? '');
-  const [notes, setNotes] = useState(defaultValues?.notes ?? '');
-
-  const totalAttendees = (parseInt(maleCount) || 0) + (parseInt(femaleCount) || 0);
-  const ageGroupTotal = (parseInt(children) || 0) + (parseInt(youth) || 0) + (parseInt(youngAdults) || 0) + (parseInt(adults) || 0) + (parseInt(seniors) || 0);
-  const ageGroupMismatch = ageGroupTotal > 0 && ageGroupTotal !== totalAttendees;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!churchId || !date || !maleCount || !femaleCount) {
-      toast.error('Church, date, and gender fields are required');
-      return;
-    }
-    if (ageGroupMismatch) {
-      toast.error(`Age groups total (${ageGroupTotal}) must equal total attendees (${totalAttendees})`);
-      return;
-    }
-    onSubmit({
-      churchId,
-      date,
-      serviceType,
-      totalAttendees,
-      maleCount: parseInt(maleCount),
-      femaleCount: parseInt(femaleCount),
-      children: parseInt(children) || 0,
-      youth: parseInt(youth) || 0,
-      youngAdults: parseInt(youngAdults) || 0,
-      adults: parseInt(adults) || 0,
-      seniors: parseInt(seniors) || 0,
-      newVisitors: parseInt(newVisitors) || 0,
-      notes,
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <ChurchSelect value={churchId} onValueChange={setChurchId} />
-      
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Date *</Label>
-          <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
-        </div>
-        <div>
-          <Label>Service Type *</Label>
-          <Select value={serviceType} onValueChange={setServiceType} required>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Sunday Service">Sunday Service</SelectItem>
-              <SelectItem value="Midweek Service">Midweek Service</SelectItem>
-              <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
-              <SelectItem value="Youth Service">Youth Service</SelectItem>
-              <SelectItem value="Special Service">Special Service</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      
-      <div>
-        <Label className="text-sm font-medium">Gender Breakdown *</Label>
-        <div className="grid grid-cols-2 gap-4 mt-2">
-          <div>
-            <Label className="text-xs">Male *</Label>
-            <Input type="number" min={0} value={maleCount} onChange={e => setMaleCount(e.target.value)} required />
-          </div>
-          <div>
-            <Label className="text-xs">Female *</Label>
-            <Input type="number" min={0} value={femaleCount} onChange={e => setFemaleCount(e.target.value)} required />
-          </div>
-        </div>
-      </div>
-
-      <div className="p-3 bg-muted rounded-md">
-        <Label className="text-sm text-muted-foreground">Total Attendees (Auto-calculated)</Label>
-        <div className="text-2xl font-bold">{totalAttendees}</div>
-      </div>
-
-      <div>
-        <Label className="text-sm font-medium">Age Groups (Optional)</Label>
-        <div className="grid grid-cols-3 gap-3 mt-2">
-          <div>
-            <Label className="text-xs">Children (0-12)</Label>
-            <Input type="number" min={0} value={children} onChange={e => setChildren(e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-xs">Youth (13-17)</Label>
-            <Input type="number" min={0} value={youth} onChange={e => setYouth(e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-xs">Young Adults (18-35)</Label>
-            <Input type="number" min={0} value={youngAdults} onChange={e => setYoungAdults(e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-xs">Adults (36-59)</Label>
-            <Input type="number" min={0} value={adults} onChange={e => setAdults(e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-xs">Seniors (60+)</Label>
-            <Input type="number" min={0} value={seniors} onChange={e => setSeniors(e.target.value)} />
-          </div>
-        </div>
-        {ageGroupMismatch && (
-          <p className="text-xs text-destructive mt-2">
-            Age groups total ({ageGroupTotal}) must equal total attendees ({totalAttendees})
-          </p>
-        )}
-      </div>
-      
-      <div>
-        <Label>New Visitors</Label>
-        <Input type="number" min={0} value={newVisitors} onChange={e => setNewVisitors(e.target.value)} />
-      </div>
-      
-      <div>
-        <Label>Notes <span className="text-muted-foreground text-xs">(optional)</span></Label>
-        <Input value={notes} onChange={e => setNotes(e.target.value)} />
-      </div>
-      
-      <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-        {isPending ? 'Saving...' : submitLabel}
-      </Button>
-    </form>
   );
 }

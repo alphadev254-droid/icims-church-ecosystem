@@ -57,6 +57,7 @@ export interface AdminUser {
   numberOfBranches?: number;
   currentMembership?: number;
   resolvedCountry?: string | null;
+  resolvedMinistryName?: string | null;
 }
 
 export interface AdminUserDetail extends AdminUser {
@@ -207,6 +208,9 @@ export const adminApi = {
   getStats: () =>
     apiClient.get<{ success: boolean; data: AdminStats }>('/admin/stats'),
 
+  getMinistries: () =>
+    apiClient.get<{ success: boolean; data: Array<{ id: string; label: string; country: string | null }> }>('/admin/ministries'),
+
   getUsers: (params: {
     page?: number;
     limit?: number;
@@ -214,6 +218,7 @@ export const adminApi = {
     role?: string;
     country?: string;
     status?: string;
+    ministry?: string;
   }) => apiClient.get<{ success: boolean; data: AdminUser[]; pagination: Pagination }>('/admin/users', { params }),
 
   getUser: (id: string) =>

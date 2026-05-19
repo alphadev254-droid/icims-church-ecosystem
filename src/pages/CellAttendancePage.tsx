@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cellsService, type CellMember } from '@/services/cells';
+import { givingService } from '@/services/giving';
 import { useRole } from '@/hooks/useRole';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 
@@ -72,6 +73,105 @@ function ExcuseDialog({ name, reason, onSave, onCancel }: {
   );
 }
 
+// ─── Offering Member Picker ───────────────────────────────────────────────────
+
+function OfferingMemberPicker({
+  cellId,
+  memberId,
+  memberLabel,
+  onSelect,
+  onClear,
+}: {
+  cellId: string;
+  memberId: string | null;
+  memberLabel: string;
+  onSelect: (id: string, label: string) => void;
+  onClear: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const [debounced, setDebounced] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const { data, isFetching } = useQuery({
+    queryKey: ['offering-member-search', cellId, debounced],
+    queryFn: () => cellsService.getMembers(cellId, { search: debounced || undefined, limit: 30 }),
+    enabled: open,
+    staleTime: 30_000,
+  });
+
+  const results: any[] = data?.data ?? [];
+
+  if (memberId) {
+    return (
+      <div className="space-y-1.5">
+        <Label className="text-sm">Member <span className="text-destructive">*</span></Label>
+        <div className="flex items-center gap-2 border rounded-md px-3 py-2 text-sm bg-muted/40">
+          <span className="flex-1">{memberLabel}</span>
+          <button type="button" onClick={onClear} className="text-muted-foreground hover:text-foreground">
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm">Member <span className="text-destructive">*</span></Label>
+      <div ref={containerRef} className="relative">
+        <Input
+          placeholder="Search member by name..."
+          value={search}
+          onChange={e => { setSearch(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+        />
+        {open && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+            {isFetching ? (
+              <div className="px-3 py-4 text-xs text-center text-muted-foreground">Searching...</div>
+            ) : results.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-center text-muted-foreground">No members found</div>
+            ) : (
+              results.map((m: any) => (
+                <button
+                  key={m.userId}
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
+                  onClick={() => {
+                    onSelect(
+                      m.userId,
+                      `${m.user?.firstName} ${m.user?.lastName}${m.user?.email ? ` (${m.user.email})` : ''}`,
+                    );
+                    setOpen(false);
+                    setSearch('');
+                  }}
+                >
+                  <span className="font-medium">{m.user?.firstName} {m.user?.lastName}</span>
+                  <span className="text-xs text-muted-foreground">{m.user?.email}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CellAttendancePage() {
@@ -86,6 +186,16 @@ export default function CellAttendancePage() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [saved, setSaved] = useState(false);
   const [excuseKey, setExcuseKey] = useState<string | null>(null);
+  const [offeringDialogOpen, setOfferingDialogOpen] = useState(false);
+  const [offeringCampaignId, setOfferingCampaignId] = useState('');
+  const [offeringAmount, setOfferingAmount] = useState('');
+  const [offeringNotes, setOfferingNotes] = useState('');
+  const [offeringDonorType, setOfferingDonorType] = useState<'member' | 'guest' | 'anonymous'>('member');
+  const [offeringMemberId, setOfferingMemberId] = useState<string | null>(null);
+  const [offeringMemberLabel, setOfferingMemberLabel] = useState('');
+  const [offeringGuestName, setOfferingGuestName] = useState('');
+  const [offeringGuestEmail, setOfferingGuestEmail] = useState('');
+  const [offeringGuestPhone, setOfferingGuestPhone] = useState('');
 
   const { data: cell, isLoading: cellLoading } = useQuery({
     queryKey: ['cell-detail', cellId],
@@ -112,6 +222,45 @@ export default function CellAttendancePage() {
   const meeting = meetingsList.find((m: any) => m.id === meetingId);
 
   const members: CellMember[] = cell?.members ?? [];
+
+  const { data: offeringCampaigns = [] } = useQuery({
+    queryKey: ['fellowship-campaigns', (cell as any)?.churchId],
+    queryFn: () => givingService.getCampaigns({ category: 'fellowship_offering', churchId: (cell as any)?.churchId }),
+    enabled: !!cell && canManage,
+    staleTime: STALE_TIME.DEFAULT,
+  });
+  const flatOfferingCampaigns: any[] = Array.isArray(offeringCampaigns) && (offeringCampaigns as any[])[0]?.label
+    ? (offeringCampaigns as any[]).flatMap((g: any) => g.posts || [])
+    : (offeringCampaigns as any[]);
+
+  const resetOffering = () => {
+    setOfferingAmount(''); setOfferingNotes(''); setOfferingCampaignId('');
+    setOfferingDonorType('member'); setOfferingMemberId(null); setOfferingMemberLabel('');
+    setOfferingGuestName(''); setOfferingGuestEmail(''); setOfferingGuestPhone('');
+  };
+
+  const offeringMutation = useMutation({
+    mutationFn: () => givingService.recordCashDonation({
+      campaignId: offeringCampaignId,
+      donorType: offeringDonorType,
+      memberId: offeringDonorType === 'member' ? (offeringMemberId ?? undefined) : undefined,
+      guestName: offeringDonorType === 'guest' ? offeringGuestName : undefined,
+      guestEmail: offeringDonorType === 'guest' ? (offeringGuestEmail || undefined) : undefined,
+      guestPhone: offeringDonorType === 'guest' ? (offeringGuestPhone || undefined) : undefined,
+      amount: parseFloat(offeringAmount),
+      currency: 'MWK',
+      date: meeting ? new Date(meeting.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      notes: offeringNotes || undefined,
+      cellId: cellId!,
+    }),
+    onSuccess: () => {
+      toast.success('Offering recorded');
+      setOfferingDialogOpen(false);
+      resetOffering();
+      qc.invalidateQueries({ queryKey: ['cell-donations', cellId] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to record offering'),
+  });
 
   // Seed rows once both cell + attendance loaded
   useEffect(() => {
@@ -430,6 +579,163 @@ export default function CellAttendancePage() {
           </tbody>
         </table>
       </div>
+
+      {/* Meeting Offering */}
+      {canManage && (
+        <div className="border rounded-lg p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-accent" />
+              <p className="text-sm font-semibold">Meeting Offering</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => setOfferingDialogOpen(true)}
+              disabled={flatOfferingCampaigns.length === 0}
+            >
+              <Plus className="h-3.5 w-3.5" /> Record Offering
+            </Button>
+          </div>
+          {flatOfferingCampaigns.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No active fellowship offering campaigns found for this cell's church.{' '}
+              Create one under <strong>Giving → Campaigns</strong> with category "Fellowship Offering".
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Record cash collected during this meeting. Offerings are linked to this cell and viewable under the <strong>Transactions</strong> tab.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Offering Dialog */}
+      <Dialog open={offeringDialogOpen} onOpenChange={open => { if (!open) { setOfferingDialogOpen(false); resetOffering(); } }}>
+        <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Record Meeting Offering</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              {cell?.name}{meeting && ` · ${new Date(meeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-1 overflow-y-auto flex-1 pr-1">
+            {/* Campaign */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Campaign <span className="text-destructive">*</span></Label>
+              <Select value={offeringCampaignId} onValueChange={setOfferingCampaignId}>
+                <SelectTrigger><SelectValue placeholder="Select campaign" /></SelectTrigger>
+                <SelectContent>
+                  {flatOfferingCampaigns.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Donor type toggle */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Donor Type</Label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {([
+                  { value: 'member', label: 'Member', desc: 'Cell member' },
+                  { value: 'guest', label: 'Guest', desc: 'Known visitor' },
+                  { value: 'anonymous', label: 'Anonymous', desc: 'No details' },
+                ] as const).map(t => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => { setOfferingDonorType(t.value); setOfferingMemberId(null); setOfferingMemberLabel(''); }}
+                    className={`rounded-md border px-2 py-2 text-left text-xs transition-colors ${offeringDonorType === t.value ? 'border-accent bg-accent/10 text-accent font-medium' : 'border-border hover:bg-muted'}`}
+                  >
+                    <div className="font-medium">{t.label}</div>
+                    <div className="text-muted-foreground mt-0.5 leading-tight">{t.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Member picker — debounced search via API (handles any cell size) */}
+            {offeringDonorType === 'member' && (
+              <OfferingMemberPicker
+                cellId={cellId!}
+                memberId={offeringMemberId}
+                memberLabel={offeringMemberLabel}
+                onSelect={(id, label) => { setOfferingMemberId(id); setOfferingMemberLabel(label); }}
+                onClear={() => { setOfferingMemberId(null); setOfferingMemberLabel(''); }}
+              />
+            )}
+
+            {/* Guest fields */}
+            {offeringDonorType === 'guest' && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Full Name <span className="text-destructive">*</span></Label>
+                  <Input placeholder="e.g. John Banda" value={offeringGuestName} onChange={e => setOfferingGuestName(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                    <Input placeholder="+265 ..." value={offeringGuestPhone} onChange={e => setOfferingGuestPhone(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                    <Input type="email" placeholder="john@..." value={offeringGuestEmail} onChange={e => setOfferingGuestEmail(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Anonymous note */}
+            {offeringDonorType === 'anonymous' && (
+              <p className="text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
+                No donor details will be stored. The offering will appear as Anonymous.
+              </p>
+            )}
+
+            {/* Amount */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Amount (MWK) <span className="text-destructive">*</span></Label>
+              <Input
+                type="number"
+                min="1"
+                step="any"
+                placeholder="0.00"
+                value={offeringAmount}
+                onChange={e => setOfferingAmount(e.target.value)}
+              />
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Notes <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Textarea rows={2} placeholder="e.g. Sunday collection" value={offeringNotes} onChange={e => setOfferingNotes(e.target.value)} />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" size="sm" onClick={() => { setOfferingDialogOpen(false); resetOffering(); }}>Cancel</Button>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+                disabled={
+                  !offeringCampaignId ||
+                  !offeringAmount ||
+                  parseFloat(offeringAmount) <= 0 ||
+                  (offeringDonorType === 'member' && !offeringMemberId) ||
+                  (offeringDonorType === 'guest' && !offeringGuestName.trim()) ||
+                  offeringMutation.isPending
+                }
+                onClick={() => offeringMutation.mutate()}
+              >
+                {offeringMutation.isPending ? 'Saving...' : 'Record Offering'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Excuse dialog */}
       {excuseKey && excuseRow && (
