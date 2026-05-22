@@ -159,7 +159,7 @@ export const givingService = {
     await apiClient.delete(`/giving/campaigns/${id}`);
   },
 
-  async getDonations(campaignId?: string, churchId?: string, params?: { limit?: number; page?: number; export?: boolean; category?: string; startDate?: string; endDate?: string }): Promise<DonationTransaction[]> {
+  async getDonations(campaignId?: string, churchId?: string, params?: { limit?: number; page?: number; export?: boolean; category?: string; cellId?: string; startDate?: string; endDate?: string }): Promise<DonationTransaction[]> {
     const queryParams: any = {};
     if (campaignId) queryParams.campaignId = campaignId;
     if (churchId) queryParams.churchId = churchId;
@@ -167,13 +167,16 @@ export const givingService = {
     if (params?.page) queryParams.page = params.page;
     if (params?.export) queryParams.export = 'true';
     if (params?.category) queryParams.category = params.category;
+    if (params?.cellId) queryParams.cellId = params.cellId;
     if (params?.startDate) queryParams.startDate = params.startDate;
     if (params?.endDate) queryParams.endDate = params.endDate;
     
     const { data } = await apiClient.get('/giving/donations', {
       params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
     });
-    // export=true returns { success, data: [] } without pagination wrapper
+    // export=true returns { success, data[], pagination } — return full response so
+    // callers can read pagination.totalPages for batch‑export page nav
+    if (params?.export) return data;
     return data.data;
   },
 

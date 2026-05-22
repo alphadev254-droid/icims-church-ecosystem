@@ -14,7 +14,7 @@ import { BookDemoDialog } from '@/components/BookDemoDialog';
 const modules = [
   { icon: Users,        title: 'Members Management',            desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
   { icon: Calendar,     title: 'Events Management',             desc: 'This module allows you to create church events and share them with all your church members. It also issues tickets for all ticketed events.' },
-  { icon: HandCoins,    title: 'Giving & Donations',            desc: "Online giving is made easy! You can now manage your church's giving online." },
+  { icon: HandCoins,    title: 'Giving',            desc: "Online giving is made easy! You can now manage your church's giving online." },
   { icon: ClipboardList,title: 'Attendance Tracking',           desc: 'Report every church meeting and retrieve the data at any time in the future.' },
   { icon: BookOpen,     title: 'Resources Library',             desc: 'This module gives you a platform to keep resource materials that can be accessed by all church members.' },
   { icon: Church,       title: 'Churches Management',           desc: 'Create your church and manage how data flows from the churches under you in this module.' },

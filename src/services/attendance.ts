@@ -45,9 +45,10 @@ export interface CreateAttendanceDto {
 }
 
 export const attendanceService = {
-  getAll: async (params?: { serviceType?: string; churchId?: string; startDate?: string; endDate?: string; limit?: number; page?: number; export?: boolean }): Promise<AttendanceRecord[]> => {
+  getAll: async (params?: { serviceType?: string; churchId?: string; startDate?: string; endDate?: string; limit?: number; page?: number; export?: boolean }): Promise<AttendanceRecord[] | { data: AttendanceRecord[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
     const { data } = await apiClient.get('/attendance', { params });
-    // export=true returns { success, data: [] } without pagination wrapper
+    // export=true now returns pagination wrapper; non-export returns data directly
+    if (params?.export) return data;
     return data.data;
   },
   create: async (dto: CreateAttendanceDto): Promise<AttendanceRecord> => {
@@ -71,5 +72,10 @@ export const attendanceService = {
   },
   deleteVisitor: async (id: string, visitorId: string): Promise<void> => {
     await apiClient.delete(`/attendance/${id}/visitors/${visitorId}`);
+  },
+  getServiceVisitors: async (params?: { churchId?: string; serviceType?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean }): Promise<any[] | { data: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
+    const { data } = await apiClient.get('/attendance/visitors', { params });
+    if (params?.export) return data;
+    return data.data;
   },
 };

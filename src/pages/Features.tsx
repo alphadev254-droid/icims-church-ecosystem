@@ -21,7 +21,7 @@ const modules = [
   // Core
   { icon: Users,        cat: 'core',          num: '01', title: 'Members Management',           desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
   { icon: Calendar,     cat: 'core',          num: '02', title: 'Events Management',             desc: 'This module allows you to create church events and share them with all your church members. It also issues tickets for all ticketed events.' },
-  { icon: HandCoins,    cat: 'core',          num: '03', title: 'Giving & Donations',            desc: "Online giving is made easy! You can now manage your church's giving online." },
+  { icon: HandCoins,    cat: 'core',          num: '03', title: 'Giving',            desc: "Online giving is made easy! You can now manage your church's giving online." },
   { icon: ClipboardList,cat: 'core',          num: '04', title: 'Attendance Tracking',           desc: 'Report every church meeting and retrieve the data at any time in the future.' },
   { icon: BookOpen,     cat: 'core',          num: '05', title: 'Resources Library',             desc: 'This module gives you a platform to keep resource materials that can be accessed by all church members.' },
   { icon: Church,       cat: 'core',          num: '06', title: 'Churches Management',           desc: 'Create your church and manage how data flows from the churches under you in this module.' },

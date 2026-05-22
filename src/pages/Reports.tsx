@@ -7,6 +7,7 @@ import { kpiService, KPI, CreateKPIData } from '@/services/kpi';
 import { churchesService } from '@/services/churches';
 import { transactionsService } from '@/services/transactions';
 import { cellsService } from '@/services/cells';
+import { teamsService } from '@/services/teams';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useRole } from '@/hooks/useRole';
@@ -20,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle, UserX, Group, CreditCard, Handshake, UserCheck } from 'lucide-react';
+import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle, UserX, Group, CreditCard, Handshake, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -65,7 +66,30 @@ export default function ReportsPage() {
   const [givingByMemberChurchFilter, setGivingByMemberChurchFilter] = useState('all');
   const [givingByMemberStartDate, setGivingByMemberStartDate] = useState('');
   const [givingByMemberEndDate, setGivingByMemberEndDate] = useState('');
+  const [memberStatusFilter, setMemberStatusFilter] = useState('all');
+  const [memberCellFilter, setMemberCellFilter] = useState('all');
+  const [memberTeamFilter, setMemberTeamFilter] = useState('all');
+  const [givingCellFilter, setGivingCellFilter] = useState('all');
+  const [batchSizeMap, setBatchSizeMap] = useState<Record<string, number>>({});
+  const [batchPageMap, setBatchPageMap] = useState<Record<string, number>>({});
+  const [batchTotalPagesMap, setBatchTotalPagesMap] = useState<Record<string, number>>({});
+
+  // ── Batch-export helpers ─────────────────────────────────────────────────────
+  const getBatchParams = (title: string) => {
+    const bSize = batchSizeMap[title] ?? 0;
+    const bPage = batchPageMap[title] ?? 1;
+    return bSize > 0 ? { limit: bSize, page: bPage, export: true } : { export: true };
+  };
+  const handleBatchResponse = (title: string, response: any) => {
+    if (response?.pagination?.totalPages) {
+      setBatchTotalPagesMap(prev => ({ ...prev, [title]: response.pagination.totalPages }));
+    }
+  };
+
   const [cellChurchFilter, setCellChurchFilter] = useState('all');
+  const [cellGroupCellFilter, setCellGroupCellFilter] = useState('all');
+  const [cellGroupStartDate, setCellGroupStartDate] = useState('');
+  const [cellGroupEndDate, setCellGroupEndDate] = useState('');
   const [givingCategoryFilter, setGivingCategoryFilter] = useState('all');
   const [givingStartDate, setGivingStartDate] = useState('');
   const [givingEndDate, setGivingEndDate] = useState('');
@@ -77,11 +101,145 @@ export default function ReportsPage() {
   const [visitorCellFilter, setVisitorCellFilter] = useState('all');
   const [visitorStartDate, setVisitorStartDate] = useState('');
   const [visitorEndDate, setVisitorEndDate] = useState('');
+  const [churchVisitorChurchFilter, setChurchVisitorChurchFilter] = useState('all');
+  const [churchVisitorServiceType, setChurchVisitorServiceType] = useState('all');
+  const [churchVisitorStartDate, setChurchVisitorStartDate] = useState('');
+  const [churchVisitorEndDate, setChurchVisitorEndDate] = useState('');
+
+  // ── Fetch batch total-pages when filters change ──────────────────────────
+  // Proactively fetch totalPages so page nav shows "P1 of 47" immediately
+  // instead of only after the first export.
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const cards = Object.entries(batchSizeMap).filter(([_, s]) => s > 0);
+      if (cards.length === 0) return;
+
+      await Promise.allSettled(
+        cards.map(async ([title, limit]) => {
+          let response: any;
+          const page = 1;
+
+          switch (title) {
+            case 'Membership Report': {
+              const p: any = { limit, page, export: true };
+              if (memberChurchFilter !== 'all') p.churchId = memberChurchFilter;
+              if (memberStatusFilter !== 'all') p.status = memberStatusFilter;
+              if (memberCellFilter !== 'all') p.cellId = memberCellFilter;
+              if (memberTeamFilter !== 'all') p.teamId = memberTeamFilter;
+              response = await membersService.getAll(p);
+              break;
+            }
+            case 'Giving Report': {
+              const p: any = {
+                limit, page, export: true,
+                category: givingCategoryFilter !== 'all' ? givingCategoryFilter : undefined,
+                cellId: givingCellFilter !== 'all' ? givingCellFilter : undefined,
+                startDate: givingStartDate || undefined,
+                endDate: givingEndDate || undefined,
+              };
+              response = await givingService.getDonations(
+                givingCampaignFilter !== 'all' ? givingCampaignFilter : undefined,
+                givingChurchFilter !== 'all' ? givingChurchFilter : undefined,
+                p,
+              );
+              break;
+            }
+            case 'Attendance Report': {
+              const p: any = { limit, page, export: true };
+              if (attendanceServiceFilter !== 'all') p.serviceType = attendanceServiceFilter;
+              if (attendanceChurchFilter !== 'all') p.churchId = attendanceChurchFilter;
+              if (attendanceStartDate) p.startDate = attendanceStartDate;
+              if (attendanceEndDate) p.endDate = attendanceEndDate;
+              response = await attendanceService.getAll(p);
+              break;
+            }
+            case 'Inactive Members Report': {
+              const p: any = { limit, page, export: true, status: 'inactive' };
+              if (inactiveMemberChurchFilter !== 'all') p.churchId = inactiveMemberChurchFilter;
+              response = await membersService.getAll(p);
+              break;
+            }
+            case 'Pledge Report': {
+              const p: any = { limit, page, export: true };
+              if (pledgeChurchFilter !== 'all') p.churchId = pledgeChurchFilter;
+              if (pledgeStatusFilter !== 'all') p.status = pledgeStatusFilter;
+              if (pledgeStartDate) p.startDate = pledgeStartDate;
+              if (pledgeEndDate) p.endDate = pledgeEndDate;
+              response = await givingService.getMinistryPledges(p);
+              break;
+            }
+            case 'Transaction Report': {
+              const p: any = { limit, page, export: true };
+              if (txChurchFilter !== 'all') p.churchId = txChurchFilter;
+              if (txTypeFilter !== 'all') p.type = txTypeFilter;
+              if (txStartDate) p.startDate = txStartDate;
+              if (txEndDate) p.endDate = txEndDate;
+              response = await transactionsService.exportAll(p);
+              break;
+            }
+            case 'Cell Groups Report': {
+              const p: any = { limit, page, export: true };
+              if (cellChurchFilter !== 'all') p.churchId = cellChurchFilter;
+              if (cellGroupCellFilter !== 'all') p.cellId = cellGroupCellFilter;
+              if (cellGroupStartDate) p.startDate = cellGroupStartDate;
+              if (cellGroupEndDate) p.endDate = cellGroupEndDate;
+              response = await cellsService.getAll(p);
+              break;
+            }
+            case 'Cell Visitors Report': {
+              const p: any = { limit, page, export: true };
+              if (visitorChurchFilter !== 'all') p.churchId = visitorChurchFilter;
+              if (visitorCellFilter !== 'all') p.cellId = visitorCellFilter;
+              if (visitorStartDate) p.startDate = visitorStartDate;
+              if (visitorEndDate) p.endDate = visitorEndDate;
+              response = await cellsService.getVisitors(p);
+              break;
+            }
+            case 'Church Visitors Report': {
+              const p: any = { limit, page, export: true };
+              if (churchVisitorChurchFilter !== 'all') p.churchId = churchVisitorChurchFilter;
+              if (churchVisitorServiceType !== 'all') p.serviceType = churchVisitorServiceType;
+              if (churchVisitorStartDate) p.startDate = churchVisitorStartDate;
+              if (churchVisitorEndDate) p.endDate = churchVisitorEndDate;
+              response = await attendanceService.getServiceVisitors(p);
+              break;
+            }
+            default:
+              return;
+          }
+
+          // Extract pagination — response is either { data, pagination } or raw array
+          const pagination =
+            response?.pagination ??
+            (response as any)?.pagination;
+
+          if (pagination?.totalPages != null) {
+            setBatchTotalPagesMap(prev => ({ ...prev, [title]: pagination.totalPages }));
+          }
+        })
+      );
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [
+    batchSizeMap,
+    memberChurchFilter, memberStatusFilter, memberCellFilter, memberTeamFilter,
+    givingCategoryFilter, givingCampaignFilter, givingChurchFilter, givingCellFilter,
+    givingStartDate, givingEndDate,
+    attendanceServiceFilter, attendanceChurchFilter, attendanceStartDate, attendanceEndDate,
+    inactiveMemberChurchFilter,
+    pledgeChurchFilter, pledgeStatusFilter, pledgeStartDate, pledgeEndDate,
+    txChurchFilter, txTypeFilter, txStartDate, txEndDate,
+    cellChurchFilter, cellGroupCellFilter, cellGroupStartDate, cellGroupEndDate,
+    visitorChurchFilter, visitorCellFilter, visitorStartDate, visitorEndDate,
+    churchVisitorChurchFilter, churchVisitorServiceType, churchVisitorStartDate, churchVisitorEndDate,
+  ]);
 
   const { data: stats } = useQuery({ queryKey: ['dashboard-stats'], queryFn: () => dashboardService.getStats(), enabled: !!user && hasReports });
   const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: () => churchesService.getAll(), enabled: hasReports });
   const { data: campaigns = [] } = useQuery({ queryKey: ['campaigns'], queryFn: () => givingService.getCampaigns(), enabled: hasReports });
   const { data: simpleCells = [] } = useQuery({ queryKey: ['cells-simple'], queryFn: () => cellsService.getSimple(), enabled: hasReports });
+  const { data: teams = [] } = useQuery({ queryKey: ['teams-report', memberChurchFilter], queryFn: () => teamsService.getAll(memberChurchFilter !== 'all' ? memberChurchFilter : undefined), enabled: hasReports });
 
   // Flatten grouped campaigns if needed
   const flatCampaigns = Array.isArray(campaigns) && (campaigns as any[])[0]?.label
@@ -156,11 +314,16 @@ export default function ReportsPage() {
   const isLoading = false;
 
   const handleExportMembers = async () => {
+    const batchParams = getBatchParams('Membership Report');
     const response = await membersService.getAll({
       ...(memberChurchFilter !== 'all' ? { churchId: memberChurchFilter } : {}),
-      export: true,
+      ...(memberStatusFilter !== 'all' ? { status: memberStatusFilter } : {}),
+      ...(memberCellFilter !== 'all' ? { cellId: memberCellFilter } : {}),
+      ...(memberTeamFilter !== 'all' ? { teamId: memberTeamFilter } : {}),
+      ...batchParams,
     });
-    const members = response || [];
+    handleBatchResponse('Membership Report', response);
+    const members: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
     downloadCSV(
       'members-report.csv',
       members.map(m => [
@@ -179,6 +342,7 @@ export default function ReportsPage() {
         m.church?.name ?? '',
         m.roleName ?? '',
         m.status,
+        Array.isArray((m as any).cells) ? (m as any).cells.map((c: any) => c.name).join('; ') : '',
         Array.isArray(m.teams) ? m.teams.join('; ') : '',
         new Date(m.createdAt).toLocaleDateString()
       ]),
@@ -198,6 +362,7 @@ export default function ReportsPage() {
         'Church',
         'Role',
         'Status',
+        'Cell',
         'Teams',
         'Joined'
       ],
@@ -205,44 +370,55 @@ export default function ReportsPage() {
   };
 
   const handleExportGiving = async () => {
+    const batchParams = getBatchParams('Giving Report');
     const response = await givingService.getDonations(
       givingCampaignFilter !== 'all' ? givingCampaignFilter : undefined,
       givingChurchFilter !== 'all' ? givingChurchFilter : undefined,
       {
-        export: true,
         category: givingCategoryFilter !== 'all' ? givingCategoryFilter : undefined,
+        cellId: givingCellFilter !== 'all' ? givingCellFilter : undefined,
         startDate: givingStartDate || undefined,
         endDate: givingEndDate || undefined,
+        ...batchParams,
       }
     );
-    const donations = response ?? [];
+    handleBatchResponse('Giving Report', response);
+    const donations: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
     
     downloadCSV(
       'giving-report.csv',
       donations.map((d: any) => [
-        d.user?.firstName + ' ' + d.user?.lastName || d.donorName || 'Anonymous',
+        d.isAnonymous ? 'Anonymous' : d.isGuest ? (d.guestName || 'Guest') : `${d.user?.firstName ?? ''} ${d.user?.lastName ?? ''}`.trim() || d.donorName || '',
+        d.isAnonymous ? '' : d.isGuest ? (d.guestEmail || '') : (d.user?.email || d.donorEmail || ''),
+        d.isAnonymous ? '' : d.isGuest ? (d.guestPhone || '') : (d.user?.phone || ''),
+        d.isAnonymous ? 'Anonymous' : d.isGuest ? 'Guest' : 'Member',
         d.amount.toString(),
         d.currency,
         d.campaign?.name || '',
         d.campaign?.category || '',
+        d.cell?.name || '',
         d.church?.name || '',
         d.paymentMethod || 'N/A',
+        d.isManual ? 'Manual' : 'Online',
+        d.reference || '',
         d.status,
         new Date(d.createdAt).toLocaleDateString()
       ]),
-      ['Member', 'Amount', 'Currency', 'Campaign', 'Category', 'Church', 'Method', 'Status', 'Date'],
+      ['Name', 'Email', 'Phone', 'Type', 'Amount', 'Currency', 'Campaign', 'Category', 'Cell', 'Church', 'Method', 'Entry', 'Reference', 'Status', 'Date'],
     );
   };
 
   const handleExportAttendance = async () => {
-    const params: any = { export: true };
+    const batchParams = getBatchParams('Attendance Report');
+    const params: any = { ...batchParams };
     if (attendanceServiceFilter !== 'all') params.serviceType = attendanceServiceFilter;
     if (attendanceChurchFilter !== 'all') params.churchId = attendanceChurchFilter;
     if (attendanceStartDate) params.startDate = attendanceStartDate;
     if (attendanceEndDate) params.endDate = attendanceEndDate;
     
     const response = await attendanceService.getAll(params);
-    const attendance = response ?? [];
+    handleBatchResponse('Attendance & Service Report', response);
+    const attendance: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
     downloadCSV(
       'attendance-report.csv',
       attendance.map(a => [
@@ -295,32 +471,40 @@ export default function ReportsPage() {
   // ── New report export handlers ─────────────────────────────────────────────
 
   const handleExportInactiveMembers = async () => {
+    const batchParams = getBatchParams('Inactive Members Report');
     const response = await membersService.getAll({
       ...(inactiveMemberChurchFilter !== 'all' ? { churchId: inactiveMemberChurchFilter } : {}),
       status: 'inactive',
-      export: true,
+      ...batchParams,
     } as any);
-    const members = response || [];
+    handleBatchResponse('Inactive Members Report', response);
+    const members: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
     downloadCSV(
       'inactive-members-report.csv',
       members.map((m: any) => [
         m.firstName, m.lastName, m.email ?? '', m.phone ?? '',
-        m.gender ?? '', m.church?.name ?? '', m.roleName ?? '',
-        m.status, new Date(m.createdAt).toLocaleDateString(),
+        m.gender ?? '', m.membershipType ?? '',
+        m.baptizedByImmersion ? 'Yes' : 'No',
+        m.church?.name ?? '',
+        Array.isArray(m.cells) ? m.cells.map((c: any) => c.name).join('; ') : '',
+        m.residentialNeighbourhood ?? '',
+        m.roleName ?? '', m.status, new Date(m.createdAt).toLocaleDateString(),
       ]),
-      ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Church', 'Role', 'Status', 'Joined'],
+      ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Baptized', 'Church', 'Cell', 'Neighbourhood', 'Role', 'Status', 'Joined'],
     );
   };
 
   const handleExportPledges = async () => {
+    const batchParams = getBatchParams('Pledge Report');
     const response = await givingService.getMinistryPledges({
       ...(pledgeChurchFilter !== 'all' ? { churchId: pledgeChurchFilter } : {}),
       ...(pledgeStatusFilter !== 'all' ? { status: pledgeStatusFilter } : {}),
       ...(pledgeStartDate ? { startDate: pledgeStartDate } : {}),
       ...(pledgeEndDate ? { endDate: pledgeEndDate } : {}),
-      export: true,
+      ...batchParams,
     });
-    const pledges = response?.data || [];
+    handleBatchResponse('Pledge Report', response);
+    const pledges: any[] = (response as any)?.data ?? [];
     downloadCSV(
       'pledges-report.csv',
       pledges.map((p: any) => [
@@ -343,15 +527,18 @@ export default function ReportsPage() {
   };
 
   const handleExportTransactions = async () => {
-    const params: any = {};
+    const batchParams = getBatchParams('Transaction Report');
+    const params: any = { ...batchParams };
     if (txChurchFilter !== 'all') params.churchId = txChurchFilter;
     if (txTypeFilter !== 'all') params.type = txTypeFilter;
     if (txStartDate) params.startDate = txStartDate;
     if (txEndDate) params.endDate = txEndDate;
-    const transactions = await transactionsService.exportAll(params);
+    const response = await transactionsService.exportAll(params);
+    handleBatchResponse('Transaction Report', response);
+    const transactions: any[] = (response as any)?.data ?? [];
     downloadCSV(
       'transactions-report.csv',
-      (transactions || []).map((t: any) => [
+      transactions.map((t: any) => [
         t.user ? `${t.user.firstName} ${t.user.lastName}` : (t.guestName || 'Guest'),
         t.user?.email || t.guestEmail || '',
         t.amount.toString(),
@@ -383,42 +570,91 @@ export default function ReportsPage() {
       'giving-by-member-report.csv',
       (data || []).map((r: any) => [
         r.firstName, r.lastName, r.email, r.phone || '',
-        r.church, r.totalGiven.toString(), r.donationCount.toString(),
+        r.gender || '', r.membershipType || '', r.status || '',
+        r.cell || '', r.church,
+        r.totalGiven.toString(), r.donationCount.toString(),
       ]),
-      ['First Name', 'Last Name', 'Email', 'Phone', 'Church', 'Total Given', 'Donations'],
+      ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Status', 'Cell', 'Church', 'Total Given', 'Giving Count'],
     );
   };
 
   const handleExportCellGroups = async () => {
-    const params: any = {};
+    const batchParams = getBatchParams('Cell Groups Report');
+    const params: any = { ...batchParams };
     if (cellChurchFilter !== 'all') params.churchId = cellChurchFilter;
-    params.limit = 1000;
+    if (cellGroupCellFilter !== 'all') params.cellId = cellGroupCellFilter;
+    if (cellGroupStartDate) params.startDate = cellGroupStartDate;
+    if (cellGroupEndDate) params.endDate = cellGroupEndDate;
     const response = await cellsService.getAll(params);
-    const cells = response?.data || [];
+    handleBatchResponse('Cell Group Report', response);
+    const cells: any[] = (response as any)?.data ?? [];
+    const hasDates = !!(cellGroupStartDate || cellGroupEndDate);
     downloadCSV(
       'cell-groups-report.csv',
       cells.map((c: any) => [
-        c.name, c.zone || '', c.church?.name || '',
+        c.name,
+        c.zone || '',
+        c.church?.name || '',
+        c.leaderName || '',
         c._count?.members?.toString() || '0',
-        c._count?.meetings?.toString() || '0',
+        hasDates ? (c.meetingsInPeriod ?? 0).toString() : (c._count?.meetings ?? 0).toString(),
+        (c.totalVisitors ?? 0).toString(),
         c.attendanceRate != null ? `${c.attendanceRate}%` : 'N/A',
         c.conversionRate != null ? `${c.conversionRate}%` : 'N/A',
         c.lastMeetingDate ? new Date(c.lastMeetingDate).toLocaleDateString() : 'Never',
-        c.status, c.meetingDay || '', c.meetingTime || '',
+        c.status,
+        c.meetingDay || '',
+        c.meetingTime || '',
+        c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '',
       ]),
-      ['Cell Name', 'Zone', 'Church', 'Members', 'Meetings', 'Attendance Rate', 'Conversion Rate', 'Last Meeting', 'Status', 'Meeting Day', 'Meeting Time'],
+      ['Cell Name', 'Zone', 'Church', 'Leader', 'Active Members',
+        hasDates ? 'Meetings (Period)' : 'Total Meetings',
+        'Total Visitors', 'Attendance Rate', 'Conversion Rate',
+        'Last Meeting', 'Status', 'Meeting Day', 'Meeting Time', 'Established'],
+    );
+  };
+
+  const handleExportChurchVisitors = async () => {
+    const batchParams = getBatchParams('Church Visitors Report');
+    const response = await attendanceService.getServiceVisitors({
+      ...(churchVisitorChurchFilter !== 'all' ? { churchId: churchVisitorChurchFilter } : {}),
+      ...(churchVisitorServiceType !== 'all' ? { serviceType: churchVisitorServiceType } : {}),
+      ...(churchVisitorStartDate ? { startDate: churchVisitorStartDate } : {}),
+      ...(churchVisitorEndDate ? { endDate: churchVisitorEndDate } : {}),
+      ...batchParams,
+    });
+    handleBatchResponse('Church Visitors Report', response);
+    const visitors: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
+    downloadCSV(
+      'church-visitors-report.csv',
+      visitors.map((v: any) => [
+        v.name || '',
+        v.phone || '',
+        v.email || '',
+        v.gender || '',
+        v.ageBracket || '',
+        v.residentialArea || '',
+        v.howHeard || '',
+        v.notes || '',
+        v.attendance?.church?.name || '',
+        v.attendance?.serviceType || '',
+        v.attendance?.date ? new Date(v.attendance.date).toLocaleDateString() : '',
+      ]),
+      ['Name', 'Phone', 'Email', 'Gender', 'Age Bracket', 'Residential Area', 'How Heard', 'Notes', 'Church', 'Service Type', 'Service Date'],
     );
   };
 
   const handleExportVisitors = async () => {
+    const batchParams = getBatchParams('Cell Visitors Report');
     const response = await cellsService.getVisitors({
       ...(visitorChurchFilter !== 'all' ? { churchId: visitorChurchFilter } : {}),
       ...(visitorCellFilter !== 'all' ? { cellId: visitorCellFilter } : {}),
       ...(visitorStartDate ? { startDate: visitorStartDate } : {}),
       ...(visitorEndDate ? { endDate: visitorEndDate } : {}),
-      export: true,
+      ...batchParams,
     });
-    const visitors = response?.data ?? [];
+    handleBatchResponse('Cell Visitors Report', response);
+    const visitors: any[] = (response as any)?.data ?? [];
     downloadCSV(
       'visitors-report.csv',
       visitors.map((v: any) => [
@@ -440,41 +676,60 @@ export default function ReportsPage() {
   const reportCards = [
     {
       title: 'Membership Report',
-      description: 'Complete list of all registered members with status and contact info.',
+      description: 'Complete list of all registered members — filter by status, cell, team, or church.',
       icon: Users,
       onExport: handleExportMembers,
       filterComponent: (
-        <div className="mb-3">
-          <Label className="text-xs">Filter by Church</Label>
-          <Select value={memberChurchFilter} onValueChange={setMemberChurchFilter}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Churches</SelectItem>
-              {(churches as any[]).map(church => (
-                <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ),
-    },
-    {
-      title: 'Inactive Members',
-      description: 'Members with inactive status — useful for pastoral follow-up.',
-      icon: UserX,
-      onExport: handleExportInactiveMembers,
-      filterComponent: (
-        <div className="mb-3">
-          <Label className="text-xs">Filter by Church</Label>
-          <Select value={inactiveMemberChurchFilter} onValueChange={setInactiveMemberChurchFilter}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Churches</SelectItem>
-              {(churches as any[]).map(church => (
-                <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="space-y-2 mb-3">
+          <div>
+            <Label className="text-xs">Filter by Church</Label>
+            <Select value={memberChurchFilter} onValueChange={v => { setMemberChurchFilter(v); setMemberCellFilter('all'); setMemberTeamFilter('all'); }}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {(churches as any[]).map(church => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Status</Label>
+            <Select value={memberStatusFilter} onValueChange={setMemberStatusFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Cell</Label>
+            <Select value={memberCellFilter} onValueChange={setMemberCellFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Cells" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cells</SelectItem>
+                {(simpleCells as any[])
+                  .filter((c: any) => memberChurchFilter === 'all' || c.churchId === memberChurchFilter)
+                  .map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Team</Label>
+            <Select value={memberTeamFilter} onValueChange={setMemberTeamFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Teams" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Teams</SelectItem>
+                {(teams as any[]).map((t: any) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       ),
     },
@@ -524,6 +779,22 @@ export default function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
+          {givingCategoryFilter === 'fellowship_offering' && (
+            <div>
+              <Label className="text-xs">Filter by Cell</Label>
+              <Select value={givingCellFilter} onValueChange={setGivingCellFilter}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Cells" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cells</SelectItem>
+                  {(simpleCells as any[])
+                    .filter((c: any) => givingChurchFilter === 'all' || c.churchId === givingChurchFilter)
+                    .map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">From</Label>
@@ -663,27 +934,50 @@ export default function ReportsPage() {
     },
     {
       title: 'Cell Groups Report',
-      description: 'All cell groups with member counts, attendance rates, and conversion stats.',
+      description: 'All cell groups with leader, member counts, meetings, attendance & conversion rates.',
       icon: Group,
       onExport: handleExportCellGroups,
       filterComponent: (
-        <div className="mb-3">
-          <Label className="text-xs">Filter by Church</Label>
-          <Select value={cellChurchFilter} onValueChange={setCellChurchFilter}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Churches</SelectItem>
-              {(churches as any[]).map(church => (
-                <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="space-y-2 mb-3">
+          <div>
+            <Label className="text-xs">Filter by Church</Label>
+            <Select value={cellChurchFilter} onValueChange={v => { setCellChurchFilter(v); setCellGroupCellFilter('all'); }}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {(churches as any[]).map(church => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Cell</Label>
+            <Select value={cellGroupCellFilter} onValueChange={setCellGroupCellFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Cells" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cells</SelectItem>
+                {(simpleCells as any[])
+                  .filter((c: any) => cellChurchFilter === 'all' || c.churchId === cellChurchFilter)
+                  .map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}{c.zone ? ` — ${c.zone}` : ''}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Activity Date Range <span className="text-muted-foreground">(scopes meeting count)</span></Label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <Input type="date" className="h-8 text-xs" value={cellGroupStartDate} onChange={e => setCellGroupStartDate(e.target.value)} placeholder="From" />
+              <Input type="date" className="h-8 text-xs" value={cellGroupEndDate} onChange={e => setCellGroupEndDate(e.target.value)} placeholder="To" />
+            </div>
+          </div>
         </div>
       ),
     },
     {
-      title: 'Visitors Report',
-      description: 'All cell meeting visitors — first-time and returning guests with contact details.',
+      title: 'Cell Visitors Report',
+      description: 'Visitors recorded at cell meetings — first-time and returning guests with contact details.',
       icon: UserCheck,
       onExport: handleExportVisitors,
       filterComponent: (
@@ -726,8 +1020,54 @@ export default function ReportsPage() {
       ),
     },
     {
+      title: 'Church Visitors Report',
+      description: 'Detailed visitors from church service attendance — with gender, age, area, and how they heard.',
+      icon: UserCheck,
+      onExport: handleExportChurchVisitors,
+      filterComponent: (
+        <div className="space-y-2 mb-3">
+          <div>
+            <Label className="text-xs">Filter by Church</Label>
+            <Select value={churchVisitorChurchFilter} onValueChange={setChurchVisitorChurchFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Churches</SelectItem>
+                {(churches as any[]).map(church => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Service Type</Label>
+            <Select value={churchVisitorServiceType} onValueChange={setChurchVisitorServiceType}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Services" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Services</SelectItem>
+                <SelectItem value="Sunday Service">Sunday Service</SelectItem>
+                <SelectItem value="Midweek Service">Midweek Service</SelectItem>
+                <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
+                <SelectItem value="Youth Service">Youth Service</SelectItem>
+                <SelectItem value="Special Event">Special Event</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">From</Label>
+              <Input type="date" className="h-8 text-xs" value={churchVisitorStartDate} onChange={e => setChurchVisitorStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">To</Label>
+              <Input type="date" className="h-8 text-xs" value={churchVisitorEndDate} onChange={e => setChurchVisitorEndDate(e.target.value)} />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
       title: 'Transactions Report',
-      description: 'All payment transactions — tickets, donations, and subscriptions.',
+      description: 'All payment transactions — tickets, giving, and subscriptions.',
       icon: CreditCard,
       onExport: handleExportTransactions,
       filterComponent: (
@@ -738,7 +1078,7 @@ export default function ReportsPage() {
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Types" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="donation">Donation</SelectItem>
+                <SelectItem value="donation">Giving</SelectItem>
                 <SelectItem value="event_ticket">Event Ticket</SelectItem>
                 <SelectItem value="subscription">Subscription</SelectItem>
               </SelectContent>
@@ -988,6 +1328,13 @@ export default function ReportsPage() {
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {reportCards.map(card => {
               const Icon = card.icon;
+              const bSize = batchSizeMap[card.title] ?? 0;
+              const bPage = batchPageMap[card.title] ?? 1;
+              const bTotalPages = batchTotalPagesMap[card.title] ?? 0;
+              const setBSize = (v: number) => { setBatchSizeMap(p => ({ ...p, [card.title]: v })); setBatchPageMap(p => ({ ...p, [card.title]: 1 })); };
+              const setBPage = (v: number) => setBatchPageMap(p => ({ ...p, [card.title]: Math.max(1, v) }));
+              const fromRow = bSize > 0 ? (bPage - 1) * bSize + 1 : 0;
+              const toRow = bSize > 0 ? bPage * bSize : 0;
               return (
                 <Card key={card.title}>
                   <CardHeader className="pb-3">
@@ -1001,13 +1348,41 @@ export default function ReportsPage() {
                   <CardContent className="space-y-3">
                     <p className="text-xs text-muted-foreground">{card.description}</p>
                     {(card as any).filterComponent}
+                    <div className="flex items-center gap-1.5 pt-1 border-t">
+                      <Select value={String(bSize)} onValueChange={v => setBSize(Number(v))}>
+                        <SelectTrigger className="h-7 text-xs flex-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">All records</SelectItem>
+                          <SelectItem value="500">Batch: 500 rows</SelectItem>
+                          <SelectItem value="1000">Batch: 1,000 rows</SelectItem>
+                          <SelectItem value="2000">Batch: 2,000 rows</SelectItem>
+                          <SelectItem value="5000">Batch: 5,000 rows</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {bSize > 0 && (
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 p-0" disabled={bPage <= 1} onClick={() => setBPage(bPage - 1)}>
+                            <ChevronLeft className="h-3 w-3" />
+                          </Button>
+                          <span className="text-xs font-medium px-0.5 text-muted-foreground">
+                            P{bPage}{bTotalPages > 0 ? ` of ${bTotalPages}` : ''}
+                          </span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 p-0" disabled={bTotalPages > 0 && bPage >= bTotalPages} onClick={() => setBPage(bPage + 1)}>
+                            <ChevronRight className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                     <Button
                       size="sm"
                       variant="outline"
                       className="w-full gap-2"
                       onClick={card.onExport}
                     >
-                      <Download className="h-3.5 w-3.5" /> Export CSV
+                      <Download className="h-3.5 w-3.5" />
+                      {bSize > 0
+                        ? `Export Batch ${bPage} (rows ${fromRow.toLocaleString()}-${toRow.toLocaleString()})${bTotalPages > 0 ? ` · P${bPage} of ${bTotalPages}` : ''}`
+                        : 'Export CSV'}
                     </Button>
                   </CardContent>
                 </Card>

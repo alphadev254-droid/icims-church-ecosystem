@@ -51,6 +51,7 @@ import PublicCampaign from "./pages/PublicCampaign";
 import PaymentCallback from "./pages/PaymentCallback";
 import MyTickets from "./pages/MyTickets";
 import Subaccount from "./pages/Subaccount";
+import PublicAttendanceEntry from "./pages/PublicAttendanceEntry";
 import NotFound from "./pages/NotFound";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -83,6 +84,9 @@ const App = () => (
                 <Route path="/events/:id" element={<PublicEvent />} />
                 <Route path="/giving/:id" element={<PublicCampaign />} />
               </Route>
+
+              {/* Public attendance link (no auth) */}
+              <Route path="/attendance/enter/:token" element={<PublicAttendanceEntry />} />
 
               {/* Auth routes */}
               <Route path="/login" element={<Login />} />

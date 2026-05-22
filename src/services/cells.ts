@@ -67,9 +67,10 @@ export interface CellStats {
 const BASE = '/cells';
 
 export const cellsService = {
-  getAll: async (params?: { churchId?: string; search?: string; status?: string; page?: number; limit?: number }): Promise<{ data: Cell[]; pagination?: { total: number; page: number; limit: number; pages: number } }> => {
+  getAll: async (params?: { churchId?: string; search?: string; status?: string; page?: number; limit?: number; export?: boolean }): Promise<{ data: Cell[]; pagination?: { total: number; page: number; limit: number; pages: number } }> => {
     const { data } = await apiClient.get(BASE, { params });
     // Members get plain array, admins get { data, pagination }
+    if (params?.export) return data;
     if (Array.isArray(data.data)) return { data: data.data };
     return data;
   },

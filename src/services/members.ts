@@ -49,11 +49,14 @@ export interface CreateMemberDto {
 export type UpdateMemberDto = Partial<CreateMemberDto>;
 
 export const membersService = {
-  getAll: async (params?: { churchId?: string; limit?: number; export?: boolean }): Promise<Member[]> => {
+  getAll: async (params?: { churchId?: string; limit?: number; page?: number; export?: boolean; status?: string; cellId?: string; teamId?: string }): Promise<Member[]> => {
     const queryParams: any = { role: 'member', ...params };
     // export mode: pass export=true so backend bypasses the 500 limit
     if (params?.export) queryParams.export = 'true';
     const { data } = await apiClient.get('/users', { params: queryParams });
+    // export=true returns { success, data[], pagination } — return full response so
+    // callers can read pagination.totalPages for batch‑export page nav
+    if (params?.export) return data;
     return data.data;
   },
   getOne: async (id: string): Promise<Member> => {

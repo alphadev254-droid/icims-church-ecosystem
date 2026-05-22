@@ -24,7 +24,7 @@ function statusBadge(status: string) {
 
 function typeBadge(type: string) {
   if (type === 'event_ticket') return <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">Event Ticket</Badge>;
-  if (type === 'donation')     return <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-300">Donation</Badge>;
+  if (type === 'donation')     return <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-300">Giving</Badge>;
   return <Badge variant="outline" className="text-xs capitalize">{type.replace('_', ' ')}</Badge>;
 }
 
@@ -118,7 +118,7 @@ export default function AdminTransactions() {
             date:        new Date(t.createdAt).toLocaleDateString(),
           }))}
           headers={[
-            { label: 'Donor',        key: 'donor' },
+            { label: 'Giver',        key: 'donor' },
             { label: 'Email',        key: 'email' },
             { label: 'Type',         key: 'type' },
             { label: 'Church',       key: 'church' },
@@ -136,7 +136,7 @@ export default function AdminTransactions() {
             { label: 'Reference',    key: 'reference' },
             { label: 'Date',         key: 'date' },
           ]}
-          pdfColumns={['Donor','Email','Type','Church','Base Amount','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Status','Date']}
+          pdfColumns={['Giver','Email','Type','Church','Base Amount','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Status','Date']}
         />
       </div>
 
@@ -222,7 +222,7 @@ export default function AdminTransactions() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Donor</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Giver</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Type</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Church</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Amount</th>

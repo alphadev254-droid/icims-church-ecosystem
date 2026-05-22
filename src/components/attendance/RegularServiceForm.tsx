@@ -15,9 +15,10 @@ interface Props {
   defaultValues?: any;
   defaultVisitors?: AttendanceVisitor[];
   submitLabel?: string;
+  hideChurchSelect?: boolean;
 }
 
-export function RegularServiceForm({ onSubmit, isPending, defaultValues, defaultVisitors = [], submitLabel = 'Save Record' }: Props) {
+export function RegularServiceForm({ onSubmit, isPending, defaultValues, defaultVisitors = [], submitLabel = 'Save Record', hideChurchSelect = false }: Props) {
   const [churchId, setChurchId] = useState(defaultValues?.churchId ?? '');
   const [date, setDate] = useState(defaultValues?.date ?? '');
   const [serviceType, setServiceType] = useState(defaultValues?.serviceType ?? 'Sunday Service');
@@ -66,7 +67,7 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <ChurchSelect value={churchId} onValueChange={setChurchId} />
+      {!hideChurchSelect && <ChurchSelect value={churchId} onValueChange={setChurchId} />}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -91,8 +92,8 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
       <div>
         <Label className="text-sm font-medium">Gender Breakdown *</Label>
         <div className="grid grid-cols-2 gap-4 mt-2">
-          <div><Label className="text-xs">Male *</Label><Input type="number" min={0} value={maleCount} onChange={e => setMaleCount(e.target.value)} required /></div>
-          <div><Label className="text-xs">Female *</Label><Input type="number" min={0} value={femaleCount} onChange={e => setFemaleCount(e.target.value)} required /></div>
+          <div><Label className="text-xs sm:text-sm">Male *</Label><Input type="number" min={0} value={maleCount} onChange={e => setMaleCount(e.target.value)} required /></div>
+          <div><Label className="text-xs sm:text-sm">Female *</Label><Input type="number" min={0} value={femaleCount} onChange={e => setFemaleCount(e.target.value)} required /></div>
         </div>
       </div>
 
@@ -102,19 +103,19 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
       </div>
 
       <div>
-        <Label className="text-sm font-medium">Age Groups <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
-        <div className="grid grid-cols-3 gap-3 mt-2">
-          <div><Label className="text-xs">Children (0-12)</Label><Input type="number" min={0} value={children} onChange={e => setChildren(e.target.value)} /></div>
-          <div><Label className="text-xs">Youth (13-17)</Label><Input type="number" min={0} value={youth} onChange={e => setYouth(e.target.value)} /></div>
-          <div><Label className="text-xs">Young Adults (18-35)</Label><Input type="number" min={0} value={youngAdults} onChange={e => setYoungAdults(e.target.value)} /></div>
-          <div><Label className="text-xs">Adults (36-59)</Label><Input type="number" min={0} value={adults} onChange={e => setAdults(e.target.value)} /></div>
-          <div><Label className="text-xs">Seniors (60+)</Label><Input type="number" min={0} value={seniors} onChange={e => setSeniors(e.target.value)} /></div>
+        <Label className="text-sm font-medium">Age Groups <span className="text-muted-foreground text-xs sm:text-sm font-normal">(optional)</span></Label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+          <div><Label className="text-xs sm:text-sm">Children (0-12)</Label><Input type="number" min={0} value={children} onChange={e => setChildren(e.target.value)} /></div>
+          <div><Label className="text-xs sm:text-sm">Youth (13-17)</Label><Input type="number" min={0} value={youth} onChange={e => setYouth(e.target.value)} /></div>
+          <div><Label className="text-xs sm:text-sm">Young Adults (18-35)</Label><Input type="number" min={0} value={youngAdults} onChange={e => setYoungAdults(e.target.value)} /></div>
+          <div><Label className="text-xs sm:text-sm">Adults (36-59)</Label><Input type="number" min={0} value={adults} onChange={e => setAdults(e.target.value)} /></div>
+          <div><Label className="text-xs sm:text-sm">Seniors (60+)</Label><Input type="number" min={0} value={seniors} onChange={e => setSeniors(e.target.value)} /></div>
         </div>
         {ageGroupMismatch && <p className="text-xs text-destructive mt-2">Age groups total ({ageGroupTotal}) must equal total attendees ({totalAttendees})</p>}
       </div>
 
       <div>
-        <Label>Notes <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Label>Notes <span className="text-muted-foreground text-xs sm:text-sm">(optional)</span></Label>
         <Input value={notes} onChange={e => setNotes(e.target.value)} />
       </div>
 
@@ -125,7 +126,7 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
             <Label className="text-sm font-semibold flex items-center gap-2">
               <UserPlus className="h-4 w-4 text-accent" /> Visitor Details
             </Label>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
               {visitors.length > 0 ? `${visitors.length} visitor${visitors.length > 1 ? 's' : ''} recorded` : 'Record individual visitors for follow-up'}
             </p>
           </div>
@@ -135,7 +136,7 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
         </div>
 
         {visitors.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-3 border border-dashed rounded-md">
+          <p className="text-xs sm:text-sm text-muted-foreground text-center py-3 border border-dashed rounded-md">
             No visitors added yet. Click "Add Visitor" to record visitor details.
           </p>
         )}
@@ -143,22 +144,22 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
         {visitors.map((v, i) => (
           <div key={i} className="border rounded-md p-3 space-y-3 bg-muted/20">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">Visitor #{i + 1}</span>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Visitor #{i + 1}</span>
               <button type="button" onClick={() => removeVisitor(i)} className="text-muted-foreground hover:text-destructive">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div><Label className="text-xs">Full Name *</Label><Input className="h-8 text-sm mt-0.5" placeholder="e.g. John Banda" value={v.name} onChange={e => updateVisitor(i, 'name', e.target.value)} /></div>
-              <div><Label className="text-xs">Phone</Label><Input className="h-8 text-sm mt-0.5" placeholder="+265 ..." value={v.phone ?? ''} onChange={e => updateVisitor(i, 'phone', e.target.value)} /></div>
-              <div><Label className="text-xs">Email</Label><Input className="h-8 text-sm mt-0.5" type="email" placeholder="john@example.com" value={v.email ?? ''} onChange={e => updateVisitor(i, 'email', e.target.value)} /></div>
-              <div><Label className="text-xs">Residential Area</Label><Input className="h-8 text-sm mt-0.5" placeholder="e.g. Area 25, Lilongwe" value={v.residentialArea ?? ''} onChange={e => updateVisitor(i, 'residentialArea', e.target.value)} /></div>
+              <div><Label className="text-xs sm:text-sm">Full Name *</Label><Input className="h-9 sm:h-8 text-sm mt-0.5" placeholder="e.g. John Banda" value={v.name} onChange={e => updateVisitor(i, 'name', e.target.value)} /></div>
+              <div><Label className="text-xs sm:text-sm">Phone</Label><Input className="h-9 sm:h-8 text-sm mt-0.5" placeholder="+265 ..." value={v.phone ?? ''} onChange={e => updateVisitor(i, 'phone', e.target.value)} /></div>
+              <div><Label className="text-xs sm:text-sm">Email</Label><Input className="h-9 sm:h-8 text-sm mt-0.5" type="email" placeholder="john@example.com" value={v.email ?? ''} onChange={e => updateVisitor(i, 'email', e.target.value)} /></div>
+              <div><Label className="text-xs sm:text-sm">Residential Area</Label><Input className="h-9 sm:h-8 text-sm mt-0.5" placeholder="e.g. Area 25, Lilongwe" value={v.residentialArea ?? ''} onChange={e => updateVisitor(i, 'residentialArea', e.target.value)} /></div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
-                <Label className="text-xs">Gender</Label>
+                <Label className="text-xs sm:text-sm">Gender</Label>
                 <Select value={v.gender ?? ''} onValueChange={val => updateVisitor(i, 'gender', val)}>
-                  <SelectTrigger className="h-8 text-sm mt-0.5"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-8 text-sm mt-0.5"><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="male">Male</SelectItem>
                     <SelectItem value="female">Female</SelectItem>
@@ -167,21 +168,21 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">Age Bracket</Label>
+                <Label className="text-xs sm:text-sm">Age Bracket</Label>
                 <Select value={v.ageBracket ?? ''} onValueChange={val => updateVisitor(i, 'ageBracket', val)}>
-                  <SelectTrigger className="h-8 text-sm mt-0.5"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-8 text-sm mt-0.5"><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent>{AGE_BRACKETS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">How did you hear?</Label>
+                <Label className="text-xs sm:text-sm">How did you hear?</Label>
                 <Select value={v.howHeard ?? ''} onValueChange={val => updateVisitor(i, 'howHeard', val)}>
-                  <SelectTrigger className="h-8 text-sm mt-0.5"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectTrigger className="h-9 sm:h-8 text-sm mt-0.5"><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent>{HOW_HEARD.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
-            <div><Label className="text-xs">Notes <span className="text-muted-foreground">(optional)</span></Label><Input className="h-8 text-sm mt-0.5" placeholder="Any additional notes" value={v.notes ?? ''} onChange={e => updateVisitor(i, 'notes', e.target.value)} /></div>
+            <div><Label className="text-xs sm:text-sm">Notes <span className="text-muted-foreground">(optional)</span></Label><Input className="h-9 sm:h-8 text-sm mt-0.5" placeholder="Any additional notes" value={v.notes ?? ''} onChange={e => updateVisitor(i, 'notes', e.target.value)} /></div>
           </div>
         ))}
       </div>

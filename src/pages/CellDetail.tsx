@@ -518,7 +518,7 @@ export default function CellDetailPage() {
                   <CardContent className="p-3">
                     <p className="text-xs text-muted-foreground">Giving Participation</p>
                     <p className="text-lg font-bold">{financeStats.givingParticipationRate}%</p>
-                    <p className="text-xs text-muted-foreground">{financeStats.uniqueDonorCount} of {stats?.totalMembers ?? '?'} members</p>
+                    <p className="text-xs text-muted-foreground">{financeStats.uniqueDonorCount} givers of {stats?.totalMembers ?? '?'} members</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -577,7 +577,7 @@ export default function CellDetailPage() {
                 <div key={s.currency} className="border rounded-lg px-4 py-2 text-sm">
                   <span className="text-muted-foreground">{s.currency} </span>
                   <span className="font-bold">{s.total.toLocaleString()}</span>
-                  <span className="text-xs text-muted-foreground ml-1">({s.count} donations)</span>
+                  <span className="text-xs text-muted-foreground ml-1">({s.count} givings)</span>
                 </div>
               ))}
             </div>
@@ -627,7 +627,7 @@ export default function CellDetailPage() {
                 }))}
                 filename={`cell-donations-${cell?.name ?? id}`}
                 headers={[
-                  { label: 'Donor', key: 'donor' },
+                  { label: 'Giver', key: 'donor' },
                   { label: 'Email', key: 'email' },
                   { label: 'Campaign', key: 'campaign' },
                   { label: 'Category', key: 'category' },
@@ -637,7 +637,7 @@ export default function CellDetailPage() {
                   { label: 'Status', key: 'status' },
                   { label: 'Date', key: 'date' },
                 ]}
-                pdfTitle={`${cell?.name ?? 'Cell'} — Donations`}
+                pdfTitle={`${cell?.name ?? 'Cell'} — Giving`}
               />
             )}
           </div>
@@ -646,13 +646,13 @@ export default function CellDetailPage() {
           {txLoading ? (
             <div className="flex justify-center py-10"><div className="h-5 w-5 animate-spin rounded-full border-4 border-accent border-t-transparent" /></div>
           ) : txDonations.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">No donations found.</p>
+            <p className="text-sm text-muted-foreground text-center py-10">No giving records found.</p>
           ) : (
             <div className="border rounded-lg overflow-x-auto">
               <table className="w-full text-xs sm:text-sm">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="text-left px-3 py-2 font-medium">Donor</th>
+                    <th className="text-left px-3 py-2 font-medium">Giver</th>
                     <th className="text-left px-3 py-2 font-medium hidden sm:table-cell">Email</th>
                     <th className="text-left px-3 py-2 font-medium">Campaign</th>
                     <th className="text-left px-3 py-2 font-medium">Amount</th>

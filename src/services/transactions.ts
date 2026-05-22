@@ -56,9 +56,9 @@ export const transactionsService = {
     const { data } = await apiClient.patch(`/transactions/${id}/status`, { status });
     return data.data;
   },
-  exportAll: async (params?: { type?: string; status?: string; churchId?: string; startDate?: string; endDate?: string }): Promise<Transaction[]> => {
+  exportAll: async (params?: { type?: string; status?: string; churchId?: string; startDate?: string; endDate?: string; page?: number; limit?: number }): Promise<{ data: Transaction[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
     const { data } = await apiClient.get('/transactions/export', { params });
-    return data.data;
+    return data;
   },
   getGivingByMember: async (params?: { churchId?: string; startDate?: string; endDate?: string }): Promise<any[]> => {
     const { data } = await apiClient.get('/transactions/giving-by-member', { params });

@@ -302,7 +302,7 @@ export default function PerformancePage() {
               <TrendingUpDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
             </div>
             <div className="text-lg sm:text-2xl font-bold font-heading">{stats.attendanceRate}%</div>
-            <p className="text-xs sm:text-sm text-muted-foreground">avg vs total members</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">member attendance rate</p>
             <div className="mt-2">
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div

@@ -82,7 +82,7 @@ export default function DashboardPage() {
   // Member-specific stats
   const memberStats = [
     { title: 'My Total Giving', value: `MWK ${Number(stats.myTotalDonations ?? 0).toLocaleString()}`, icon: HandCoins, change: 0 },
-    { title: 'My Donations', value: stats.myDonationRecords ?? 0, icon: DollarSign, change: 0 },
+    { title: 'My Giving Records', value: stats.myDonationRecords ?? 0, icon: DollarSign, change: 0 },
     { title: 'Upcoming Events', value: stats.upcomingEvents ?? 0, icon: Calendar, change: 0 },
     { title: 'Total Events', value: stats.totalEvents ?? 0, icon: Ticket, change: 0 },
   ];

@@ -231,9 +231,9 @@ function CashDonationDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-1 overflow-y-auto flex-1 pr-1">
 
-          {/* Donor type toggle */}
+          {/* Giver type toggle */}
           <div className="space-y-1.5">
-            <Label>Donor Type</Label>
+            <Label>Giver Type</Label>
             <div className="grid grid-cols-3 gap-1.5">
               {DONOR_TYPES.map(t => (
                 <button
@@ -306,7 +306,7 @@ function CashDonationDialog({
           {/* Anonymous — no extra fields, just a note */}
           {donorType === 'anonymous' && (
             <p className="text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
-              No donor details will be stored. The giving will appear as Anonymous.
+              No giver details will be stored. The giving will appear as Anonymous.
             </p>
           )}
 

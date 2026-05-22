@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { attendanceService, type AttendanceVisitor } from '@/services/attendance';
+import { sharedAccessService } from '@/services/sharedAccess';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, UserCheck, Trash2, ChevronDown } from 'lucide-react';
+import { Plus, UserCheck, Trash2, ChevronDown, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { HOW_HEARD, AGE_BRACKETS, GENDER_LABELS, HOW_HEARD_LABELS } from './constants';
 
@@ -14,20 +15,47 @@ interface Props {
   record: any;
   canUpdate: boolean;
   onClose: () => void;
+  token?: string; // When provided, use shared-access API instead of authenticated API
 }
 
 const PAGE_SIZE = 20;
 
-export function VisitorsManageDialog({ record, canUpdate, onClose }: Props) {
+const TEMPLATE_ROWS = [
+  ['name', 'phone', 'email', 'residentialArea', 'gender', 'ageBracket', 'howHeard', 'notes'],
+  ['John Banda', '+265999123456 or +254712345678', 'john@example.com', 'Area 25', 'male', '18-35', 'invited_by_friend', 'First visit'],
+];
+
+const FIELD_MAP: Record<string, keyof AttendanceVisitor> = {
+  name: 'name', fullname: 'name', phone: 'phone', phonenumber: 'phone',
+  email: 'email', emailaddress: 'email', residentialarea: 'residentialArea',
+  area: 'residentialArea', gender: 'gender', agebracket: 'ageBracket',
+  age: 'ageBracket', howheard: 'howHeard', howyouheard: 'howHeard', notes: 'notes',
+};
+
+export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Props) {
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [draft, setDraft] = useState<AttendanceVisitor>({ name: '' });
   const [page, setPage] = useState(1);
   const [accumulated, setAccumulated] = useState<(AttendanceVisitor & { id?: string })[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number; errors: number } | null>(null);
+  const uploadRef = useRef<HTMLInputElement>(null);
+
+  const getVisitorsApi = token
+    ? (attId: string, params: { page: number; limit: number }) => sharedAccessService.getVisitors(token, attId, params)
+    : (attId: string, params: { page: number; limit: number }) => attendanceService.getVisitors(attId, params);
+
+  const addVisitorApi = token
+    ? (attId: string, visitor: AttendanceVisitor) => sharedAccessService.addVisitor(token, attId, visitor)
+    : (attId: string, visitor: AttendanceVisitor) => attendanceService.addVisitor(attId, visitor);
+
+  const deleteVisitorApi = token
+    ? (attId: string, visitorId: string) => sharedAccessService.deleteVisitor(token, attId, visitorId)
+    : (attId: string, visitorId: string) => attendanceService.deleteVisitor(attId, visitorId);
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['attendance-visitors', record.id, page],
-    queryFn: () => attendanceService.getVisitors(record.id, { page, limit: PAGE_SIZE }),
+    queryKey: ['attendance-visitors', record.id, page, token],
+    queryFn: () => getVisitorsApi(record.id, { page, limit: PAGE_SIZE }),
     staleTime: 0,
   });
 
@@ -47,7 +75,7 @@ export function VisitorsManageDialog({ record, canUpdate, onClose }: Props) {
   };
 
   const addMutation = useMutation({
-    mutationFn: (v: AttendanceVisitor) => attendanceService.addVisitor(record.id, v),
+    mutationFn: (v: AttendanceVisitor) => addVisitorApi(record.id, v),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['attendance'] });
       resetList();
@@ -59,7 +87,7 @@ export function VisitorsManageDialog({ record, canUpdate, onClose }: Props) {
   });
 
   const removeMutation = useMutation({
-    mutationFn: (visitorId: string) => attendanceService.deleteVisitor(record.id, visitorId),
+    mutationFn: (visitorId: string) => deleteVisitorApi(record.id, visitorId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['attendance'] });
       resetList();
@@ -72,6 +100,66 @@ export function VisitorsManageDialog({ record, canUpdate, onClose }: Props) {
     e.preventDefault();
     if (!draft.name.trim()) { toast.error('Name is required'); return; }
     addMutation.mutate({ ...draft, name: draft.name.trim() });
+  };
+
+  const downloadTemplate = () => {
+    const csv = TEMPLATE_ROWS.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'visitors-template.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      let rows: any[][] = [];
+      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        const xlsx = await import('xlsx');
+        const ab = await file.arrayBuffer();
+        const wb = xlsx.read(ab, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = xlsx.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+      } else {
+        const Papa = (await import('papaparse')).default;
+        const text = await file.text();
+        const result = Papa.parse<string[]>(text, { skipEmptyLines: true });
+        rows = result.data;
+      }
+      if (rows.length < 2) { toast.error('No data rows found in file'); return; }
+      const headers = rows[0].map((h: any) => String(h ?? '').trim().toLowerCase().replace(/[\s_]+/g, ''));
+      const dataRows = rows.slice(1).filter((r: any[]) => r.some((c: any) => String(c ?? '').trim()));
+      if (dataRows.length === 0) { toast.error('No valid rows found'); return; }
+      setUploadProgress({ done: 0, total: dataRows.length, errors: 0 });
+      let errors = 0;
+      for (const row of dataRows) {
+        const visitor: AttendanceVisitor = { name: '' };
+        headers.forEach((h: string, idx: number) => {
+          const field = FIELD_MAP[h];
+          if (field && row[idx] !== undefined && row[idx] !== null) {
+            (visitor as any)[field] = String(row[idx]).trim();
+          }
+        });
+        if (!visitor.name) { errors++; setUploadProgress(p => p ? { ...p, errors: p.errors + 1 } : null); continue; }
+        try {
+          await addVisitorApi(record.id, visitor);
+          setUploadProgress(p => p ? { ...p, done: p.done + 1 } : null);
+        } catch {
+          errors++;
+          setUploadProgress(p => p ? { ...p, errors: p.errors + 1 } : null);
+        }
+      }
+      const succeeded = dataRows.length - errors;
+      if (errors === 0) toast.success(`${succeeded} visitor${succeeded !== 1 ? 's' : ''} uploaded`);
+      else toast.warning(`${succeeded} uploaded, ${errors} skipped (missing name or error)`);
+      setTimeout(() => { setUploadProgress(null); resetList(); }, 1000);
+    } catch {
+      toast.error('Failed to parse file — ensure it is a valid CSV or XLSX');
+      setUploadProgress(null);
+    }
   };
 
   return (
@@ -144,7 +232,7 @@ export function VisitorsManageDialog({ record, canUpdate, onClose }: Props) {
             <p className="text-sm font-medium">Add New Visitor</p>
             <div className="grid grid-cols-2 gap-2">
               <div><Label className="text-xs">Full Name *</Label><Input className="h-8 text-sm mt-0.5" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="e.g. John Banda" /></div>
-              <div><Label className="text-xs">Phone</Label><Input className="h-8 text-sm mt-0.5" value={draft.phone ?? ''} onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))} placeholder="+265 ..." /></div>
+              <div><Label className="text-xs">Phone</Label><Input className="h-8 text-sm mt-0.5" value={draft.phone ?? ''} onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))} placeholder="+265 / +254 ..." /></div>
               <div><Label className="text-xs">Email</Label><Input className="h-8 text-sm mt-0.5" type="email" value={draft.email ?? ''} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))} /></div>
               <div><Label className="text-xs">Residential Area</Label><Input className="h-8 text-sm mt-0.5" value={draft.residentialArea ?? ''} onChange={e => setDraft(d => ({ ...d, residentialArea: e.target.value }))} placeholder="e.g. Area 25" /></div>
             </div>
@@ -185,10 +273,48 @@ export function VisitorsManageDialog({ record, canUpdate, onClose }: Props) {
           </form>
         )}
 
+        {/* Upload progress */}
+        {uploadProgress && (
+          <div className="mt-2 rounded-md border bg-muted/30 px-3 py-2 space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Uploading visitors…</span>
+              <span className="font-medium">{uploadProgress.done + uploadProgress.errors} / {uploadProgress.total}</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+              <div
+                className="h-full bg-accent transition-all"
+                style={{ width: `${Math.round(((uploadProgress.done + uploadProgress.errors) / uploadProgress.total) * 100)}%` }}
+              />
+            </div>
+            {uploadProgress.errors > 0 && (
+              <p className="text-xs text-yellow-600">{uploadProgress.errors} row{uploadProgress.errors !== 1 ? 's' : ''} skipped</p>
+            )}
+          </div>
+        )}
+
         {canUpdate && !addOpen && (
-          <Button variant="outline" size="sm" className="gap-1 mt-2" onClick={() => setAddOpen(true)}>
-            <Plus className="h-3.5 w-3.5" /> Add Visitor
-          </Button>
+          <div className="flex flex-wrap gap-2 mt-2">
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => setAddOpen(true)}>
+              <Plus className="h-3.5 w-3.5" /> Add Visitor
+            </Button>
+            <Button
+              variant="outline" size="sm" className="gap-1"
+              onClick={() => uploadRef.current?.click()}
+              disabled={!!uploadProgress}
+            >
+              <Upload className="h-3.5 w-3.5" /> Upload CSV / Excel
+            </Button>
+            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={downloadTemplate}>
+              <Download className="h-3.5 w-3.5" /> Download Template
+            </Button>
+            <input
+              ref={uploadRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+          </div>
         )}
       </DialogContent>
     </Dialog>

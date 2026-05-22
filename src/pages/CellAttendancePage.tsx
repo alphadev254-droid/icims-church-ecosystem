@@ -635,9 +635,9 @@ export default function CellAttendancePage() {
               </Select>
             </div>
 
-            {/* Donor type toggle */}
+            {/* Giver type toggle */}
             <div className="space-y-1.5">
-              <Label className="text-sm">Donor Type</Label>
+              <Label className="text-sm">Giver Type</Label>
               <div className="grid grid-cols-3 gap-1.5">
                 {([
                   { value: 'member', label: 'Member', desc: 'Cell member' },
@@ -691,7 +691,7 @@ export default function CellAttendancePage() {
             {/* Anonymous note */}
             {offeringDonorType === 'anonymous' && (
               <p className="text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
-                No donor details will be stored. The offering will appear as Anonymous.
+                No giver details will be stored. The offering will appear as Anonymous.
               </p>
             )}
 

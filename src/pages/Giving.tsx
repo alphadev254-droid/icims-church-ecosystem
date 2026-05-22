@@ -562,7 +562,7 @@ export default function GivingPage() {
               { label: 'Status', key: 'status' },
               { label: 'Target Amount', key: 'targetAmount' },
               { label: 'Total Raised', key: 'totalRaised' },
-              { label: 'Donor Count', key: 'donorCount' },
+              { label: 'Giver Count', key: 'donorCount' },
               { label: 'Currency', key: 'currency' },
               { label: 'End Date', key: 'endDate' },
             ]}
