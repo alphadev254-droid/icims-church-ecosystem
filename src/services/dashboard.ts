@@ -13,6 +13,12 @@ export interface DashboardStats {
   retentionRate: number;
   attendanceRate: number;
   newMembersThisMonth: number;
+  currency?: string;
+  myTotalDonations?: number;
+  myDonationRecords?: number;
+  totalEvents?: number;
+  weeklyAttendance?: { month: string; male: number; female: number; children: number }[];
+  monthlyGiving?: { month: string; amount: number }[];
 }
 
 export const dashboardService = {

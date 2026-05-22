@@ -120,9 +120,9 @@ export default function PerformancePage() {
     },
     {
       label: 'Giving This Month',
-      value: `MWK ${Number(thisMonthGiving).toLocaleString()}`,
+      value: `${(stats as any).currency ?? 'MWK'} ${Number(thisMonthGiving).toLocaleString()}`,
       // Target: 10% above last month
-      target: prevMonthGiving > 0 ? `MWK ${Number(Math.round(prevMonthGiving * 1.1)).toLocaleString()}` : undefined,
+      target: prevMonthGiving > 0 ? `${(stats as any).currency ?? 'MWK'} ${Number(Math.round(prevMonthGiving * 1.1)).toLocaleString()}` : undefined,
       progress: prevMonthGiving > 0
         ? Math.min(100, Math.round((thisMonthGiving / (prevMonthGiving * 1.1)) * 100))
         : thisMonthGiving > 0 ? 100 : 0,

@@ -1123,7 +1123,7 @@ export default function ReportsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: 'Total Members', value: stats.totalMembers, icon: Users },
-            { label: 'Total Giving', value: `MWK ${Number(stats.totalDonations).toLocaleString()}`, icon: HandCoins },
+            { label: 'Total Giving', value: `${(stats as any).currency ?? 'MWK'} ${Number(stats.totalDonations).toLocaleString()}`, icon: HandCoins },
             { label: 'Avg. Attendance', value: stats.averageAttendance, icon: ClipboardList },
             { label: 'Upcoming Events', value: stats.upcomingEvents ?? 0, icon: Calendar },
           ].map(item => {
