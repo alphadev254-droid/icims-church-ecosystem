@@ -511,6 +511,7 @@ export default function ReportsPage() {
         p.user ? `${p.user.firstName} ${p.user.lastName}` : (p.pledgerName || 'Walk-in'),
         p.user?.email || p.pledgerEmail || '',
         p.user?.phone || p.pledgerPhone || '',
+        p.user?.cellMemberships?.[0]?.cell?.name || '',
         p.campaign?.name || '',
         p.campaign?.category || '',
         p.church?.name || '',
@@ -522,7 +523,7 @@ export default function ReportsPage() {
         p.fulfillmentDeadline ? new Date(p.fulfillmentDeadline).toLocaleDateString() : '',
         new Date(p.createdAt).toLocaleDateString(),
       ]),
-      ['Name', 'Email', 'Phone', 'Campaign', 'Category', 'Church', 'Pledged', 'Paid', 'Outstanding', 'Currency', 'Status', 'Deadline', 'Date'],
+      ['Name', 'Email', 'Phone', 'Cell', 'Campaign', 'Category', 'Church', 'Pledged', 'Paid', 'Outstanding', 'Currency', 'Status', 'Deadline', 'Date'],
     );
   };
 
@@ -547,6 +548,7 @@ export default function ReportsPage() {
         t.type,
         t.campaignName || '',
         t.campaignCategory || '',
+        t.cellName || '',
         t.paymentMethod,
         t.status,
         t.gateway || '',
@@ -556,7 +558,7 @@ export default function ReportsPage() {
         t.paidAt ? new Date(t.paidAt).toLocaleDateString() : '',
         new Date(t.createdAt).toLocaleDateString(),
       ]),
-      ['Name', 'Email', 'Amount', 'Base Amount', 'Currency', 'Type', 'Campaign', 'Category', 'Method', 'Status', 'Gateway', 'Church', 'Entry', 'Reference', 'Paid At', 'Date'],
+      ['Name', 'Email', 'Amount', 'Base Amount', 'Currency', 'Type', 'Campaign', 'Category', 'Cell', 'Method', 'Status', 'Gateway', 'Church', 'Entry', 'Reference', 'Paid At', 'Date'],
     );
   };
 
@@ -572,9 +574,10 @@ export default function ReportsPage() {
         r.firstName, r.lastName, r.email, r.phone || '',
         r.gender || '', r.membershipType || '', r.status || '',
         r.cell || '', r.church,
-        r.totalGiven.toString(), r.donationCount.toString(),
+        r.campaigns || '',
+        r.totalGiven.toString(), (r.transactionCount ?? r.donationCount ?? 0).toString(),
       ]),
-      ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Status', 'Cell', 'Church', 'Total Given', 'Giving Count'],
+      ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Status', 'Cell', 'Church', 'Campaigns', 'Total Given', 'No. of Transactions'],
     );
   };
 
@@ -593,12 +596,13 @@ export default function ReportsPage() {
       'cell-groups-report.csv',
       cells.map((c: any) => [
         c.name,
-        c.zone || '',
+        c.zone || c.neighbourhood || '',
         c.church?.name || '',
         c.leaderName || '',
         c._count?.members?.toString() || '0',
         hasDates ? (c.meetingsInPeriod ?? 0).toString() : (c._count?.meetings ?? 0).toString(),
         (c.totalVisitors ?? 0).toString(),
+        (c.totalOffering ?? 0).toString(),
         c.attendanceRate != null ? `${c.attendanceRate}%` : 'N/A',
         c.conversionRate != null ? `${c.conversionRate}%` : 'N/A',
         c.lastMeetingDate ? new Date(c.lastMeetingDate).toLocaleDateString() : 'Never',
@@ -607,9 +611,9 @@ export default function ReportsPage() {
         c.meetingTime || '',
         c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '',
       ]),
-      ['Cell Name', 'Zone', 'Church', 'Leader', 'Active Members',
+      ['Cell Name', 'Location / Neighbourhood', 'Church', 'Leader', 'Active Members',
         hasDates ? 'Meetings (Period)' : 'Total Meetings',
-        'Total Visitors', 'Attendance Rate', 'Conversion Rate',
+        'Total Visitors', 'Total Offering', 'Attendance Rate', 'Conversion Rate',
         'Last Meeting', 'Status', 'Meeting Day', 'Meeting Time', 'Established'],
     );
   };
@@ -1067,7 +1071,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Transactions Report',
-      description: 'All payment transactions — tickets, giving, and subscriptions.',
+      description: 'All payment transactions — tickets and giving.',
       icon: CreditCard,
       onExport: handleExportTransactions,
       filterComponent: (
@@ -1080,7 +1084,6 @@ export default function ReportsPage() {
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="donation">Giving</SelectItem>
                 <SelectItem value="event_ticket">Event Ticket</SelectItem>
-                <SelectItem value="subscription">Subscription</SelectItem>
               </SelectContent>
             </Select>
           </div>
