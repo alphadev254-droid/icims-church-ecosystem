@@ -18,7 +18,12 @@ export default function AdminLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { canInstall, install } = usePWAInstall();
+  const [iosHint, setIosHint] = useState(false);
+  const { canInstall, install, showInstallUI, isIOS } = usePWAInstall();
+  const handleInstall = async () => {
+    if (canInstall) { await install(); }
+    else if (isIOS) { setIosHint(true); }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -78,12 +83,12 @@ export default function AdminLayout() {
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
-        {canInstall && (
+        {showInstallUI && (
           <Button
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2 text-accent text-xs h-8"
-            onClick={install}
+            onClick={handleInstall}
           >
             <Smartphone className="h-3.5 w-3.5" />
             Install App

@@ -5,7 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { SubscriptionCheck } from '@/components/SubscriptionCheck';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Church, LogOut, Sun, Moon, Menu, User, Settings, Smartphone } from 'lucide-react';
+import { Church, LogOut, Sun, Moon, Menu, User, Settings, Smartphone, X } from 'lucide-react';
 import { useState } from 'react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { PWAInstallBanner } from '@/components/PWAInstallBanner';
@@ -17,7 +17,14 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { canInstall, install } = usePWAInstall();
+  const [iosHint, setIosHint] = useState(false);
+  const { canInstall, install, showInstallUI, isIOS } = usePWAInstall();
+
+  const handleInstallClick = async () => {
+    setSidebarOpen(false);
+    if (canInstall) { await install(); }
+    else if (isIOS) { setIosHint(true); }
+  };
 
   const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/['"]|\/$|^\/api$/g, '');
   const avatarUrl = user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${STATIC_BASE}${user.avatar}`) : null;
@@ -55,6 +62,15 @@ export default function DashboardLayout() {
             {item.label}
           </Link>
         ))}
+        {showInstallUI && (
+          <button
+            onClick={handleInstallClick}
+            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-md text-sm font-medium text-sidebar-primary hover:bg-sidebar-accent transition-colors"
+          >
+            <Smartphone className="h-4 w-4 flex-shrink-0" />
+            Install App
+          </button>
+        )}
       </nav>
 
       <div className="p-3 border-t border-sidebar-border space-y-2">
@@ -65,15 +81,6 @@ export default function DashboardLayout() {
             <div className="text-xs text-sidebar-foreground/50 mt-0.5 truncate">{user.church.name}</div>
           )}
         </div>
-        {canInstall && (
-          <button
-            onClick={install}
-            className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm text-sidebar-primary font-medium hover:bg-sidebar-accent transition-colors"
-          >
-            <Smartphone className="h-4 w-4" />
-            Install App
-          </button>
-        )}
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"
@@ -109,6 +116,17 @@ export default function DashboardLayout() {
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
+            {showInstallUI && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden lg:flex items-center gap-1.5 h-8 text-xs border-sidebar-primary/40 text-sidebar-primary hover:bg-sidebar-primary/10"
+                onClick={handleInstallClick}
+              >
+                <Smartphone className="h-3.5 w-3.5" />
+                Install App
+              </Button>
+            )}
             <h2 className="font-heading text-lg font-semibold capitalize">
               {location.pathname === '/dashboard'
                 ? 'Dashboard'
@@ -142,6 +160,15 @@ export default function DashboardLayout() {
                 {theme === 'dark' ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
                 {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
               </DropdownMenuItem>
+              {showInstallUI && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleInstallClick}>
+                    <Smartphone className="h-4 w-4 mr-2" />
+                    Install App
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
@@ -157,6 +184,27 @@ export default function DashboardLayout() {
         </main>
         <PWAInstallBanner />
       </div>
+
+      {/* iOS install instructions overlay */}
+      {iosHint && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/50" onClick={() => setIosHint(false)}>
+          <div className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-5 mb-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5 text-sidebar-primary" />
+                <span className="font-semibold text-sm">Install ICIMS on iPhone</span>
+              </div>
+              <button onClick={() => setIosHint(false)}><X className="h-4 w-4 text-muted-foreground" /></button>
+            </div>
+            <ol className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex gap-2"><span className="font-bold text-foreground">1.</span> Open this page in <span className="font-medium text-foreground">Safari</span></li>
+              <li className="flex gap-2"><span className="font-bold text-foreground">2.</span> Tap the <span className="font-medium text-foreground">Share</span> button (box with arrow at the bottom)</li>
+              <li className="flex gap-2"><span className="font-bold text-foreground">3.</span> Scroll down and tap <span className="font-medium text-foreground">"Add to Home Screen"</span></li>
+              <li className="flex gap-2"><span className="font-bold text-foreground">4.</span> Tap <span className="font-medium text-foreground">"Add"</span> — done!</li>
+            </ol>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
