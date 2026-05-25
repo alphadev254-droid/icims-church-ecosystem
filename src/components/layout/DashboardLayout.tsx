@@ -62,18 +62,10 @@ export default function DashboardLayout() {
             {item.label}
           </Link>
         ))}
-        {showInstallUI && (
-          <button
-            onClick={handleInstallClick}
-            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-md text-sm font-medium text-sidebar-primary hover:bg-sidebar-accent transition-colors"
-          >
-            <Smartphone className="h-4 w-4 flex-shrink-0" />
-            Install App
-          </button>
-        )}
       </nav>
 
-      <div className="p-3 border-t border-sidebar-border space-y-2">
+      {/* Pinned footer — always visible, never scrolls away */}
+      <div className="p-3 border-t border-sidebar-border space-y-1">
         <div className="px-3 py-2 text-sm text-sidebar-foreground/70">
           <div className="font-medium text-sidebar-foreground">{user?.firstName} {user?.lastName}</div>
           <div className="text-xs capitalize">{user?.roleName?.replace(/_/g, ' ')}</div>
@@ -81,6 +73,15 @@ export default function DashboardLayout() {
             <div className="text-xs text-sidebar-foreground/50 mt-0.5 truncate">{user.church.name}</div>
           )}
         </div>
+        {showInstallUI && (
+          <button
+            onClick={handleInstallClick}
+            className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm font-medium text-sidebar-primary hover:bg-sidebar-accent transition-colors"
+          >
+            <Smartphone className="h-4 w-4 flex-shrink-0" />
+            Install App
+          </button>
+        )}
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"

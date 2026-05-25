@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   Users, Church, Calendar, HandCoins, BarChart3, MessageSquare,
   BookOpen, ClipboardList, Building2, TrendingUp, Shield, Globe,
-  ArrowRight, CheckCircle2, ChevronRight, Smartphone, Download,
+  ArrowRight, CheckCircle2, ChevronRight, Smartphone, Download, X,
 } from 'lucide-react';
 import heroImage from '@/assets/hero-church.jpg';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
@@ -70,7 +70,12 @@ const inView = {
 
 export default function LandingPage() {
   const [demoOpen, setDemoOpen] = useState(false);
-  const { canInstall, install } = usePWAInstall();
+  const { canInstall, install, showInstallUI, isIOS } = usePWAInstall();
+  const [iosHint, setIosHint] = useState(false);
+  const handleInstall = async () => {
+    if (canInstall) { await install(); }
+    else if (isIOS) { setIosHint(true); }
+  };
 
   usePageMeta({
     title: 'The Complete Church Management Ecosystem',
@@ -138,12 +143,12 @@ export default function LandingPage() {
               >
                 Book a demo
               </Button>
-              {canInstall && (
+              {showInstallUI && (
                 <Button
                   size="lg"
                   variant="outline"
                   className="border-white/30 text-white hover:text-white h-12 px-7 text-base gap-2"
-                  onClick={install}
+                  onClick={handleInstall}
                 >
                   <Smartphone className="h-4 w-4" /> Install App
                 </Button>
@@ -366,7 +371,7 @@ export default function LandingPage() {
                 <Button
                   size="lg"
                   className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 h-12 px-7 text-base"
-                  onClick={install}
+                  onClick={handleInstall}
                 >
                   <Download className="h-4 w-4" /> Install Now
                 </Button>
@@ -415,6 +420,26 @@ export default function LandingPage() {
 
       <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
 
+      {/* iOS install instructions */}
+      {iosHint && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/60" onClick={() => setIosHint(false)}>
+          <div className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-5 mb-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5 text-accent" />
+                <span className="font-semibold text-sm">Install ICIMS on iPhone</span>
+              </div>
+              <button onClick={() => setIosHint(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
+            <ol className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex gap-2"><span className="font-bold text-foreground">1.</span> Open this page in <span className="font-medium text-foreground">Safari</span></li>
+              <li className="flex gap-2"><span className="font-bold text-foreground">2.</span> Tap the <span className="font-medium text-foreground">Share</span> button (box with arrow at the bottom)</li>
+              <li className="flex gap-2"><span className="font-bold text-foreground">3.</span> Scroll and tap <span className="font-medium text-foreground">"Add to Home Screen"</span></li>
+              <li className="flex gap-2"><span className="font-bold text-foreground">4.</span> Tap <span className="font-medium text-foreground">"Add"</span> — done!</li>
+            </ol>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
