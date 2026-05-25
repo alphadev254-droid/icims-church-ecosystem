@@ -18,9 +18,25 @@ const slug = isSubdomain
 // Lazy-load the public church page only when needed
 const ChurchPublicPage = React.lazy(() => import('./pages/ChurchPublicPage.tsx'));
 
+// ── PWA: capture beforeinstallprompt BEFORE React mounts (timing trap fix) ──
+(window as any).__pwaInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  (window as any).__pwaInstallPrompt = e;
+  console.log('[PWA] beforeinstallprompt captured at top level');
+  window.dispatchEvent(new CustomEvent('pwa-installable'));
+});
+window.addEventListener('appinstalled', () => {
+  (window as any).__pwaInstallPrompt = null;
+  console.log('[PWA] App installed');
+  window.dispatchEvent(new CustomEvent('pwa-installed'));
+});
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[PWA] Service worker registered, scope:', reg.scope))
+      .catch(err => console.warn('[PWA] Service worker registration failed:', err));
   });
 }
 

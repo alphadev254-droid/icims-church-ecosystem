@@ -23,20 +23,27 @@ export function usePWAInstall() {
       (window.navigator as any).standalone === true;
     if (isStandalone) { setIsInstalled(true); return; }
 
-    const onPrompt = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
+    // Pick up the prompt if it was captured before this component mounted
+    if ((window as any).__pwaInstallPrompt) {
+      setInstallPrompt((window as any).__pwaInstallPrompt);
+    }
+
+    // Also handle the case where it fires after mount
+    const onInstallable = () => {
+      if ((window as any).__pwaInstallPrompt) {
+        setInstallPrompt((window as any).__pwaInstallPrompt);
+      }
     };
     const onInstalled = () => {
       setIsInstalled(true);
       setInstallPrompt(null);
     };
 
-    window.addEventListener('beforeinstallprompt', onPrompt);
-    window.addEventListener('appinstalled', onInstalled);
+    window.addEventListener('pwa-installable', onInstallable);
+    window.addEventListener('pwa-installed', onInstalled);
     return () => {
-      window.removeEventListener('beforeinstallprompt', onPrompt);
-      window.removeEventListener('appinstalled', onInstalled);
+      window.removeEventListener('pwa-installable', onInstallable);
+      window.removeEventListener('pwa-installed', onInstalled);
     };
   }, []);
 
