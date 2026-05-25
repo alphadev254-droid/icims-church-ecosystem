@@ -70,11 +70,13 @@ const inView = {
 
 export default function LandingPage() {
   const [demoOpen, setDemoOpen] = useState(false);
-  const { canInstall, install, showInstallUI, isIOS } = usePWAInstall();
+  const { canInstall, install, showInstallUI, isIOS, isChromiumBased } = usePWAInstall();
   const [iosHint, setIosHint] = useState(false);
+  const [desktopHint, setDesktopHint] = useState(false);
   const handleInstall = async () => {
     if (canInstall) { await install(); }
     else if (isIOS) { setIosHint(true); }
+    else { setDesktopHint(true); }
   };
 
   usePageMeta({
@@ -419,6 +421,30 @@ export default function LandingPage() {
       </section>
 
       <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
+
+      {/* Desktop / Chrome install instructions */}
+      {desktopHint && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/60" onClick={() => setDesktopHint(false)}>
+          <div className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-5 mb-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5 text-accent" />
+                <span className="font-semibold text-sm">Install ICIMS on your computer</span>
+              </div>
+              <button onClick={() => setDesktopHint(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
+            {isChromiumBased ? (
+              <ol className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex gap-2"><span className="font-bold text-foreground">1.</span> Look for the <span className="font-medium text-foreground">install icon ⊕</span> on the right side of the address bar</li>
+                <li className="flex gap-2"><span className="font-bold text-foreground">2.</span> Click it and select <span className="font-medium text-foreground">"Install"</span></li>
+                <li className="flex gap-2"><span className="font-bold text-foreground">Alt:</span> Chrome menu <span className="font-medium text-foreground">(⋮)</span> → <span className="font-medium text-foreground">"Save and share"</span> → <span className="font-medium text-foreground">"Install ICIMS"</span></li>
+              </ol>
+            ) : (
+              <p className="text-sm text-muted-foreground">Use Chrome, Edge, or Brave on desktop for the best install experience.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* iOS install instructions */}
       {iosHint && (

@@ -13,6 +13,10 @@ export function usePWAInstall() {
     /iphone|ipad|ipod/i.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+  const isChrome = /chrome/i.test(navigator.userAgent) && !/edg/i.test(navigator.userAgent);
+  const isEdge = /edg/i.test(navigator.userAgent);
+  const isChromiumBased = isChrome || isEdge || /brave/i.test(navigator.userAgent);
+
   useEffect(() => {
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -45,8 +49,8 @@ export function usePWAInstall() {
   };
 
   const canInstall = !!installPrompt && !isInstalled;
-  // Always show the button when app is not installed — iOS uses manual instructions
+  // Always show the button when app is not installed — iOS/desktop use manual instructions
   const showInstallUI = !isInstalled;
 
-  return { canInstall, install, isInstalled, isIOS, showInstallUI };
+  return { canInstall, install, isInstalled, isIOS, isChromiumBased, showInstallUI };
 }
