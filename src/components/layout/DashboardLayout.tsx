@@ -5,8 +5,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { SubscriptionCheck } from '@/components/SubscriptionCheck';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Church, LogOut, Sun, Moon, Menu, User, Settings } from 'lucide-react';
+import { Church, LogOut, Sun, Moon, Menu, User, Settings, Smartphone } from 'lucide-react';
 import { useState } from 'react';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { PWAInstallBanner } from '@/components/PWAInstallBanner';
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
@@ -15,6 +17,7 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { canInstall, install } = usePWAInstall();
 
   const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/['"]|\/$|^\/api$/g, '');
   const avatarUrl = user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${STATIC_BASE}${user.avatar}`) : null;
@@ -62,6 +65,15 @@ export default function DashboardLayout() {
             <div className="text-xs text-sidebar-foreground/50 mt-0.5 truncate">{user.church.name}</div>
           )}
         </div>
+        {canInstall && (
+          <button
+            onClick={install}
+            className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm text-sidebar-primary font-medium hover:bg-sidebar-accent transition-colors"
+          >
+            <Smartphone className="h-4 w-4" />
+            Install App
+          </button>
+        )}
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"
@@ -143,6 +155,7 @@ export default function DashboardLayout() {
           <SubscriptionCheck />
           <Outlet />
         </main>
+        <PWAInstallBanner />
       </div>
     </div>
   );

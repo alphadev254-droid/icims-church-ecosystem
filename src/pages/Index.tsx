@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { usePageMeta } from '@/hooks/usePageMeta';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   Users, Church, Calendar, HandCoins, BarChart3, MessageSquare,
   BookOpen, ClipboardList, Building2, TrendingUp, Shield, Globe,
-  ArrowRight, CheckCircle2, ChevronRight,
+  ArrowRight, CheckCircle2, ChevronRight, Smartphone, Download,
 } from 'lucide-react';
 import heroImage from '@/assets/hero-church.jpg';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
@@ -69,6 +70,7 @@ const inView = {
 
 export default function LandingPage() {
   const [demoOpen, setDemoOpen] = useState(false);
+  const { canInstall, install } = usePWAInstall();
 
   usePageMeta({
     title: 'The Complete Church Management Ecosystem',
@@ -136,6 +138,16 @@ export default function LandingPage() {
               >
                 Book a demo
               </Button>
+              {canInstall && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-white/30 text-white hover:text-white h-12 px-7 text-base gap-2"
+                  onClick={install}
+                >
+                  <Smartphone className="h-4 w-4" /> Install App
+                </Button>
+              )}
             </motion.div>
 
             <motion.div
@@ -327,6 +339,48 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── PWA ──────────────────────────────────────────────────────────── */}
+      <section className="py-20 bg-muted/40">
+        <div className="container">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={inView}
+            className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-8 md:gap-12"
+          >
+            <div className="flex-shrink-0 w-20 h-20 rounded-2xl bg-accent/20 flex items-center justify-center">
+              <Smartphone className="h-10 w-10 text-accent" />
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <h2 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-2">Available as a mobile app</h2>
+              <p className="text-muted-foreground text-base leading-relaxed">
+                Install ICIMS directly on your phone or tablet — no app store required. Works on Android and iOS. Opens instantly, even on slow connections.
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              {canInstall ? (
+                <Button
+                  size="lg"
+                  className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 h-12 px-7 text-base"
+                  onClick={install}
+                >
+                  <Download className="h-4 w-4" /> Install Now
+                </Button>
+              ) : (
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-wide">Add to Home Screen</p>
+                  <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-accent" /> Android — Chrome menu → "Install app"</span>
+                    <span className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-accent" /> iPhone — Safari share → "Add to Home Screen"</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
         </div>
       </section>
 
