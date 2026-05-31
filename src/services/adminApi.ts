@@ -182,6 +182,9 @@ export interface AdminSystemTransaction {
   gateway?: string;
   gatewayCountry?: string;
   reference?: string;
+  campaignName?: string | null;
+  campaignCategory?: string | null;
+  eventTitle?: string | null;
   isGuest: boolean;
   isManual: boolean;
   guestName?: string;

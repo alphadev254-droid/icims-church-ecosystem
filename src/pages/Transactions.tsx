@@ -126,6 +126,8 @@ export default function TransactionsPage() {
             currency: t.currency,
             status: t.status,
             type: t.type,
+            campaign: t.campaignName || '',
+            event: t.eventTitle || '',
             paymentMethod: t.paymentMethod,
             gateway: t.gateway || '',
             name: t.user ? `${t.user.firstName} ${t.user.lastName}` : (t.isGuest ? t.guestName : ''),
@@ -140,6 +142,8 @@ export default function TransactionsPage() {
             { label: 'Currency', key: 'currency' },
             { label: 'Status', key: 'status' },
             { label: 'Type', key: 'type' },
+            { label: 'Campaign', key: 'campaign' },
+            { label: 'Event', key: 'event' },
             { label: 'Payment Method', key: 'paymentMethod' },
             { label: 'Gateway', key: 'gateway' },
             { label: 'Name', key: 'name' },
@@ -252,6 +256,8 @@ export default function TransactionsPage() {
                   <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Name</th>
                   <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Email</th>
                   <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Church</th>
+                  <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Campaign</th>
+                  <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Event</th>
                   <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Payment</th>
                   <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Gateway</th>
                   <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Church Account</th>
@@ -277,6 +283,8 @@ export default function TransactionsPage() {
                       {transaction.user?.email || (transaction.isGuest ? transaction.guestEmail : '-')}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">{transaction.church?.name || '-'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{transaction.campaignName || '—'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{transaction.eventTitle || '—'}</td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <div className="capitalize">{transaction.paymentMethod.replace('_', ' ')}</div>
                       {transaction.cardBank && transaction.cardLast4 && (
@@ -347,6 +355,16 @@ export default function TransactionsPage() {
               <div><p className="text-muted-foreground">Status</p><Badge variant={statusVariant(viewTransaction.status)} className="text-xs px-1.5 py-0">{viewTransaction.status}</Badge></div>
               <div><p className="text-muted-foreground">Type</p><p className="capitalize">{TYPE_LABEL[viewTransaction.type] ?? viewTransaction.type.replace('_', ' ')}</p></div>
               <div><p className="text-muted-foreground">Payment Method</p><p className="capitalize">{viewTransaction.paymentMethod.replace('_', ' ')}</p></div>
+              {(viewTransaction.campaignName || viewTransaction.eventTitle) && (
+                <div className="col-span-2 grid grid-cols-2 gap-3">
+                  {viewTransaction.campaignName && (
+                    <div><p className="text-muted-foreground">Campaign</p><p>{viewTransaction.campaignName}</p></div>
+                  )}
+                  {viewTransaction.eventTitle && (
+                    <div><p className="text-muted-foreground">Event</p><p>{viewTransaction.eventTitle}</p></div>
+                  )}
+                </div>
+              )}
               {viewTransaction.reference && (
                 <div className="col-span-2"><p className="text-muted-foreground">Reference</p><p className="font-mono break-all">{viewTransaction.reference}</p></div>
               )}

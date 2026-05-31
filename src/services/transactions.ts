@@ -19,6 +19,12 @@ export interface Transaction {
   systemFeeAmount?: number;
   totalAmount?: number;
   gateway?: string;
+  campaignName?: string | null;
+  campaignCategory?: string | null;
+  eventTitle?: string | null;
+  cellName?: string | null;
+  reference?: string | null;
+  notes?: string | null;
   createdAt: string;
   isGuest?: boolean;
   guestName?: string;

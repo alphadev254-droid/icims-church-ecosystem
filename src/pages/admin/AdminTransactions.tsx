@@ -225,6 +225,8 @@ export default function AdminTransactions() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Giver</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Type</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Church</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Campaign</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Event</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Amount</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Transaction Cost</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Gateway Fee</th>
@@ -264,6 +266,8 @@ export default function AdminTransactions() {
                           <p className="text-xs text-muted-foreground">Total: {t.currency} {t.totalAmount.toLocaleString()}</p>
                         )}
                       </td>
+                      <td className="px-4 py-3 hidden md:table-cell"><span className="text-xs text-muted-foreground">{t.campaignName || '—'}</span></td>
+                      <td className="px-4 py-3 hidden md:table-cell"><span className="text-xs text-muted-foreground">{t.eventTitle || '—'}</span></td>
                       {/* Transaction Cost = combined */}
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs font-medium">
