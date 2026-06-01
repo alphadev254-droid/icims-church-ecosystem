@@ -19,6 +19,9 @@ import { STALE_TIME } from '@/lib/query-config';
 // ─── Image upload picker component ───────────────────────────────────────────
 
 const BACKEND_URL = (import.meta.env.VITE_STATIC_URL as string) || import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || '';
+const MAX_SIZE_MB = 5;
+const MAX_SIZE = MAX_SIZE_MB * 1024 * 1024;
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 function ImageUploadPicker({
   label,
@@ -50,6 +53,19 @@ function ImageUploadPicker({
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error(`Invalid file type. Allowed: JPG, PNG, WebP, GIF`);
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    if (file.size > MAX_SIZE) {
+      toast.error(`File too large. Maximum size is ${MAX_SIZE_MB}MB`);
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
     setUploading(true);
     try {
       const fd = new FormData();
@@ -134,7 +150,7 @@ function ImageUploadPicker({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept={ALLOWED_TYPES.join(',')}
         className="hidden"
         onChange={handleFile}
       />
@@ -382,7 +398,7 @@ export default function ChurchProfileSettingsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <ImageUploadPicker
             label="Logo"
-            hint="Square image recommended. Max 5MB."
+            hint={`Square image recommended. JPG, PNG, WebP, GIF. Max ${MAX_SIZE_MB}MB.`}
             value={form.logoUrl}
             uploadEndpoint="/church-profile/upload/logo"
             aspectClass="aspect-square max-h-40"
@@ -392,7 +408,7 @@ export default function ChurchProfileSettingsPage() {
           />
           <ImageUploadPicker
             label="Banner / Hero image"
-            hint="Wide image (16:9 recommended). Max 5MB."
+            hint={`Wide image (16:9 recommended). JPG, PNG, WebP, GIF. Max ${MAX_SIZE_MB}MB.`}
             value={form.bannerUrl}
             uploadEndpoint="/church-profile/upload/banner"
             aspectClass="aspect-video"
@@ -445,7 +461,7 @@ export default function ChurchProfileSettingsPage() {
             </Field>
             <ImageUploadPicker
               label="Pastor photo"
-              hint="Square image recommended. Max 5MB."
+              hint={`Square image recommended. JPG, PNG, WebP, GIF. Max ${MAX_SIZE_MB}MB.`}
               value={form.pastorPhoto}
               uploadEndpoint="/church-profile/upload/pastor"
               aspectClass="aspect-square max-h-36"

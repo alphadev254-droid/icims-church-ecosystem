@@ -102,17 +102,23 @@ export default function SettingsPage() {
     }
   };
 
+  const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const AVATAR_MAX_SIZE_MB = 5;
+  const AVATAR_MAX_SIZE = AVATAR_MAX_SIZE_MB * 1024 * 1024;
+
   const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+      toast.error(`Invalid file type. Allowed: JPG, PNG, WebP, GIF`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
+    if (file.size > AVATAR_MAX_SIZE) {
+      toast.error(`File too large. Maximum size is ${AVATAR_MAX_SIZE_MB}MB`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -166,11 +172,11 @@ export default function SettingsPage() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium">Profile Picture</p>
-              <p className="text-xs text-muted-foreground mb-2">JPG, PNG or GIF. Max 5MB</p>
+              <p className="text-xs text-muted-foreground mb-2">{`JPG, PNG, WebP or GIF. Max ${AVATAR_MAX_SIZE_MB}MB`}</p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept={ALLOWED_AVATAR_TYPES.join(',')}
                 onChange={onAvatarChange}
                 className="hidden"
               />
