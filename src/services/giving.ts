@@ -71,6 +71,7 @@ export interface DonationTransaction {
   createdAt: string;
   campaign?: { name: string; category: string };
   user?: { firstName: string; lastName: string; email: string };
+  cell?: { name: string };
 }
 
 export interface CreateDonationDto {

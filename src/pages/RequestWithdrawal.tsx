@@ -48,6 +48,13 @@ export default function RequestWithdrawalPage() {
 
   const method = watch('method');
 
+  const { data: banks = [], isLoading: isLoadingBanks } = useQuery({
+    queryKey: ['wallet-supported-banks'],
+    queryFn: walletService.getSupportedBanks,
+    enabled: user?.accountCountry === 'Malawi',
+    staleTime: 5 * 60_000,
+  });
+
   const { data: balance } = useQuery({
     queryKey: ['wallet-balance'],
     queryFn: walletService.getBalance,
@@ -125,7 +132,7 @@ export default function RequestWithdrawalPage() {
           <CardTitle>Withdrawal Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(data => withdrawMutation.mutate(data))} className="space-y-4">
+          <form onSubmit={handleSubmit(data => withdrawMutation.mutate(data as any))} className="space-y-4">
             <div>
               <Label className="text-xs sm:text-sm">Amount *</Label>
               <Input 
@@ -175,8 +182,21 @@ export default function RequestWithdrawalPage() {
             {method === 'bank_transfer' && (
               <>
                 <div>
-                  <Label className="text-xs sm:text-sm">Bank Code *</Label>
-                  <Input {...register('bankCode')} placeholder="Bank code" className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm" />
+                  <Label className="text-xs sm:text-sm">Bank *</Label>
+                  <Select onValueChange={(v: any) => setValue('bankCode', v, { shouldValidate: true })}>
+                    <SelectTrigger className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm">
+                      <SelectValue placeholder={isLoadingBanks ? 'Loading banks...' : 'Select bank'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(banks as any[]).map((b: any) => {
+                        const value = String(b.uuid || b.bank_uuid || b.id);
+                        return (
+                          <SelectItem key={value} value={value}>{b.name || value}</SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {errors.bankCode && <p className="text-xs text-destructive mt-1">{errors.bankCode.message}</p>}
                 </div>
                 <div>
                   <Label className="text-xs sm:text-sm">Account Name *</Label>

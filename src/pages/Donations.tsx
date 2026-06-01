@@ -437,33 +437,36 @@ export default function DonationsPage() {
             >
               <PlusCircle className="h-3.5 w-3.5" /> Record Giving
             </Button>
-          )}          <ExportImportButtons
-          data={donations.map((d: any) => ({
-            donor: d.isAnonymous ? 'Anonymous' : (d.isGuest ? d.guestName : (d.donorName || `${d.user?.firstName} ${d.user?.lastName}`)),
-            email: d.isAnonymous ? '' : (d.isGuest ? d.guestEmail : (d.donorEmail || d.user?.email || '')),
-            type: d.isAnonymous ? 'Anonymous' : d.isGuest ? 'Guest' : 'Member',
-            campaign: d.campaign?.name || '',
-            church: d.church?.name || '',
-            category: d.campaign?.category || '',
-            amount: d.amount,
-            currency: d.currency,
-            status: d.status,
-            date: new Date(d.createdAt).toLocaleDateString(),
-          }))}
-          filename="donations"
-          headers={[
-            { label: 'Donor', key: 'donor' },
-            { label: 'Email', key: 'email' },
-            { label: 'Type', key: 'type' },
-            { label: 'Campaign', key: 'campaign' },
-            { label: 'Church', key: 'church' },
-            { label: 'Category', key: 'category' },
-            { label: 'Amount', key: 'amount' },
-            { label: 'Currency', key: 'currency' },
-            { label: 'Status', key: 'status' },
-            { label: 'Date', key: 'date' },
-          ]}
-          pdfTitle="Donations Report"
+          )}
+          <ExportImportButtons
+            data={donations.map((d: any) => ({
+              donor: d.isAnonymous ? 'Anonymous' : (d.isGuest ? d.guestName : (d.donorName || `${d.user?.firstName} ${d.user?.lastName}`)),
+              email: d.isAnonymous ? '' : (d.isGuest ? d.guestEmail : (d.donorEmail || d.user?.email || '')),
+              type: d.isAnonymous ? 'Anonymous' : d.isGuest ? 'Guest' : 'Member',
+              campaign: d.campaign?.name || '',
+              church: d.church?.name || '',
+              cell: d.cell?.name || '',
+              category: d.campaign?.category || '',
+              amount: d.amount,
+              currency: d.currency,
+              status: d.status,
+              date: new Date(d.createdAt).toLocaleDateString(),
+            }))}
+            filename="donations"
+            headers={[
+              { label: 'Donor', key: 'donor' },
+              { label: 'Email', key: 'email' },
+              { label: 'Type', key: 'type' },
+              { label: 'Campaign', key: 'campaign' },
+              { label: 'Church', key: 'church' },
+              { label: 'Cell', key: 'cell' },
+              { label: 'Category', key: 'category' },
+              { label: 'Amount', key: 'amount' },
+              { label: 'Currency', key: 'currency' },
+              { label: 'Status', key: 'status' },
+              { label: 'Date', key: 'date' },
+            ]}
+            pdfTitle="Donations Report"
           />
         </div>
       </div>
@@ -482,6 +485,7 @@ export default function DonationsPage() {
                 <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Type</th>
                 <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Campaign</th>
                 <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Church</th>
+                <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Cell</th>
                 <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Amount</th>
                 <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Status</th>
                 <th className="text-left px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">Date</th>
@@ -512,6 +516,9 @@ export default function DonationsPage() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="text-xs sm:text-sm whitespace-nowrap">{donation.church?.name || 'N/A'}</div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="text-xs sm:text-sm whitespace-nowrap">{donation.cell?.name || '—'}</div>
                     </td>
                     <td className="px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap">
                       {donation.currency} {donation.amount.toLocaleString()}

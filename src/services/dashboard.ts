@@ -17,7 +17,7 @@ export interface DashboardStats {
   myTotalDonations?: number;
   myDonationRecords?: number;
   totalEvents?: number;
-  weeklyAttendance?: { month: string; male: number; female: number; children: number }[];
+  weeklyAttendance?: { week: string; attendees: number; date: string }[];
   monthlyGiving?: { month: string; amount: number }[];
 }
 

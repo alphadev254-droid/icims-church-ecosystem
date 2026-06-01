@@ -25,4 +25,8 @@ export const walletService = {
     const { data } = await apiClient.post('/wallet/withdraw', payload);
     return data.data;
   },
+  getSupportedBanks: async () => {
+    const { data } = await apiClient.get('/wallet/supported-banks');
+    return data.data;
+  },
 };
