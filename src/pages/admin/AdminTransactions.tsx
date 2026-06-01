@@ -120,27 +120,27 @@ export default function AdminTransactions() {
             date:        new Date(t.createdAt).toLocaleDateString(),
           }))}
           headers={[
-            { label: 'Giver',        key: 'donor' },
-            { label: 'Email',        key: 'email' },
-            { label: 'Type',         key: 'type' },
-            { label: 'Church',       key: 'church' },
-            { label: 'Campaign',     key: 'campaign' },
-            { label: 'Event',        key: 'event' },
+            { label: 'Giver',            key: 'donor' },
+            { label: 'Email',            key: 'email' },
+            { label: 'Type',             key: 'type' },
+            { label: 'Church',           key: 'church' },
+            { label: 'Campaign',         key: 'campaign' },
+            { label: 'Event',            key: 'event' },
             { label: 'Base Amount',      key: 'baseAmount' },
             { label: 'Transaction Cost', key: 'transactionCost' },
             { label: 'Gateway Fee',      key: 'gatewayFee' },
             { label: 'System Fee',       key: 'systemFee' },
             { label: 'Rounding',         key: 'rounding' },
-            { label: 'Total',        key: 'total' },
-            { label: 'Currency',     key: 'currency' },
-            { label: 'Gateway',      key: 'gateway' },
-            { label: 'Country',      key: 'country' },
-            { label: 'Method',       key: 'method' },
-            { label: 'Status',       key: 'status' },
-            { label: 'Reference',    key: 'reference' },
-            { label: 'Date',         key: 'date' },
+            { label: 'Total',            key: 'total' },
+            { label: 'Currency',         key: 'currency' },
+            { label: 'Gateway',          key: 'gateway' },
+            { label: 'Country',          key: 'country' },
+            { label: 'Method',           key: 'method' },
+            { label: 'Status',           key: 'status' },
+            { label: 'Reference',        key: 'reference' },
+            { label: 'Date',             key: 'date' },
           ]}
-          pdfColumns={['Giver','Email','Type','Church','Campaign','Event','Base Amount','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Status','Date']}
+          pdfColumns={['Giver','Email','Type','Church','Campaign','Event','Base Amount','Transaction Cost','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Country','Method','Status','Reference','Date']}
         />
       </div>
 
