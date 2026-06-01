@@ -103,6 +103,8 @@ export default function AdminTransactions() {
             email:       donorEmail(t),
             type:        t.type.replace('_', ' '),
             church:      t.church?.name ?? '',
+            campaign:    t.campaignName ?? '',
+            event:       t.eventTitle ?? '',
             baseAmount:  t.baseAmount ?? t.amount,
             transactionCost: (t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0),
             gatewayFee:  t.convenienceFee ?? 0,
@@ -122,6 +124,8 @@ export default function AdminTransactions() {
             { label: 'Email',        key: 'email' },
             { label: 'Type',         key: 'type' },
             { label: 'Church',       key: 'church' },
+            { label: 'Campaign',     key: 'campaign' },
+            { label: 'Event',        key: 'event' },
             { label: 'Base Amount',      key: 'baseAmount' },
             { label: 'Transaction Cost', key: 'transactionCost' },
             { label: 'Gateway Fee',      key: 'gatewayFee' },
@@ -136,7 +140,7 @@ export default function AdminTransactions() {
             { label: 'Reference',    key: 'reference' },
             { label: 'Date',         key: 'date' },
           ]}
-          pdfColumns={['Giver','Email','Type','Church','Base Amount','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Status','Date']}
+          pdfColumns={['Giver','Email','Type','Church','Campaign','Event','Base Amount','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Status','Date']}
         />
       </div>
 
