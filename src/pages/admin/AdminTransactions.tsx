@@ -260,14 +260,14 @@ export default function AdminTransactions() {
                       <td className="px-4 py-3 hidden md:table-cell">
                         <span className="text-xs text-muted-foreground">{t.church?.name ?? '—'}</span>
                       </td>
+                      <td className="px-4 py-3 hidden md:table-cell"><span className="text-xs text-muted-foreground">{t.campaignName || '—'}</span></td>
+                      <td className="px-4 py-3 hidden md:table-cell"><span className="text-xs text-muted-foreground">{t.eventTitle || '—'}</span></td>
                       <td className="px-4 py-3">
                         <p className="text-xs font-medium">{t.currency} {(t.baseAmount ?? t.amount).toLocaleString()}</p>
                         {t.totalAmount && t.totalAmount !== (t.baseAmount ?? t.amount) && (
                           <p className="text-xs text-muted-foreground">Total: {t.currency} {t.totalAmount.toLocaleString()}</p>
                         )}
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell"><span className="text-xs text-muted-foreground">{t.campaignName || '—'}</span></td>
-                      <td className="px-4 py-3 hidden md:table-cell"><span className="text-xs text-muted-foreground">{t.eventTitle || '—'}</span></td>
                       {/* Transaction Cost = combined */}
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs font-medium">
