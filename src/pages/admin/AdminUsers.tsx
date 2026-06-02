@@ -111,6 +111,7 @@ export default function AdminUsers() {
             phone: u.phone ?? '', role: u.roleName ?? '',
             ministry: u.resolvedMinistryName ?? u.ministryName ?? '',
             country: u.resolvedCountry ?? u.accountCountry ?? '',
+            church: u.church?.name ?? '—',
             churches: u.churchCount ?? 0, status: u.status,
             joined: new Date(u.createdAt).toLocaleDateString(),
           }))}
@@ -118,11 +119,11 @@ export default function AdminUsers() {
             { label: 'First Name', key: 'firstName' }, { label: 'Last Name', key: 'lastName' },
             { label: 'Email', key: 'email' }, { label: 'Phone', key: 'phone' },
             { label: 'Role', key: 'role' }, { label: 'Ministry', key: 'ministry' },
-            { label: 'Country', key: 'country' },
+            { label: 'Country', key: 'country' }, { label: 'Church', key: 'church' },
             { label: 'Churches', key: 'churches' }, { label: 'Status', key: 'status' },
             { label: 'Joined', key: 'joined' },
           ]}
-          pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Ministry', 'Country', 'Churches', 'Status', 'Joined']}
+          pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Ministry', 'Country', 'Church', 'Churches', 'Status', 'Joined']}
         />
       </div>
 

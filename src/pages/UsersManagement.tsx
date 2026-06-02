@@ -805,6 +805,7 @@ export default function UsersManagement() {
               residentialNeighbourhood: (u as any).residentialNeighbourhood || '',
               baptizedByImmersion: (u as any).baptizedByImmersion ? 'Yes' : 'No',
               role: ROLE_DISPLAY[u.roleName] || u.roleName,
+              church: u.church?.name ?? '—',
               teams: (u as any).teams?.join(', ') || '',
               cells: (u as any).cells?.map((c: any) => c.name).join(', ') || '',
               status: u.status,
@@ -823,6 +824,7 @@ export default function UsersManagement() {
               { label: 'Neighbourhood', key: 'residentialNeighbourhood' },
               { label: 'Baptized', key: 'baptizedByImmersion' },
               { label: 'Role', key: 'role' },
+              { label: 'Church', key: 'church' },
               { label: 'Teams', key: 'teams' },
               { label: 'Cells', key: 'cells' },
               { label: 'Status', key: 'status' },
@@ -831,7 +833,7 @@ export default function UsersManagement() {
             pdfTitle="Users Report"
           />
           <Button variant="outline" size="sm" className="gap-1.5 h-8 sm:h-9 text-xs sm:text-sm" onClick={() => {
-            const headers = ['First Name','Last Name','Email','Phone','Gender','Date of Birth','Marital Status','Wedding Date','Neighbourhood','Baptized','Role','Teams','Cells','Status','Joined'];
+            const headers = ['First Name','Last Name','Email','Phone','Gender','Date of Birth','Marital Status','Wedding Date','Neighbourhood','Baptized','Role','Church','Teams','Cells','Status','Joined'];
             const rows = users.map(u => [
               u.firstName, u.lastName, u.email,
               u.phone || '',
@@ -842,6 +844,7 @@ export default function UsersManagement() {
               (u as any).residentialNeighbourhood || '',
               (u as any).baptizedByImmersion ? 'Yes' : 'No',
               ROLE_DISPLAY[u.roleName] || u.roleName,
+              u.church?.name ?? '—',
               (u as any).teams?.join(', ') || '',
               (u as any).cells?.map((c: any) => c.name).join(', ') || '',
               u.status,
@@ -1142,6 +1145,7 @@ export default function UsersManagement() {
                   <TableHead className="hidden lg:table-cell">Residence</TableHead>
                   <TableHead className="hidden 2xl:table-cell">Baptized</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead className="hidden lg:table-cell">Church</TableHead>
                   <TableHead className="hidden xl:table-cell">Teams</TableHead>
                   <TableHead className="hidden xl:table-cell">Cell</TableHead>
                   <TableHead className="hidden lg:table-cell">Joined</TableHead>
@@ -1182,6 +1186,9 @@ export default function UsersManagement() {
                         <Badge variant={ROLE_BADGE_VARIANT[user.roleName] ?? 'outline'} className="text-xs capitalize">
                           {ROLE_DISPLAY[user.roleName] ?? user.roleName}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-[150px] truncate">
+                        {user.church?.name ?? '—'}
                       </TableCell>
                       <TableCell className="hidden xl:table-cell text-xs text-muted-foreground max-w-[150px] truncate">
                         {(user as any).teams?.length > 0 ? (user as any).teams.join(', ') : '—'}
