@@ -373,24 +373,18 @@ const Reminders = () => {
                   )}
 
                   {(contactPhone || contactEmail) && (
-                    <div className="flex gap-2 pt-2 border-t">
-                      {contactPhone && (
-                        <a
-                          href={`tel:${contactPhone}`}
-                          className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs border rounded-md hover:bg-accent transition-colors"
-                          title="Call"
-                        >
-                          <Phone className="h-3 w-3" /> Call
-                        </a>
-                      )}
+                    <div className="pt-2 border-t space-y-1">
                       {contactEmail && (
-                        <a
-                          href={`mailto:${contactEmail}`}
-                          className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs border rounded-md hover:bg-accent transition-colors"
-                          title="Email"
-                        >
-                          <Mail className="h-3 w-3" /> Email
-                        </a>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Mail className="h-3 w-3 shrink-0" />
+                          <span>{contactEmail}</span>
+                        </div>
+                      )}
+                      {contactPhone && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Phone className="h-3 w-3 shrink-0" />
+                          <span>{contactPhone}</span>
+                        </div>
                       )}
                     </div>
                   )}
