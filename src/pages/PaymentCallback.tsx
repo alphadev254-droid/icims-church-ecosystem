@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2, Mail, Ticket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { eventsService } from '@/services/events';
+import apiClient from '@/lib/api-client';
 
 export default function PaymentCallbackPage() {
   const [searchParams] = useSearchParams();
@@ -18,74 +19,86 @@ export default function PaymentCallbackPage() {
   const urlAmount = searchParams.get('amount');
   const urlCurrency = searchParams.get('currency');
 
-  const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'failed' | 'timeout'>('loading');
   const [txData, setTxData] = useState<any>(null);
+  const [attempts, setAttempts] = useState(0);
+
+  // Poll for payment status
+  const pollPaymentStatus = useCallback(async (currentAttempt: number) => {
+    if (!reference) return;
+    
+    const MAX_ATTEMPTS = 15; // 30 seconds (2s * 15)
+    
+    try {
+      // Use new polling endpoint
+      const res = await apiClient.get(`/payment-status/${reference}`);
+      const result = res.data;
+      
+      if (result.found && result.status === 'completed') {
+        // Payment found and completed
+        setTxData(result);
+        setStatus('success');
+        
+        // Auto-redirect for logged-in users
+        if (!isGuest) {
+          const type = result.type || urlType;
+          setTimeout(() => {
+            if (type === 'donation') navigate('/dashboard/giving');
+            else if (type === 'package_subscription') navigate('/dashboard/packages');
+            else navigate('/dashboard/my-tickets');
+          }, 3000);
+        }
+        return;
+      }
+      
+      // Not found yet, continue polling if not maxed out
+      if (currentAttempt < MAX_ATTEMPTS) {
+        setAttempts(currentAttempt + 1);
+        setTimeout(() => pollPaymentStatus(currentAttempt + 1), 2000);
+      } else {
+        // Max attempts reached
+        setStatus('timeout');
+      }
+    } catch (error) {
+      console.error('Polling error:', error);
+      if (currentAttempt < MAX_ATTEMPTS) {
+        setAttempts(currentAttempt + 1);
+        setTimeout(() => pollPaymentStatus(currentAttempt + 1), 2000);
+      } else {
+        setStatus('timeout');
+      }
+    }
+  }, [reference, isGuest, urlType, navigate]);
 
   useEffect(() => {
-    if (!reference) { setStatus('failed'); return; }
+    if (!reference) { 
+      setStatus('failed'); 
+      return; 
+    }
 
+    // Immediate failure from URL
     if (urlStatus === 'failed' || urlStatus === 'error') {
       setStatus('failed');
       return;
     }
 
-    // Guest ticket success — no transaction exists, everything is in URL params
+    // Guest free ticket - no payment needed
     if (urlStatus === 'success' && isFree && isGuest) {
       setStatus('success');
       return;
     }
 
-    // Guest donation success — transaction exists but no redirect needed
-    if (urlStatus === 'success' && isGuest && urlType === 'donation') {
-      eventsService.getTransactionByReference(reference)
-        .then(data => { setTxData(data); setStatus('success'); })
-        .catch(() => setStatus('success'));
+    // If URL has success status, we can show success immediately 
+    // but still poll for full transaction data
+    if (urlStatus === 'success') {
+      // Start polling to get full transaction details
+      pollPaymentStatus(0);
       return;
     }
 
-    if (urlStatus === 'success' && urlType) {
-      // Backend already verified — fetch full transaction info to display
-      eventsService.getTransactionByReference(reference)
-        .then(data => { setTxData(data); setStatus('success'); })
-        .catch(() => {
-          // Still show success even if fetch fails — backend confirmed it
-          setStatus('success');
-        });
-
-      // Auto-redirect only for logged-in users
-      if (!isGuest) {
-        setTimeout(() => {
-          if (urlType === 'donation') navigate('/dashboard/giving');
-          else if (urlType === 'package_subscription') navigate('/dashboard/packages');
-          else navigate('/dashboard/my-tickets');
-        }, 3000);
-      }
-      return;
-    }
-
-    // No status in URL — shouldn't happen with Paychangu (backend always redirects with status)
-    // Fallback for Paystack verify flow
-    import('@/lib/api-client').then(({ default: apiClient }) => {
-      apiClient.get(`/payments/verify/${reference}`)
-        .then(res => {
-          if (res.data.success && res.data.data.status === 'success') {
-            const type = res.data.data.metadata?.type || 'event_ticket';
-            setTxData({ type, reference });
-            setStatus('success');
-            if (!isGuest) {
-              setTimeout(() => {
-                if (type === 'donation') navigate('/dashboard/giving');
-                else if (type === 'package_subscription') navigate('/dashboard/packages');
-                else navigate('/dashboard/my-tickets');
-              }, 3000);
-            }
-          } else {
-            setStatus('failed');
-          }
-        })
-        .catch(() => setStatus('failed'));
-    });
-  }, [reference, urlStatus, urlType, isGuest, isFree, navigate]);
+    // No status in URL - poll for payment
+    pollPaymentStatus(0);
+  }, [reference, urlStatus, isFree, isGuest, pollPaymentStatus]);
 
   if (status === 'loading') {
     return (
@@ -93,7 +106,26 @@ export default function PaymentCallbackPage() {
         <div className="text-center space-y-4">
           <Loader2 className="h-16 w-16 animate-spin text-accent mx-auto" />
           <h1 className="text-2xl font-bold">Verifying Payment...</h1>
-          <p className="text-muted-foreground">Please wait</p>
+          <p className="text-muted-foreground">Checking payment status (attempt {attempts}/15)</p>
+          <p className="text-xs text-muted-foreground">Reference: {reference}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'timeout') {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-16 w-16 animate-spin text-accent mx-auto" />
+          <h1 className="text-2xl font-bold">Payment Processing...</h1>
+          <p className="text-muted-foreground">Your payment is still being processed. This may take a few moments.</p>
+          <p className="text-sm text-muted-foreground font-mono">Ref: {reference}</p>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" onClick={() => window.location.reload()}>Check Again</Button>
+            <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+          </div>
+          <p className="text-xs text-muted-foreground">You will receive an email confirmation once complete.</p>
         </div>
       </div>
     );

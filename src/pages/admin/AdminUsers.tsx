@@ -181,6 +181,7 @@ export default function AdminUsers() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Role</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Ministry</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Country</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Church</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Churches</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Joined</th>
@@ -191,7 +192,7 @@ export default function AdminUsers() {
               {isLoading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 9 }).map((_, j) => (
+                      {Array.from({ length: 10 }).map((_, j) => (
                         <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded w-24" /></td>
                       ))}
                     </tr>
@@ -215,6 +216,9 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs">{user.resolvedCountry || user.accountCountry || '—'}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs">{user.church?.name ?? '—'}</span>
                       </td>
                       <td className="px-4 py-3 hidden xl:table-cell">
                         <span className="text-xs">{user.churchCount ?? 0}</span>
