@@ -346,8 +346,13 @@ const Reminders = () => {
 
                   {!isEvent && (reminder.age || reminder.years) && (
                     <p className="text-xs text-muted-foreground mb-2">
-                      {reminder.age  && `Turning ${reminder.age}`}
+                      {reminder.age && `Turning ${reminder.age}`}
                       {reminder.years && `${reminder.years} ${reminder.years === 1 ? 'year' : 'years'}`}
+                      {reminder.type === 'birthday' && reminder.originalDate && (
+                        <span className="ml-1">
+                          ({new Date(reminder.originalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
+                        </span>
+                      )}
                     </p>
                   )}
 
