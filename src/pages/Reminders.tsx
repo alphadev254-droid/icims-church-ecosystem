@@ -108,22 +108,21 @@ const Reminders = () => {
   };
 
   const filteredReminders = reminders.filter((r) => {
+    if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     
-    // Search filter only (church filter is handled by backend)
-    // For event reminders
     if (r.type === 'event') {
       const eventTitle = r.event?.title?.toLowerCase() ?? r.eventTitle?.toLowerCase() ?? '';
       return eventTitle.includes(query);
     }
     
-    // For other reminders with user object
     if (r.user) {
       const fullName = `${r.user.firstName} ${r.user.lastName}`.toLowerCase();
       return fullName.includes(query);
     }
     
-    return false;
+    // If no user object, show it (don't hide due to missing data)
+    return true;
   });
 
   // ---------- guards ----------
@@ -311,7 +310,7 @@ const Reminders = () => {
             const isEvent = reminder.type === 'event';
             const displayName = isEvent 
               ? (reminder.event?.title || reminder.eventTitle || 'Event')
-              : (reminder.user ? `${reminder.user.firstName} ${reminder.user.lastName}` : 'Unknown');
+              : (reminder.user ? `${reminder.user.firstName} ${reminder.user.lastName}` : '—');
             const contactPhone = isEvent ? reminder.event?.contactPhone : reminder.user?.phone;
             const contactEmail = isEvent ? reminder.event?.contactEmail : reminder.user?.email;
 
