@@ -443,7 +443,7 @@ export default function AdminTransactions() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Gateway</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Date</th>
-                <th className="px-4 py-2.5" />
+                <th className="px-4 py-2.5 w-10" />
             </thead>
             <tbody className="divide-y">
               {isLoading
@@ -515,19 +515,6 @@ export default function AdminTransactions() {
                       </td>
                     </tr>
                   ))}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 hidden xl:table-cell">
-                        <span className="text-xs capitalize text-muted-foreground">{t.gateway ?? '—'}</span>
-                      </td>
-                      <td className="px-4 py-3">{statusBadge(t.status)}</td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(t.createdAt).toLocaleDateString()}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
             </tbody>
           </table>
         </div>
@@ -545,6 +532,11 @@ export default function AdminTransactions() {
             <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
           </div>
         </div>
+      )}
+
+      {/* Detail dialog */}
+      {selectedId && (
+        <TransactionDetailDialog id={selectedId} onClose={() => setSelectedId(null)} />
       )}
     </div>
   );
