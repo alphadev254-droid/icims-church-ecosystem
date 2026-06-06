@@ -280,6 +280,7 @@ export const adminApi = {
     gateway?: string;
     country?: string;
     churchId?: string;
+    ministry?: string;
     dateFrom?: string;
     dateTo?: string;
   }) => apiClient.get<{
@@ -288,4 +289,27 @@ export const adminApi = {
     pagination: Pagination;
     summary: AdminSystemTransactionSummary;
   }>('/admin/system-transactions', { params }),
+
+  getPendingTransactions: (params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    type?: string;
+    churchId?: string;
+    ministry?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) => apiClient.get<{
+    success: boolean;
+    data: any[];
+    pagination: Pagination;
+  }>('/admin/pending-transactions', { params }),
+
+  // Returns all churches (for filter dropdowns)
+  getAllChurches: (ministryId?: string) =>
+    apiClient.get<{ success: boolean; data: Array<{ id: string; name: string; ministryAdminId?: string }> }>(
+      '/admin/all-churches',
+      { params: ministryId ? { ministry: ministryId } : {} }
+    ),
 };

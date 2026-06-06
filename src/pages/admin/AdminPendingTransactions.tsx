@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Eye, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import apiClient from '@/lib/api-client';
+import { adminApi } from '@/services/adminApi';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useDebounce } from '@/hooks/use-debounce';
+
+type Ministry = { id: string; label: string; country: string | null };
+type Church   = { id: string; name: string; ministryAdminId?: string };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -118,14 +122,16 @@ function DetailDialog({ tx, onClose }: { tx: PendingTx; onClose: () => void }) {
 
   const fields: [string, any][] = [
     ['ID', tx.id],
-    ['Reference', tx.reference ?? '—'],
+    ['Reference (tx_ref)', tx.reference ?? '— not yet assigned'],
     ['Type', tx.type],
     ['Status', tx.status],
     ['Amount', `${tx.currency} ${tx.amount.toLocaleString()}`],
-    ['User', tx.user ? `${tx.user.firstName} ${tx.user.lastName} (${tx.user.email})` : '—'],
+    ['Gateway', tx.metadataParsed?.gateway ?? '—'],
+    ['User', tx.user ? `${tx.user.firstName} ${tx.user.lastName} (${tx.user.email})` : tx.metadataParsed?.isGuest ? `Guest: ${tx.metadataParsed?.guestName ?? '—'} (${tx.metadataParsed?.guestEmail ?? '—'})` : '—'],
     ['Church', tx.churchName ?? '—'],
     ['Church ID', tx.churchId ?? '—'],
     ['Event ID', tx.eventId ?? '—'],
+    ['Campaign', tx.metadataParsed?.campaignName ?? '—'],
     ['Expires At', `${new Date(tx.expiresAt).toLocaleString()}${expired ? ' · EXPIRED' : ''}`],
     ['Created At', new Date(tx.createdAt).toLocaleString()],
   ];
@@ -158,6 +164,11 @@ function DetailDialog({ tx, onClose }: { tx: PendingTx; onClose: () => void }) {
         {/* Metadata — interactive JSON tree */}
         <div className="space-y-2">
           <p className="text-xs font-medium">Metadata</p>
+          <p className="text-xs text-muted-foreground">
+            Note: <span className="font-mono">Reference (tx_ref)</span> above is the PayChangu transaction reference.
+            PayChangu's internal <span className="font-mono">ref_id</span> only appears after payment completes — find it in the
+            processed <span className="font-mono">Transaction.gatewayResponse</span> record.
+          </p>
           {tx.metadataParsed ? (
             <div className="rounded-lg border bg-muted/30 p-3 text-xs font-mono overflow-x-auto">
               <JsonValue value={tx.metadataParsed} depth={0} />
@@ -192,6 +203,8 @@ export default function AdminPendingTransactions() {
   const [search, setSearch]     = useState('');
   const [status, setStatus]     = useState('');
   const [type, setType]         = useState('');
+  const [ministry, setMinistry] = useState('');
+  const [churchId, setChurchId] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
   const [page, setPage]         = useState(1);
@@ -199,13 +212,31 @@ export default function AdminPendingTransactions() {
 
   const debouncedSearch = useDebounce(search, 400);
 
+  // Ministry dropdown
+  const { data: ministriesData } = useQuery({
+    queryKey: ['admin-ministries'],
+    queryFn: () => adminApi.getMinistries().then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const ministries: Ministry[] = ministriesData ?? [];
+
+  // Church dropdown — filtered by selected ministry
+  const { data: churchesData } = useQuery({
+    queryKey: ['admin-all-churches', ministry],
+    queryFn: () => adminApi.getAllChurches(ministry || undefined).then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const churches: Church[] = churchesData ?? [];
+
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-pending-transactions', debouncedSearch, status, type, dateFrom, dateTo, page],
+    queryKey: ['admin-pending-transactions', debouncedSearch, status, type, ministry, churchId, dateFrom, dateTo, page],
     queryFn: async () => {
       const params: any = { page, limit: 50 };
-      if (debouncedSearch) params.search  = debouncedSearch;
-      if (status)          params.status  = status;
-      if (type)            params.type    = type;
+      if (debouncedSearch) params.search   = debouncedSearch;
+      if (status)          params.status   = status;
+      if (type)            params.type     = type;
+      if (ministry)        params.ministry = ministry;
+      if (churchId)        params.churchId = churchId;
       if (dateFrom)        params.dateFrom = dateFrom;
       if (dateTo)          params.dateTo   = dateTo;
       const { data } = await apiClient.get('/admin/pending-transactions', { params });
@@ -256,6 +287,26 @@ export default function AdminPendingTransactions() {
           <SelectContent>
             <SelectItem value="all" className="text-xs">All types</SelectItem>
             {TYPES.map(t => <SelectItem key={t} value={t} className="text-xs">{t.replace(/_/g, ' ')}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {/* Ministry filter */}
+        <Select value={ministry} onValueChange={v => { setMinistry(v === 'all' ? '' : v); setChurchId(''); setPage(1); }}>
+          <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="All ministries" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All ministries</SelectItem>
+            {ministries.map(m => (
+              <SelectItem key={m.id} value={m.id} className="text-xs">{m.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {/* Church filter — narrows to selected ministry */}
+        <Select value={churchId} onValueChange={v => { setChurchId(v === 'all' ? '' : v); setPage(1); }}>
+          <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="All churches" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All churches</SelectItem>
+            {churches.map(c => (
+              <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Input className="h-8 text-xs w-36" type="date" value={dateFrom}

@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useDebounce } from '@/hooks/use-debounce';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 
+type Ministry = { id: string; label: string; country: string | null };
+type Church   = { id: string; name: string; ministryAdminId?: string };
+
 const TYPES    = ['event_ticket', 'donation'];
 const STATUSES = ['completed', 'pending', 'failed', 'refunded'];
 const GATEWAYS = ['paychangu', 'paystack'];
@@ -52,20 +55,40 @@ export default function AdminTransactions() {
   const [status, setStatus]     = useState('');
   const [gateway, setGateway]   = useState('');
   const [country, setCountry]   = useState('');
+  const [ministry, setMinistry] = useState('');
+  const [churchId, setChurchId] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
   const [page, setPage]         = useState(1);
 
   const debouncedSearch = useDebounce(search, 400);
 
+  // Load ministries for dropdown
+  const { data: ministriesData } = useQuery({
+    queryKey: ['admin-ministries'],
+    queryFn: () => adminApi.getMinistries().then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const ministries: Ministry[] = ministriesData ?? [];
+
+  // Load churches — filtered by selected ministry if set
+  const { data: churchesData } = useQuery({
+    queryKey: ['admin-all-churches', ministry],
+    queryFn: () => adminApi.getAllChurches(ministry || undefined).then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const churches: Church[] = churchesData ?? [];
+
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-system-transactions', debouncedSearch, type, status, gateway, country, dateFrom, dateTo, page],
+    queryKey: ['admin-system-transactions', debouncedSearch, type, status, gateway, country, ministry, churchId, dateFrom, dateTo, page],
     queryFn: () => adminApi.getSystemTransactions({
       search:   debouncedSearch || undefined,
-      type:     type    || undefined,
-      status:   status  || undefined,
-      gateway:  gateway || undefined,
-      country:  country || undefined,
+      type:     type     || undefined,
+      status:   status   || undefined,
+      gateway:  gateway  || undefined,
+      country:  country  || undefined,
+      ministry: ministry || undefined,
+      churchId: churchId || undefined,
       dateFrom: dateFrom || undefined,
       dateTo:   dateTo   || undefined,
       page,
@@ -212,6 +235,26 @@ export default function AdminTransactions() {
           <SelectContent>
             <SelectItem value="all" className="text-xs">All countries</SelectItem>
             {COUNTRIES.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {/* Ministry filter */}
+        <Select value={ministry} onValueChange={v => { setMinistry(v === 'all' ? '' : v); setChurchId(''); setPage(1); }}>
+          <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="All ministries" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All ministries</SelectItem>
+            {ministries.map(m => (
+              <SelectItem key={m.id} value={m.id} className="text-xs">{m.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {/* Church filter — options narrow when ministry is selected */}
+        <Select value={churchId} onValueChange={v => { setChurchId(v === 'all' ? '' : v); setPage(1); }}>
+          <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="All churches" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All churches</SelectItem>
+            {churches.map(c => (
+              <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Input className="h-8 text-xs w-36" type="date" value={dateFrom}
