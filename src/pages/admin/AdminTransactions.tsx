@@ -1,16 +1,176 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, TrendingUp, DollarSign, Zap, CreditCard } from 'lucide-react';
+import { Search, TrendingUp, DollarSign, Zap, CreditCard, Eye, X } from 'lucide-react';
 import { adminApi, type AdminSystemTransaction } from '@/services/adminApi';
+import apiClient from '@/lib/api-client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 
 type Ministry = { id: string; label: string; country: string | null };
 type Church   = { id: string; name: string; ministryAdminId?: string };
+
+// ─── JSON viewer (reused from AdminPendingTransactions pattern) ───────────────
+function JsonValue({ value, depth = 0 }: { value: any; depth?: number }) {
+  const [open, setOpen] = useState(depth < 2);
+  if (value === null || value === undefined) return <span className="text-gray-400">null</span>;
+  if (typeof value === 'boolean') return <span className="text-blue-500">{String(value)}</span>;
+  if (typeof value === 'number')  return <span className="text-orange-500">{value}</span>;
+  if (typeof value === 'string')  return <span className="text-green-600 break-all">"{value}"</span>;
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-gray-500">[]</span>;
+    return (
+      <span>
+        <button onClick={() => setOpen(o => !o)} className="text-gray-500 hover:text-foreground font-mono text-xs">
+          {open ? '▾' : '▸'} [{value.length}]
+        </button>
+        {open && (
+          <div className="pl-4 border-l border-border/50 mt-0.5 space-y-0.5">
+            {value.map((item, i) => (
+              <div key={i} className="text-xs font-mono">
+                <span className="text-gray-400">{i}: </span>
+                <JsonValue value={item} depth={depth + 1} />
+              </div>
+            ))}
+          </div>
+        )}
+      </span>
+    );
+  }
+  if (typeof value === 'object') {
+    const keys = Object.keys(value);
+    if (keys.length === 0) return <span className="text-gray-500">{'{}'}</span>;
+    return (
+      <span>
+        <button onClick={() => setOpen(o => !o)} className="text-gray-500 hover:text-foreground font-mono text-xs">
+          {open ? '▾' : '▸'} {'{'}…{'}'}
+        </button>
+        {open && (
+          <div className="pl-4 border-l border-border/50 mt-0.5 space-y-0.5">
+            {keys.map(k => (
+              <div key={k} className="text-xs font-mono flex gap-1 flex-wrap">
+                <span className="text-accent shrink-0">"{k}":</span>
+                <JsonValue value={(value as any)[k]} depth={depth + 1} />
+              </div>
+            ))}
+          </div>
+        )}
+      </span>
+    );
+  }
+  return <span>{String(value)}</span>;
+}
+
+// ─── Detail dialog ─────────────────────────────────────────────────────────────
+function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-system-transaction', id],
+    queryFn: () => apiClient.get(`/admin/system-transactions/${id}`).then(r => r.data.data),
+    staleTime: 60_000,
+  });
+
+  const tx = data;
+
+  // Extract PayChangu-specific fields from gatewayResponse
+  const gwr = tx?.gatewayResponseParsed;
+  const paychanguRefId = gwr?.reference ?? gwr?.data?.reference ?? gwr?.ref_id ?? gwr?.data?.ref_id ?? null;
+  const paychanguTxId  = gwr?.id ?? gwr?.data?.id ?? null;
+
+  const fields: [string, any][] = tx ? [
+    ['ID',                tx.id],
+    ['Reference (tx_ref)', tx.reference ?? '—'],
+    ['PayChangu ref_id',  paychanguRefId ?? '— (see Gateway Response below)'],
+    ['PayChangu tx id',   paychanguTxId  ?? '—'],
+    ['Type',              tx.type],
+    ['Status',            tx.status],
+    ['Gateway',           tx.gateway ?? '—'],
+    ['Country',           tx.gatewayCountry ?? '—'],
+    ['Currency',          tx.currency],
+    ['Base Amount',       tx.baseAmount != null ? `${tx.currency} ${tx.baseAmount.toLocaleString()}` : '—'],
+    ['Convenience Fee',   tx.convenienceFee != null ? `${tx.currency} ${tx.convenienceFee.toLocaleString()}` : '—'],
+    ['System Fee',        tx.systemFeeAmount != null ? `${tx.currency} ${tx.systemFeeAmount.toLocaleString()}` : '—'],
+    ['Rounding',          tx.ceilRoundingAmount ? `${tx.currency} ${tx.ceilRoundingAmount.toLocaleString()}` : '—'],
+    ['Total Amount',      tx.totalAmount != null ? `${tx.currency} ${tx.totalAmount.toLocaleString()}` : '—'],
+    ['Payment Method',    tx.paymentMethod ?? '—'],
+    ['Channel',           tx.channel ?? '—'],
+    ['User',              tx.user ? `${tx.user.firstName} ${tx.user.lastName} (${tx.user.email})` : (tx.isGuest ? `Guest: ${tx.guestName ?? '—'} (${tx.guestEmail ?? '—'})` : '—')],
+    ['Church',            tx.church?.name ?? '—'],
+    ['Campaign',          tx.campaignName ?? '—'],
+    ['Campaign Category', tx.campaignCategory ?? '—'],
+    ['Cell',              tx.cellName ?? '—'],
+    ['Event Tickets',     tx.tickets?.length > 0 ? tx.tickets.map((t: any) => t.ticketNumber).join(', ') : '—'],
+    ['Subaccount',        tx.subaccountName ?? '—'],
+    ['Gateway Charge',    tx.gatewayCharge != null ? `${tx.currency} ${tx.gatewayCharge.toLocaleString()}` : '—'],
+    ['Paid At',           tx.paidAt ? new Date(tx.paidAt).toLocaleString() : '—'],
+    ['Created At',        new Date(tx.createdAt).toLocaleString()],
+    ['Manual Entry',      tx.isManual ? 'Yes' : 'No'],
+    ['Notes',             tx.notes ?? '—'],
+  ] : [];
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-sm">
+            Transaction Detail
+            {tx && statusBadge(tx.status)}
+            {tx && typeBadge(tx.type)}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="h-8 bg-muted animate-pulse rounded" />
+            ))}
+          </div>
+        ) : tx ? (
+          <>
+            {/* Core fields */}
+            <div className="rounded-lg border divide-y text-xs">
+              {fields.map(([label, val]) => (
+                <div key={label} className="flex gap-3 px-3 py-2">
+                  <span className="text-muted-foreground w-40 shrink-0">{label}</span>
+                  <span className="font-mono break-all">{String(val)}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Gateway Response — interactive JSON tree */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium">Gateway Response (raw PayChangu / Paystack data)</p>
+              {tx.gatewayResponseParsed ? (
+                <div className="rounded-lg border bg-muted/30 p-3 text-xs font-mono overflow-x-auto">
+                  <JsonValue value={tx.gatewayResponseParsed} depth={0} />
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No gateway response stored</p>
+              )}
+            </div>
+
+            {/* Raw gateway response string */}
+            {tx.gatewayResponse && (
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
+                  Raw gateway response string
+                </summary>
+                <pre className="mt-2 rounded-lg border bg-muted/30 p-3 overflow-x-auto text-xs whitespace-pre-wrap break-all">
+                  {tx.gatewayResponse}
+                </pre>
+              </details>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-8">Transaction not found</p>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const TYPES    = ['event_ticket', 'donation'];
 const STATUSES = ['completed', 'pending', 'failed', 'refunded'];
@@ -60,6 +220,7 @@ export default function AdminTransactions() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
   const [page, setPage]         = useState(1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(search, 400);
 
@@ -282,7 +443,7 @@ export default function AdminTransactions() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Gateway</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Date</th>
-              </tr>
+                <th className="px-4 py-2.5" />
             </thead>
             <tbody className="divide-y">
               {isLoading
@@ -296,7 +457,7 @@ export default function AdminTransactions() {
                     </tr>
                   ))
                 : transactions.map(t => (
-                    <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                    <tr key={t.id} className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedId(t.id)}>
                       <td className="px-4 py-3">
                         <p className="text-xs font-medium">{donorName(t)}</p>
                         <p className="text-xs text-muted-foreground">{donorEmail(t)}</p>
@@ -315,7 +476,6 @@ export default function AdminTransactions() {
                           <p className="text-xs text-muted-foreground">Total: {t.currency} {t.totalAmount.toLocaleString()}</p>
                         )}
                       </td>
-                      {/* Transaction Cost = combined */}
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs font-medium">
                           {(t.convenienceFee != null || t.systemFeeAmount != null)
@@ -323,7 +483,6 @@ export default function AdminTransactions() {
                             : '—'}
                         </span>
                       </td>
-                      {/* Breakdown */}
                       <td className="px-4 py-3 hidden xl:table-cell">
                         <span className="text-xs text-muted-foreground">
                           {t.convenienceFee != null ? `${t.currency} ${t.convenienceFee.toLocaleString()}` : '—'}
@@ -337,6 +496,25 @@ export default function AdminTransactions() {
                       <td className="px-4 py-3 hidden xl:table-cell">
                         <span className="text-xs text-orange-500">
                           {(t.ceilRoundingAmount ?? 0) > 0 ? `${t.currency} ${(t.ceilRoundingAmount ?? 0).toLocaleString()}` : '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <span className="text-xs capitalize text-muted-foreground">{t.gateway ?? '—'}</span>
+                      </td>
+                      <td className="px-4 py-3">{statusBadge(t.status)}</td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(t.createdAt).toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Button variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={e => { e.stopPropagation(); setSelectedId(t.id); }}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
                         </span>
                       </td>
                       <td className="px-4 py-3 hidden xl:table-cell">
