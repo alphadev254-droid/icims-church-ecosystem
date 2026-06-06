@@ -444,6 +444,7 @@ export default function AdminTransactions() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Date</th>
                 <th className="px-4 py-2.5 w-10" />
+              </tr>
             </thead>
             <tbody className="divide-y">
               {isLoading
