@@ -31,7 +31,7 @@ export default function PaymentCallbackPage() {
     
     try {
       // Use new polling endpoint
-      const res = await apiClient.get(`/payment/status/${reference}`);
+      const res = await apiClient.get(`/payment-status/${reference}`);
       const result = res.data;
       
       if (result.found && result.status === 'completed') {

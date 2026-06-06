@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Receipt, CreditCard, LogOut, Menu, X, Shield, ChevronRight, Package2, Smartphone } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, CreditCard, LogOut, Menu, X, Shield, ChevronRight, Package2, Smartphone, DatabaseZap } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ const NAV = [
   { to: '/admin/transactions', label: 'Transactions', icon: Receipt, end: false },
   { to: '/admin/payments', label: 'Payments', icon: CreditCard, end: false },
   { to: '/admin/packages', label: 'Packages', icon: Package2, end: false },
+  { to: '/admin/payment-metadata', label: 'Payment Metadata', icon: DatabaseZap, end: false },
 ];
 
 export default function AdminLayout() {

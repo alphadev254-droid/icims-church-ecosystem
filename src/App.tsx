@@ -62,6 +62,7 @@ import AdminChurchDetail from "./pages/admin/AdminChurchDetail";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminTransactions from "./pages/admin/AdminTransactions";
 import AdminPackages from "./pages/admin/AdminPackages";
+import AdminPendingTransactions from "./pages/admin/AdminPendingTransactions";
 
 const queryClient = new QueryClient();
 
@@ -139,6 +140,7 @@ const App = () => (
                 <Route path="payments" element={<AdminPayments />} />
                 <Route path="transactions" element={<AdminTransactions />} />
                 <Route path="packages" element={<AdminPackages />} />
+                <Route path="payment-metadata" element={<AdminPendingTransactions />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
