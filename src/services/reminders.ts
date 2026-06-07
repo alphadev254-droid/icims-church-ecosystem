@@ -36,6 +36,7 @@ export interface Reminder {
     location?: string;
     contactEmail?: string;
     contactPhone?: string;
+    imageUrl?: string;
   };
 }
 

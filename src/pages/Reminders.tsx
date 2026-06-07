@@ -9,8 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Gift, Heart, Church as ChurchIcon, Cake, Search, Phone, Mail, Bell, Lock } from 'lucide-react';
+import { Calendar, Gift, Heart, Church as ChurchIcon, Cake, Search, Phone, Mail, Bell, Lock, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/\/+$/, '');
+const getAvatarUrl = (path?: string | null) => {
+  if (!path) return '';
+  if (path.startsWith('http') || path.startsWith('data:')) return path;
+  return `${STATIC_BASE}${path}`;
+};
 
 const EMPTY_STATS: ReminderStats = {
   total: 0,
@@ -35,6 +42,7 @@ const Reminders = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [daysFilter, setDaysFilter] = useState(30);
   const [churches, setChurches] = useState<Church[]>([]);
+  const [expandedAvatar, setExpandedAvatar] = useState<{ src: string; name: string } | null>(null);
 
   // Derive permission as a stable boolean — not the function reference
   const canReadReminders = hasPermission('reminders:read');
@@ -161,6 +169,28 @@ const Reminders = () => {
   // ---------- render ----------
   return (
     <div className="space-y-6">
+      {/* Avatar lightbox */}
+      {expandedAvatar && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setExpandedAvatar(null)}
+        >
+          <div className="relative" onClick={e => e.stopPropagation()}>
+            <img
+              src={expandedAvatar.src}
+              alt={expandedAvatar.name}
+              className="max-h-[80vh] max-w-[80vw] rounded-xl shadow-2xl object-contain"
+            />
+            <p className="text-center text-white text-sm mt-2 font-medium">{expandedAvatar.name}</p>
+            <button
+              onClick={() => setExpandedAvatar(null)}
+              className="absolute -top-3 -right-3 bg-background rounded-full p-1 shadow-lg"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -336,9 +366,37 @@ const Reminders = () => {
                     </Badge>
                   </div>
 
-                  <h3 className="font-heading font-semibold mb-1">
-                    {displayName}
-                  </h3>
+                  <div className="flex items-center gap-3 mb-1">
+                    {isEvent && reminder.event && (() => {
+                      const imgSrc = getAvatarUrl(reminder.event.imageUrl);
+                      return imgSrc ? (
+                        <button
+                          onClick={() => setExpandedAvatar({ src: imgSrc, name: displayName })}
+                          className="shrink-0 rounded-lg overflow-hidden border-2 border-accent/30 hover:border-accent transition-colors"
+                          title="View event image"
+                        >
+                          <img src={imgSrc} alt={displayName} className="h-10 w-10 object-cover" />
+                        </button>
+                      ) : null;
+                    })()}
+                    {!isEvent && reminder.user && (() => {
+                      const avatarSrc = getAvatarUrl(reminder.user.avatar);
+                      return avatarSrc ? (
+                        <button
+                          onClick={() => setExpandedAvatar({ src: avatarSrc, name: displayName })}
+                          className="shrink-0 rounded-full overflow-hidden border-2 border-accent/30 hover:border-accent transition-colors"
+                          title="View photo"
+                        >
+                          <img src={avatarSrc} alt={displayName} className="h-10 w-10 object-cover" />
+                        </button>
+                      ) : (
+                        <div className="h-10 w-10 shrink-0 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold text-sm border border-accent/20">
+                          {reminder.user.firstName[0]}{reminder.user.lastName[0]}
+                        </div>
+                      );
+                    })()}
+                    <h3 className="font-heading font-semibold">{displayName}</h3>
+                  </div>
 
                   {isEvent && reminder.event?.location && (
                     <p className="text-sm text-muted-foreground mb-2">{reminder.event.location}</p>
