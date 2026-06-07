@@ -1,4 +1,4 @@
-const CACHE_NAME = 'icims-cache-v1';
+const CACHE_NAME = 'icims-cache-v2';
 const STATIC_SHELL = ['/', '/index.html'];
 
 // Install: pre-cache the app shell
