@@ -30,7 +30,7 @@ messaging.onBackgroundMessage((payload) => {
 
   const notificationTitle = payload.notification?.title || payload.data?.title || 'New Notification';
   const notificationBody = payload.notification?.body || payload.data?.body || '';
-  const icon = '/icims-logo.jpg';
+  const icon = '/logo192.png';
 
   self.registration.showNotification(notificationTitle, {
     body: notificationBody,
