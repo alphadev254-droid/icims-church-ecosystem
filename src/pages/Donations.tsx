@@ -452,7 +452,7 @@ export default function DonationsPage() {
               status: d.status,
               date: new Date(d.createdAt).toLocaleDateString(),
             }))}
-            filename="donations"
+            filename="Giving"
             headers={[
               { label: 'Donor', key: 'donor' },
               { label: 'Email', key: 'email' },
@@ -466,7 +466,7 @@ export default function DonationsPage() {
               { label: 'Status', key: 'status' },
               { label: 'Date', key: 'date' },
             ]}
-            pdfTitle="Donations Report"
+            pdfTitle="Giving Report"
           />
         </div>
       </div>
@@ -620,7 +620,7 @@ export default function DonationsPage() {
               ))}
               {donations.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-xs text-muted-foreground">No donations found</td>
+                  <td colSpan={9} className="p-8 text-center text-xs text-muted-foreground">No Giving found</td>
                 </tr>
               )}
             </tbody>
