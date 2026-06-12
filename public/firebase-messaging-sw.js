@@ -30,7 +30,7 @@ messaging.onBackgroundMessage((payload) => {
 
   const notificationTitle = payload.notification?.title || payload.data?.title || 'New Notification';
   const notificationBody = payload.notification?.body || payload.data?.body || '';
-  const icon = '/logo192.png';
+  const icon = 'https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp';
 
   self.registration.showNotification(notificationTitle, {
     body: notificationBody,
@@ -51,8 +51,6 @@ self.addEventListener('notificationclick', (event) => {
   if (type === 'announcement') url = '/dashboard/communication';
   else if (type === 'team_communication') url = '/dashboard/communication';
   else if (type === 'reminder') url = '/dashboard/reminders';
-  else if (type === 'cell_meeting') url = '/dashboard/cells';
-  else if (type === 'resource') url = '/dashboard/resources';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
