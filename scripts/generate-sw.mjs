@@ -57,7 +57,7 @@ messaging.onBackgroundMessage((payload) => {
 
   const notificationTitle = payload.notification?.title || payload.data?.title || 'New Notification';
   const notificationBody = payload.notification?.body || payload.data?.body || '';
-  const icon = '/icims-logo.jpg';
+  const icon = 'https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp';
 
   self.registration.showNotification(notificationTitle, {
     body: notificationBody,

@@ -7,10 +7,9 @@ interface PageMetaOptions {
   ogImage?: string;
 }
 
-export function usePageMeta({ title, description, canonical, ogImage = 'https://churchcentral.church/about.png' }: PageMetaOptions) {
-  useEffect(() => {
+export function usePageMeta({ title, description, canonical, ogImage = 'https://media.aircnc.co.ke/media-images/420984ab-7d48-40fc-b653-a09eb1428d14.webp' }: PageMetaOptions) {
+export function usePageMeta({ title, description, canonical, ogImage = 'https://media.aircnc.co.ke/media-images/420984ab-7d48-40fc-b653-a09eb1428d14.webp' }: PageMetaOptions) {
     const fullTitle = `${title} | ICIMS`;
-
     document.title = fullTitle;
 
     const set = (selector: string, attr: string, value: string) => {

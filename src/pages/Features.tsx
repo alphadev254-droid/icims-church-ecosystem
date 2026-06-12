@@ -66,7 +66,7 @@ export default function FeaturesPage() {
     title: '19 Integrated Modules & Features',
     description: 'Explore all 19 ICIMS modules: membership, giving, attendance, events, communication, Bible study, revenue management, performance KPIs and more.',
     canonical: 'https://churchcentral.church/features',
-    ogImage: 'https://churchcentral.church/features.png',
+    ogImage: 'https://media.aircnc.co.ke/media-images/20e847ba-fb2d-45f8-ad77-95b615ef85c8.webp',
   });
 
   return (
@@ -75,7 +75,7 @@ export default function FeaturesPage() {
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <img src="/features.png" alt="ICIMS Features" className="h-full w-full object-cover" />
+          <img src="https://media.aircnc.co.ke/media-images/20e847ba-fb2d-45f8-ad77-95b615ef85c8.webp" alt="ICIMS Features" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-black/70" />
         </div>
         <div className="container relative z-10 py-28 md:py-36">

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Check, X, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import apiClient from '@/lib/api-client';
-import pricingHero from '@/assets/prices.png';
+const pricingHero = 'https://media.aircnc.co.ke/media-images/b2da0944-f41f-4e68-a245-a9ec65f88b81.webp';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
 
 interface PkgFeature { name: string; displayName: string; category: string; }

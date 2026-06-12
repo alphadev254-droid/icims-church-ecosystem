@@ -48,7 +48,7 @@ export default function ContactPage() {
     title: 'Contact Us',
     description: 'Get in touch with the ICIMS team. Reach our sales, support or technical departments.',
     canonical: 'https://churchcentral.church/contact',
-    ogImage: 'https://churchcentral.church/contact.png',
+    ogImage: 'https://media.aircnc.co.ke/media-images/3e642cc8-1e30-4664-9b14-a782f63550f9.webp',
   });
 
   const [loading, setLoading] = useState(false);
@@ -85,7 +85,7 @@ export default function ContactPage() {
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <img src="/contact.png" alt="Contact ICIMS" className="h-full w-full object-cover object-bottom" />
+          <img src="https://media.aircnc.co.ke/media-images/3e642cc8-1e30-4664-9b14-a782f63550f9.webp" alt="Contact ICIMS" className="h-full w-full object-cover object-bottom" />
           <div className="absolute inset-0 bg-black/68" />
         </div>
         <div className="container relative z-10 py-28 md:py-36">

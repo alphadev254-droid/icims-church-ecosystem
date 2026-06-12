@@ -15,7 +15,7 @@ import { Give }          from './church-public/Give';
 import { Contact }       from './church-public/Contact';
 import { Footer }        from './church-public/Footer';
 import { SignInDialog }  from './church-public/SignInDialog';
-import defaultHero from '@/assets/hero-church-subdomain.png';
+import defaultHero from 'https://media.aircnc.co.ke/media-images/fa70812b-0345-4d35-b45b-3488def7c3e3.webp';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 

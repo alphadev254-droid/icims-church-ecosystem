@@ -48,7 +48,7 @@ export default function PublicFooter() {
           {/* Brand col */}
           <div className="md:col-span-4">
             <Link to="/" className="flex items-center gap-2.5 mb-5">
-              <img src="/icims-logo.jpg" alt="ICIMS" className="h-12 w-12 object-cover rounded-full" />
+              <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 object-cover rounded-full" />
             </Link>
             <p className="text-background/55 dark:text-foreground/50 text-sm leading-relaxed mb-6 max-w-xs">
               Integrated Church Information Management System â€” empowering ministries to grow with clarity, accountability, and confidence.

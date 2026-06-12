@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
-import heroImage from '@/assets/hero-church.jpg';
+const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -88,7 +88,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="lg:hidden flex flex-col items-center mb-8">
             <Link to="/" className="flex flex-col items-center gap-2">
-              <img src="/icims-logo.jpg" alt="ICIMS" className="h-12 w-12 object-contain rounded-full bg-white p-1" />
+              <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 object-contain rounded-full bg-white p-1" />
               <span className="font-heading text-sm font-bold text-foreground tracking-wide">ICIMS</span>
             </Link>
           </div>
@@ -96,7 +96,7 @@ export default function LoginPage() {
           {/* Desktop logo — centered at top of form panel */}
           <div className="hidden lg:flex flex-col items-center mb-8">
             <Link to="/" className="flex flex-col items-center gap-2">
-              <img src="/icims-logo.jpg" alt="ICIMS" className="h-12 w-12 object-contain rounded-full bg-white p-1" />
+              <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 object-contain rounded-full bg-white p-1" />
               <span className="font-heading text-sm font-bold text-foreground tracking-wide">ICIMS</span>
             </Link>
           </div>
