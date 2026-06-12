@@ -3,66 +3,80 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import PublicLayout from "@/components/layout/PublicLayout";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
-import Features from "./pages/Features";
-import Pricing from "./pages/Pricing";
-import About from "./pages/About";
-import Contact from "./pages/Contact";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import MemberRegister from "./pages/MemberRegister";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
-import Events from "./pages/Events";
-import Reminders from "./pages/Reminders";
-import Giving from "./pages/Giving";
-import Donations from "./pages/Donations";
-import Pledges from "./pages/Pledges";
-import PledgeDetail from "./pages/PledgeDetail";
-import ChurchProfileSettings from "./pages/ChurchProfileSettings";
-import Attendance from "./pages/Attendance";
-import EventAttendance from "./pages/EventAttendance";
-import Communication from "./pages/Communication";
-import Resources from "./pages/Resources";
-import Churches from "./pages/Churches";
-import Performance from "./pages/Performance";
-import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
-import UsersManagement from "./pages/UsersManagement";
-import RolesManagement from "./pages/RolesManagement";
-import Teams from "./pages/Teams";
-import Cells from "./pages/Cells";
-import CellDetail from "./pages/CellDetail";
-import CellAttendancePage from "./pages/CellAttendancePage";
-import TeamMembers from "./pages/TeamMembers";
-import Packages from "./pages/Packages";
-import Transactions from "./pages/Transactions";
-import Withdrawals from "./pages/Withdrawals";
-import RequestWithdrawal from "./pages/RequestWithdrawal";
-import EventTickets from "./pages/EventTickets";
-import PublicEvent from "./pages/PublicEvent";
-import PublicCampaign from "./pages/PublicCampaign";
-import PaymentCallback from "./pages/PaymentCallback";
-import MyTickets from "./pages/MyTickets";
-import Subaccount from "./pages/Subaccount";
-import PublicAttendanceEntry from "./pages/PublicAttendanceEntry";
-import NotFound from "./pages/NotFound";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import AdminLayout from "@/components/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminUserDetail from "./pages/admin/AdminUserDetail";
-import AdminChurchDetail from "./pages/admin/AdminChurchDetail";
-import AdminPayments from "./pages/admin/AdminPayments";
-import AdminTransactions from "./pages/admin/AdminTransactions";
-import AdminPackages from "./pages/admin/AdminPackages";
-import AdminPendingTransactions from "./pages/admin/AdminPendingTransactions";
+
+// ── Lazy-loaded page components ──────────────────────────────────────
+const Index = lazy(() => import("./pages/Index"));
+const Features = lazy(() => import("./pages/Features"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const About = lazy(() => import("./pages/About"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const MemberRegister = lazy(() => import("./pages/MemberRegister"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Events = lazy(() => import("./pages/Events"));
+const Reminders = lazy(() => import("./pages/Reminders"));
+const Giving = lazy(() => import("./pages/Giving"));
+const Donations = lazy(() => import("./pages/Donations"));
+const Pledges = lazy(() => import("./pages/Pledges"));
+const PledgeDetail = lazy(() => import("./pages/PledgeDetail"));
+const ChurchProfileSettings = lazy(() => import("./pages/ChurchProfileSettings"));
+const Attendance = lazy(() => import("./pages/Attendance"));
+const EventAttendance = lazy(() => import("./pages/EventAttendance"));
+const Communication = lazy(() => import("./pages/Communication"));
+const Resources = lazy(() => import("./pages/Resources"));
+const Churches = lazy(() => import("./pages/Churches"));
+const Performance = lazy(() => import("./pages/Performance"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Settings = lazy(() => import("./pages/Settings"));
+const UsersManagement = lazy(() => import("./pages/UsersManagement"));
+const RolesManagement = lazy(() => import("./pages/RolesManagement"));
+const Teams = lazy(() => import("./pages/Teams"));
+const Cells = lazy(() => import("./pages/Cells"));
+const CellDetail = lazy(() => import("./pages/CellDetail"));
+const CellAttendancePage = lazy(() => import("./pages/CellAttendancePage"));
+const TeamMembers = lazy(() => import("./pages/TeamMembers"));
+const Packages = lazy(() => import("./pages/Packages"));
+const Transactions = lazy(() => import("./pages/Transactions"));
+const Withdrawals = lazy(() => import("./pages/Withdrawals"));
+const RequestWithdrawal = lazy(() => import("./pages/RequestWithdrawal"));
+const EventTickets = lazy(() => import("./pages/EventTickets"));
+const PublicEvent = lazy(() => import("./pages/PublicEvent"));
+const PublicCampaign = lazy(() => import("./pages/PublicCampaign"));
+const PaymentCallback = lazy(() => import("./pages/PaymentCallback"));
+const MyTickets = lazy(() => import("./pages/MyTickets"));
+const Subaccount = lazy(() => import("./pages/Subaccount"));
+const PublicAttendanceEntry = lazy(() => import("./pages/PublicAttendanceEntry"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminUserDetail = lazy(() => import("./pages/admin/AdminUserDetail"));
+const AdminChurchDetail = lazy(() => import("./pages/admin/AdminChurchDetail"));
+const AdminPayments = lazy(() => import("./pages/admin/AdminPayments"));
+const AdminTransactions = lazy(() => import("./pages/admin/AdminTransactions"));
+const AdminPackages = lazy(() => import("./pages/admin/AdminPackages"));
+const AdminPendingTransactions = lazy(() => import("./pages/admin/AdminPendingTransactions"));
+
+function PageLoader() {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '100vh', fontFamily: 'sans-serif', color: '#888',
+    }}>
+      Loading…
+    </div>
+  );
+}
 
 const queryClient = new QueryClient();
 
@@ -74,6 +88,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes */}
               <Route element={<PublicLayout />}>
@@ -145,6 +160,7 @@ const App = () => (
 
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
