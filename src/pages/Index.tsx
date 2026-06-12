@@ -92,7 +92,7 @@ export default function LandingPage() {
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="relative min-h-[88vh] flex items-center">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="Church community" className="h-full w-full object-cover" fetchPriority="high" />
+          <img src={heroImage} alt="Church community" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/65" />
         </div>
 

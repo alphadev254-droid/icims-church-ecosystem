@@ -76,7 +76,7 @@ export default function PricingPage() {
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <img src={pricingHero} alt="Church congregation" className="h-full w-full object-cover object-center" />
+          <img src={pricingHero} alt="Church congregation" className="h-full w-full object-cover object-center" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/65" />
         </div>
         <div className="container relative z-10 py-28 md:py-36 text-center max-w-2xl mx-auto">
