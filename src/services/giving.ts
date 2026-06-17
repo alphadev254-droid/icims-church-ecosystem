@@ -120,6 +120,12 @@ export interface CreatePledgeDto {
   notes?: string;
 }
 
+export interface UpdatePledgeDto {
+  pledgedAmount?: number;
+  fulfillmentDeadline?: string | null;
+  notes?: string | null;
+}
+
 export const givingService = {
   async getPublicCampaign(id: string): Promise<GivingCampaign> {
     const { data } = await apiClient.get(`/giving/campaigns/${id}/public`);
@@ -237,6 +243,11 @@ export const givingService = {
 
   async getPledge(id: string): Promise<Pledge> {
     const { data } = await apiClient.get(`/giving/pledges/${id}`);
+    return data.data;
+  },
+
+  async updatePledge(id: string, dto: UpdatePledgeDto): Promise<Pledge> {
+    const { data } = await apiClient.put(`/giving/pledges/${id}`, dto);
     return data.data;
   },
 };

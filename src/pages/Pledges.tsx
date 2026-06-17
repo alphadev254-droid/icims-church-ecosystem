@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { givingService, type Pledge, type PledgeStatus } from '@/services/giving';
 import { useAuthStore } from '@/stores/authStore';
@@ -8,12 +8,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Handshake, Wallet, Eye, TrendingUp, Clock,
   CheckCircle2, AlertCircle, ArrowUpDown,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Pencil,
 } from 'lucide-react';
 import { STALE_TIME } from '@/lib/query-config';
+import { toast } from 'sonner';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -57,6 +62,11 @@ function pct(pledge: Pledge) {
   return pledge.pledgedAmount > 0
     ? Math.min(100, (pledge.amountPaid / pledge.pledgedAmount) * 100)
     : 0;
+}
+
+function toDateInput(value?: string | null) {
+  if (!value) return '';
+  return new Date(value).toISOString().split('T')[0];
 }
 
 // ─── Pagination bar ───────────────────────────────────────────────────────────
@@ -108,8 +118,120 @@ function Pagination({ page, totalPages, onPage }: { page: number; totalPages: nu
 
 // ─── Member pledge card ───────────────────────────────────────────────────────
 
-function MemberPledgeCard({ pledge, onView, onPayNow }: {
-  pledge: Pledge; onView: () => void; onPayNow: () => void;
+function EditPledgeDialog({ pledge, open, onOpenChange }: {
+  pledge: Pledge | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const qc = useQueryClient();
+  const [amount, setAmount] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (!pledge || !open) return;
+    setAmount(String(pledge.pledgedAmount));
+    setDeadline(toDateInput(pledge.fulfillmentDeadline));
+    setNotes(pledge.notes ?? '');
+  }, [pledge, open]);
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!pledge) throw new Error('No pledge selected');
+      return givingService.updatePledge(pledge.id, {
+        pledgedAmount: Number(amount),
+        fulfillmentDeadline: deadline || null,
+        notes: notes || null,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Pledge updated');
+      qc.invalidateQueries({ queryKey: ['my-pledges'] });
+      onOpenChange(false);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to update pledge');
+    },
+  });
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen && pledge) {
+      setAmount(String(pledge.pledgedAmount));
+      setDeadline(toDateInput(pledge.fulfillmentDeadline));
+      setNotes(pledge.notes ?? '');
+    }
+    onOpenChange(nextOpen);
+  };
+
+  const minAmount = pledge ? Math.max(1, pledge.amountPaid) : 1;
+  const today = new Date().toISOString().split('T')[0];
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-4 w-4 text-accent" /> Edit Pledge
+          </DialogTitle>
+        </DialogHeader>
+
+        {pledge && (
+          <div className="space-y-4">
+            <div className="rounded-md bg-muted/50 border px-3 py-2">
+              <p className="text-sm font-medium">{pledge.campaign?.name}</p>
+              <p className="text-xs text-muted-foreground">
+                Already paid: {fmt(pledge.amountPaid, pledge.currency)}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Pledge Amount</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground w-10 shrink-0">{pledge.currency}</span>
+                <Input
+                  type="number"
+                  min={minAmount}
+                  step="any"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Amount cannot be below what you have already paid.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Fulfillment Deadline</Label>
+              <Input type="date" min={today} value={deadline} onChange={e => setDeadline(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} />
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
+                disabled={!amount || Number(amount) < minAmount || mutation.isPending}
+                onClick={() => mutation.mutate()}
+              >
+                {mutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MemberPledgeCard({ pledge, onView, onEdit, onPayNow }: {
+  pledge: Pledge; onView: () => void; onEdit: () => void; onPayNow: () => void;
 }) {
   const balance = pledge.pledgedAmount - pledge.amountPaid;
   const p = pct(pledge);
@@ -144,6 +266,11 @@ function MemberPledgeCard({ pledge, onView, onPayNow }: {
           <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={onView}>
             <Eye className="h-3 w-3 mr-1" /> View
           </Button>
+          {pledge.status !== 'fulfilled' && (
+            <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={onEdit}>
+              <Pencil className="h-3 w-3 mr-1" /> Edit
+            </Button>
+          )}
           {pledge.status !== 'fulfilled' && pledge.campaign?.status === 'active' && (
             <Button size="sm" className="flex-1 h-7 text-xs bg-accent text-accent-foreground hover:bg-accent/90" onClick={onPayNow}>
               <Wallet className="h-3 w-3 mr-1" /> Pay Now
@@ -207,6 +334,7 @@ export default function PledgesPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [page, setPage] = useState(1);
+  const [editingPledge, setEditingPledge] = useState<Pledge | null>(null);
 
   // Reset to page 1 whenever filters change
   const handleStatusChange = (v: string) => { setStatusFilter(v); setPage(1); };
@@ -252,6 +380,11 @@ export default function PledgesPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      <EditPledgeDialog
+        pledge={editingPledge}
+        open={!!editingPledge}
+        onOpenChange={open => { if (!open) setEditingPledge(null); }}
+      />
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -364,6 +497,7 @@ export default function PledgesPage() {
                 key={pledge.id}
                 pledge={pledge}
                 onView={() => navigate(`/dashboard/pledges/${pledge.id}`)}
+                onEdit={() => setEditingPledge(pledge)}
                 onPayNow={() => navigate(`/dashboard/pledges/${pledge.id}`)}
               />
             ))}
