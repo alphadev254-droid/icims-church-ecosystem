@@ -267,6 +267,12 @@ export default function PledgesPage() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2">
+          {isMember && (
+            <Button size="sm" className="h-8 text-xs sm:h-9 sm:text-sm gap-1.5" onClick={() => navigate('/dashboard/giving')}>
+              <Handshake className="h-3.5 w-3.5" /> Make Pledge
+            </Button>
+          )}
+
           <Select value={statusFilter} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-36 h-8 text-xs sm:h-9 sm:text-sm">
               <SelectValue placeholder="Status" />

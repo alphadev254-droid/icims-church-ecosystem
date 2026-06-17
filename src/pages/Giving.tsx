@@ -477,7 +477,7 @@ export default function GivingPage() {
               <Button size="sm" className="flex-1 h-7 text-xs" onClick={() => setDonateCampaign(campaign)}>
                 <Wallet className="h-3 w-3 mr-1" /> Give
               </Button>
-              {campaign.allowPledging && hasPledgesFeature && (
+              {campaign.allowPledging && (
                 <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => setPledgeCampaign(campaign)}>
                   <Handshake className="h-3 w-3 mr-1" /> Pledge
                 </Button>
