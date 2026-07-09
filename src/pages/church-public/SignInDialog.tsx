@@ -109,7 +109,7 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
           <p style={{
             fontSize: 10, fontWeight: 600, letterSpacing: '0.22em',
             textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)',
-          }}>Soli Deo Gloria</p>
+          }}>Faith, Hope, Love</p>
         </div>
 
         {/* ── RIGHT PANEL — cream ── */}
