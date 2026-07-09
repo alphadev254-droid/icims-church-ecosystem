@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Building2, Menu, X } from 'lucide-react';
 import type { NavLink } from './types';
 
 interface NavbarProps {
@@ -12,114 +11,154 @@ interface NavbarProps {
   onMenuClose: () => void;
   navLinks: NavLink[];
   onSignIn: () => void;
+  activeHref?: string;
 }
 
 export function Navbar({
-  ministryName, logoSrc, accent, scrolled,
-  menuOpen, onMenuToggle, onMenuClose, navLinks, onSignIn,
+  ministryName,
+  logoSrc,
+  accent,
+  scrolled,
+  menuOpen,
+  onMenuToggle,
+  onMenuClose,
+  navLinks,
+  onSignIn,
+  activeHref = '#home',
 }: NavbarProps) {
-  const initial = ministryName.charAt(0).toUpperCase();
-
   return (
     <>
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 960px) {
           .cp-desktop-nav { display: none !important; }
           .cp-desktop-cta { display: none !important; }
           .cp-hamburger { display: flex !important; }
         }
-        @media (min-width: 769px) {
+        @media (min-width: 961px) {
           .cp-hamburger { display: none !important; }
         }
       `}</style>
 
       <nav className="cp-navbar" style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-        background: scrolled ? '#111822' : 'transparent',
-        backdropFilter: scrolled ? 'blur(12px)' : 'none',
-        boxShadow: scrolled ? '0 1px 0 rgba(0,0,0,0.2)' : 'none',
-        transition: 'background 0.4s',
-        padding: '0 40px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1000,
+        background: '#fff',
+        boxShadow: scrolled ? '0 10px 28px rgba(16,24,40,0.08)' : '0 1px 0 rgba(16,24,40,0.08)',
+        padding: '0 28px',
       }}>
         <div className="cp-nav-inner" style={{
-          maxWidth: 1400, margin: '0 auto',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          height: 72,
+          maxWidth: 1400,
+          margin: '0 auto',
+          height: 66,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 22,
         }}>
-          {/* Logo */}
-          <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+          <a href="#home" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', minWidth: 0 }}>
             {logoSrc ? (
               <img src={logoSrc} alt={ministryName} style={{
-                height: 36, width: 36, borderRadius: 4, objectFit: 'cover',
-                border: '1px solid rgba(255,255,255,0.3)',
+                width: 46,
+                height: 46,
+                borderRadius: 14,
+                objectFit: 'cover',
+                border: `1px solid ${accent}`,
               }} />
             ) : (
-              <div style={{
-                height: 36, width: 36, border: '1px solid rgba(255,255,255,0.5)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: 'Georgia, serif', fontSize: 16, fontWeight: 700,
-                color: '#fff',
-              }}>{initial}</div>
+              <span style={{
+                width: 46,
+                height: 46,
+                borderRadius: 14,
+                background: accent,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#101a30',
+              }}>
+                <Building2 size={24} />
+              </span>
             )}
             <span className="cp-brand-name" style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
-              fontSize: 15, fontWeight: 700, letterSpacing: '0.05em',
-              color: '#fff',
-              transition: 'color 0.3s',
-            }}>{ministryName}</span>
+              fontSize: 24,
+              fontWeight: 700,
+              color: '#101a30',
+              letterSpacing: 0,
+              whiteSpace: 'nowrap',
+            }}>
+              {ministryName}
+            </span>
           </a>
 
-          {/* Desktop nav */}
-          <div className="cp-desktop-nav" style={{ display: 'flex', gap: 36, alignItems: 'center' }}>
-            {navLinks.map(link => (
-              <a key={link.href} href={link.href} style={{
-                fontSize: 13, fontWeight: 500, letterSpacing: '0.06em',
-                color: 'rgba(255,255,255,0.80)',
-                textDecoration: 'none', transition: 'color 0.2s',
-              }}
-              onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#fff'}
-              onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.80)'}
-              >{link.label}</a>
-            ))}
+          <div className="cp-desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 30 }}>
+            {navLinks.map(link => {
+              const active = activeHref === link.href;
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  style={{
+                    color: active ? '#101a30' : '#4f5868',
+                    fontSize: 17,
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    padding: '23px 0 18px',
+                    borderBottom: `3px solid ${active ? accent : 'transparent'}`,
+                    transition: 'color 0.2s, border-color 0.2s',
+                  }}
+                >
+                  {link.label}
+                </a>
+              );
+            })}
           </div>
 
-          {/* Desktop CTA */}
-          <div className="cp-desktop-cta" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="cp-desktop-cta" style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
             <button
+              type="button"
               onClick={onSignIn}
               style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: 500, letterSpacing: '0.06em',
-                color: 'rgba(255,255,255,0.80)',
-                padding: 0, transition: 'color 0.2s',
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                color: '#101a30',
+                fontSize: 16,
+                fontWeight: 600,
               }}
-              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = '#fff'}
-              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.80)'}
             >
               Sign In
             </button>
             <a href="#visit" style={{
-              fontSize: 13, fontWeight: 600, letterSpacing: '0.06em',
-              color: '#fff', textDecoration: 'none',
-              border: '1px solid rgba(255,255,255,0.5)',
-              padding: '8px 20px', transition: 'background 0.2s, border-color 0.2s',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.1)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-            }}
-            >Plan a Visit ↗</a>
+              background: accent,
+              color: '#101a30',
+              textDecoration: 'none',
+              fontSize: 16,
+              fontWeight: 700,
+              padding: '13px 22px',
+              borderRadius: 12,
+              boxShadow: '0 12px 28px rgba(197,137,16,0.20)',
+            }}>
+              Plan a Visit
+            </a>
           </div>
 
-          {/* Hamburger */}
           <button
+            type="button"
             onClick={onMenuToggle}
             className="cp-hamburger"
             style={{
-              background: 'none', border: 'none', cursor: 'pointer', padding: 6,
-              color: '#fff', display: 'none',
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 42,
+              height: 42,
+              borderRadius: 12,
+              border: '1px solid rgba(16,24,40,0.12)',
+              background: '#fff',
+              color: '#101a30',
+              cursor: 'pointer',
             }}
             aria-label="Toggle menu"
           >
@@ -127,51 +166,53 @@ export function Navbar({
           </button>
         </div>
 
-        {/* Mobile menu */}
         {menuOpen && (
           <div className="cp-mobile-menu" style={{
-            background: 'rgba(10,10,10,0.98)',
-            borderTop: '1px solid rgba(255,255,255,0.1)',
-            padding: '16px 40px 24px',
+            maxWidth: 1400,
+            margin: '0 auto',
+            padding: '8px 0 18px',
+            background: '#fff',
+            borderTop: '1px solid rgba(16,24,40,0.08)',
           }}>
             {navLinks.map(link => (
-              <a key={link.href} href={link.href}
+              <a
+                key={link.href}
+                href={link.href}
                 onClick={onMenuClose}
                 style={{
-                  display: 'block', padding: '14px 0',
-                  fontSize: 15, fontWeight: 500, letterSpacing: '0.04em',
-                  color: 'rgba(255,255,255,0.85)', textDecoration: 'none',
-                  borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  display: 'block',
+                  padding: '13px 2px',
+                  color: activeHref === link.href ? '#101a30' : '#4f5868',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  borderBottom: '1px solid rgba(16,24,40,0.08)',
                 }}
-              >{link.label}</a>
+              >
+                {link.label}
+              </a>
             ))}
             <button
+              type="button"
               onClick={() => {
                 onMenuClose();
                 onSignIn();
               }}
               style={{
-                display: 'block', width: '100%', padding: '14px 0',
-                background: 'none', border: 'none',
-                fontSize: 15, fontWeight: 500, letterSpacing: '0.04em',
-                color: 'rgba(255,255,255,0.85)', textDecoration: 'none',
-                textAlign: 'left', cursor: 'pointer',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                display: 'block',
+                width: '100%',
+                padding: '13px 2px',
+                background: 'none',
+                border: 'none',
+                borderBottom: '1px solid rgba(16,24,40,0.08)',
+                color: '#4f5868',
+                fontSize: 16,
+                fontWeight: 600,
+                textAlign: 'left',
               }}
             >
               Sign In
             </button>
-            <a
-              href="#visit"
-              onClick={onMenuClose}
-              style={{
-                display: 'block', padding: '14px 0',
-                fontSize: 15, fontWeight: 600, letterSpacing: '0.04em',
-                color: '#fff', textDecoration: 'none',
-              }}
-            >
-              Plan a Visit
-            </a>
           </div>
         )}
       </nav>

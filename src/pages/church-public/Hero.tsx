@@ -1,3 +1,4 @@
+import type React from 'react';
 import type { ServiceTime } from './types';
 
 interface HeroProps {
@@ -13,102 +14,137 @@ interface HeroProps {
 }
 
 export function Hero({
-  ministryName, bannerSrc, accent,
-  tagline, youtubeUrl, serviceTimes,
+  ministryName,
+  bannerSrc,
+  accent,
+  tagline,
+  youtubeUrl,
+  serviceTimes,
+  hasEvents,
+  hasCampaigns,
 }: HeroProps) {
+  const nextService = serviceTimes[0];
+
   return (
-    <section className="cp-hero" style={{
-      position: 'relative',
-      minHeight: '100vh',
-      display: 'flex', alignItems: 'flex-end',
-      background: `url(${bannerSrc}) center/cover no-repeat`,
-    }}>
-      {/* Dark overlay — heavier at bottom for text legibility */}
-      <div className="cp-hero-inner" style={{
-        position: 'absolute', inset: 0,
-        background: 'linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.82) 100%)',
-      }} />
-
-      <div style={{
-        position: 'relative', zIndex: 1,
-        maxWidth: 1400, margin: '0 auto',
-        padding: '0 40px 80px',
-        width: '100%',
+    <section id="home" className="cp-hero" style={{ background: '#fff', padding: '72px 28px 88px' }}>
+      <div className="cp-home-hero" style={{
+        maxWidth: 1400,
+        margin: '0 auto',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1.02fr) minmax(360px, 0.98fr)',
+        gap: 42,
+        alignItems: 'center',
       }}>
-        {/* Location label */}
-        <p style={{
-          fontFamily: 'Georgia, serif',
-          fontSize: 11, fontWeight: 400,
-          letterSpacing: '0.22em', textTransform: 'uppercase',
-          color: 'rgba(255,255,255,0.65)',
-          marginBottom: 20,
-        }}>
-          {ministryName}
-        </p>
+        <div>
+          <p style={{
+            color: accent,
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: '0.26em',
+            textTransform: 'uppercase',
+            marginBottom: 20,
+          }}>
+            Welcome to {ministryName}
+          </p>
+          <h1 className="cp-hero-title" style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            color: '#101a30',
+            fontSize: 'clamp(3.1rem, 7vw, 6.4rem)',
+            lineHeight: 0.98,
+            fontWeight: 800,
+            letterSpacing: 0,
+            margin: '0 0 24px',
+            maxWidth: 820,
+          }}>
+            Rooted in faith, <span style={{ color: accent }}>growing in love.</span>
+          </h1>
+          <p className="cp-hero-copy" style={{
+            color: '#53617a',
+            fontSize: 20,
+            lineHeight: 1.7,
+            maxWidth: 680,
+            marginBottom: 34,
+          }}>
+            {tagline || 'A vibrant congregation committed to worship, discipleship, and serving our community together.'}
+          </p>
+          <div className="cp-hero-actions" style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            <a href="#visit" style={primaryButton(accent)}>Plan a Visit</a>
+            {hasEvents && <a href="#events" style={secondaryButton}>Upcoming Events</a>}
+            {!hasEvents && hasCampaigns && <a href="#give" style={secondaryButton}>Give Online</a>}
+            {youtubeUrl && <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" style={secondaryButton}>Watch Online</a>}
+          </div>
+        </div>
 
-        {/* Headline — large serif */}
-        <h1 className="cp-hero-title" style={{
-          fontFamily: 'Georgia, "Times New Roman", serif',
-          fontSize: 'clamp(2.8rem, 7vw, 5.5rem)',
-          fontWeight: 400,
-          color: '#fff',
-          lineHeight: 1.08,
-          margin: '0 0 28px',
-          maxWidth: 720,
-          letterSpacing: '-0.01em',
-        }}>
-          {tagline || 'A place of hope, community, and faith.'}
-        </h1>
-
-        {/* Sub-tagline */}
-        <p className="cp-hero-copy" style={{
-          fontSize: 16, color: 'rgba(255,255,255,0.70)',
-          maxWidth: 480, lineHeight: 1.7,
-          marginBottom: 40,
-          fontWeight: 400,
-        }}>
-          A vibrant congregation committed to worship, discipleship, and serving our community — together, in the love of Christ.
-        </p>
-
-        {/* CTA buttons */}
-        <div className="cp-hero-actions" style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-          <a href="#services" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: '#fff', color: '#0a0a0a',
-            padding: '13px 28px',
-            fontSize: 13, fontWeight: 600, letterSpacing: '0.05em',
-            textDecoration: 'none',
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = '#f0f0f0'}
-          onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = '#fff'}
-          >
-            ☩ Join Us This Sunday
-          </a>
-          {youtubeUrl && (
-            <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'transparent', color: '#fff',
-              padding: '13px 28px',
-              fontSize: 13, fontWeight: 600, letterSpacing: '0.05em',
-              textDecoration: 'none',
-              border: '1px solid rgba(255,255,255,0.5)',
-              transition: 'border-color 0.2s, background 0.2s',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLAnchorElement).style.borderColor = '#fff';
-              (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.08)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.5)';
-              (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-            }}
-            >
-              ▷ Watch Online
-            </a>
+        <div style={{ position: 'relative' }}>
+          <div style={{
+            borderRadius: 28,
+            overflow: 'hidden',
+            minHeight: 520,
+            background: '#111822',
+            boxShadow: '0 28px 70px rgba(16,24,40,0.16)',
+          }}>
+            <img src={bannerSrc} alt={ministryName} style={{
+              width: '100%',
+              height: 520,
+              objectFit: 'cover',
+              display: 'block',
+            }} />
+          </div>
+          {nextService && (
+            <div className="cp-home-service-card" style={{
+              position: 'absolute',
+              left: 28,
+              right: 28,
+              bottom: -34,
+              background: '#111822',
+              color: '#fff',
+              borderRadius: 20,
+              padding: 24,
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) auto',
+              gap: 18,
+              alignItems: 'center',
+              boxShadow: '0 22px 50px rgba(16,24,40,0.22)',
+            }}>
+              <div>
+                <p style={{ color: accent, fontSize: 12, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Next service
+                </p>
+                <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 26, margin: 0 }}>
+                  {nextService.name || 'Sunday Service'}
+                </h2>
+              </div>
+              <p style={{ color: accent, fontWeight: 800, fontSize: 18, margin: 0, whiteSpace: 'nowrap' }}>
+                {nextService.day} - {nextService.time}
+              </p>
+            </div>
           )}
         </div>
       </div>
     </section>
   );
 }
+
+function primaryButton(accent: string): React.CSSProperties {
+  return {
+    background: accent,
+    color: '#101a30',
+    textDecoration: 'none',
+    borderRadius: 14,
+    padding: '16px 26px',
+    fontWeight: 800,
+    fontSize: 16,
+    boxShadow: '0 16px 34px rgba(197,137,16,0.22)',
+  };
+}
+
+const secondaryButton: React.CSSProperties = {
+  background: '#fff',
+  color: '#101a30',
+  textDecoration: 'none',
+  borderRadius: 14,
+  padding: '15px 25px',
+  fontWeight: 800,
+  fontSize: 16,
+  border: '1px solid #e3ded7',
+};
