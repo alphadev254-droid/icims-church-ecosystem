@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Baby, Link2, Pencil, Plus, Search, Trash2, Unlink, Users } from 'lucide-react';
+import { Baby, Info, Link2, Pencil, Plus, Search, Trash2, Unlink, Users } from 'lucide-react';
 import { childrenService, type Child } from '@/services/children';
 import { usersService, type AppUser } from '@/services/users';
 import { churchesService } from '@/services/churches';
@@ -46,6 +46,85 @@ function childName(child: Child) {
 
 function guardianName(user?: AppUser | Child['guardians'][number]['guardian']) {
   return user ? `${user.firstName} ${user.lastName}`.trim() : '';
+}
+
+function formatDate(value?: string | null) {
+  return value ? new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+}
+
+function DetailField({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div>
+      <Label className="text-muted-foreground">{label}</Label>
+      <p className="text-sm">{value ?? '-'}</p>
+    </div>
+  );
+}
+
+function ChildDetailsDialog({ child, onOpenChange }: { child: Child | null; onOpenChange: (open: boolean) => void }) {
+  return (
+    <Dialog open={!!child} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Child Details</DialogTitle></DialogHeader>
+        {child && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-md border p-4">
+              <DetailField label="Full Name" value={childName(child)} />
+              <div>
+                <Label className="text-muted-foreground">Status</Label>
+                <p><Badge variant={child.status === 'active' ? 'default' : 'secondary'}>{child.status}</Badge></p>
+              </div>
+              <DetailField label="Church" value={child.church?.name} />
+              <DetailField label="Age" value={child.age != null ? `${child.age} yrs` : null} />
+              <DetailField label="Sex" value={child.gender ? child.gender[0].toUpperCase() + child.gender.slice(1) : null} />
+              <DetailField label="Phone" value={child.phone} />
+              <DetailField label="Date of Birth" value={formatDate(child.dateOfBirth)} />
+              <DetailField label="Created" value={formatDate(child.createdAt)} />
+            </div>
+
+            <div>
+              <Label className="text-muted-foreground">Notes</Label>
+              <p className="mt-1 rounded-md border p-3 text-sm text-muted-foreground whitespace-pre-wrap">
+                {child.notes || 'No notes.'}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-muted-foreground">Parents / Guardians</Label>
+              </div>
+              {!child.guardians || child.guardians.length === 0 ? (
+                <p className="rounded-md border p-3 text-sm text-muted-foreground">No parent or guardian linked.</p>
+              ) : (
+                <div className="space-y-2">
+                  {child.guardians.map(link => (
+                    <div key={link.id} className="rounded-md border p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-medium">{guardianName(link.guardian)}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{link.relationship}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {link.isPrimary && <Badge variant="outline">Primary</Badge>}
+                          {link.canPickup && <Badge variant="secondary">Can pickup</Badge>}
+                          {link.emergencyContact && <Badge variant="secondary">Emergency</Badge>}
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <DetailField label="Email" value={link.guardian?.email} />
+                        <DetailField label="Phone" value={link.guardian?.phone} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function GuardianSearchPicker({
@@ -302,6 +381,7 @@ export default function ChildrenPage() {
   const [unlinkedOnly, setUnlinkedOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
+  const [viewChild, setViewChild] = useState<Child | null>(null);
   const [editChild, setEditChild] = useState<Child | null>(null);
   const [deleteChild, setDeleteChild] = useState<Child | null>(null);
   const [linkChild, setLinkChild] = useState<Child | null>(null);
@@ -433,7 +513,7 @@ export default function ChildrenPage() {
                   <TableHead>Parent / Guardian</TableHead>
                   <TableHead className="hidden md:table-cell">Status</TableHead>
                   <TableHead className="hidden xl:table-cell">Created</TableHead>
-                  {(canUpdate || canDelete) && <TableHead className="w-24">Actions</TableHead>}
+                  <TableHead className="w-28">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -484,32 +564,33 @@ export default function ChildrenPage() {
                     <TableCell className="hidden xl:table-cell text-muted-foreground">
                       {new Date(child.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </TableCell>
-                    {(canUpdate || canDelete) && (
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          {canUpdate && (
-                            <>
-                              <button onClick={() => setLinkChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                                <Link2 className="h-3.5 w-3.5" />
-                              </button>
-                              <button onClick={() => setEditChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                            </>
-                          )}
-                          {canDelete && (
-                            <button onClick={() => setDeleteChild(child)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                              <Trash2 className="h-3.5 w-3.5" />
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setViewChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                        {canUpdate && (
+                          <>
+                            <button onClick={() => setLinkChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                              <Link2 className="h-3.5 w-3.5" />
                             </button>
-                          )}
-                        </div>
-                      </TableCell>
-                    )}
+                            <button onClick={() => setEditChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                        {canDelete && (
+                          <button onClick={() => setDeleteChild(child)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {children.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={(canUpdate || canDelete) ? 9 : 8} className="py-10 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
                       <Users className="mx-auto mb-2 h-8 w-8 opacity-50" />
                       {canCreate ? 'No children yet. Add your first child.' : 'No children found.'}
                     </TableCell>
@@ -530,6 +611,8 @@ export default function ChildrenPage() {
           </div>
         </div>
       )}
+
+      <ChildDetailsDialog child={viewChild} onOpenChange={open => !open && setViewChild(null)} />
 
       <Dialog open={!!editChild} onOpenChange={open => !open && setEditChild(null)}>
         <DialogContent className="max-w-md">
