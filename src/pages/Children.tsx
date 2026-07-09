@@ -52,6 +52,23 @@ function formatDate(value?: string | null) {
   return value ? new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
 }
 
+function calculateAge(value?: string | null) {
+  if (!value) return null;
+  const dob = new Date(value);
+  if (Number.isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const hasBirthdayPassed =
+    today.getMonth() > dob.getMonth() ||
+    (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+  if (!hasBirthdayPassed) age -= 1;
+  return age >= 0 ? age : null;
+}
+
+function childAge(child: Child) {
+  return child.dateOfBirth ? calculateAge(child.dateOfBirth) : child.age ?? null;
+}
+
 function DetailField({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div>
@@ -75,7 +92,7 @@ function ChildDetailsDialog({ child, onOpenChange }: { child: Child | null; onOp
                 <p><Badge variant={child.status === 'active' ? 'default' : 'secondary'}>{child.status}</Badge></p>
               </div>
               <DetailField label="Church" value={child.church?.name} />
-              <DetailField label="Age" value={child.age != null ? `${child.age} yrs` : null} />
+              <DetailField label="Age" value={childAge(child) != null ? `${childAge(child)} yrs` : null} />
               <DetailField label="Sex" value={child.gender ? child.gender[0].toUpperCase() + child.gender.slice(1) : null} />
               <DetailField label="Phone" value={child.phone} />
               <DetailField label="Date of Birth" value={formatDate(child.dateOfBirth)} />
@@ -214,6 +231,7 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
   const [churchId, setChurchId] = useState(child?.churchId ?? defaultChurchId ?? '');
   const [firstName, setFirstName] = useState(child?.firstName ?? '');
   const [lastName, setLastName] = useState(child?.lastName ?? '');
+  const [dateOfBirth, setDateOfBirth] = useState(child?.dateOfBirth ? child.dateOfBirth.split('T')[0] : '');
   const [age, setAge] = useState(child?.age != null ? String(child.age) : '');
   const [gender, setGender] = useState(child?.gender ?? '');
   const [phone, setPhone] = useState(child?.phone ?? '');
@@ -252,7 +270,13 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Label>Age</Label>
-          <Input type="number" min="0" value={age} onChange={e => setAge(e.target.value)} />
+          <Input
+            type="number"
+            min="0"
+            value={dateOfBirth ? String(calculateAge(dateOfBirth) ?? '') : age}
+            onChange={e => setAge(e.target.value)}
+            disabled={!!dateOfBirth}
+          />
         </div>
         <div>
           <Label>Sex</Label>
@@ -265,6 +289,10 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div>
+        <Label>Date of Birth</Label>
+        <Input type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
       </div>
       <div>
         <Label>Phone</Label>
@@ -312,7 +340,8 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
           ...(child ? {} : { churchId }),
           firstName,
           lastName,
-          age: age ? Number(age) : null,
+          dateOfBirth: dateOfBirth || null,
+          age: dateOfBirth ? calculateAge(dateOfBirth) : age ? Number(age) : null,
           gender: gender || null,
           phone: phone || null,
           notes: notes || null,
@@ -507,6 +536,7 @@ export default function ChildrenPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead className="hidden sm:table-cell">Age</TableHead>
+                  <TableHead className="hidden xl:table-cell">DOB</TableHead>
                   <TableHead className="hidden md:table-cell">Sex</TableHead>
                   <TableHead className="hidden lg:table-cell">Phone</TableHead>
                   <TableHead className="hidden lg:table-cell">Church</TableHead>
@@ -522,11 +552,12 @@ export default function ChildrenPage() {
                     <TableCell className="font-medium">
                       {childName(child)}
                       <div className="mt-1 flex flex-wrap gap-1 sm:hidden">
-                        {child.age != null && <span className="text-xs text-muted-foreground">{child.age} yrs</span>}
+                        {childAge(child) != null && <span className="text-xs text-muted-foreground">{childAge(child)} yrs</span>}
                         {child.gender && <span className="text-xs text-muted-foreground capitalize">{child.gender}</span>}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground">{child.age != null ? `${child.age} yrs` : '-'}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground">{childAge(child) != null ? `${childAge(child)} yrs` : '-'}</TableCell>
+                    <TableCell className="hidden xl:table-cell text-muted-foreground">{formatDate(child.dateOfBirth)}</TableCell>
                     <TableCell className="hidden md:table-cell capitalize text-muted-foreground">{child.gender ?? '-'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-muted-foreground">{child.phone ?? '-'}</TableCell>
                     <TableCell className="hidden lg:table-cell max-w-[180px] truncate text-muted-foreground">{child.church?.name ?? '-'}</TableCell>
@@ -590,7 +621,7 @@ export default function ChildrenPage() {
                 ))}
                 {children.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
                       <Users className="mx-auto mb-2 h-8 w-8 opacity-50" />
                       {canCreate ? 'No children yet. Add your first child.' : 'No children found.'}
                     </TableCell>
