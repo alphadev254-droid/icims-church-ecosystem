@@ -28,26 +28,49 @@ function ResponsiveStyles() {
   return (
     <style>{`
       .cp-page * { box-sizing: border-box; }
+      .cp-page img, .cp-page iframe { max-width: 100%; }
+      .cp-section-title, .cp-hero-title, .cp-page h1, .cp-page h2, .cp-page h3 {
+        overflow-wrap: anywhere;
+      }
       @media (max-width: 1024px) {
         .cp-card-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        .cp-home-hero { grid-template-columns: 1fr !important; }
+        .cp-give-impact-title { max-width: 100% !important; }
+        .cp-give-impact-copy { max-width: 760px !important; }
+        .cp-sermon-grid { grid-template-columns: 1fr !important; }
       }
       @media (max-width: 768px) {
         .cp-navbar { padding: 0 16px !important; }
         .cp-nav-inner { height: 60px !important; }
         .cp-brand-name { font-size: 17px !important; max-width: 160px !important; }
         .cp-mobile-menu { padding: 8px 0 14px !important; }
+        .cp-page section, .cp-page .cp-section { padding-left: 18px !important; padding-right: 18px !important; }
         .cp-hero { padding: 56px 18px 64px !important; }
         .cp-home-hero { grid-template-columns: 1fr !important; gap: 36px !important; }
+        .cp-page-hero { padding-top: 38px !important; padding-bottom: 42px !important; }
         .cp-hero-title { font-size: clamp(2.4rem, 12vw, 3.6rem) !important; overflow-wrap: anywhere !important; }
         .cp-hero-copy { font-size: 15px !important; }
         .cp-hero-actions { flex-direction: column !important; align-items: stretch !important; }
         .cp-hero-actions a { width: 100% !important; text-align: center !important; justify-content: center !important; }
         .cp-section-title { font-size: clamp(1.9rem, 9vw, 2.8rem) !important; overflow-wrap: anywhere !important; }
+        .cp-section-head { flex-direction: column !important; align-items: flex-start !important; }
         .cp-two-col, .cp-contact-grid, .cp-visit-grid, .cp-sermon-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
         .cp-visit-form-grid { grid-template-columns: 1fr !important; gap: 0 !important; }
         .cp-ministry-grid { grid-template-columns: 1fr !important; }
         .cp-card-grid { grid-template-columns: 1fr !important; }
         .cp-services-strip { grid-template-columns: 1fr !important; }
+        .cp-service-row { grid-template-columns: 1fr !important; gap: 4px !important; }
+        .cp-countdown-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        .cp-sermon-list-card { grid-template-columns: 1fr !important; }
+        .cp-event-card-action, .cp-give-card-action { width: 100% !important; justify-content: center !important; text-align: center !important; }
+        .cp-give-impact { padding-top: 50px !important; padding-bottom: 56px !important; }
+        .cp-give-impact-title { font-size: clamp(2.15rem, 12vw, 3.25rem) !important; max-width: 100% !important; }
+        .cp-give-impact-copy { font-size: 15px !important; max-width: 100% !important; }
+        .cp-give-impact-stats { gap: 18px !important; display: grid !important; grid-template-columns: 1fr !important; }
+        .cp-give-impact-actions { flex-direction: column !important; align-items: stretch !important; }
+        .cp-give-impact-actions a { width: 100% !important; justify-content: center !important; }
+        .cp-trust-strip { flex-direction: column !important; align-items: flex-start !important; }
+        .cp-trust-items { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
         .cp-map { height: 240px !important; }
         .cp-footer { padding: 40px 18px 28px !important; }
         .cp-footer .cp-contact-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
@@ -59,6 +82,13 @@ function ResponsiveStyles() {
         }
         .cp-auth-side { width: auto !important; min-height: auto !important; padding: 28px 24px !important; gap: 28px !important; }
         .cp-auth-main { padding: 34px 24px 28px !important; }
+      }
+      @media (max-width: 420px) {
+        .cp-navbar { padding: 0 12px !important; }
+        .cp-brand-name { max-width: 132px !important; font-size: 16px !important; }
+        .cp-page section, .cp-page .cp-section { padding-left: 14px !important; padding-right: 14px !important; }
+        .cp-hero-title { font-size: clamp(2.05rem, 13vw, 3rem) !important; }
+        .cp-section-title { font-size: clamp(1.75rem, 10vw, 2.45rem) !important; }
       }
     `}</style>
   );

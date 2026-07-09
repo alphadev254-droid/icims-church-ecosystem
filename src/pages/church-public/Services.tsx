@@ -9,7 +9,7 @@ export function Services({ serviceTimes, accent }: ServicesProps) {
   return (
     <section id="services" style={{ background: '#fff', padding: '56px 28px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
+        <div className="cp-section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: accent, marginBottom: 6 }}>Join Us</p>
             <h2 className="cp-section-title" style={{
@@ -35,13 +35,6 @@ export function Services({ serviceTimes, accent }: ServicesProps) {
               borderRadius: 12, padding: '20px 18px',
               position: 'relative', overflow: 'hidden',
             }}>
-              {i % 2 === 0 && (
-                <div style={{
-                  position: 'absolute', top: -20, right: -20,
-                  width: 80, height: 80, borderRadius: '50%',
-                  background: `${accent}18`,
-                }} />
-              )}
               <p style={{
                 fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
                 color: i % 2 === 0 ? accent : accent,

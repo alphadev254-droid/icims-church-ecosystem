@@ -143,7 +143,7 @@ export function Hero({ ministryName, bannerSrc, accent, tagline, youtubeUrl, ser
             }}>
               Next — {nextService.name}
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 18 }}>
+            <div className="cp-countdown-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 18 }}>
               {[['Days', countdown.d], ['Hrs', countdown.h], ['Min', countdown.m], ['Sec', countdown.s]].map(([label, val]) => (
                 <div key={label} style={{
                   background: 'rgba(255,255,255,0.04)',

@@ -68,7 +68,7 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
   return (
     <section id="sermons" style={{ background: '#121D39', padding: '56px 28px 72px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
+        <div className="cp-section-head" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
           <div>
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Latest Sermon</p>
             <h2 className="cp-section-title" style={{
@@ -123,7 +123,7 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
             {(rest.length ? rest : sermons.slice(0, 2)).map(s => {
               const ytId = getYouTubeId(s.youtubeUrl);
               return (
-                <a key={s.id} href={s.youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
+                <a key={s.id} className="cp-sermon-list-card" href={s.youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
                   display: 'grid', gridTemplateColumns: '100px minmax(0,1fr)',
                   gap: 12, alignItems: 'center', textDecoration: 'none', color: '#fff',
                   border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,

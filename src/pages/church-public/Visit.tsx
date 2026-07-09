@@ -93,7 +93,7 @@ export function Visit({ slug, ministryName, serviceTimes, accent }: VisitProps) 
               <h3 style={{ fontFamily: 'Georgia, serif', color: accent, fontSize: 15, margin: '0 0 12px', fontWeight: 700 }}>Service times</h3>
               <div style={{ display: 'grid', gap: 8 }}>
                 {serviceTimes.map((s, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 10, color: '#fff', fontSize: 13 }}>
+                  <div key={i} className="cp-service-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 10, color: '#fff', fontSize: 13 }}>
                     <span>{s.name || 'Service'}</span>
                     <span style={{ color: accent }}>{s.day} · {s.time}</span>
                   </div>
