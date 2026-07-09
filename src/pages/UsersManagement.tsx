@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { usersService, type AppUser } from '@/services/users';
+import { childrenService, type Child } from '@/services/children';
 import { rolesService } from '@/services/roles';
 import { churchesService } from '@/services/churches';
 import { locationsService } from '@/services/locations';
@@ -68,6 +69,172 @@ function RoleSelect({ value, onChange }: { value: string; onChange: (v: string) 
 }
 
 // ─── Form schemas ─────────────────────────────────────────────────────────────
+function MemberChildrenPanel({ member }: { member: AppUser }) {
+  const qc = useQueryClient();
+  const { hasPermission } = useRole();
+  const [open, setOpen] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
+  const [phone, setPhone] = useState('');
+  const [relationship, setRelationship] = useState('guardian');
+
+  const queryKey = ['member-children', member.id];
+  const canReadChildren = hasPermission('children:read');
+  const canCreateChildren = hasPermission('children:create');
+  const canUpdateChildren = hasPermission('children:update');
+  const { data, isLoading } = useQuery({
+    queryKey,
+    queryFn: () => childrenService.list({ guardianId: member.id, limit: 100 }),
+    enabled: !!member.id && canReadChildren,
+  });
+
+  const reset = () => {
+    setFirstName('');
+    setLastName('');
+    setAge('');
+    setGender('');
+    setPhone('');
+    setRelationship('guardian');
+  };
+
+  const createMutation = useMutation({
+    mutationFn: () => childrenService.create({
+      churchId: member.churchId!,
+      firstName,
+      lastName,
+      age: age ? Number(age) : null,
+      gender: gender || null,
+      phone: phone || null,
+      guardianId: member.id,
+      relationship,
+      isPrimary: true,
+      canPickup: true,
+      emergencyContact: true,
+    }),
+    onSuccess: () => {
+      toast.success('Child linked to member');
+      qc.invalidateQueries({ queryKey });
+      reset();
+      setOpen(false);
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Failed to add child'),
+  });
+
+  const unlinkMutation = useMutation({
+    mutationFn: (childId: string) => childrenService.unlinkGuardian(childId, member.id),
+    onSuccess: () => {
+      toast.success('Child unlinked from member');
+      qc.invalidateQueries({ queryKey });
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Failed to unlink child'),
+  });
+
+  const children: Child[] = data?.data ?? [];
+  if (member.roleName !== 'member' || !member.churchId || !canReadChildren) return null;
+
+  return (
+    <div className="border rounded-md p-3 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <Label className="text-muted-foreground">Children / Dependents</Label>
+          <p className="text-xs text-muted-foreground">{children.length} linked</p>
+        </div>
+        {canCreateChildren && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> Add Child
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader><DialogTitle>Add Child / Dependent</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>First Name</Label>
+                    <Input value={firstName} onChange={e => setFirstName(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Last Name</Label>
+                    <Input value={lastName} onChange={e => setLastName(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Age</Label>
+                    <Input type="number" min="0" value={age} onChange={e => setAge(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Sex</Label>
+                    <Select value={gender || undefined} onValueChange={v => setGender(v as any)}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Phone</Label>
+                  <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Optional" />
+                </div>
+                <div>
+                  <Label>Relationship</Label>
+                  <Input value={relationship} onChange={e => setRelationship(e.target.value)} placeholder="mother, father, guardian..." />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" className="flex-1" onClick={() => setOpen(false)}>Cancel</Button>
+                  <Button
+                    className="flex-1"
+                    disabled={!firstName || !lastName || createMutation.isPending}
+                    onClick={() => createMutation.mutate()}
+                  >
+                    {createMutation.isPending ? 'Saving...' : 'Save'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Loading children...</p>
+      ) : children.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No children linked to this member.</p>
+      ) : (
+        <div className="space-y-2">
+          {children.map(child => (
+            <div key={child.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2">
+              <div>
+                <p className="text-sm font-medium">{child.firstName} {child.lastName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {[child.age != null ? `${child.age} yrs` : null, child.gender, child.phone].filter(Boolean).join(' · ') || 'No extra details'}
+                </p>
+              </div>
+              {canUpdateChildren && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  disabled={unlinkMutation.isPending}
+                  onClick={() => unlinkMutation.mutate(child.id)}
+                >
+                  Unlink
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const createSchema = z.object({
   email: z.string().email('Valid email required'),
   password: z.string().min(8, 'Min 8 characters'),
@@ -1337,6 +1504,7 @@ export default function UsersManagement() {
                 <Label className="text-muted-foreground">Role</Label>
                 <p><Badge variant={ROLE_BADGE_VARIANT[viewUser.roleName] ?? 'outline'}>{ROLE_DISPLAY[viewUser.roleName] ?? viewUser.roleName}</Badge></p>
               </div>
+              <MemberChildrenPanel member={viewUser} />
               {(viewUser as any).teams?.length > 0 && (
                 <div>
                   <Label className="text-muted-foreground">Teams</Label>

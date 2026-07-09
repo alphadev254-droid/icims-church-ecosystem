@@ -1,6 +1,6 @@
 import {
   Home, Calendar, HandCoins, ClipboardList, MessageSquare,
-  BookOpen, Building2, TrendingUp, BarChart3, Settings, Shield, UserCog, Package2, Receipt, Wallet, Users, Bell, Handshake, Globe, type LucideIcon,
+  BookOpen, Building2, TrendingUp, BarChart3, Settings, Shield, UserCog, Package2, Receipt, Wallet, Users, Bell, Handshake, Globe, Baby, type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from './authStore';
 
@@ -29,6 +29,7 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   
   // People Management
   { permission: 'users:read',         item: { to: '/dashboard/users',         label: 'Users',         icon: UserCog } },
+  { permission: 'children:read',      item: { to: '/dashboard/children',      label: 'Children',      icon: Baby } },
   { permission: 'teams:read',         item: { to: '/dashboard/teams',         label: 'Teams',         icon: Users } },
   { permission: 'cells:read',         item: { to: '/dashboard/cells',         label: 'Cells',         icon: Users } },
   
@@ -69,6 +70,10 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
       
       // Hide users from members
       if (item.to === '/dashboard/users') {
+        return currentUser?.roleName !== 'member';
+      }
+
+      if (item.to === '/dashboard/children') {
         return currentUser?.roleName !== 'member';
       }
 
@@ -129,6 +134,9 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
       }
       // Hide users route from members
       if (item.to === '/dashboard/users' && currentUser?.roleName === 'member') {
+        continue;
+      }
+      if (item.to === '/dashboard/children' && currentUser?.roleName === 'member') {
         continue;
       }
       // Hide transactions route from members
