@@ -51,6 +51,10 @@ const ROLE_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = 
   member: 'outline',
 };
 
+function getRoleLabel(user: AppUser) {
+  return ROLE_DISPLAY[user.roleName] ?? user.role?.displayName ?? user.roleName;
+}
+
 const RELATIONSHIP_OPTIONS = [
   { value: 'mother', label: 'Mother' },
   { value: 'father', label: 'Father' },
@@ -64,8 +68,8 @@ const RELATIONSHIP_OPTIONS = [
 // ─── Role select ──────────────────────────────────────────────────────────────
 function RoleSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { data: roles = [] } = useQuery({ queryKey: ['roles'], queryFn: rolesService.getRoles });
-  // Filter out ministry_admin role from user creation/editing
-  const filteredRoles = roles.filter(r => r.name !== 'ministry_admin');
+  // Filter out platform-only roles from user creation/editing
+  const filteredRoles = roles.filter(r => r.name !== 'ministry_admin' && r.name !== 'system_admin');
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -988,7 +992,7 @@ export default function UsersManagement() {
               weddingDate: (u as any).weddingDate ? new Date((u as any).weddingDate).toLocaleDateString() : '',
               residentialNeighbourhood: (u as any).residentialNeighbourhood || '',
               baptizedByImmersion: (u as any).baptizedByImmersion ? 'Yes' : 'No',
-              role: ROLE_DISPLAY[u.roleName] || u.roleName,
+              role: getRoleLabel(u),
               church: u.church?.name ?? '—',
               teams: (u as any).teams?.join(', ') || '',
               cells: (u as any).cells?.map((c: any) => c.name).join(', ') || '',
@@ -1027,7 +1031,7 @@ export default function UsersManagement() {
               (u as any).weddingDate ? new Date((u as any).weddingDate).toISOString().split('T')[0] : '',
               (u as any).residentialNeighbourhood || '',
               (u as any).baptizedByImmersion ? 'Yes' : 'No',
-              ROLE_DISPLAY[u.roleName] || u.roleName,
+              getRoleLabel(u),
               u.church?.name ?? '—',
               (u as any).teams?.join(', ') || '',
               (u as any).cells?.map((c: any) => c.name).join(', ') || '',
@@ -1368,7 +1372,7 @@ export default function UsersManagement() {
                       <TableCell className="hidden 2xl:table-cell text-xs">{(user as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
                       <TableCell>
                         <Badge variant={ROLE_BADGE_VARIANT[user.roleName] ?? 'outline'} className="text-xs capitalize">
-                          {ROLE_DISPLAY[user.roleName] ?? user.roleName}
+                          {getRoleLabel(user)}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-[150px] truncate">
@@ -1519,7 +1523,7 @@ export default function UsersManagement() {
               </div>
               <div>
                 <Label className="text-muted-foreground">Role</Label>
-                <p><Badge variant={ROLE_BADGE_VARIANT[viewUser.roleName] ?? 'outline'}>{ROLE_DISPLAY[viewUser.roleName] ?? viewUser.roleName}</Badge></p>
+                <p><Badge variant={ROLE_BADGE_VARIANT[viewUser.roleName] ?? 'outline'}>{getRoleLabel(viewUser)}</Badge></p>
               </div>
               <MemberChildrenPanel member={viewUser} />
               {(viewUser as any).teams?.length > 0 && (
