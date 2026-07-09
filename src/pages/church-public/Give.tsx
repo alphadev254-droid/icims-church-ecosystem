@@ -109,7 +109,7 @@ export function Give({ campaigns, accent }: GiveProps) {
           <div className="cp-section-head" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, paddingBottom: 28, borderBottom: '1px solid #e8edf5' }}>
             <h2 className="cp-section-title" style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
-              fontSize: 'clamp(1.8rem, 3.8vw, 2.8rem)',
+              fontSize: 'clamp(1.7rem, 3.2vw, 2.45rem)',
               fontWeight: 800,
               color: DARK,
               lineHeight: 1.1,
@@ -158,7 +158,7 @@ export function Give({ campaigns, accent }: GiveProps) {
 
           <h2 className="cp-give-impact-title" style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
-            fontSize: 'clamp(2.4rem, 5.8vw, 5.1rem)',
+            fontSize: 'clamp(2.2rem, 5vw, 4.45rem)',
             fontWeight: 800,
             color: '#fff',
             lineHeight: 1.1,

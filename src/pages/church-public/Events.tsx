@@ -156,7 +156,7 @@ export function Events({ events, accent, variant = 'home' }: EventsProps) {
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>What's Coming Up</p>
             <h2 className="cp-section-title" style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
-              fontSize: 'clamp(1.8rem, 3.8vw, 2.8rem)',
+              fontSize: 'clamp(1.7rem, 3.2vw, 2.45rem)',
               fontWeight: 800,
               color: DARK,
               lineHeight: 1.1,

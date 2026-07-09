@@ -32,6 +32,11 @@ function ResponsiveStyles() {
       .cp-section-title, .cp-hero-title, .cp-page h1, .cp-page h2, .cp-page h3 {
         overflow-wrap: anywhere;
       }
+      @media (min-width: 1200px) {
+        .cp-hero-title { font-size: clamp(2.4rem, 4.8vw, 4.35rem) !important; }
+        .cp-give-impact-title { font-size: clamp(2.2rem, 4.9vw, 4.45rem) !important; }
+        .cp-section-title { font-size: clamp(1.75rem, 3.2vw, 2.55rem) !important; }
+      }
       @media (max-width: 1024px) {
         .cp-card-grid { grid-template-columns: repeat(2, 1fr) !important; }
         .cp-home-hero { grid-template-columns: 1fr !important; }
@@ -48,11 +53,11 @@ function ResponsiveStyles() {
         .cp-hero { padding: 56px 18px 64px !important; }
         .cp-home-hero { grid-template-columns: 1fr !important; gap: 36px !important; }
         .cp-page-hero { padding-top: 38px !important; padding-bottom: 42px !important; }
-        .cp-hero-title { font-size: clamp(2.4rem, 12vw, 3.6rem) !important; overflow-wrap: anywhere !important; }
+        .cp-hero-title { font-size: clamp(2rem, 9.5vw, 2.85rem) !important; overflow-wrap: anywhere !important; line-height: 1.08 !important; }
         .cp-hero-copy { font-size: 15px !important; }
         .cp-hero-actions { flex-direction: column !important; align-items: stretch !important; }
         .cp-hero-actions a { width: 100% !important; text-align: center !important; justify-content: center !important; }
-        .cp-section-title { font-size: clamp(1.9rem, 9vw, 2.8rem) !important; overflow-wrap: anywhere !important; }
+        .cp-section-title { font-size: clamp(1.65rem, 7.4vw, 2.25rem) !important; overflow-wrap: anywhere !important; line-height: 1.12 !important; }
         .cp-section-head { flex-direction: column !important; align-items: flex-start !important; }
         .cp-two-col, .cp-contact-grid, .cp-visit-grid, .cp-sermon-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
         .cp-visit-form-grid { grid-template-columns: 1fr !important; gap: 0 !important; }
@@ -64,7 +69,7 @@ function ResponsiveStyles() {
         .cp-sermon-list-card { grid-template-columns: 1fr !important; }
         .cp-event-card-action, .cp-give-card-action { width: 100% !important; justify-content: center !important; text-align: center !important; }
         .cp-give-impact { padding-top: 50px !important; padding-bottom: 56px !important; }
-        .cp-give-impact-title { font-size: clamp(2.15rem, 12vw, 3.25rem) !important; max-width: 100% !important; }
+        .cp-give-impact-title { font-size: clamp(2rem, 9vw, 2.7rem) !important; max-width: 100% !important; line-height: 1.12 !important; }
         .cp-give-impact-copy { font-size: 15px !important; max-width: 100% !important; }
         .cp-give-impact-stats { gap: 18px !important; display: grid !important; grid-template-columns: 1fr !important; }
         .cp-give-impact-actions { flex-direction: column !important; align-items: stretch !important; }
@@ -89,13 +94,16 @@ function ResponsiveStyles() {
           border-bottom: 1px solid rgba(255,255,255,0.08) !important;
         }
         .cp-auth-main { padding: 34px 24px 28px !important; }
+        .cp-auth-side h2 { font-size: clamp(1.65rem, 7vw, 2.2rem) !important; }
+        .cp-auth-main h3 { font-size: clamp(1.55rem, 6.6vw, 2rem) !important; }
       }
       @media (max-width: 420px) {
         .cp-navbar { padding: 0 12px !important; }
         .cp-brand-name { max-width: 132px !important; font-size: 16px !important; }
         .cp-page section, .cp-page .cp-section { padding-left: 14px !important; padding-right: 14px !important; }
-        .cp-hero-title { font-size: clamp(2.05rem, 13vw, 3rem) !important; }
-        .cp-section-title { font-size: clamp(1.75rem, 10vw, 2.45rem) !important; }
+        .cp-hero-title { font-size: clamp(1.85rem, 9.5vw, 2.45rem) !important; }
+        .cp-section-title { font-size: clamp(1.5rem, 7.8vw, 2rem) !important; }
+        .cp-give-impact-title { font-size: clamp(1.8rem, 9vw, 2.35rem) !important; }
       }
     `}</style>
   );
@@ -119,7 +127,7 @@ function PageHero({ eyebrow, title, copy, accent }: {
         <h1 className="cp-section-title" style={{
           fontFamily: 'Georgia, "Times New Roman", serif',
           color: '#fff',
-          fontSize: 'clamp(2rem, 4.5vw, 3.4rem)',
+          fontSize: 'clamp(1.85rem, 3.8vw, 3rem)',
           lineHeight: 1.08, fontWeight: 800,
           maxWidth: 760, margin: '0 0 12px',
         }}>

@@ -93,7 +93,7 @@ export function Hero({ ministryName, bannerSrc, accent, tagline, youtubeUrl, ser
 
           <h1 className="cp-hero-title" style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
-            color: '#fff', fontSize: 'clamp(2.6rem, 5.5vw, 5rem)',
+            color: '#fff', fontSize: 'clamp(2.35rem, 5vw, 4.35rem)',
             lineHeight: 1.05, fontWeight: 800, margin: '0 0 18px', maxWidth: 720,
           }}>
             {words.length >= 3

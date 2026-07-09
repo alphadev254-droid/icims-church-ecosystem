@@ -57,7 +57,7 @@ export function Visit({ slug, ministryName, serviceTimes, accent }: VisitProps) 
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>First Visit</p>
           <h2 className="cp-section-title" style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
-            fontSize: 'clamp(1.8rem, 3.8vw, 2.8rem)',
+            fontSize: 'clamp(1.7rem, 3.2vw, 2.45rem)',
             fontWeight: 800, color: '#0a0f1e', lineHeight: 1.1, marginBottom: 10,
           }}>What to expect.</h2>
           <p style={{ color: '#64748b', fontSize: 14, marginBottom: 22, lineHeight: 1.7 }}>

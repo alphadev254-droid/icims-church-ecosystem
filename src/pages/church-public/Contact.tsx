@@ -32,7 +32,7 @@ export function Contact({ profile, accent, churches }: ContactProps) {
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Get in Touch</p>
         <h2 className="cp-section-title" style={{
           fontFamily: 'Georgia, "Times New Roman", serif',
-          fontSize: 'clamp(1.8rem, 3.8vw, 2.8rem)',
+          fontSize: 'clamp(1.7rem, 3.2vw, 2.45rem)',
           fontWeight: 800, color: '#0a0f1e', lineHeight: 1.1, marginBottom: 8,
         }}>We'd love to hear from you.</h2>
         <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 40, maxWidth: 440 }}>

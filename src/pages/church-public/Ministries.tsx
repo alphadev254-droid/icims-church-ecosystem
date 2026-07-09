@@ -17,7 +17,7 @@ export function Ministries({ ministries, accent }: MinistriesProps) {
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
           <h2 className="cp-section-title" style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
-            fontSize: 'clamp(1.8rem, 3.8vw, 2.8rem)',
+            fontSize: 'clamp(1.7rem, 3.2vw, 2.45rem)',
             fontWeight: 800, color: '#0a0f1e', lineHeight: 1.1, margin: 0,
           }}>Find your place to serve.</h2>
           <p style={{ fontSize: 13, color: '#64748b', maxWidth: 360, margin: 0, lineHeight: 1.6 }}>
