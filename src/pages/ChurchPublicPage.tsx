@@ -16,7 +16,7 @@ import { Footer } from './church-public/Footer';
 import { SignInDialog } from './church-public/SignInDialog';
 
 const defaultHero = 'https://media.aircnc.co.ke/media-images/fa70812b-0345-4d35-b45b-3488def7c3e3.webp';
-const defaultGold = '#d89b12';
+const defaultGold = '#f59e0b';
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 
 function currentHref() {
@@ -68,24 +68,24 @@ function PageHero({ eyebrow, title, copy, accent }: {
   accent: string;
 }) {
   return (
-    <section style={{ background: '#111822', padding: '72px 28px 80px' }}>
+    <section style={{ background: '#0a0f1e', padding: '48px 28px 52px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <p style={{
-          fontSize: 11, fontWeight: 700, letterSpacing: '0.22em',
-          textTransform: 'uppercase', color: accent, margin: '0 0 16px',
+          fontSize: 10, fontWeight: 700, letterSpacing: '0.22em',
+          textTransform: 'uppercase', color: accent, margin: '0 0 10px',
         }}>
           {eyebrow.replace('Partner With The Mission', 'Give')}
         </p>
         <h1 className="cp-section-title" style={{
           fontFamily: 'Georgia, "Times New Roman", serif',
           color: '#fff',
-          fontSize: 'clamp(2.4rem, 5.5vw, 4.2rem)',
-          lineHeight: 1.05, fontWeight: 800,
-          maxWidth: 860, margin: '0 0 16px',
+          fontSize: 'clamp(2rem, 4.5vw, 3.4rem)',
+          lineHeight: 1.08, fontWeight: 800,
+          maxWidth: 760, margin: '0 0 12px',
         }}>
           {title}
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 16, lineHeight: 1.7, maxWidth: 640, margin: 0 }}>
+        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 15, lineHeight: 1.65, maxWidth: 560, margin: 0 }}>
           {copy}
         </p>
       </div>
