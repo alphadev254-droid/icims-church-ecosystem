@@ -98,16 +98,29 @@ function PageHero({ eyebrow, title, copy, accent }: {
   return (
     <section style={{
       background: 'linear-gradient(120deg, #111822 0%, #14213a 66%, #303846 100%)',
-      padding: '92px 28px 104px',
+      padding: '92px 28px 108px',
     }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <p style={{
+          color: 'rgba(255,255,255,0.65)',
+          fontSize: 13,
+          fontWeight: 700,
+          margin: '0 0 28px',
+        }}>
+          Home <span style={{ color: 'rgba(255,255,255,0.35)', margin: '0 10px' }}>›</span>
+          <span style={{ color: accent }}>{eyebrow.replace('Partner With The Mission', 'Give')}</span>
+        </p>
+        <p style={{
+          display: 'inline-flex',
+          border: `1px solid ${accent}`,
+          borderRadius: 999,
+          padding: '8px 20px',
           color: accent,
           fontSize: 12,
           fontWeight: 800,
           letterSpacing: '0.26em',
           textTransform: 'uppercase',
-          marginBottom: 26,
+          margin: '0 0 28px',
         }}>
           {eyebrow}
         </p>
@@ -271,8 +284,11 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
             hasEvents={hasEvents}
             hasCampaigns={hasCampaigns}
           />
-          {hasSermons && <Sermons sermons={sermons.slice(0, 3)} accent={accent} />}
-          {hasEvents && <Events events={events.slice(0, 4)} accent={accent} />}
+          {hasServices && <Services serviceTimes={serviceTimes} accent={accent} />}
+          {hasAbout && <About profile={profile} pastorSrc={pastorSrc} accent={accent} />}
+          {hasSermons && <Sermons sermons={sermons.slice(0, 3)} accent={accent} variant="home" />}
+          {hasMinistries && <Ministries ministries={ministries} accent={accent} />}
+          {hasEvents && <Events events={events.slice(0, 4)} accent={accent} variant="home" />}
           {hasCampaigns && <Give campaigns={campaigns.slice(0, 3)} accent={accent} />}
         </>
       )}
@@ -295,14 +311,14 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
       {page === 'sermons' && (
         <>
           <PageHero eyebrow="Sermons" title={<>This week at <span style={{ color: accent }}>the pulpit.</span></>} copy="Watch recent messages and keep growing through the Word wherever you are." accent={accent} />
-          {hasSermons && <Sermons sermons={sermons} accent={accent} />}
+          {hasSermons && <Sermons sermons={sermons} accent={accent} variant="page" />}
         </>
       )}
 
       {page === 'events' && (
         <>
           <PageHero eyebrow="Events" title={<>Come and be <span style={{ color: accent }}>part of it.</span></>} copy="Conferences, worship nights, outreaches, and gatherings. There is always something happening." accent={accent} />
-          {hasEvents && <Events events={events} accent={accent} />}
+          {hasEvents && <Events events={events} accent={accent} variant="page" />}
         </>
       )}
 
