@@ -389,7 +389,7 @@ function GuardianLinkDialog({ child, open, onOpenChange }: { child: Child | null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Link Guardian</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <GuardianSearchPicker
@@ -527,7 +527,7 @@ export default function ChildrenPage() {
             <DialogTrigger asChild>
               <Button className="gap-1.5"><Plus className="h-4 w-4" /> Add Child</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Add Child</DialogTitle></DialogHeader>
               <ChildForm
                 defaultChurchId={defaultChurchId}
@@ -688,7 +688,7 @@ export default function ChildrenPage() {
       <ChildDetailsDialog child={viewChild} onOpenChange={open => !open && setViewChild(null)} />
 
       <Dialog open={!!editChild} onOpenChange={open => !open && setEditChild(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Child</DialogTitle></DialogHeader>
           {editChild && (
             <ChildForm
