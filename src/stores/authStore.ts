@@ -80,6 +80,11 @@ function applyPermissions(permissions: string[], user: AuthUser) {
   };
 }
 
+function getDefaultRedirect(user: AuthUser, navItems: NavItem[], allowedRoutes: string[]) {
+  if (user.roleName === 'system_admin') return '/admin';
+  return navItems[0]?.to ?? allowedRoutes[0] ?? '/dashboard';
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -96,12 +101,13 @@ export const useAuthStore = create<AuthState>()(
           if (data.success) {
             const permissions: string[] = data.user.permissions ?? [];
             const isSystemAdmin = data.user.roleName === 'system_admin';
+            const applied = applyPermissions(permissions, data.user);
             set({
               user: { ...data.user, isSystemAdmin },
-              ...applyPermissions(permissions, data.user),
+              ...applied,
               isLoading: false,
             });
-            return { success: true, redirectTo: isSystemAdmin ? '/admin' : '/dashboard' };
+            return { success: true, redirectTo: getDefaultRedirect(data.user, applied.navItems, applied.allowedRoutes) };
           }
           return { success: false, message: data.message };
         } catch (err: any) {

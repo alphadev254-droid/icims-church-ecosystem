@@ -120,7 +120,7 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
 export function getAllowedRoutesFromPermissions(permissions: string[], user?: { accountCountry?: string | null; roleName?: string } | null): string[] {
   const permSet = new Set(permissions);
   const currentUser = user ?? useAuthStore.getState().user;
-  const routes = ['/dashboard']; // always include root dashboard
+  const routes: string[] = [];
   
   for (const { permission, item } of PERMISSION_TO_NAV) {
     if (permSet.has(permission) && !routes.includes(item.to)) {
