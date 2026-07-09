@@ -104,6 +104,12 @@ export interface ScheduledReminderLog {
   reminder: ScheduledReminder;
 }
 
+export interface ScheduledReminderLogsResponse {
+  success: boolean;
+  data: ScheduledReminderLog[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}
+
 export const getUpcomingReminders = async (params?: {
   days?: number;
   type?: string;
@@ -138,7 +144,15 @@ export const deleteScheduledReminder = async (id: string): Promise<{ success: bo
   return response.data;
 };
 
-export const getScheduledReminderLogs = async (): Promise<{ success: boolean; data: ScheduledReminderLog[] }> => {
-  const response = await api.get('/reminders/scheduled/logs');
+export const getScheduledReminderLogs = async (params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  channel?: string;
+  reminderId?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<ScheduledReminderLogsResponse> => {
+  const response = await api.get('/reminders/scheduled/logs', { params });
   return response.data;
 };

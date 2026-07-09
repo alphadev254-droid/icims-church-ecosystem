@@ -24,6 +24,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calendar, Gift, Heart, Church as ChurchIcon, Cake, Search, Phone, Mail, Bell, Lock, X, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -82,6 +83,12 @@ const Reminders = () => {
   const [campaigns, setCampaigns] = useState<GivingCampaign[]>([]);
   const [scheduledReminders, setScheduledReminders] = useState<ScheduledReminder[]>([]);
   const [scheduledLogs, setScheduledLogs] = useState<ScheduledReminderLog[]>([]);
+  const [scheduledLogPagination, setScheduledLogPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 0 });
+  const [logStatusFilter, setLogStatusFilter] = useState('all');
+  const [logChannelFilter, setLogChannelFilter] = useState('all');
+  const [logReminderFilter, setLogReminderFilter] = useState('all');
+  const [logStartDate, setLogStartDate] = useState('');
+  const [logEndDate, setLogEndDate] = useState('');
   const [scheduledForm, setScheduledForm] = useState(DEFAULT_SCHEDULED_FORM);
   const [scheduledLoading, setScheduledLoading] = useState(false);
   const [scheduledSaving, setScheduledSaving] = useState(false);
@@ -124,16 +131,25 @@ const Reminders = () => {
       setScheduledLoading(true);
       const [rulesResponse, logsResponse] = await Promise.all([
         getScheduledReminders(selectedChurch !== 'all' ? { churchId: selectedChurch } : undefined),
-        getScheduledReminderLogs(),
+        getScheduledReminderLogs({
+          page: scheduledLogPagination.page,
+          limit: scheduledLogPagination.limit,
+          status: logStatusFilter !== 'all' ? logStatusFilter : undefined,
+          channel: logChannelFilter !== 'all' ? logChannelFilter : undefined,
+          reminderId: logReminderFilter !== 'all' ? logReminderFilter : undefined,
+          startDate: logStartDate || undefined,
+          endDate: logEndDate || undefined,
+        }),
       ]);
       setScheduledReminders(rulesResponse.data);
       setScheduledLogs(logsResponse.data);
+      setScheduledLogPagination(logsResponse.pagination);
     } catch (error) {
       console.error('Failed to fetch scheduled reminders:', error);
     } finally {
       setScheduledLoading(false);
     }
-  }, [canManageScheduled, selectedChurch]);
+  }, [canManageScheduled, selectedChurch, scheduledLogPagination.page, scheduledLogPagination.limit, logStatusFilter, logChannelFilter, logReminderFilter, logStartDate, logEndDate]);
 
   useEffect(() => {
     fetchScheduled();
@@ -694,7 +710,9 @@ const Reminders = () => {
               <div>
                 <label className="text-xs font-medium">Message</label>
                 <Textarea rows={4} value={scheduledForm.message} onChange={e => setScheduledForm(prev => ({ ...prev, message: e.target.value }))} />
-                <p className="mt-1 text-xs text-muted-foreground">Variables: {'{firstName}'}, {'{campaignName}'}, {'{balance}'}, {'{deadline}'}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Variables: {'{firstName}'} works for all reminders. {'{campaignName}'} works for pledge reminders or when one campaign is selected; with All campaigns it becomes general text. {'{balance}'} and {'{deadline}'} are for pledge reminders only.
+                </p>
               </div>
               <Button className="w-full" disabled={scheduledSaving} onClick={handleCreateScheduledReminder}>
                 <Plus className="h-4 w-4" /> {scheduledSaving ? 'Saving...' : 'Create Reminder'}
@@ -737,22 +755,115 @@ const Reminders = () => {
 
       {canManageScheduled && activeTab === 'history' && (
         <div className="space-y-3">
-          {scheduledLogs.length === 0 ? (
-            <Card><CardContent className="p-6 text-sm text-muted-foreground">No scheduled reminder sends yet.</CardContent></Card>
-          ) : scheduledLogs.map(log => (
-            <Card key={log.id}>
-              <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-medium">{log.reminder.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {log.channel} · {log.status} · {log.recipientEmail || log.userId || 'recipient'} · {new Date(log.scheduledFor).toLocaleDateString()}
-                  </p>
-                  {log.error && <p className="text-xs text-destructive">{log.error}</p>}
-                </div>
-                <Badge variant={log.status === 'failed' ? 'destructive' : 'outline'}>{log.status}</Badge>
-              </CardContent>
-            </Card>
-          ))}
+          <Card>
+            <CardContent className="space-y-3 p-3 sm:p-4">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+                <Select value={logStatusFilter} onValueChange={value => { setLogStatusFilter(value); setScheduledLogPagination(prev => ({ ...prev, page: 1 })); }}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    <SelectItem value="queued">Queued</SelectItem>
+                    <SelectItem value="sent">Sent</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={logChannelFilter} onValueChange={value => { setLogChannelFilter(value); setScheduledLogPagination(prev => ({ ...prev, page: 1 })); }}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Channel" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All channels</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="push">Push</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={logReminderFilter} onValueChange={value => { setLogReminderFilter(value); setScheduledLogPagination(prev => ({ ...prev, page: 1 })); }}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Reminder" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All reminders</SelectItem>
+                    {scheduledReminders.map(reminder => (
+                      <SelectItem key={reminder.id} value={reminder.id}>{reminder.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input type="date" className="h-9" value={logStartDate} onChange={e => { setLogStartDate(e.target.value); setScheduledLogPagination(prev => ({ ...prev, page: 1 })); }} />
+                <Input type="date" className="h-9" value={logEndDate} onChange={e => { setLogEndDate(e.target.value); setScheduledLogPagination(prev => ({ ...prev, page: 1 })); }} />
+                <Button
+                  variant="outline"
+                  className="h-9"
+                  onClick={() => {
+                    setLogStatusFilter('all');
+                    setLogChannelFilter('all');
+                    setLogReminderFilter('all');
+                    setLogStartDate('');
+                    setLogEndDate('');
+                    setScheduledLogPagination(prev => ({ ...prev, page: 1 }));
+                  }}
+                >
+                  Clear
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-0">
+              {scheduledLogs.length === 0 ? (
+                <div className="p-6 text-sm text-muted-foreground">No scheduled reminder sends found.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Reminder</TableHead>
+                      <TableHead>Channel</TableHead>
+                      <TableHead>Recipient</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="hidden md:table-cell">Scheduled For</TableHead>
+                      <TableHead className="hidden lg:table-cell">Sent At</TableHead>
+                      <TableHead className="hidden xl:table-cell">Error</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scheduledLogs.map(log => (
+                      <TableRow key={log.id}>
+                        <TableCell className="max-w-[220px] truncate font-medium">{log.reminder.title}</TableCell>
+                        <TableCell className="capitalize">{log.channel}</TableCell>
+                        <TableCell className="max-w-[220px] truncate text-muted-foreground">{log.recipientEmail || log.userId || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={log.status === 'failed' ? 'destructive' : 'outline'}>{log.status}</Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">{new Date(log.scheduledFor).toLocaleDateString()}</TableCell>
+                        <TableCell className="hidden lg:table-cell text-muted-foreground">{log.sentAt ? new Date(log.sentAt).toLocaleString() : '-'}</TableCell>
+                        <TableCell className="hidden xl:table-cell max-w-[260px] truncate text-xs text-destructive">{log.error || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              Page {scheduledLogPagination.page} of {Math.max(scheduledLogPagination.totalPages, 1)} · {scheduledLogPagination.total} log(s)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={scheduledLogPagination.page <= 1}
+                onClick={() => setScheduledLogPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={scheduledLogPagination.page >= scheduledLogPagination.totalPages}
+                onClick={() => setScheduledLogPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
