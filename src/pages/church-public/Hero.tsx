@@ -23,9 +23,9 @@ function hexToRgba(hex: string, alpha: number) {
 function useCountdown(targetDay: string, targetTime: string) {
   const [parts, setParts] = useState({ d: '00', h: '00', m: '00', s: '00' });
   useEffect(() => {
-    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const dayIndex = days.findIndex(d => targetDay?.toLowerCase().startsWith(d.toLowerCase()));
     function calc() {
+      const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const dayIndex = days.findIndex(d => targetDay?.toLowerCase().startsWith(d.toLowerCase()));
       const now = new Date();
       const [timePart, mer] = (targetTime ?? '').split(' ');
       const [rawH, rawM] = timePart?.split(':').map(Number) ?? [0, 0];
@@ -52,7 +52,7 @@ function useCountdown(targetDay: string, targetTime: string) {
     calc();
     const id = setInterval(calc, 1000);
     return () => clearInterval(id);
-  }, [targetDay, targetTime, dayIndex]);
+  }, [targetDay, targetTime]);
   return parts;
 }
 
