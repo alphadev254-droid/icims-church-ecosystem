@@ -11,6 +11,7 @@ export interface AuthUser {
   title?: string | null;
   ministryName?: string | null;
   roleName: string;
+  roleDisplayName?: string | null;
   role?: string;
   roleId?: string | null;
   phone?: string | null;

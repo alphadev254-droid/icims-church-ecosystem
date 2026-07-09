@@ -30,6 +30,7 @@ export default function DashboardLayout() {
 
   const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/['"]|\/$|^\/api$/g, '');
   const avatarUrl = user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${STATIC_BASE}${user.avatar}`) : null;
+  const roleLabel = user?.roleDisplayName || user?.roleName?.replace(/_/g, ' ');
 
   const handleLogout = async () => {
     await logout();
@@ -68,9 +69,10 @@ export default function DashboardLayout() {
 
       {/* Pinned footer — always visible, never scrolls away */}
       <div className="p-3 border-t border-sidebar-border space-y-1">
-        <div className="px-3 py-2 text-sm text-sidebar-foreground/70">
-          <div className="font-medium text-sidebar-foreground">{user?.firstName} {user?.lastName}</div>
-          <div className="text-xs capitalize">{user?.roleName?.replace(/_/g, ' ')}</div>
+        <div className="px-3 py-2 text-sm text-sidebar-foreground/70 min-w-0">
+          <div className="font-medium text-sidebar-foreground truncate">{user?.firstName} {user?.lastName}</div>
+          <div className="text-xs truncate">{user?.email}</div>
+          <div className="text-xs text-sidebar-primary mt-0.5 truncate">{roleLabel}</div>
           {user?.church && (
             <div className="text-xs text-sidebar-foreground/50 mt-0.5 truncate">{user.church.name}</div>
           )}
