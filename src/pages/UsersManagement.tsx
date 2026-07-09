@@ -51,6 +51,16 @@ const ROLE_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = 
   member: 'outline',
 };
 
+const RELATIONSHIP_OPTIONS = [
+  { value: 'mother', label: 'Mother' },
+  { value: 'father', label: 'Father' },
+  { value: 'parent', label: 'Parent' },
+  { value: 'guardian', label: 'Guardian' },
+  { value: 'grandparent', label: 'Grandparent' },
+  { value: 'sibling', label: 'Sibling' },
+  { value: 'relative', label: 'Relative' },
+];
+
 // ─── Role select ──────────────────────────────────────────────────────────────
 function RoleSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { data: roles = [] } = useQuery({ queryKey: ['roles'], queryFn: rolesService.getRoles });
@@ -184,7 +194,14 @@ function MemberChildrenPanel({ member }: { member: AppUser }) {
                 </div>
                 <div>
                   <Label>Relationship</Label>
-                  <Input value={relationship} onChange={e => setRelationship(e.target.value)} placeholder="mother, father, guardian..." />
+                  <Select value={relationship} onValueChange={setRelationship}>
+                    <SelectTrigger><SelectValue placeholder="Select relationship" /></SelectTrigger>
+                    <SelectContent>
+                      {RELATIONSHIP_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex gap-2 pt-1">
                   <Button variant="outline" className="flex-1" onClick={() => setOpen(false)}>Cancel</Button>
@@ -1549,11 +1566,14 @@ export default function UsersManagement() {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="font-heading">Edit User</DialogTitle></DialogHeader>
           {editUser && (
-            <EditUserForm
-              user={editUser}
-              onSubmit={handleEdit}
-              isPending={updateMutation.isPending}
-            />
+            <div className="space-y-4">
+              <EditUserForm
+                user={editUser}
+                onSubmit={handleEdit}
+                isPending={updateMutation.isPending}
+              />
+              <MemberChildrenPanel member={editUser} />
+            </div>
           )}
         </DialogContent>
       </Dialog>
