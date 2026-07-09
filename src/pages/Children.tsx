@@ -6,6 +6,7 @@ import { usersService, type AppUser } from '@/services/users';
 import { churchesService } from '@/services/churches';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useRole } from '@/hooks/useRole';
+import { useAuthStore } from '@/stores/authStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -221,12 +222,13 @@ function GuardianSearchPicker({
   );
 }
 
-function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardianIds = [] }: {
+function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardianIds = [], fixedGuardian }: {
   child?: Child | null;
   defaultChurchId?: string;
   onSubmit: (payload: any) => void;
   isPending?: boolean;
   disabledGuardianIds?: string[];
+  fixedGuardian?: { id: string; firstName: string; lastName: string; email: string };
 }) {
   const [churchId, setChurchId] = useState(child?.churchId ?? defaultChurchId ?? '');
   const [firstName, setFirstName] = useState(child?.firstName ?? '');
@@ -237,10 +239,14 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
   const [phone, setPhone] = useState(child?.phone ?? '');
   const [notes, setNotes] = useState(child?.notes ?? '');
   const [status, setStatus] = useState(child?.status ?? 'active');
-  const [guardian, setGuardian] = useState<AppUser | null>(null);
+  const [guardian, setGuardian] = useState<AppUser | { id: string; firstName: string; lastName: string; email: string } | null>(fixedGuardian ?? null);
   const [relationship, setRelationship] = useState('guardian');
 
-  const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: churchesService.getAll });
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches'],
+    queryFn: churchesService.getAll,
+    enabled: !child && !fixedGuardian,
+  });
 
   return (
     <div className="space-y-3">
@@ -314,12 +320,22 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
         <Label>Notes</Label>
         <Textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} />
       </div>
-      <GuardianSearchPicker
-        churchId={child?.churchId ?? churchId}
-        value={guardian}
-        onChange={setGuardian}
-        disabledGuardianIds={disabledGuardianIds}
-      />
+      {fixedGuardian ? (
+        <div className="space-y-2">
+          <Label>Parent / Guardian</Label>
+          <div className="rounded-md border px-3 py-2 text-sm">
+            <p className="font-medium">{guardianName(fixedGuardian)}</p>
+            <p className="text-xs text-muted-foreground">{fixedGuardian.email}</p>
+          </div>
+        </div>
+      ) : (
+        <GuardianSearchPicker
+          churchId={child?.churchId ?? churchId}
+          value={guardian as AppUser | null}
+          onChange={setGuardian}
+          disabledGuardianIds={disabledGuardianIds}
+        />
+      )}
       {guardian && (
         <div>
           <Label>Relationship</Label>
@@ -405,6 +421,8 @@ function GuardianLinkDialog({ child, open, onOpenChange }: { child: Child | null
 export default function ChildrenPage() {
   const qc = useQueryClient();
   const { hasPermission } = useRole();
+  const currentUser = useAuthStore(state => state.user);
+  const isMember = currentUser?.roleName === 'member';
   const [search, setSearch] = useState('');
   const [churchId, setChurchId] = useState('all');
   const [unlinkedOnly, setUnlinkedOnly] = useState(false);
@@ -418,17 +436,28 @@ export default function ChildrenPage() {
   const canCreate = hasPermission('children:create');
   const canUpdate = hasPermission('children:update');
   const canDelete = hasPermission('children:delete');
+  const canLinkGuardians = canUpdate && !isMember;
 
-  const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: churchesService.getAll });
-  const defaultChurchId = churches[0]?.id;
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches'],
+    queryFn: churchesService.getAll,
+    enabled: !isMember,
+  });
+  const defaultChurchId = isMember ? currentUser?.churchId ?? undefined : churches[0]?.id;
+  const fixedGuardian = isMember && currentUser ? {
+    id: currentUser.id,
+    firstName: currentUser.firstName,
+    lastName: currentUser.lastName,
+    email: currentUser.email,
+  } : undefined;
 
   const queryParams = useMemo(() => ({
-    churchId: churchId !== 'all' ? churchId : undefined,
+    churchId: isMember ? currentUser?.churchId ?? undefined : churchId !== 'all' ? churchId : undefined,
     search: debouncedSearch || undefined,
     unlinked: unlinkedOnly || undefined,
     page,
     limit: PAGE_SIZE,
-  }), [churchId, debouncedSearch, unlinkedOnly, page]);
+  }), [churchId, currentUser?.churchId, debouncedSearch, isMember, unlinkedOnly, page]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['children', queryParams],
@@ -500,7 +529,12 @@ export default function ChildrenPage() {
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader><DialogTitle>Add Child</DialogTitle></DialogHeader>
-              <ChildForm defaultChurchId={defaultChurchId} onSubmit={payload => createMutation.mutate(payload)} isPending={createMutation.isPending} />
+              <ChildForm
+                defaultChurchId={defaultChurchId}
+                fixedGuardian={fixedGuardian}
+                onSubmit={payload => createMutation.mutate(payload)}
+                isPending={createMutation.isPending}
+              />
             </DialogContent>
           </Dialog>
         )}
@@ -511,17 +545,21 @@ export default function ChildrenPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" placeholder="Search children..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
         </div>
-        <Select value={churchId} onValueChange={v => { setChurchId(v); setPage(1); }}>
-          <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All churches</SelectItem>
-            {churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-          <Checkbox checked={unlinkedOnly} onCheckedChange={v => { setUnlinkedOnly(Boolean(v)); setPage(1); }} />
-          No guardian
-        </label>
+        {!isMember && (
+          <>
+            <Select value={churchId} onValueChange={v => { setChurchId(v); setPage(1); }}>
+              <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All churches</SelectItem>
+                {churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <Checkbox checked={unlinkedOnly} onCheckedChange={v => { setUnlinkedOnly(Boolean(v)); setPage(1); }} />
+              No guardian
+            </label>
+          </>
+        )}
       </div>
 
       <Card>
@@ -571,7 +609,7 @@ export default function ChildrenPage() {
                               <span className="max-w-[160px] truncate font-medium">{guardianName(link.guardian)}</span>
                               <span className="text-muted-foreground">({link.relationship})</span>
                               {link.isPrimary && <Badge variant="outline" className="text-[10px]">Primary</Badge>}
-                              {canUpdate && (
+                              {canUpdate && (!isMember || link.guardianId === currentUser?.id) && (
                                 <button
                                   type="button"
                                   className="ml-1 text-muted-foreground hover:text-destructive"
@@ -600,11 +638,15 @@ export default function ChildrenPage() {
                         <button onClick={() => setViewChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
                           <Info className="h-3.5 w-3.5" />
                         </button>
-                        {canUpdate && (
+                        {canLinkGuardians && (
                           <>
                             <button onClick={() => setLinkChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
                               <Link2 className="h-3.5 w-3.5" />
                             </button>
+                          </>
+                        )}
+                        {canUpdate && (
+                          <>
                             <button onClick={() => setEditChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
@@ -654,6 +696,7 @@ export default function ChildrenPage() {
               onSubmit={payload => updateMutation.mutate({ id: editChild.id, payload })}
               isPending={updateMutation.isPending}
               disabledGuardianIds={editChild.guardians?.map(link => link.guardianId) ?? []}
+              fixedGuardian={fixedGuardian}
             />
           )}
         </DialogContent>

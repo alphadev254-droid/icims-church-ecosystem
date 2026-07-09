@@ -163,24 +163,54 @@ function ImageUploadPicker({
 interface ServiceTime { name: string; day: string; time: string; location: string; }
 
 interface ProfileData {
-  logoUrl?: string;
-  bannerUrl?: string;
-  primaryColor?: string;
-  tagline?: string;
-  aboutText?: string;
-  pastorName?: string;
-  pastorPhoto?: string;
-  pastorBio?: string;
-  visionText?: string;
-  missionText?: string;
-  serviceTimes?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  facebookUrl?: string;
-  youtubeUrl?: string;
-  whatsappNumber?: string;
+  logoUrl?: string | null;
+  bannerUrl?: string | null;
+  primaryColor?: string | null;
+  tagline?: string | null;
+  aboutText?: string | null;
+  pastorName?: string | null;
+  pastorPhoto?: string | null;
+  pastorBio?: string | null;
+  visionText?: string | null;
+  missionText?: string | null;
+  serviceTimes?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  facebookUrl?: string | null;
+  youtubeUrl?: string | null;
+  whatsappNumber?: string | null;
   isPublished?: boolean;
+}
+
+const PROFILE_EDIT_FIELDS: Array<keyof ProfileData> = [
+  'logoUrl',
+  'bannerUrl',
+  'primaryColor',
+  'tagline',
+  'aboutText',
+  'pastorName',
+  'pastorPhoto',
+  'pastorBio',
+  'visionText',
+  'missionText',
+  'serviceTimes',
+  'phone',
+  'email',
+  'address',
+  'facebookUrl',
+  'youtubeUrl',
+  'whatsappNumber',
+  'isPublished',
+];
+
+function cleanProfilePayload(form: ProfileData, serviceTimes: ServiceTime[]): ProfileData {
+  const payload: ProfileData = {};
+  for (const key of PROFILE_EDIT_FIELDS) {
+    if (key in form) payload[key] = form[key] as never;
+  }
+  payload.serviceTimes = JSON.stringify(serviceTimes);
+  return payload;
 }
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
@@ -274,10 +304,7 @@ export default function ChurchProfileSettingsPage() {
   });
 
   const handleSave = () => {
-    saveMutation.mutate({
-      ...form,
-      serviceTimes: JSON.stringify(serviceTimes),
-    });
+    saveMutation.mutate(cleanProfilePayload(form, serviceTimes));
   };
 
   const addServiceTime = () => {

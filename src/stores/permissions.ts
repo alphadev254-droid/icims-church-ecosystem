@@ -73,10 +73,6 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
         return currentUser?.roleName !== 'member';
       }
 
-      if (item.to === '/dashboard/children') {
-        return currentUser?.roleName !== 'member';
-      }
-
       // Hide withdrawals for non-Malawi accounts and members
       if (item.to === '/dashboard/withdrawals') {
         return currentUser?.accountCountry === 'Malawi' && currentUser?.roleName !== 'member';
@@ -134,9 +130,6 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
       }
       // Hide users route from members
       if (item.to === '/dashboard/users' && currentUser?.roleName === 'member') {
-        continue;
-      }
-      if (item.to === '/dashboard/children' && currentUser?.roleName === 'member') {
         continue;
       }
       // Hide transactions route from members
