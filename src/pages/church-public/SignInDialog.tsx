@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Lock, Mail, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 
 interface SignInDialogProps {
@@ -9,6 +10,8 @@ interface SignInDialogProps {
   logoInitial: string;
 }
 
+const DARK = '#121D39';
+
 export function SignInDialog({ open, onClose, accent, ministryName, logoInitial }: SignInDialogProps) {
   const login = useAuthStore(s => s.login);
   const [email, setEmail] = useState('');
@@ -18,226 +21,301 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
 
   if (!open) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError('');
     setLoading(true);
     const result = await login(email, password);
     setLoading(false);
+
     if (result.success) {
       const isSubdomain = window.location.hostname !== 'churchcentral.church' && window.location.hostname !== 'localhost';
       const redirectPath = result.redirectTo ?? '/dashboard';
-      if (isSubdomain) {
-        window.location.href = `https://churchcentral.church${redirectPath}`;
-      } else {
-        window.location.href = redirectPath;
-      }
-    } else {
-      setError(result.message || 'Invalid email or password');
+      window.location.href = isSubdomain ? `https://churchcentral.church${redirectPath}` : redirectPath;
+      return;
     }
+
+    setError(result.message || 'Invalid email or password');
   };
 
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={onClose}
         style={{
-          position: 'fixed', inset: 0, zIndex: 2000,
-          background: 'rgba(0,0,0,0.75)',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 2000,
+          background: 'rgba(4,10,24,0.78)',
+          backdropFilter: 'blur(6px)',
         }}
       />
 
-      {/* Dialog — two-panel */}
       <div className="cp-auth-dialog" style={{
-        position: 'fixed', zIndex: 2001,
-        top: '50%', left: '50%',
+        position: 'fixed',
+        zIndex: 2001,
+        top: '50%',
+        left: '50%',
         transform: 'translate(-50%, -50%)',
-        display: 'flex',
-        width: '100%', maxWidth: 860,
+        display: 'grid',
+        gridTemplateColumns: 'minmax(260px, 0.82fr) minmax(320px, 1.18fr)',
+        width: 'calc(100% - 32px)',
+        maxWidth: 880,
         maxHeight: '90vh',
         overflow: 'hidden',
-        boxShadow: '0 40px 100px rgba(0,0,0,0.4)',
+        borderRadius: 18,
+        border: '1px solid rgba(255,255,255,0.12)',
+        background: DARK,
+        boxShadow: '0 40px 120px rgba(0,0,0,0.48)',
       }}>
-
-        {/* ── LEFT PANEL — dark ── */}
         <div className="cp-auth-side" style={{
-          width: '42%', flexShrink: 0,
-          background: '#1c1f2e',
-          padding: '48px 40px',
-          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          background: '#0A0F1E',
+          padding: '38px 34px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          gap: 40,
+          borderRight: '1px solid rgba(255,255,255,0.08)',
         }}>
-          {/* Logo + name */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <div style={{
-              width: 36, height: 36,
-              border: '1px solid rgba(255,255,255,0.4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'Georgia, serif', fontSize: 15, fontWeight: 700,
-              color: '#fff',
-            }}>{logoInitial}</div>
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: accent,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: 'Georgia, serif',
+              fontSize: 17,
+              fontWeight: 800,
+              color: DARK,
+              flexShrink: 0,
+            }}>
+              {logoInitial}
+            </div>
             <span style={{
               fontFamily: 'Georgia, serif',
-              fontSize: 14, fontWeight: 700, color: '#fff',
-              letterSpacing: '0.04em',
-            }}>{ministryName}</span>
+              fontSize: 17,
+              fontWeight: 800,
+              color: '#fff',
+              lineHeight: 1.2,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {ministryName}
+            </span>
           </div>
 
-          {/* Middle content */}
           <div>
             <p style={{
-              fontSize: 10, fontWeight: 600, letterSpacing: '0.22em',
-              textTransform: 'uppercase', color: accent || '#c9a96e',
-              marginBottom: 20,
-            }}>Members</p>
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              color: accent,
+              margin: '0 0 16px',
+            }}>
+              Members
+            </p>
             <h2 style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
-              fontSize: 32, fontWeight: 400, color: '#fff',
-              lineHeight: 1.2, marginBottom: 20,
+              fontSize: 'clamp(2rem, 4vw, 3rem)',
+              fontWeight: 800,
+              color: '#fff',
+              lineHeight: 1.08,
+              margin: '0 0 18px',
             }}>
-              Welcome<br />back home.
+              Welcome back home.
             </h2>
             <p style={{
-              fontSize: 13, color: 'rgba(255,255,255,0.55)',
-              lineHeight: 1.7, maxWidth: 220,
+              fontSize: 14,
+              color: 'rgba(255,255,255,0.68)',
+              lineHeight: 1.7,
+              maxWidth: 280,
+              margin: 0,
             }}>
               Sign in to access prayer requests, giving history, and member-only resources.
             </p>
           </div>
 
-          {/* Bottom tagline */}
           <p style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: '0.22em',
-            textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)',
-          }}>Faith, Hope, Love</p>
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.35)',
+            margin: 0,
+          }}>
+            Faith, Hope, Love
+          </p>
         </div>
 
-        {/* ── RIGHT PANEL — cream ── */}
         <div className="cp-auth-main" style={{
-          flex: 1,
-          background: '#faf8f4',
-          padding: '48px 44px',
           position: 'relative',
           overflowY: 'auto',
+          background: DARK,
+          padding: '42px clamp(24px, 4vw, 46px)',
         }}>
-          {/* Close button */}
           <button
             onClick={onClose}
             style={{
-              position: 'absolute', top: 20, right: 20,
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 18, color: '#aaa', lineHeight: 1, padding: 4,
+              position: 'absolute',
+              top: 18,
+              right: 18,
+              width: 34,
+              height: 34,
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.04)',
+              color: 'rgba(255,255,255,0.72)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
             aria-label="Close"
-          >✕</button>
+          >
+            <X size={17} />
+          </button>
 
-          {/* Form header */}
           <p style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: '0.22em',
-            textTransform: 'uppercase', color: accent || '#c9a96e',
-            marginBottom: 12,
-          }}>Sign In</p>
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            color: accent,
+            margin: '0 0 12px',
+          }}>
+            Sign In
+          </p>
           <h3 style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
-            fontSize: 26, fontWeight: 400, color: '#0a0a0a',
-            marginBottom: 36, lineHeight: 1.2,
-          }}>Enter your account.</h3>
+            fontSize: 'clamp(1.8rem, 4vw, 2.6rem)',
+            fontWeight: 800,
+            color: '#fff',
+            lineHeight: 1.12,
+            margin: '0 0 28px',
+          }}>
+            Enter your account.
+          </h3>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {/* Email field */}
-            <div style={{ marginBottom: 24 }}>
-              <label style={{
-                display: 'block', fontSize: 10, fontWeight: 600,
-                letterSpacing: '0.18em', textTransform: 'uppercase',
-                color: accent || '#c9a96e', marginBottom: 10,
-              }}>Email</label>
-              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #ccc', paddingBottom: 8 }}>
-                <span style={{ color: '#aaa', marginRight: 10, fontSize: 14 }}>✉</span>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <label style={labelStyle}>
+              <span>Email</span>
+              <div style={fieldStyle}>
+                <Mail size={17} color="rgba(255,255,255,0.48)" />
                 <input
                   type="email"
                   required
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={event => setEmail(event.target.value)}
                   placeholder="you@example.com"
-                  style={{
-                    flex: 1, border: 'none', outline: 'none',
-                    fontSize: 14, color: '#0a0a0a',
-                    background: 'transparent',
-                    fontFamily: 'inherit',
-                  }}
+                  style={inputStyle}
                 />
               </div>
-            </div>
+            </label>
 
-            {/* Password field */}
-            <div style={{ marginBottom: 12 }}>
-              <label style={{
-                display: 'block', fontSize: 10, fontWeight: 600,
-                letterSpacing: '0.18em', textTransform: 'uppercase',
-                color: accent || '#c9a96e', marginBottom: 10,
-              }}>Password</label>
-              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #ccc', paddingBottom: 8 }}>
-                <span style={{ color: '#aaa', marginRight: 10, fontSize: 14 }}>🔒</span>
+            <label style={labelStyle}>
+              <span>Password</span>
+              <div style={fieldStyle}>
+                <Lock size={17} color="rgba(255,255,255,0.48)" />
                 <input
                   type="password"
                   required
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  style={{
-                    flex: 1, border: 'none', outline: 'none',
-                    fontSize: 14, color: '#0a0a0a',
-                    background: 'transparent',
-                    fontFamily: 'inherit',
-                  }}
+                  onChange={event => setPassword(event.target.value)}
+                  placeholder="Enter password"
+                  style={inputStyle}
                 />
               </div>
-            </div>
+            </label>
 
-            {/* Forgot password */}
-            <div style={{ textAlign: 'right', marginBottom: 28 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -4 }}>
               <a
                 href="https://churchcentral.church/forgot-password"
                 style={{
-                  fontSize: 12, color: '#888', textDecoration: 'none',
-                  transition: 'color 0.2s',
+                  fontSize: 13,
+                  color: 'rgba(255,255,255,0.62)',
+                  textDecoration: 'none',
                 }}
-                onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = '#0a0a0a'}
-                onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = '#888'}
               >
                 Forgot password?
               </a>
             </div>
 
-            {/* Error */}
             {error && (
-              <p style={{ fontSize: 13, color: '#c0392b', marginBottom: 16 }}>{error}</p>
+              <p style={{
+                fontSize: 13,
+                color: '#fecaca',
+                background: 'rgba(220,38,38,0.14)',
+                border: '1px solid rgba(248,113,113,0.22)',
+                borderRadius: 8,
+                padding: '10px 12px',
+                margin: 0,
+              }}>
+                {error}
+              </p>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
               style={{
-                padding: '16px',
-                background: '#0a0a0a',
-                color: '#fff',
+                marginTop: 8,
+                padding: '15px 18px',
+                borderRadius: 8,
+                background: accent,
+                color: DARK,
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: 13, fontWeight: 600,
-                letterSpacing: '0.08em',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                opacity: loading ? 0.7 : 1,
-                transition: 'opacity 0.2s',
-                marginBottom: 28,
+                fontSize: 14,
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                opacity: loading ? 0.72 : 1,
               }}
             >
-              {loading ? 'Signing in…' : <>Sign In <span style={{ fontSize: 16 }}>↗</span></>}
+              {loading ? 'Signing in...' : <>Sign In <span aria-hidden="true">-&gt;</span></>}
             </button>
-
           </form>
         </div>
       </div>
     </>
   );
 }
+
+const labelStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 8,
+  color: '#fff',
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+};
+
+const fieldStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  minHeight: 50,
+  borderRadius: 10,
+  border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(255,255,255,0.06)',
+  padding: '0 14px',
+};
+
+const inputStyle: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  border: 'none',
+  outline: 'none',
+  fontSize: 15,
+  color: '#fff',
+  background: 'transparent',
+  fontFamily: 'inherit',
+};

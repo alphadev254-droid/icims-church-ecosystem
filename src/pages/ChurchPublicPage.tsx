@@ -16,7 +16,7 @@ import { Footer } from './church-public/Footer';
 import { SignInDialog } from './church-public/SignInDialog';
 
 const defaultHero = 'https://media.aircnc.co.ke/media-images/fa70812b-0345-4d35-b45b-3488def7c3e3.webp';
-const defaultGold = '#FFC638';
+const defaultGold = '#d89b12';
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 
 function currentHref() {
@@ -77,10 +77,17 @@ function ResponsiveStyles() {
         .cp-auth-dialog {
           width: calc(100% - 24px) !important;
           max-height: 92svh !important;
-          flex-direction: column !important;
+          grid-template-columns: 1fr !important;
           overflow-y: auto !important;
         }
-        .cp-auth-side { width: auto !important; min-height: auto !important; padding: 28px 24px !important; gap: 28px !important; }
+        .cp-auth-side {
+          width: auto !important;
+          min-height: auto !important;
+          padding: 28px 24px !important;
+          gap: 28px !important;
+          border-right: none !important;
+          border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+        }
         .cp-auth-main { padding: 34px 24px 28px !important; }
       }
       @media (max-width: 420px) {

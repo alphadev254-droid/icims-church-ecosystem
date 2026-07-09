@@ -19,7 +19,7 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
       background: '#121D39',
       color: '#fff',
       padding: '56px 28px 36px',
-      borderTop: '4px solid #FFC638',
+      borderTop: `4px solid ${accent}`,
     }} className="cp-footer">
       <div style={{
         maxWidth: 1400, margin: '0 auto',
