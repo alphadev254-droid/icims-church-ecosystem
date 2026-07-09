@@ -70,7 +70,7 @@ export function Hero({ ministryName, bannerSrc, accent, tagline, youtubeUrl, ser
       position: 'relative',
       display: 'flex',
       alignItems: 'center',
-      background: `linear-gradient(105deg, rgba(8,12,24,0.96) 0%, rgba(8,12,24,0.82) 55%, rgba(8,12,24,0.6) 100%), url(${bannerSrc}) center/cover no-repeat`,
+      background: `linear-gradient(105deg, rgba(18,29,57,0.97) 0%, rgba(18,29,57,0.84) 55%, rgba(18,29,57,0.62) 100%), url(${bannerSrc}) center/cover no-repeat`,
       padding: '72px 28px 60px',
     }}>
       <div className="cp-home-hero" style={{
@@ -111,7 +111,7 @@ export function Hero({ ministryName, bannerSrc, accent, tagline, youtubeUrl, ser
           <div className="cp-hero-actions" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <a href="#visit" style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
-              background: accent, color: '#0a0f1e', textDecoration: 'none',
+              background: accent, color: '#121D39', textDecoration: 'none',
               borderRadius: 7, padding: '12px 22px', fontWeight: 700, fontSize: 14,
               letterSpacing: '0.01em',
             }}>
@@ -132,7 +132,7 @@ export function Hero({ ministryName, bannerSrc, accent, tagline, youtubeUrl, ser
 
         {nextService && (
           <div style={{
-            background: 'rgba(10,15,30,0.75)',
+            background: 'rgba(18,29,57,0.78)',
             backdropFilter: 'blur(16px)',
             border: `1px solid ${hexToRgba(accent, 0.25)}`,
             borderRadius: 14, padding: '22px 20px',

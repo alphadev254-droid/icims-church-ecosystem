@@ -28,20 +28,20 @@ function SermonCard({ sermon, accent }: { sermon: PublicSermon; accent: string }
       background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
       overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
     }}>
-      <div style={{ position: 'relative', background: '#0a0f1e', height: 150 }}>
+      <div style={{ position: 'relative', background: '#121D39', height: 150 }}>
         {ytId && <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} alt={sermon.title} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,15,30,0.65) 100%)' }} />
         <span style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
           width: 38, height: 38, borderRadius: '50%',
-          background: accent, color: '#0a0f1e',
+          background: accent, color: '#121D39',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 13, fontWeight: 800,
         }}>▶</span>
       </div>
       <div style={{ padding: '14px 16px 16px' }}>
         {sermon.series && <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: accent, margin: '0 0 5px' }}>{sermon.series}</p>}
-        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 16, fontWeight: 700, color: '#0a0f1e', lineHeight: 1.25, margin: '0 0 5px' }}>{sermon.title}</h3>
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 16, fontWeight: 700, color: '#121D39', lineHeight: 1.25, margin: '0 0 5px' }}>{sermon.title}</h3>
         {meta && <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>{meta}</p>}
       </div>
     </a>
@@ -66,7 +66,7 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
   }
 
   return (
-    <section id="sermons" style={{ background: '#0a0f1e', padding: '56px 28px 72px' }}>
+    <section id="sermons" style={{ background: '#121D39', padding: '56px 28px 72px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
           <div>
@@ -95,7 +95,7 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
           <a href={featured.youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
             position: 'relative', minHeight: 320, borderRadius: 12, overflow: 'hidden',
             display: 'flex', alignItems: 'flex-end', padding: '24px 22px',
-            textDecoration: 'none', color: '#fff', background: '#0f172a',
+            textDecoration: 'none', color: '#fff', background: '#121D39',
           }}>
             {featuredId && (
               <img src={`https://img.youtube.com/vi/${featuredId}/hqdefault.jpg`} alt={featured.title}
@@ -105,7 +105,7 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{
                 width: 56, height: 56, borderRadius: '50%', background: accent,
-                color: '#0a0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#121D39', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 18, fontWeight: 800,
               }}>▶</span>
             </div>

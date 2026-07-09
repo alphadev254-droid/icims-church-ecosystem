@@ -16,7 +16,7 @@ import { Footer } from './church-public/Footer';
 import { SignInDialog } from './church-public/SignInDialog';
 
 const defaultHero = 'https://media.aircnc.co.ke/media-images/fa70812b-0345-4d35-b45b-3488def7c3e3.webp';
-const defaultGold = '#f59e0b';
+const defaultGold = '#FFC638';
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 
 function currentHref() {
@@ -28,6 +28,9 @@ function ResponsiveStyles() {
   return (
     <style>{`
       .cp-page * { box-sizing: border-box; }
+      @media (max-width: 1024px) {
+        .cp-card-grid { grid-template-columns: repeat(2, 1fr) !important; }
+      }
       @media (max-width: 768px) {
         .cp-navbar { padding: 0 16px !important; }
         .cp-nav-inner { height: 60px !important; }
@@ -68,7 +71,7 @@ function PageHero({ eyebrow, title, copy, accent }: {
   accent: string;
 }) {
   return (
-    <section style={{ background: '#0a0f1e', padding: '48px 28px 52px' }}>
+    <section style={{ background: '#121D39', padding: '48px 28px 52px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <p style={{
           fontSize: 10, fontWeight: 700, letterSpacing: '0.22em',

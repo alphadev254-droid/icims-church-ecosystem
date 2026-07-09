@@ -16,7 +16,7 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
 
   return (
     <footer style={{
-      background: '#111822',
+      background: '#121D39',
       color: '#fff',
       padding: '64px 28px 36px',
     }} className="cp-footer">
@@ -35,7 +35,7 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
             ) : (
               <span style={{
                 width: 38, height: 38, borderRadius: 8, background: accent,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111822',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#121D39',
               }}>
                 <Building2 size={18} />
               </span>
