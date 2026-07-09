@@ -2,15 +2,31 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
-import { getUpcomingReminders, Reminder, ReminderStats } from '@/services/reminders';
+import {
+  createScheduledReminder,
+  deleteScheduledReminder,
+  getScheduledReminderLogs,
+  getScheduledReminders,
+  getUpcomingReminders,
+  Reminder,
+  ReminderStats,
+  ScheduledReminder,
+  ScheduledReminderLog,
+} from '@/services/reminders';
+import { givingService, type GivingCampaign } from '@/services/giving';
 import { churchesService, Church } from '@/services/churches';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Gift, Heart, Church as ChurchIcon, Cake, Search, Phone, Mail, Bell, Lock, X } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calendar, Gift, Heart, Church as ChurchIcon, Cake, Search, Phone, Mail, Bell, Lock, X, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/\/+$/, '');
 const getAvatarUrl = (path?: string | null) => {
@@ -28,6 +44,27 @@ const EMPTY_STATS: ReminderStats = {
   events: 0,
 };
 
+const DEFAULT_SCHEDULED_FORM = {
+  churchId: '',
+  campaignId: 'all',
+  type: 'giving' as 'giving' | 'pledge',
+  audience: 'all_members' as 'all_members' | 'active_pledges' | 'overdue_pledges' | 'not_given_this_month',
+  channelEmail: true,
+  channelPush: true,
+  title: 'Giving Reminder',
+  message: 'Hi {firstName}, this is a friendly reminder from your church.',
+  scheduleKind: 'monthly_days' as 'monthly_days' | 'pledge_deadline',
+  scheduleDays: '5',
+  deadlineOffsets: '-7,0,3',
+};
+
+function parseNumberCsv(value: string) {
+  return value
+    .split(',')
+    .map(part => Number(part.trim()))
+    .filter(Number.isFinite);
+}
+
 const Reminders = () => {
   const { user } = useAuth();
   const { hasPermission } = useRole();
@@ -42,10 +79,18 @@ const Reminders = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [daysFilter, setDaysFilter] = useState(30);
   const [churches, setChurches] = useState<Church[]>([]);
+  const [campaigns, setCampaigns] = useState<GivingCampaign[]>([]);
+  const [scheduledReminders, setScheduledReminders] = useState<ScheduledReminder[]>([]);
+  const [scheduledLogs, setScheduledLogs] = useState<ScheduledReminderLog[]>([]);
+  const [scheduledForm, setScheduledForm] = useState(DEFAULT_SCHEDULED_FORM);
+  const [scheduledLoading, setScheduledLoading] = useState(false);
+  const [scheduledSaving, setScheduledSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'scheduled' | 'history'>('upcoming');
   const [expandedAvatar, setExpandedAvatar] = useState<{ src: string; name: string } | null>(null);
 
   // Derive permission as a stable boolean — not the function reference
   const canReadReminders = hasPermission('reminders:read');
+  const canManageScheduled = !isMember && canReadReminders;
 
   // Fetch churches for filter (only for non-members)
   useEffect(() => {
@@ -59,6 +104,40 @@ const Reminders = () => {
         .catch(err => console.error('Failed to fetch churches:', err));
     }
   }, [isMember]);
+
+  useEffect(() => {
+    if (!canManageScheduled) return;
+    givingService.getCampaigns()
+      .then(data => setCampaigns(Array.isArray(data) ? data as GivingCampaign[] : []))
+      .catch(err => console.error('Failed to fetch campaigns for reminders:', err));
+  }, [canManageScheduled]);
+
+  useEffect(() => {
+    if (!scheduledForm.churchId && churches.length > 0) {
+      setScheduledForm(prev => ({ ...prev, churchId: churches[0].id }));
+    }
+  }, [churches, scheduledForm.churchId]);
+
+  const fetchScheduled = useCallback(async () => {
+    if (!canManageScheduled) return;
+    try {
+      setScheduledLoading(true);
+      const [rulesResponse, logsResponse] = await Promise.all([
+        getScheduledReminders(selectedChurch !== 'all' ? { churchId: selectedChurch } : undefined),
+        getScheduledReminderLogs(),
+      ]);
+      setScheduledReminders(rulesResponse.data);
+      setScheduledLogs(logsResponse.data);
+    } catch (error) {
+      console.error('Failed to fetch scheduled reminders:', error);
+    } finally {
+      setScheduledLoading(false);
+    }
+  }, [canManageScheduled, selectedChurch]);
+
+  useEffect(() => {
+    fetchScheduled();
+  }, [fetchScheduled]);
 
   const fetchReminders = useCallback(async () => {
     if ((!isMember && !hasRemindersFeature) || !canReadReminders) {
@@ -133,6 +212,63 @@ const Reminders = () => {
     return true;
   });
 
+  const filteredCampaigns = campaigns.filter(campaign => {
+    if (!scheduledForm.churchId) return true;
+    return campaign.churchId === scheduledForm.churchId;
+  });
+
+  const handleCreateScheduledReminder = async () => {
+    if (!scheduledForm.churchId) {
+      toast.error('Select a church');
+      return;
+    }
+    const scheduleDays = parseNumberCsv(scheduledForm.scheduleDays);
+    const deadlineOffsets = parseNumberCsv(scheduledForm.deadlineOffsets);
+    if (scheduledForm.scheduleKind === 'monthly_days' && scheduleDays.length === 0) {
+      toast.error('Enter at least one monthly day');
+      return;
+    }
+    if (scheduledForm.scheduleKind === 'pledge_deadline' && deadlineOffsets.length === 0) {
+      toast.error('Enter at least one pledge deadline offset');
+      return;
+    }
+
+    try {
+      setScheduledSaving(true);
+      await createScheduledReminder({
+        churchId: scheduledForm.churchId,
+        campaignId: scheduledForm.campaignId === 'all' ? null : scheduledForm.campaignId,
+        type: scheduledForm.type,
+        audience: scheduledForm.audience,
+        channelEmail: scheduledForm.channelEmail,
+        channelPush: scheduledForm.channelPush,
+        title: scheduledForm.title,
+        message: scheduledForm.message,
+        scheduleKind: scheduledForm.scheduleKind,
+        scheduleDays,
+        deadlineOffsets,
+      });
+      toast.success('Scheduled reminder created');
+      setScheduledForm(prev => ({ ...DEFAULT_SCHEDULED_FORM, churchId: prev.churchId }));
+      fetchScheduled();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to create scheduled reminder');
+    } finally {
+      setScheduledSaving(false);
+    }
+  };
+
+  const handleDeleteScheduledReminder = async (id: string) => {
+    if (!confirm('Delete this scheduled reminder?')) return;
+    try {
+      await deleteScheduledReminder(id);
+      toast.success('Scheduled reminder deleted');
+      fetchScheduled();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to delete scheduled reminder');
+    }
+  };
+
   // ---------- guards ----------
   if (!isMember && !hasRemindersFeature) {
     return (
@@ -203,6 +339,18 @@ const Reminders = () => {
         </div>
       </div>
 
+      {canManageScheduled && (
+        <Tabs value={activeTab} onValueChange={value => setActiveTab(value as typeof activeTab)}>
+          <TabsList className="grid w-full grid-cols-3 sm:w-[460px]">
+            <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+            <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+            <TabsTrigger value="history">Sent History</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+
+      {activeTab === 'upcoming' && (
+        <>
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card>
@@ -450,6 +598,161 @@ const Reminders = () => {
               </Card>
             );
           })}
+        </div>
+      )}
+        </>
+      )}
+
+      {canManageScheduled && activeTab === 'scheduled' && (
+        <div className="grid gap-4 lg:grid-cols-[420px_1fr]">
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <div>
+                <h2 className="font-heading text-lg font-semibold">Create Scheduled Reminder</h2>
+                <p className="text-xs text-muted-foreground">Send giving or pledge reminders by month day or pledge deadline.</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Church</label>
+                <Select value={scheduledForm.churchId} onValueChange={value => setScheduledForm(prev => ({ ...prev, churchId: value, campaignId: 'all' }))}>
+                  <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+                  <SelectContent>
+                    {churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium">Type</label>
+                  <Select value={scheduledForm.type} onValueChange={value => setScheduledForm(prev => ({ ...prev, type: value as any, scheduleKind: value === 'pledge' ? prev.scheduleKind : 'monthly_days' }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="giving">Giving</SelectItem>
+                      <SelectItem value="pledge">Pledge</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium">Audience</label>
+                  <Select value={scheduledForm.audience} onValueChange={value => setScheduledForm(prev => ({ ...prev, audience: value as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_members">All members</SelectItem>
+                      <SelectItem value="not_given_this_month">Not given this month</SelectItem>
+                      <SelectItem value="active_pledges">Active pledges</SelectItem>
+                      <SelectItem value="overdue_pledges">Overdue pledges</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Campaign</label>
+                <Select value={scheduledForm.campaignId} onValueChange={value => setScheduledForm(prev => ({ ...prev, campaignId: value }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All campaigns</SelectItem>
+                    {filteredCampaigns.map(campaign => <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Schedule</label>
+                <Select value={scheduledForm.scheduleKind} onValueChange={value => setScheduledForm(prev => ({ ...prev, scheduleKind: value as any }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly_days">Monthly days</SelectItem>
+                    <SelectItem value="pledge_deadline">Pledge deadline offsets</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {scheduledForm.scheduleKind === 'monthly_days' ? (
+                <div>
+                  <label className="text-xs font-medium">Days of month</label>
+                  <Input value={scheduledForm.scheduleDays} onChange={e => setScheduledForm(prev => ({ ...prev, scheduleDays: e.target.value }))} placeholder="5,6,8" />
+                  <p className="mt-1 text-xs text-muted-foreground">Example: 5,6,8 sends on those days every month.</p>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs font-medium">Deadline offsets</label>
+                  <Input value={scheduledForm.deadlineOffsets} onChange={e => setScheduledForm(prev => ({ ...prev, deadlineOffsets: e.target.value }))} placeholder="-7,0,3" />
+                  <p className="mt-1 text-xs text-muted-foreground">Use -7 before, 0 on deadline, 3 after deadline.</p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                  Email
+                  <Switch checked={scheduledForm.channelEmail} onCheckedChange={checked => setScheduledForm(prev => ({ ...prev, channelEmail: checked }))} />
+                </label>
+                <label className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                  Push
+                  <Switch checked={scheduledForm.channelPush} onCheckedChange={checked => setScheduledForm(prev => ({ ...prev, channelPush: checked }))} />
+                </label>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Title</label>
+                <Input value={scheduledForm.title} onChange={e => setScheduledForm(prev => ({ ...prev, title: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs font-medium">Message</label>
+                <Textarea rows={4} value={scheduledForm.message} onChange={e => setScheduledForm(prev => ({ ...prev, message: e.target.value }))} />
+                <p className="mt-1 text-xs text-muted-foreground">Variables: {'{firstName}'}, {'{campaignName}'}, {'{balance}'}, {'{deadline}'}</p>
+              </div>
+              <Button className="w-full" disabled={scheduledSaving} onClick={handleCreateScheduledReminder}>
+                <Plus className="h-4 w-4" /> {scheduledSaving ? 'Saving...' : 'Create Reminder'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-3">
+            {scheduledLoading ? (
+              <Card><CardContent className="p-6 text-sm text-muted-foreground">Loading scheduled reminders...</CardContent></Card>
+            ) : scheduledReminders.length === 0 ? (
+              <Card><CardContent className="p-6 text-sm text-muted-foreground">No scheduled reminders yet.</CardContent></Card>
+            ) : scheduledReminders.map(reminder => (
+              <Card key={reminder.id}>
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-medium">{reminder.title}</h3>
+                      <Badge variant={reminder.isActive ? 'default' : 'secondary'}>{reminder.isActive ? 'Active' : 'Paused'}</Badge>
+                      <Badge variant="outline">{reminder.type}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{reminder.message}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {reminder.scheduleKind === 'monthly_days'
+                        ? `Monthly on day(s): ${reminder.scheduleDays.join(', ')}`
+                        : `Pledge offsets: ${reminder.deadlineOffsets.join(', ')}`}
+                      {' '}· {reminder.channelEmail ? 'Email' : ''}{reminder.channelEmail && reminder.channelPush ? ' + ' : ''}{reminder.channelPush ? 'Push' : ''}
+                      {' '}· Sent logs: {reminder._count?.logs ?? 0}
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDeleteScheduledReminder(reminder.id)}>
+                    <Trash2 className="h-4 w-4" /> Delete
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {canManageScheduled && activeTab === 'history' && (
+        <div className="space-y-3">
+          {scheduledLogs.length === 0 ? (
+            <Card><CardContent className="p-6 text-sm text-muted-foreground">No scheduled reminder sends yet.</CardContent></Card>
+          ) : scheduledLogs.map(log => (
+            <Card key={log.id}>
+              <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium">{log.reminder.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {log.channel} · {log.status} · {log.recipientEmail || log.userId || 'recipient'} · {new Date(log.scheduledFor).toLocaleDateString()}
+                  </p>
+                  {log.error && <p className="text-xs text-destructive">{log.error}</p>}
+                </div>
+                <Badge variant={log.status === 'failed' ? 'destructive' : 'outline'}>{log.status}</Badge>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>

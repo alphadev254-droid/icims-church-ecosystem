@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Baby, Info, Link2, Pencil, Plus, Search, Trash2, Unlink, Users } from 'lucide-react';
+import { Baby, Info, Link2, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
 import { childrenService, type Child } from '@/services/children';
 import { usersService, type AppUser } from '@/services/users';
 import { churchesService } from '@/services/churches';
@@ -55,7 +55,9 @@ function formatDate(value?: string | null) {
 
 function calculateAge(value?: string | null) {
   if (!value) return null;
-  const dob = new Date(value);
+  const dateOnly = value.split('T')[0];
+  const [year, month, day] = dateOnly.split('-').map(Number);
+  const dob = year && month && day ? new Date(year, month - 1, day) : new Date(value);
   if (Number.isNaN(dob.getTime())) return null;
   const today = new Date();
   let age = today.getFullYear() - dob.getFullYear();
@@ -67,7 +69,8 @@ function calculateAge(value?: string | null) {
 }
 
 function childAge(child: Child) {
-  return child.dateOfBirth ? calculateAge(child.dateOfBirth) : child.age ?? null;
+  const computedAge = child.dateOfBirth ? calculateAge(child.dateOfBirth) : null;
+  return computedAge ?? child.age ?? null;
 }
 
 function DetailField({ label, value }: { label: string; value?: string | number | null }) {
@@ -230,17 +233,19 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
   disabledGuardianIds?: string[];
   fixedGuardian?: { id: string; firstName: string; lastName: string; email: string };
 }) {
+  const initialAge = child ? childAge(child) : null;
   const [churchId, setChurchId] = useState(child?.churchId ?? defaultChurchId ?? '');
   const [firstName, setFirstName] = useState(child?.firstName ?? '');
   const [lastName, setLastName] = useState(child?.lastName ?? '');
   const [dateOfBirth, setDateOfBirth] = useState(child?.dateOfBirth ? child.dateOfBirth.split('T')[0] : '');
-  const [age, setAge] = useState(child?.age != null ? String(child.age) : '');
+  const [age, setAge] = useState(initialAge != null ? String(initialAge) : '');
   const [gender, setGender] = useState(child?.gender ?? '');
   const [phone, setPhone] = useState(child?.phone ?? '');
   const [notes, setNotes] = useState(child?.notes ?? '');
   const [status, setStatus] = useState(child?.status ?? 'active');
   const [guardian, setGuardian] = useState<AppUser | { id: string; firstName: string; lastName: string; email: string } | null>(fixedGuardian ?? null);
   const [relationship, setRelationship] = useState('guardian');
+  const calculatedAge = dateOfBirth ? calculateAge(dateOfBirth) : null;
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
@@ -279,9 +284,9 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
           <Input
             type="number"
             min="0"
-            value={dateOfBirth ? String(calculateAge(dateOfBirth) ?? '') : age}
+            value={dateOfBirth ? String(calculatedAge ?? '') : age}
             onChange={e => setAge(e.target.value)}
-            disabled={!!dateOfBirth}
+            readOnly={!!dateOfBirth}
           />
         </div>
         <div>
@@ -357,7 +362,7 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
           firstName,
           lastName,
           dateOfBirth: dateOfBirth || null,
-          age: dateOfBirth ? calculateAge(dateOfBirth) : age ? Number(age) : null,
+          age: dateOfBirth ? calculatedAge : age ? Number(age) : null,
           gender: gender || null,
           phone: phone || null,
           notes: notes || null,
@@ -432,6 +437,7 @@ export default function ChildrenPage() {
   const [editChild, setEditChild] = useState<Child | null>(null);
   const [deleteChild, setDeleteChild] = useState<Child | null>(null);
   const [linkChild, setLinkChild] = useState<Child | null>(null);
+  const [unlinkTarget, setUnlinkTarget] = useState<{ child: Child; guardianId: string; guardianName: string } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
   const canCreate = hasPermission('children:create');
   const canUpdate = hasPermission('children:update');
@@ -506,6 +512,7 @@ export default function ChildrenPage() {
     onSuccess: () => {
       toast.success('Guardian unlinked');
       qc.invalidateQueries({ queryKey: ['children'] });
+      setUnlinkTarget(null);
     },
     onError: (err: any) => toast.error(err?.response?.data?.message || 'Failed to unlink guardian'),
   });
@@ -614,9 +621,14 @@ export default function ChildrenPage() {
                                   type="button"
                                   className="ml-1 text-muted-foreground hover:text-destructive"
                                   disabled={unlinkMutation.isPending}
-                                  onClick={() => unlinkMutation.mutate({ childId: child.id, guardianId: link.guardianId })}
+                                  onClick={() => setUnlinkTarget({
+                                    child,
+                                    guardianId: link.guardianId,
+                                    guardianName: guardianName(link.guardian) || 'this guardian',
+                                  })}
+                                  title="Remove guardian link"
                                 >
-                                  <Unlink className="h-3 w-3" />
+                                  <Trash2 className="h-3 w-3" />
                                 </button>
                               )}
                             </div>
@@ -716,6 +728,30 @@ export default function ChildrenPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteChild && deleteMutation.mutate(deleteChild.id)}>
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!unlinkTarget} onOpenChange={open => !open && setUnlinkTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove guardian link?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {unlinkTarget?.guardianName ?? 'this guardian'} from {unlinkTarget ? childName(unlinkTarget.child) : 'this child'}. The guardian account and child record will not be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={unlinkMutation.isPending}
+              onClick={() => unlinkTarget && unlinkMutation.mutate({
+                childId: unlinkTarget.child.id,
+                guardianId: unlinkTarget.guardianId,
+              })}
+            >
+              Remove Link
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

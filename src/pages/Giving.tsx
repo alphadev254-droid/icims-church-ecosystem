@@ -50,6 +50,42 @@ const campaignSchema = z.object({
 
 type CampaignFormValues = z.infer<typeof campaignSchema>;
 
+type GivingSummaryPeriod = 'this_week' | 'this_month' | 'last_month' | 'last_3_months' | 'custom';
+
+function toDateInputValue(date: Date) {
+  const copy = new Date(date);
+  copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset());
+  return copy.toISOString().slice(0, 10);
+}
+
+function getSummaryDateRange(period: GivingSummaryPeriod, customStart: string, customEnd: string) {
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+
+  if (period === 'custom') {
+    return { startDate: customStart || undefined, endDate: customEnd || undefined };
+  }
+
+  if (period === 'this_week') {
+    const day = start.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    start.setDate(start.getDate() - diff);
+  } else if (period === 'this_month') {
+    start.setDate(1);
+  } else if (period === 'last_month') {
+    start.setMonth(start.getMonth() - 1, 1);
+    end.setDate(0);
+  } else if (period === 'last_3_months') {
+    start.setMonth(start.getMonth() - 3);
+  }
+
+  return {
+    startDate: toDateInputValue(start),
+    endDate: toDateInputValue(end),
+  };
+}
+
 function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditing = false }: {
   defaultValues?: Partial<CampaignFormValues>;
   onSubmit: (v: CampaignFormValues) => void;
@@ -194,6 +230,9 @@ export default function GivingPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [churchFilter, setChurchFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [summaryPeriod, setSummaryPeriod] = useState<GivingSummaryPeriod>('this_month');
+  const [summaryStartDate, setSummaryStartDate] = useState('');
+  const [summaryEndDate, setSummaryEndDate] = useState('');
   const { hasPermission } = useRole();
   const hasGivingFeature = useHasFeature('giving_tracking');
   const hasPledgesFeature = useHasFeature('pledges_management');
@@ -201,6 +240,10 @@ export default function GivingPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const isMember = user?.roleName === 'member';
+  const canCreate = hasPermission('campaigns:create') && hasGivingFeature;
+  const canUpdate = hasPermission('campaigns:update') && hasGivingFeature;
+  const canDelete = hasPermission('campaigns:delete') && hasGivingFeature;
+  const canViewDonations = hasPermission('donations:read');
 
   const { data: campaignsResponse = [], isLoading } = useQuery({
     queryKey: ['campaigns', churchFilter, categoryFilter],
@@ -225,6 +268,19 @@ export default function GivingPage() {
       return data.data || [];
     },
     enabled: !isMember,
+  });
+
+  const summaryDateRange = getSummaryDateRange(summaryPeriod, summaryStartDate, summaryEndDate);
+  const { data: givingSummary } = useQuery({
+    queryKey: ['giving-summary', churchFilter, categoryFilter, summaryPeriod, summaryDateRange.startDate, summaryDateRange.endDate],
+    queryFn: () => givingService.getSummary({
+      churchId: churchFilter !== 'all' ? churchFilter : undefined,
+      category: categoryFilter !== 'all' ? categoryFilter : undefined,
+      startDate: summaryDateRange.startDate,
+      endDate: summaryDateRange.endDate,
+    }),
+    enabled: !isMember && hasGivingFeature && canViewDonations,
+    staleTime: STALE_TIME.DEFAULT,
   });
 
   // Load member's cells for fellowship_offering donate dialog — lightweight endpoint
@@ -304,11 +360,6 @@ export default function GivingPage() {
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
-  const canCreate = hasPermission('campaigns:create') && hasGivingFeature;
-  const canUpdate = hasPermission('campaigns:update') && hasGivingFeature;
-  const canDelete = hasPermission('campaigns:delete') && hasGivingFeature;
-  const canViewDonations = hasPermission('donations:read');
-
   if (!isMember && !hasGivingFeature) {
     return (
       <div className="space-y-6">
@@ -367,6 +418,11 @@ export default function GivingPage() {
     ? campaigns.reduce((sum, c) => sum + (c.userTotalDonated || 0), 0)
     : campaigns.reduce((sum, c) => sum + (c.totalRaised || 0), 0);
   const totalDonors = campaigns.reduce((sum, c) => sum + (c.donorCount || 0), 0);
+  const summaryTotalRaised = givingSummary?.totalRaised ?? totalRaised;
+  const summaryDonorCount = givingSummary?.donorCount ?? totalDonors;
+  const summaryRangeLabel = summaryDateRange.startDate && summaryDateRange.endDate
+    ? `${summaryDateRange.startDate} to ${summaryDateRange.endDate}`
+    : 'Choose a custom date range';
 
   const renderCampaignCard = (campaign: any) => {
     const progress = campaign.targetAmount ? (campaign.totalRaised! / campaign.targetAmount) * 100 : 0;
@@ -605,14 +661,71 @@ export default function GivingPage() {
       </div>
 
       {!isMember && (
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <Card>
-            <CardContent className="flex items-center justify-between p-3 sm:p-4">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Total Raised</p>
-                <p className="text-sm sm:text-base font-bold truncate">MWK {totalRaised.toLocaleString()}</p>
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardContent className="space-y-4 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Total Raised</p>
+                    <HandCoins className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-xl font-bold sm:text-2xl">MWK {summaryTotalRaised.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">{summaryRangeLabel}</p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row md:justify-end">
+                  <Select value={summaryPeriod} onValueChange={(value: GivingSummaryPeriod) => setSummaryPeriod(value)}>
+                    <SelectTrigger className="h-9 w-full sm:w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="this_week">This week</SelectItem>
+                      <SelectItem value="this_month">This month</SelectItem>
+                      <SelectItem value="last_month">Last month</SelectItem>
+                      <SelectItem value="last_3_months">Last 3 months</SelectItem>
+                      <SelectItem value="custom">Custom dates</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {summaryPeriod === 'custom' && (
+                    <div className="grid grid-cols-2 gap-2 sm:flex">
+                      <Input
+                        type="date"
+                        value={summaryStartDate}
+                        onChange={event => setSummaryStartDate(event.target.value)}
+                        className="h-9 text-xs sm:w-36"
+                      />
+                      <Input
+                        type="date"
+                        value={summaryEndDate}
+                        onChange={event => setSummaryEndDate(event.target.value)}
+                        className="h-9 text-xs sm:w-36"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-              <HandCoins className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Top giving campaigns</p>
+                {givingSummary?.topCampaigns?.length ? (
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {givingSummary.topCampaigns.map((item, index) => (
+                      <div key={`${item.campaignId}-${item.currency}`} className="rounded-md border bg-muted/30 p-3">
+                        <p className="text-xs font-medium text-muted-foreground">#{index + 1}</p>
+                        <p className="truncate text-sm font-semibold">{item.campaign?.name ?? 'Campaign'}</p>
+                        <p className="text-sm font-bold">{item.currency} {item.totalRaised.toLocaleString()}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {item.donationCount} giving{item.donationCount === 1 ? '' : 's'}
+                          {item.campaign?.church?.name ? ` · ${item.campaign.church.name}` : ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                    No giving recorded for this period.
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -628,7 +741,7 @@ export default function GivingPage() {
             <CardContent className="flex items-center justify-between p-3 sm:p-4">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground">Givers</p>
-                <p className="text-sm sm:text-base font-bold">{totalDonors}</p>
+                <p className="text-sm sm:text-base font-bold">{summaryDonorCount}</p>
               </div>
               <Users className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
             </CardContent>

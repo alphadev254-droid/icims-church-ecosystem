@@ -55,6 +55,12 @@ function getRoleLabel(user: AppUser) {
   return ROLE_DISPLAY[user.roleName] ?? user.role?.displayName ?? user.roleName;
 }
 
+function getChurchDisplay(user: AppUser) {
+  if (user.church?.name) return user.church.name;
+  if (user.scopeChurches?.length) return user.scopeChurches.map(church => church.name).join(', ');
+  return user.scopeLabel ?? '—';
+}
+
 const RELATIONSHIP_OPTIONS = [
   { value: 'mother', label: 'Mother' },
   { value: 'father', label: 'Father' },
@@ -993,7 +999,7 @@ export default function UsersManagement() {
               residentialNeighbourhood: (u as any).residentialNeighbourhood || '',
               baptizedByImmersion: (u as any).baptizedByImmersion ? 'Yes' : 'No',
               role: getRoleLabel(u),
-              church: u.church?.name ?? '—',
+              church: getChurchDisplay(u),
               teams: (u as any).teams?.join(', ') || '',
               cells: (u as any).cells?.map((c: any) => c.name).join(', ') || '',
               status: u.status,
@@ -1032,7 +1038,7 @@ export default function UsersManagement() {
               (u as any).residentialNeighbourhood || '',
               (u as any).baptizedByImmersion ? 'Yes' : 'No',
               getRoleLabel(u),
-              u.church?.name ?? '—',
+              getChurchDisplay(u),
               (u as any).teams?.join(', ') || '',
               (u as any).cells?.map((c: any) => c.name).join(', ') || '',
               u.status,
@@ -1376,7 +1382,7 @@ export default function UsersManagement() {
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-[150px] truncate">
-                        {user.church?.name ?? '—'}
+                        {getChurchDisplay(user)}
                       </TableCell>
                       <TableCell className="hidden xl:table-cell text-xs text-muted-foreground max-w-[150px] truncate">
                         {(user as any).teams?.length > 0 ? (user as any).teams.join(', ') : '—'}

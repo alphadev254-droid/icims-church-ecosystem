@@ -120,6 +120,18 @@ export interface CreatePledgeDto {
   notes?: string;
 }
 
+export interface GivingSummary {
+  totalRaised: number;
+  donorCount: number;
+  topCampaigns: Array<{
+    campaignId: string;
+    currency: string;
+    totalRaised: number;
+    donationCount: number;
+    campaign: { id: string; name: string; category: string; church?: { name: string } } | null;
+  }>;
+}
+
 export interface UpdatePledgeDto {
   pledgedAmount?: number;
   fulfillmentDeadline?: string | null;
@@ -149,6 +161,11 @@ export const givingService = {
 
   async getCampaigns(params?: { churchId?: string; category?: string; status?: string }): Promise<GivingCampaign[]> {
     const { data } = await apiClient.get('/giving/campaigns', { params });
+    return data.data;
+  },
+
+  async getSummary(params?: { churchId?: string; category?: string; startDate?: string; endDate?: string }): Promise<GivingSummary> {
+    const { data } = await apiClient.get('/giving/summary', { params });
     return data.data;
   },
 

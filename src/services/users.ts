@@ -17,6 +17,8 @@ export interface AppUser {
   updatedAt: string;
   role?: { id: string; name: string; displayName: string } | null;
   church?: { name: string } | null;
+  scopeChurches?: { id: string; name: string }[];
+  scopeLabel?: string | null;
   gender?: string | null;
   dateOfBirth?: string | null;
   maritalStatus?: string | null;

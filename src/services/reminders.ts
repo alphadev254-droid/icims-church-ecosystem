@@ -55,6 +55,55 @@ export interface RemindersResponse {
   stats: ReminderStats;
 }
 
+export interface ScheduledReminder {
+  id: string;
+  churchId: string;
+  campaignId?: string | null;
+  type: 'giving' | 'pledge';
+  audience: 'all_members' | 'active_pledges' | 'overdue_pledges' | 'not_given_this_month';
+  channelEmail: boolean;
+  channelPush: boolean;
+  title: string;
+  message: string;
+  scheduleKind: 'monthly_days' | 'pledge_deadline';
+  scheduleDays: number[];
+  deadlineOffsets: number[];
+  isActive: boolean;
+  lastRunAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { logs: number };
+}
+
+export interface ScheduledReminderPayload {
+  churchId: string;
+  campaignId?: string | null;
+  type: 'giving' | 'pledge';
+  audience: 'all_members' | 'active_pledges' | 'overdue_pledges' | 'not_given_this_month';
+  channelEmail: boolean;
+  channelPush: boolean;
+  title: string;
+  message: string;
+  scheduleKind: 'monthly_days' | 'pledge_deadline';
+  scheduleDays?: number[];
+  deadlineOffsets?: number[];
+  isActive?: boolean;
+}
+
+export interface ScheduledReminderLog {
+  id: string;
+  reminderId: string;
+  userId?: string | null;
+  recipientEmail?: string | null;
+  channel: string;
+  status: string;
+  scheduledFor: string;
+  sentAt?: string | null;
+  error?: string | null;
+  createdAt: string;
+  reminder: ScheduledReminder;
+}
+
 export const getUpcomingReminders = async (params?: {
   days?: number;
   type?: string;
@@ -66,5 +115,30 @@ export const getUpcomingReminders = async (params?: {
 
 export const getTodayReminders = async (): Promise<{ success: boolean; data: Reminder[] }> => {
   const response = await api.get('/reminders/today');
+  return response.data;
+};
+
+export const getScheduledReminders = async (params?: { churchId?: string }): Promise<{ success: boolean; data: ScheduledReminder[] }> => {
+  const response = await api.get('/reminders/scheduled', { params });
+  return response.data;
+};
+
+export const createScheduledReminder = async (payload: ScheduledReminderPayload): Promise<{ success: boolean; data: ScheduledReminder }> => {
+  const response = await api.post('/reminders/scheduled', payload);
+  return response.data;
+};
+
+export const updateScheduledReminder = async (id: string, payload: Partial<ScheduledReminderPayload>): Promise<{ success: boolean; data: ScheduledReminder }> => {
+  const response = await api.put(`/reminders/scheduled/${id}`, payload);
+  return response.data;
+};
+
+export const deleteScheduledReminder = async (id: string): Promise<{ success: boolean; message: string }> => {
+  const response = await api.delete(`/reminders/scheduled/${id}`);
+  return response.data;
+};
+
+export const getScheduledReminderLogs = async (): Promise<{ success: boolean; data: ScheduledReminderLog[] }> => {
+  const response = await api.get('/reminders/scheduled/logs');
   return response.data;
 };
