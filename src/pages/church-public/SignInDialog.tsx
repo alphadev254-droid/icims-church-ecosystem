@@ -235,22 +235,6 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
               {loading ? 'Signing in…' : <>Sign In <span style={{ fontSize: 16 }}>↗</span></>}
             </button>
 
-            {/* Divider */}
-            <div style={{ borderTop: '1px solid #e8e4de', marginBottom: 24 }} />
-
-            {/* Register link */}
-            <p style={{ textAlign: 'center', fontSize: 13, color: '#888', margin: 0 }}>
-              New here?{' '}
-              <a
-                href="https://churchcentral.church/register"
-                style={{
-                  color: '#0a0a0a', fontWeight: 600,
-                  textDecoration: 'underline', textUnderlineOffset: 3,
-                }}
-              >
-                Create an account
-              </a>
-            </p>
           </form>
         </div>
       </div>
