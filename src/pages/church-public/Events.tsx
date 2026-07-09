@@ -14,18 +14,24 @@ export function Events({ events, accent, variant = 'home' }: EventsProps) {
 
   if (variant === 'page') {
     return (
-      <section id="events" className="cp-section" style={{ background: '#faf9f7', padding: '86px 28px 130px' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'grid', gap: 24 }}>
-          {events.map(ev => <EventRow key={ev.id} event={ev} accent={accent} />)}
+      <section id="events" className="cp-section" style={{ background: '#faf9f7', padding: '72px 28px 104px' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+          <div className="cp-card-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 24,
+          }}>
+            {events.map(ev => <EventCard key={ev.id} event={ev} accent={accent} detailed />)}
+          </div>
         </div>
       </section>
     );
   }
 
   return (
-    <section id="events" className="cp-section" style={{ background: '#fff', padding: '94px 28px 112px' }}>
+    <section id="events" className="cp-section" style={{ background: '#fff', padding: '82px 28px 96px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 18, marginBottom: 46 }}>
+        <div className="cp-section-heading-row" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 18, marginBottom: 36, flexWrap: 'wrap' }}>
           <div>
             <p style={labelStyle(accent)}>What's Coming Up</p>
             <h2 className="cp-section-title" style={headingStyle}>Upcoming events</h2>
@@ -36,7 +42,7 @@ export function Events({ events, accent, variant = 'home' }: EventsProps) {
         <div className="cp-card-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: 28,
+          gap: 24,
         }}>
           {events.map(ev => <EventCard key={ev.id} event={ev} accent={accent} />)}
         </div>
@@ -45,92 +51,67 @@ export function Events({ events, accent, variant = 'home' }: EventsProps) {
   );
 }
 
-function EventRow({ event, accent }: { event: PublicEvent; accent: string }) {
-  const date = new Date(event.date);
-  const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-  const day = date.toLocaleDateString('en-US', { day: 'numeric' });
-  const weekday = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-
-  return (
-    <article style={{
-      background: '#fff',
-      border: '1px solid #e9dfd2',
-      borderRadius: 18,
-      padding: 28,
-      display: 'grid',
-      gridTemplateColumns: '96px minmax(0, 1fr) auto',
-      gap: 28,
-      alignItems: 'center',
-      boxShadow: '0 16px 42px rgba(16,24,40,0.04)',
-    }}>
-      <DateBlock month={month} day={day} weekday={weekday} accent={accent} />
-      <div>
-        <p style={{ display: 'inline-flex', background: '#fff7e8', borderRadius: 999, color: '#c7830f', fontSize: 12, fontWeight: 800, textTransform: 'uppercase', padding: '5px 14px', marginBottom: 12 }}>
-          {event.church?.name || 'Event'}
-        </p>
-        <h3 style={{ fontFamily: 'Georgia, serif', color: '#101a30', fontSize: 28, margin: '0 0 10px' }}>{event.title}</h3>
-        <p style={{ color: '#53617a', margin: 0 }}>{[event.time, event.location].filter(Boolean).join('   ')}</p>
-      </div>
-      {event.requiresTicket ? (
-        <a href={`${FRONTEND}/events/${event.id}`} target="_blank" rel="noopener noreferrer" style={rsvpButton(accent)}>
-          {event.isFree ? 'RSVP' : 'Tickets'}
-        </a>
-      ) : (
-        <span style={rsvpButton(accent)}>RSVP</span>
-      )}
-    </article>
-  );
-}
-
-function EventCard({ event, accent }: { event: PublicEvent; accent: string }) {
+function EventCard({ event, accent, detailed = false }: { event: PublicEvent; accent: string; detailed?: boolean }) {
   const date = new Date(event.date);
   const month = date.toLocaleDateString('en-US', { month: 'short' });
   const day = date.toLocaleDateString('en-US', { day: 'numeric' });
   const time = event.time || date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+  const actionLabel = event.requiresTicket ? (event.isFree ? 'RSVP' : 'Get Tickets') : 'Details';
 
   return (
     <article style={{
       border: '1px solid #e9dfd2',
-      borderRadius: 18,
+      borderRadius: 16,
       overflow: 'hidden',
       background: '#fff',
-      boxShadow: '0 16px 42px rgba(16,24,40,0.06)',
+      boxShadow: '0 16px 42px rgba(16,24,40,0.055)',
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: detailed ? 410 : 360,
     }}>
-      <div style={{ background: '#111822', color: '#fff', padding: '38px 28px', textAlign: 'center' }}>
+      <div style={{ background: '#111822', color: '#fff', padding: detailed ? '34px 28px' : '30px 24px', textAlign: 'center' }}>
         <p style={{ color: accent, fontFamily: 'Georgia, serif', fontSize: 38, fontWeight: 800, margin: 0 }}>{month} {day}</p>
         <p style={{ color: 'rgba(255,255,255,0.72)', margin: '8px 0 0' }}>{time}</p>
       </div>
-      <div style={{ padding: 28 }}>
+      <div style={{ padding: 26, display: 'flex', flexDirection: 'column', flex: 1 }}>
         <p style={{ display: 'inline-flex', background: '#fff7e8', borderRadius: 999, color: '#c7830f', fontSize: 12, fontWeight: 800, textTransform: 'uppercase', padding: '5px 14px', marginBottom: 16 }}>
           {event.church?.name || 'Event'}
         </p>
         <h3 style={{ fontFamily: 'Georgia, serif', color: '#101a30', fontSize: 26, lineHeight: 1.2, margin: '0 0 12px' }}>
           {event.title}
         </h3>
-        <p style={{ color: '#53617a', margin: 0 }}>{event.location}</p>
+        <p style={{ color: '#53617a', margin: 0, lineHeight: 1.65 }}>
+          {[weekday, event.location].filter(Boolean).join(' - ')}
+        </p>
+        {detailed && event.description && (
+          <p style={{
+            color: '#53617a',
+            fontSize: 14,
+            lineHeight: 1.7,
+            margin: '16px 0 0',
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}>
+            {event.description}
+          </p>
+        )}
+        <div className="cp-event-card-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginTop: 'auto', paddingTop: 24 }}>
+          <span style={{ color: event.requiresTicket ? accent : '#8a94a6', fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+            {event.requiresTicket ? 'Ticketed' : 'Open Event'}
+          </span>
+          {event.requiresTicket ? (
+            <a className="cp-event-card-action" href={`${FRONTEND}/events/${event.id}`} target="_blank" rel="noopener noreferrer" style={rsvpButton(accent)}>
+              {actionLabel}
+            </a>
+          ) : (
+            <span className="cp-event-card-action" style={mutedButton}>No ticket needed</span>
+          )}
+        </div>
       </div>
     </article>
-  );
-}
-
-function DateBlock({ month, day, weekday, accent }: { month: string; day: string; weekday: string; accent: string }) {
-  return (
-    <div style={{
-      width: 96,
-      height: 96,
-      background: '#111822',
-      color: '#fff',
-      borderRadius: 16,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
-    }}>
-      <span style={{ color: accent, fontSize: 12, fontWeight: 800 }}>{month}</span>
-      <strong style={{ color: accent, fontFamily: 'Georgia, serif', fontSize: 34, lineHeight: 1 }}>{day}</strong>
-      <span style={{ color: 'rgba(255,255,255,0.72)', fontSize: 12, fontWeight: 800 }}>{weekday}</span>
-    </div>
   );
 }
 
@@ -164,5 +145,19 @@ function rsvpButton(accent: string): React.CSSProperties {
     fontWeight: 800,
     textDecoration: 'none',
     justifySelf: 'end',
+    display: 'inline-flex',
+    justifyContent: 'center',
   };
 }
+
+const mutedButton: React.CSSProperties = {
+  background: '#f5f1ea',
+  color: '#53617a',
+  borderRadius: 12,
+  padding: '13px 16px',
+  fontWeight: 800,
+  textDecoration: 'none',
+  display: 'inline-flex',
+  justifyContent: 'center',
+  fontSize: 13,
+};

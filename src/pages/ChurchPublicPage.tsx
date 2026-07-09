@@ -16,6 +16,7 @@ import { Footer } from './church-public/Footer';
 import { SignInDialog } from './church-public/SignInDialog';
 
 const defaultHero = 'https://media.aircnc.co.ke/media-images/fa70812b-0345-4d35-b45b-3488def7c3e3.webp';
+const defaultGold = '#d89b12';
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 
 function currentHref() {
@@ -39,6 +40,7 @@ function ResponsiveStyles() {
         }
         .cp-mobile-menu { padding: 8px 0 18px !important; }
         .cp-hero { padding: 54px 18px 70px !important; }
+        .cp-page-hero { padding: 58px 20px 64px !important; }
         .cp-home-hero { grid-template-columns: 1fr !important; gap: 42px !important; }
         .cp-home-service-card {
           position: static !important;
@@ -56,13 +58,18 @@ function ResponsiveStyles() {
         }
         .cp-hero-actions { flex-direction: column !important; align-items: stretch !important; }
         .cp-hero-actions a { width: 100% !important; text-align: center !important; }
-        .cp-section { padding: 64px 20px !important; }
-        .cp-section-title { font-size: clamp(2.25rem, 11vw, 3.25rem) !important; }
+        .cp-section { padding: 58px 18px !important; }
+        .cp-section-title { font-size: clamp(2.1rem, 10vw, 3.2rem) !important; overflow-wrap: anywhere !important; }
+        .cp-page-hero-title { font-size: clamp(2.35rem, 12vw, 3.8rem) !important; }
+        .cp-section-heading-row { align-items: flex-start !important; }
         .cp-two-col, .cp-contact-grid, .cp-visit-grid, .cp-sermon-grid { grid-template-columns: 1fr !important; gap: 36px !important; }
         .cp-visit-form-grid { grid-template-columns: 1fr !important; gap: 0 !important; }
         .cp-sermon-grid a { grid-template-columns: 1fr !important; }
         .cp-ministry-grid { grid-template-columns: 1fr !important; }
         .cp-card-grid { grid-template-columns: 1fr !important; }
+        .cp-event-card-row { flex-direction: column !important; align-items: stretch !important; }
+        .cp-event-card-action { width: 100% !important; text-align: center !important; }
+        .cp-give-card-action { width: 100% !important; justify-content: center !important; }
         .cp-services-strip { display: grid !important; grid-template-columns: 1fr !important; overflow: visible !important; }
         .cp-service-card { min-width: 0 !important; padding: 28px 24px !important; }
         .cp-map { height: 260px !important; }
@@ -96,16 +103,16 @@ function PageHero({ eyebrow, title, copy, accent }: {
   accent: string;
 }) {
   return (
-    <section style={{
+    <section className="cp-page-hero" style={{
       background: 'linear-gradient(120deg, #111822 0%, #14213a 66%, #303846 100%)',
-      padding: '92px 28px 108px',
+      padding: '68px 28px 78px',
     }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <p style={{
           color: 'rgba(255,255,255,0.65)',
           fontSize: 13,
           fontWeight: 700,
-          margin: '0 0 28px',
+          margin: '0 0 18px',
         }}>
           Home <span style={{ color: 'rgba(255,255,255,0.35)', margin: '0 10px' }}>›</span>
           <span style={{ color: accent }}>{eyebrow.replace('Partner With The Mission', 'Give')}</span>
@@ -120,22 +127,22 @@ function PageHero({ eyebrow, title, copy, accent }: {
           fontWeight: 800,
           letterSpacing: '0.26em',
           textTransform: 'uppercase',
-          margin: '0 0 28px',
+          margin: '0 0 20px',
         }}>
           {eyebrow}
         </p>
-        <h1 className="cp-section-title" style={{
+        <h1 className="cp-section-title cp-page-hero-title" style={{
           fontFamily: 'Georgia, "Times New Roman", serif',
           color: '#fff',
-          fontSize: 'clamp(3rem, 7vw, 6rem)',
+          fontSize: 'clamp(2.85rem, 6vw, 4.9rem)',
           lineHeight: 1,
           fontWeight: 800,
           maxWidth: 940,
-          margin: '0 0 26px',
+          margin: '0 0 18px',
         }}>
           {title}
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.78)', fontSize: 22, lineHeight: 1.55, maxWidth: 820, margin: 0 }}>
+        <p style={{ color: 'rgba(255,255,255,0.78)', fontSize: 18, lineHeight: 1.6, maxWidth: 760, margin: 0 }}>
           {copy}
         </p>
       </div>
@@ -223,7 +230,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
   }
 
   const { profile, ministryName, events = [], campaigns = [], churches, sermons = [], ministries = [] } = data;
-  const accent = profile.primaryColor || '#e0a51a';
+  const accent = profile.primaryColor || defaultGold;
   const serviceTimes = parseServiceTimes(profile.serviceTimes);
   const logoSrc = resolveImg(profile.logoUrl);
   const bannerSrc = resolveImg(profile.bannerUrl) ?? defaultHero;

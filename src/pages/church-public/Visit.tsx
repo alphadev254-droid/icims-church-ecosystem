@@ -64,19 +64,19 @@ export function Visit({ slug, ministryName, serviceTimes, accent }: VisitProps) 
   };
 
   return (
-    <section id="visit" className="cp-section" style={{ background: '#fff', padding: '96px 40px' }}>
+    <section id="visit" className="cp-section" style={{ background: '#fff', padding: '78px 28px' }}>
       <div className="cp-visit-grid" style={{
         maxWidth: 1400, margin: '0 auto',
         display: 'grid', gridTemplateColumns: 'minmax(0, 0.95fr) minmax(320px, 1.05fr)',
-        gap: 60, alignItems: 'start',
+        gap: 46, alignItems: 'start',
       }}>
         <div>
           <h2 className="cp-section-title" style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
-            color: '#101a30', fontSize: 'clamp(2.2rem, 5vw, 4rem)',
+            color: '#101a30', fontSize: 'clamp(2.2rem, 5vw, 3.8rem)',
             lineHeight: 1.08, marginBottom: 14,
           }}>What to expect</h2>
-          <p style={{ color: '#53617a', fontSize: 18, marginBottom: 38 }}>
+          <p style={{ color: '#53617a', fontSize: 17, marginBottom: 28 }}>
             Your first visit should feel like coming home.
           </p>
 
@@ -86,19 +86,19 @@ export function Visit({ slug, ministryName, serviceTimes, accent }: VisitProps) 
             ['No Pressure', 'Come as you are. Questions, doubts, and families are welcome.'],
           ].map(([title, copy]) => (
             <div key={title} style={{
-              border: '1px solid #e9dfd2', borderRadius: 18,
-              padding: 26, display: 'grid', gridTemplateColumns: '58px minmax(0, 1fr)',
-              gap: 18, marginBottom: 20, background: '#fff',
+              border: '1px solid #e9dfd2', borderRadius: 16,
+              padding: 22, display: 'grid', gridTemplateColumns: '52px minmax(0, 1fr)',
+              gap: 16, marginBottom: 16, background: '#fff',
               boxShadow: '0 14px 34px rgba(16, 24, 40, 0.05)',
             }}>
               <div style={{
-                width: 56, height: 56, borderRadius: 14,
+                width: 52, height: 52, borderRadius: 14,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: `linear-gradient(135deg, ${accent}, #c7830f)`,
                 color: '#101a30', fontWeight: 900,
               }}>{title.charAt(0)}</div>
               <div>
-                <h3 style={{ fontFamily: 'Georgia, serif', color: '#101a30', fontSize: 24, margin: '0 0 8px' }}>
+                <h3 style={{ fontFamily: 'Georgia, serif', color: '#101a30', fontSize: 22, margin: '0 0 8px' }}>
                   {title}
                 </h3>
                 <p style={{ color: '#53617a', margin: 0, lineHeight: 1.6 }}>{copy}</p>
@@ -107,8 +107,8 @@ export function Visit({ slug, ministryName, serviceTimes, accent }: VisitProps) 
           ))}
 
           {serviceTimes.length > 0 && (
-            <div style={{ background: '#111822', borderRadius: 18, padding: 30, marginTop: 38 }}>
-              <h3 style={{ fontFamily: 'Georgia, serif', color: accent, fontSize: 26, margin: '0 0 20px' }}>
+            <div style={{ background: '#111822', borderRadius: 16, padding: 26, marginTop: 28 }}>
+              <h3 style={{ fontFamily: 'Georgia, serif', color: accent, fontSize: 24, margin: '0 0 18px' }}>
                 Service times
               </h3>
               <div style={{ display: 'grid', gap: 12 }}>
@@ -127,15 +127,15 @@ export function Visit({ slug, ministryName, serviceTimes, accent }: VisitProps) 
         </div>
 
         <form onSubmit={submit} style={{
-          border: '1px solid #e9dfd2', borderRadius: 26,
-          padding: '42px clamp(22px, 4vw, 40px)',
+          border: '1px solid #e9dfd2', borderRadius: 20,
+          padding: '34px clamp(20px, 4vw, 34px)',
           boxShadow: '0 24px 65px rgba(16, 24, 40, 0.10)',
           background: '#fff',
         }}>
           <h2 style={{
             fontFamily: 'Georgia, serif', color: '#101a30',
             fontSize: 'clamp(1.8rem, 4vw, 2.4rem)',
-            lineHeight: 1.14, margin: '0 0 30px',
+            lineHeight: 1.14, margin: '0 0 24px',
           }}>Let us know you are coming</h2>
 
           <div className="cp-visit-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>

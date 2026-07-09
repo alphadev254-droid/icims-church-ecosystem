@@ -1,5 +1,5 @@
+import { HandHeart } from 'lucide-react';
 import type { PublicCampaign } from './types';
-import { resolveImg } from './utils';
 
 const FRONTEND = 'https://churchcentral.church';
 
@@ -9,96 +9,143 @@ interface GiveProps {
 }
 
 export function Give({ campaigns, accent }: GiveProps) {
+  if (!campaigns.length) return null;
+
   return (
-    <section id="give" className="cp-section" style={{ background: '#faf9f7', padding: '100px 40px' }}>
+    <section id="give" className="cp-section" style={{ background: '#111822', padding: '82px 28px 100px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-
         <p style={{
-          fontSize: 10, fontWeight: 600, letterSpacing: '0.22em',
-          textTransform: 'uppercase', color: '#888', marginBottom: 20,
-        }}>Support the Ministry</p>
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: '0.22em',
+          textTransform: 'uppercase',
+          color: accent,
+          marginBottom: 18,
+        }}>
+          Support the Ministry
+        </p>
 
-        <div style={{
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap', gap: 16,
+        <div className="cp-section-heading-row" style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-end',
+          marginBottom: 18,
+          flexWrap: 'wrap',
+          gap: 18,
         }}>
           <h2 className="cp-section-title" style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
-            fontSize: 'clamp(2rem, 4vw, 3rem)',
-            fontWeight: 400, color: '#0a0a0a',
-            lineHeight: 1.15, letterSpacing: '-0.01em',
+            fontSize: 'clamp(2.2rem, 5vw, 4rem)',
+            fontWeight: 800,
+            color: '#fff',
+            lineHeight: 1.08,
             margin: 0,
-          }}>Give online.</h2>
+          }}>
+            Give online.
+          </h2>
         </div>
 
         <p style={{
-          fontSize: 14, color: '#888', lineHeight: 1.7,
-          marginBottom: 56, maxWidth: 520,
+          fontSize: 16,
+          color: 'rgba(255,255,255,0.76)',
+          lineHeight: 1.75,
+          marginBottom: 38,
+          maxWidth: 680,
         }}>
           Your generosity makes a difference. Every gift helps us serve our community, advance the mission, and proclaim the gospel.
         </p>
 
-        {/* Campaign grid */}
         <div className="cp-card-grid" style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 1,
-          background: '#e8e4de',
-          border: '1px solid #e8e4de',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: 24,
         }}>
-          {campaigns.map(c => {
-            const cImg = resolveImg(c.imageUrl);
-            return (
-              <div key={c.id} style={{ background: '#fff', padding: '32px 28px' }}>
-                {/* Category */}
-                <p style={{
-                  fontSize: 10, fontWeight: 600, letterSpacing: '0.2em',
-                  textTransform: 'uppercase', color: '#888', marginBottom: 14,
-                }}>
-                  {c.category.replace(/_/g, ' ')}
-                </p>
-
-                {/* Name */}
-                <h3 style={{
-                  fontFamily: 'Georgia, serif',
-                  fontSize: 20, fontWeight: 400, color: '#0a0a0a',
-                  marginBottom: 12, lineHeight: 1.3,
-                }}>{c.name}</h3>
-
-                {/* Description */}
-                {c.description && (
-                  <p style={{
-                    fontSize: 13, color: '#666', lineHeight: 1.7,
-                    marginBottom: 24,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}>
-                    {c.description}
-                  </p>
-                )}
-
-                {/* Give link */}
-                <a
-                  href={`${FRONTEND}/giving/${c.id}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{
-                    fontSize: 12, fontWeight: 600, letterSpacing: '0.1em',
-                    textTransform: 'uppercase', color: '#0a0a0a',
-                    textDecoration: 'none',
-                    borderBottom: '1px solid #0a0a0a',
-                    paddingBottom: 2,
-                    transition: 'opacity 0.2s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.opacity = '0.5'}
-                  onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.opacity = '1'}
-                >
-                  Give Now →
-                </a>
+          {campaigns.map(campaign => (
+            <article key={campaign.id} style={{
+              background: '#fff',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 16,
+              padding: 26,
+              boxShadow: '0 18px 48px rgba(0,0,0,0.18)',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 300,
+            }}>
+              <div style={{
+                width: 52,
+                height: 52,
+                borderRadius: 14,
+                background: `linear-gradient(135deg, ${accent}, #b9750f)`,
+                color: '#111822',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 20,
+              }}>
+                <HandHeart size={24} />
               </div>
-            );
-          })}
+
+              <p style={{
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: '#c7830f',
+                margin: '0 0 12px',
+              }}>
+                {campaign.category.replace(/_/g, ' ')}
+              </p>
+
+              <h3 style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: 25,
+                fontWeight: 800,
+                color: '#101a30',
+                margin: '0 0 12px',
+                lineHeight: 1.2,
+              }}>
+                {campaign.name}
+              </h3>
+
+              {campaign.description && (
+                <p style={{
+                  fontSize: 14,
+                  color: '#53617a',
+                  lineHeight: 1.7,
+                  margin: 0,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}>
+                  {campaign.description}
+                </p>
+              )}
+
+              <a
+                className="cp-give-card-action"
+                href={`${FRONTEND}/giving/${campaign.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  marginTop: 'auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  alignSelf: 'flex-start',
+                  borderRadius: 12,
+                  padding: '14px 20px',
+                  background: accent,
+                  color: '#101a30',
+                  fontSize: 14,
+                  fontWeight: 900,
+                  textDecoration: 'none',
+                }}
+              >
+                Give Now
+              </a>
+            </article>
+          ))}
         </div>
       </div>
     </section>

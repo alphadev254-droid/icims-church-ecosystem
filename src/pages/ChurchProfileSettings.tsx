@@ -729,14 +729,14 @@ export default function ChurchProfileSettingsPage() {
             <div className="flex items-center gap-2">
               <input
                 type="color"
-                value={form.primaryColor ?? '#d4a574'}
+                value={form.primaryColor ?? '#d89b12'}
                 onChange={e => set('primaryColor', e.target.value)}
                 className="h-9 w-14 rounded-md border border-input cursor-pointer p-1"
               />
               <Input
-                value={form.primaryColor ?? '#d4a574'}
+                value={form.primaryColor ?? '#d89b12'}
                 onChange={e => set('primaryColor', e.target.value)}
-                placeholder="#d4a574"
+                placeholder="#d89b12"
                 className="font-mono"
               />
             </div>

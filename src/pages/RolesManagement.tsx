@@ -61,6 +61,30 @@ function isAllowedForCustomRole(permission: Permission) {
     && !permission.name.startsWith('system_payments:');
 }
 
+function getImpliedReadName(permission: Permission | undefined, permissions: Permission[]) {
+  if (!permission || permission.action === 'read') return null;
+  const readPermission = permissions.find(item => item.resource === permission.resource && item.action === 'read');
+  return readPermission?.name ?? null;
+}
+
+function togglePermissionWithImpliedRead(current: string[], permName: string, permissions: Permission[]) {
+  const selected = new Set(current);
+  const permission = permissions.find(item => item.name === permName);
+  if (selected.has(permName)) {
+    const hasDependentActions = permission?.action === 'read'
+      && permissions.some(item => item.resource === permission.resource && item.name !== permName && selected.has(item.name));
+    if (hasDependentActions) return Array.from(selected);
+
+    selected.delete(permName);
+    return Array.from(selected);
+  }
+
+  selected.add(permName);
+  const impliedReadName = getImpliedReadName(permission, permissions);
+  if (impliedReadName) selected.add(impliedReadName);
+  return Array.from(selected);
+}
+
 function uniq(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.filter(Boolean) as string[])).sort();
 }
@@ -87,7 +111,7 @@ function PermissionPicker({ permissions, selected, onChange }: { permissions: Pe
   const selectedSet = new Set(selected);
 
   const toggle = (name: string) => {
-    onChange(selectedSet.has(name) ? selected.filter(item => item !== name) : [...selected, name]);
+    onChange(togglePermissionWithImpliedRead(selected, name, permissions));
   };
 
   return (
@@ -321,8 +345,17 @@ export default function RolesManagementPage() {
     if (permission && currentRole?.isSystemRole === false && !isAllowedForCustomRole(permission)) return;
     setPendingPerms(prev => {
       const next = new Set(prev);
-      if (next.has(permName)) next.delete(permName);
-      else next.add(permName);
+      if (next.has(permName)) {
+        const hasDependentActions = permission?.action === 'read'
+          && allPermissions.some(item => item.resource === permission.resource && item.name !== permName && next.has(item.name));
+        if (hasDependentActions) return next;
+
+        next.delete(permName);
+      } else {
+        next.add(permName);
+        const impliedReadName = getImpliedReadName(permission, allPermissions);
+        if (impliedReadName) next.add(impliedReadName);
+      }
       return next;
     });
     setDirty(true);

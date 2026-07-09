@@ -10,23 +10,23 @@ export function Ministries({ ministries, accent }: MinistriesProps) {
   if (!ministries.length) return null;
 
   return (
-    <section id="ministries" className="cp-section" style={{ background: '#faf9f7', padding: '100px 40px' }}>
+    <section id="ministries" className="cp-section" style={{ background: '#faf9f7', padding: '78px 28px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <p style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: '0.22em',
+          fontSize: 11, fontWeight: 800, letterSpacing: '0.22em',
           textTransform: 'uppercase', color: accent, marginBottom: 18,
         }}>Ministries</p>
 
         <h2 className="cp-section-title" style={{
           fontFamily: 'Georgia, "Times New Roman", serif',
-          fontSize: 'clamp(2.2rem, 5vw, 4rem)',
-          fontWeight: 700, color: '#101a30',
+          fontSize: 'clamp(2.2rem, 5vw, 3.8rem)',
+          fontWeight: 800, color: '#101a30',
           lineHeight: 1.08, marginBottom: 18,
         }}>Find your place to serve.</h2>
 
         <p style={{
           fontSize: 16, color: '#53617a', lineHeight: 1.75,
-          maxWidth: 680, marginBottom: 46,
+          maxWidth: 680, marginBottom: 36,
         }}>
           Discover the teams and outreaches helping our church love people, build faith, and serve the community.
         </p>
@@ -34,7 +34,7 @@ export function Ministries({ ministries, accent }: MinistriesProps) {
         <div className="cp-ministry-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: 24,
+          gap: 22,
         }}>
           {ministries.map(ministry => {
             const img = resolveImg(ministry.imageUrl || undefined);
@@ -42,16 +42,16 @@ export function Ministries({ ministries, accent }: MinistriesProps) {
               <article key={ministry.id} style={{
                 background: '#fff',
                 border: '1px solid #e9dfd2',
-                borderRadius: 18,
+                borderRadius: 16,
                 overflow: 'hidden',
-                boxShadow: '0 18px 45px rgba(16, 24, 40, 0.06)',
+                boxShadow: '0 16px 42px rgba(16, 24, 40, 0.055)',
               }}>
                 {img && (
                   <img src={img} alt={ministry.name} style={{
                     width: '100%', height: 180, objectFit: 'cover', display: 'block',
                   }} />
                 )}
-                <div style={{ padding: '28px 26px 30px' }}>
+                <div style={{ padding: '24px 24px 26px' }}>
                   <div style={{
                     width: 48, height: 48, borderRadius: 14,
                     background: `linear-gradient(135deg, ${accent}, #c7830f)`,

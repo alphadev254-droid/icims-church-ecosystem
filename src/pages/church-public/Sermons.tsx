@@ -34,7 +34,7 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
 
   if (variant === 'page') {
     return (
-      <section id="sermons" className="cp-section" style={{ background: '#fff', padding: '74px 28px 150px' }}>
+      <section id="sermons" className="cp-section" style={{ background: '#fff', padding: '72px 28px 108px' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
           <FeaturedSermon sermon={featured} accent={accent} large />
           <div style={{ display: 'flex', gap: 14, margin: '50px 0 36px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -67,12 +67,12 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
             {sermons.map(sermon => (
               <a key={sermon.id} href={sermon.youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
                 border: '1px solid #e9dfd2',
-                borderRadius: 18,
-                padding: 26,
+                borderRadius: 16,
+                padding: 24,
                 textDecoration: 'none',
                 background: '#fff',
                 color: '#101a30',
-                boxShadow: '0 16px 42px rgba(16,24,40,0.04)',
+                boxShadow: '0 14px 36px rgba(16,24,40,0.045)',
               }}>
                 {sermon.series && <p style={{ color: accent, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 14 }}>{sermon.series}</p>}
                 <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 28, lineHeight: 1.15, margin: '0 0 12px' }}>{sermon.title}</h3>
@@ -86,21 +86,21 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
   }
 
   return (
-    <section id="sermons" className="cp-section" style={{ background: '#111822', padding: '100px 40px' }}>
+    <section id="sermons" className="cp-section" style={{ background: '#111822', padding: '82px 28px 96px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <div style={{
           display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-          gap: 24, flexWrap: 'wrap', marginBottom: 46,
+          gap: 24, flexWrap: 'wrap', marginBottom: 36,
         }}>
           <div>
             <p style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.22em',
+              fontSize: 11, fontWeight: 800, letterSpacing: '0.22em',
               textTransform: 'uppercase', color: accent, marginBottom: 18,
             }}>Latest Sermon</p>
             <h2 className="cp-section-title" style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
-              fontSize: 'clamp(2.2rem, 5vw, 4rem)',
-              fontWeight: 700, color: '#fff',
+              fontSize: 'clamp(2.2rem, 5vw, 3.8rem)',
+              fontWeight: 800, color: '#fff',
               lineHeight: 1.08, margin: 0,
             }}>This week at the pulpit.</h2>
           </div>
@@ -170,8 +170,8 @@ function FeaturedSermon({ sermon, accent, large = false }: { sermon: PublicSermo
       rel="noopener noreferrer"
       style={{
         position: 'relative',
-        minHeight: large ? 420 : 420,
-        borderRadius: 24,
+        minHeight: large ? 380 : 390,
+        borderRadius: 20,
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'flex-end',

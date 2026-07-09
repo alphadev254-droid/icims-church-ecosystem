@@ -7,55 +7,54 @@ interface ServicesProps {
 
 export function Services({ serviceTimes, accent }: ServicesProps) {
   return (
-    <section id="services" className="cp-section" style={{ background: '#fff', padding: '100px 40px' }}>
+    <section id="services" className="cp-section" style={{ background: '#fff', padding: '76px 28px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         <p style={{
-          fontSize: 10, fontWeight: 600, letterSpacing: '0.22em',
-          textTransform: 'uppercase', color: '#888', marginBottom: 20,
+          fontSize: 11, fontWeight: 800, letterSpacing: '0.22em',
+          textTransform: 'uppercase', color: accent, marginBottom: 16,
         }}>Join Us</p>
 
-        <div style={{
+        <div className="cp-section-heading-row" style={{
           display: 'flex', justifyContent: 'space-between',
           alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap', gap: 16,
         }}>
           <h2 className="cp-section-title" style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
-            fontSize: 'clamp(2rem, 4vw, 3rem)',
-            fontWeight: 400, color: '#0a0a0a',
-            lineHeight: 1.15, letterSpacing: '-0.01em',
+            fontSize: 'clamp(2.2rem, 5vw, 3.7rem)',
+            fontWeight: 800, color: '#101a30',
+            lineHeight: 1.08,
             margin: 0,
           }}>Service times.</h2>
         </div>
 
         <p style={{
-          fontSize: 14, color: '#888', lineHeight: 1.7,
-          marginBottom: 56, maxWidth: 480,
+          fontSize: 15, color: '#53617a', lineHeight: 1.7,
+          marginBottom: 34, maxWidth: 520,
         }}>
           Doors open thirty minutes before each service. All are welcome — come as you are.
         </p>
 
         {/* Service cards grid */}
         <div className="cp-services-strip" style={{
-          display: 'flex',
-          gap: 1,
-          overflowX: 'auto',
-          background: '#e8e4de',
-          border: '1px solid #e8e4de',
-          scrollbarWidth: 'thin' as const,
-          scrollbarColor: '#ccc transparent',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 18,
         }}>
           {serviceTimes.map((s, i) => (
             <div key={i} className="cp-service-card" style={{
               background: '#fff',
-              minWidth: 220, flexShrink: 0,
-              padding: '36px 32px',
+              border: '1px solid #e9dfd2',
+              borderRadius: 16,
+              minWidth: 0, flexShrink: 0,
+              padding: '28px 26px',
               position: 'relative',
+              boxShadow: '0 14px 34px rgba(16,24,40,0.045)',
             }}>
               {/* Number */}
               <p style={{
                 fontSize: 11, fontWeight: 400, letterSpacing: '0.15em',
-                color: '#bbb', marginBottom: 20,
+                color: accent, marginBottom: 18,
                 fontFamily: 'Georgia, serif',
               }}>
                 {String(i).padStart(2, '0')}
@@ -64,14 +63,14 @@ export function Services({ serviceTimes, accent }: ServicesProps) {
               {/* Service name */}
               <h3 style={{
                 fontFamily: 'Georgia, serif',
-                fontSize: 18, fontWeight: 400, color: '#0a0a0a',
+                fontSize: 20, fontWeight: 800, color: '#101a30',
                 marginBottom: 16, lineHeight: 1.3,
               }}>{s.name}</h3>
 
               {/* Time — large */}
               <p style={{
                 fontFamily: 'Georgia, serif',
-                fontSize: 28, fontWeight: 400, color: '#0a0a0a',
+                fontSize: 30, fontWeight: 800, color: '#101a30',
                 marginBottom: 8, letterSpacing: '-0.01em',
               }}>{s.time}</p>
 

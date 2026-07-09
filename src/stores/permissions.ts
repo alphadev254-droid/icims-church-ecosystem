@@ -59,6 +59,13 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   { permission: 'church_website:manage',   item: { to: '/dashboard/church-profile',  label: 'Church Website', icon: Globe } },
 ];
 
+const PERMISSION_TO_ROUTE: Array<{ permission: string; route: string }> = [
+  { permission: 'donations:read', route: '/dashboard/donations' },
+  { permission: 'tickets:read', route: '/dashboard/my-tickets' },
+  { permission: 'attendance:read', route: '/dashboard/event-attendance' },
+  { permission: 'subaccounts:view', route: '/dashboard/subaccount' },
+];
+
 /** Build sidebar nav items from the user's permission array */
 export function getNavForPermissions(permissions: string[], user?: { accountCountry?: string | null; roleName?: string } | null): NavItem[] {
   const permSet = new Set(permissions);
@@ -155,15 +162,20 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
         routes.push(item.to);
         continue;
       }
-      // Church website — ministry_admin only (settings:read is already scoped)
+      // Church website — shown to anyone with church_website:manage permission
       if (item.to === '/dashboard/church-profile') {
-        if (currentUser?.roleName === 'ministry_admin') {
-          routes.push(item.to);
-        }
+        routes.push(item.to);
         continue;
       }
       routes.push(item.to);
     }
   }
+
+  for (const { permission, route } of PERMISSION_TO_ROUTE) {
+    if (permSet.has(permission) && !routes.includes(route)) {
+      routes.push(route);
+    }
+  }
+
   return routes;
 }
