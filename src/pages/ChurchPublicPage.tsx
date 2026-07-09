@@ -88,7 +88,7 @@ function PageHero({ eyebrow, title, copy, accent }: {
         }}>
           {title}
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 15, lineHeight: 1.65, maxWidth: 560, margin: 0 }}>
+        <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 1.65, maxWidth: 560, margin: 0 }}>
           {copy}
         </p>
       </div>

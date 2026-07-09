@@ -39,7 +39,7 @@ function EventCard({ event, accent }: { event: PublicEvent; accent: string }) {
           <p style={{ color: DARK, fontSize: 9, fontWeight: 800, margin: '2px 0 0', letterSpacing: '0.1em' }}>{month}</p>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, margin: '0 0 5px' }}>{weekday} · {time}</p>
+          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, margin: '0 0 5px' }}>{weekday} · {time}</p>
           {/* Golden title */}
           <h3 style={{
             fontFamily: 'Georgia, serif', color: accent,

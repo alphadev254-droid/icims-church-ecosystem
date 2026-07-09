@@ -18,7 +18,8 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
     <footer style={{
       background: '#121D39',
       color: '#fff',
-      padding: '64px 28px 36px',
+      padding: '56px 28px 36px',
+      borderTop: '4px solid #FFC638',
     }} className="cp-footer">
       <div style={{
         maxWidth: 1400, margin: '0 auto',
@@ -42,7 +43,7 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
             )}
             <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 20, margin: 0, color: '#fff' }}>{ministryName}</h2>
           </div>
-          <p style={{ color: 'rgba(255,255,255,0.55)', lineHeight: 1.75, maxWidth: 440, marginBottom: 24, fontSize: 14 }}>
+          <p style={{ color: 'rgba(255,255,255,0.9)', lineHeight: 1.75, maxWidth: 440, marginBottom: 24, fontSize: 14 }}>
             {profile.tagline || 'A Spirit-filled congregation committed to worship, discipleship, and serving our community together.'}
           </p>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -61,7 +62,7 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
           <div style={{ display: 'grid', gap: 12 }}>
             {explore.map(link => (
               <a key={link.href} href={link.href} style={{
-                color: 'rgba(255,255,255,0.65)', textDecoration: 'none',
+                color: 'rgba(255,255,255,0.85)', textDecoration: 'none',
                 fontWeight: 500, fontSize: 14,
               }}>
                 {link.label}
@@ -77,19 +78,19 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
             {profile.email && (
               <span style={infoRow}>
                 <Mail size={15} color={accent} />
-                <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14 }}>{profile.email}</span>
+                <span style={{ color: '#fff', fontSize: 14 }}>{profile.email}</span>
               </span>
             )}
             {profile.phone && (
               <span style={infoRow}>
                 <Phone size={15} color={accent} />
-                <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14 }}>{profile.phone}</span>
+                <span style={{ color: '#fff', fontSize: 14 }}>{profile.phone}</span>
               </span>
             )}
             {profile.address && (
               <span style={infoRow}>
                 <MapPin size={15} color={accent} />
-                <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14 }}>{profile.address}</span>
+                <span style={{ color: '#fff', fontSize: 14 }}>{profile.address}</span>
               </span>
             )}
           </div>
@@ -103,7 +104,7 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
         display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
         alignItems: 'center',
       }}>
-        <p style={{ color: 'rgba(255,255,255,0.35)', margin: 0, fontSize: 13 }}>
+        <p style={{ color: 'rgba(255,255,255,0.6)', margin: 0, fontSize: 13 }}>
           © {year} {ministryName}. All rights reserved.
         </p>
         <a href="https://churchcentral.church" style={{
@@ -124,7 +125,7 @@ function SocialBtn({ href, accent, children }: { href: string; accent: string; c
     <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" style={{
       width: 34, height: 34, borderRadius: 8,
       border: `1px solid rgba(255,255,255,0.15)`,
-      color: 'rgba(255,255,255,0.65)',
+      color: 'rgba(255,255,255,0.75)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       textDecoration: 'none',
     }}>

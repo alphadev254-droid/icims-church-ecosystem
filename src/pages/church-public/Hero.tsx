@@ -102,7 +102,7 @@ export function Hero({ ministryName, bannerSrc, accent, tagline, youtubeUrl, ser
           </h1>
 
           <p className="cp-hero-copy" style={{
-            color: 'rgba(255,255,255,0.68)', fontSize: 16, lineHeight: 1.75,
+            color: 'rgba(255,255,255,0.9)', fontSize: 16, lineHeight: 1.75,
             maxWidth: 520, marginBottom: 28,
           }}>
             A Spirit-filled congregation committed to worship, discipleship, and serving our community together.
@@ -151,16 +151,16 @@ export function Hero({ ministryName, bannerSrc, accent, tagline, youtubeUrl, ser
                   borderRadius: 8, padding: '10px 4px', textAlign: 'center',
                 }}>
                   <p style={{ color: accent, fontSize: 24, fontWeight: 800, margin: 0, lineHeight: 1 }}>{val}</p>
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', margin: '4px 0 0' }}>{label}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', margin: '4px 0 0' }}>{label}</p>
                 </div>
               ))}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: '#fff', fontSize: 12 }}>
                 <Clock size={13} color={accent} /> {nextService.day} · {nextService.time}
               </span>
               {nextService.location && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: '#fff', fontSize: 12 }}>
                   <MapPin size={13} color={accent} /> {nextService.location}
                 </span>
               )}

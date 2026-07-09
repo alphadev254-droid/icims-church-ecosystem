@@ -30,7 +30,7 @@ function SermonCard({ sermon, accent }: { sermon: PublicSermon; accent: string }
     }}>
       <div style={{ position: 'relative', background: '#121D39', height: 150 }}>
         {ytId && <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} alt={sermon.title} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(10,15,30,0.65) 100%)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(18,29,57,0.7) 100%)' }} />
         <span style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
           width: 38, height: 38, borderRadius: '50%',
@@ -42,7 +42,7 @@ function SermonCard({ sermon, accent }: { sermon: PublicSermon; accent: string }
       <div style={{ padding: '14px 16px 16px' }}>
         {sermon.series && <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: accent, margin: '0 0 5px' }}>{sermon.series}</p>}
         <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 16, fontWeight: 700, color: '#121D39', lineHeight: 1.25, margin: '0 0 5px' }}>{sermon.title}</h3>
-        {meta && <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>{meta}</p>}
+        {meta && <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>{meta}</p>}
       </div>
     </a>
   );
@@ -79,7 +79,7 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
           </div>
           {sermons.length > 1 && (
             <a href="#sermons" style={{
-              color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)',
+              color: '#fff', border: '1px solid rgba(255,255,255,0.35)',
               borderRadius: 7, textDecoration: 'none', padding: '9px 16px',
               fontWeight: 600, fontSize: 12,
             }}>All Sermons →</a>
@@ -101,7 +101,7 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
               <img src={`https://img.youtube.com/vi/${featuredId}/hqdefault.jpg`} alt={featured.title}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
             )}
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 25%, rgba(10,15,30,0.95) 100%)' }} />
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 25%, rgba(18,29,57,0.96) 100%)' }} />
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{
                 width: 56, height: 56, borderRadius: '50%', background: accent,
@@ -112,7 +112,7 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
             <div style={{ position: 'relative', zIndex: 1 }}>
               {featured.series && <p style={{ color: accent, fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 5px' }}>{featured.series}</p>}
               <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(1.4rem,3vw,2.2rem)', lineHeight: 1.1, margin: '0 0 6px' }}>{featured.title}</h3>
-              <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, margin: 0 }}>
+              <p style={{ color: '#fff', fontSize: 12, margin: 0 }}>
                 {[featured.speaker, featured.duration, fmtDate(featured.sermonDate)].filter(Boolean).join(' · ')}
               </p>
             </div>
@@ -126,16 +126,16 @@ export function Sermons({ sermons, accent, variant = 'home' }: SermonsProps) {
                 <a key={s.id} href={s.youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
                   display: 'grid', gridTemplateColumns: '100px minmax(0,1fr)',
                   gap: 12, alignItems: 'center', textDecoration: 'none', color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10,
-                  padding: 12, background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10,
+                  padding: 12, background: 'rgba(255,255,255,0.05)',
                 }}>
                   <div style={{ position: 'relative', borderRadius: 7, overflow: 'hidden', aspectRatio: '16/10', background: '#0b1224' }}>
                     {ytId && <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                   </div>
                   <div>
                     {s.series && <p style={{ color: accent, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>{s.series}</p>}
-                    <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 14, lineHeight: 1.25, margin: '0 0 4px' }}>{s.title}</h3>
-                    <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, margin: 0 }}>{[s.speaker, s.duration].filter(Boolean).join(' · ')}</p>
+                    <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 14, lineHeight: 1.25, margin: '0 0 4px', color: '#fff' }}>{s.title}</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, margin: 0 }}>{[s.speaker, s.duration].filter(Boolean).join(' · ')}</p>
                   </div>
                 </a>
               );
