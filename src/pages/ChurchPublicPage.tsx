@@ -30,66 +30,31 @@ function ResponsiveStyles() {
       .cp-page * { box-sizing: border-box; }
       @media (max-width: 768px) {
         .cp-navbar { padding: 0 16px !important; }
-        .cp-nav-inner { height: 64px !important; }
-        .cp-brand-name {
-          max-width: 190px !important;
-          overflow: hidden !important;
-          text-overflow: ellipsis !important;
-          white-space: nowrap !important;
-          font-size: 20px !important;
-        }
-        .cp-mobile-menu { padding: 8px 0 18px !important; }
-        .cp-hero { padding: 54px 18px 70px !important; }
-        .cp-page-hero { padding: 58px 20px 64px !important; }
-        .cp-home-hero { grid-template-columns: 1fr !important; gap: 42px !important; }
-        .cp-home-service-card {
-          position: static !important;
-          margin-top: 16px !important;
-          grid-template-columns: 1fr !important;
-        }
-        .cp-hero-title {
-          font-size: clamp(2.65rem, 13vw, 4rem) !important;
-          max-width: 100% !important;
-          overflow-wrap: anywhere !important;
-        }
-        .cp-hero-copy {
-          font-size: 16px !important;
-          max-width: 100% !important;
-        }
+        .cp-nav-inner { height: 60px !important; }
+        .cp-brand-name { font-size: 17px !important; max-width: 160px !important; }
+        .cp-mobile-menu { padding: 8px 0 14px !important; }
+        .cp-hero { padding: 56px 18px 64px !important; }
+        .cp-home-hero { grid-template-columns: 1fr !important; gap: 36px !important; }
+        .cp-hero-title { font-size: clamp(2.4rem, 12vw, 3.6rem) !important; overflow-wrap: anywhere !important; }
+        .cp-hero-copy { font-size: 15px !important; }
         .cp-hero-actions { flex-direction: column !important; align-items: stretch !important; }
-        .cp-hero-actions a { width: 100% !important; text-align: center !important; }
-        .cp-section { padding: 58px 18px !important; }
-        .cp-section-title { font-size: clamp(2.1rem, 10vw, 3.2rem) !important; overflow-wrap: anywhere !important; }
-        .cp-page-hero-title { font-size: clamp(2.35rem, 12vw, 3.8rem) !important; }
-        .cp-section-heading-row { align-items: flex-start !important; }
-        .cp-two-col, .cp-contact-grid, .cp-visit-grid, .cp-sermon-grid { grid-template-columns: 1fr !important; gap: 36px !important; }
+        .cp-hero-actions a { width: 100% !important; text-align: center !important; justify-content: center !important; }
+        .cp-section-title { font-size: clamp(1.9rem, 9vw, 2.8rem) !important; overflow-wrap: anywhere !important; }
+        .cp-two-col, .cp-contact-grid, .cp-visit-grid, .cp-sermon-grid { grid-template-columns: 1fr !important; gap: 28px !important; }
         .cp-visit-form-grid { grid-template-columns: 1fr !important; gap: 0 !important; }
-        .cp-sermon-grid a { grid-template-columns: 1fr !important; }
         .cp-ministry-grid { grid-template-columns: 1fr !important; }
         .cp-card-grid { grid-template-columns: 1fr !important; }
-        .cp-event-card-row { flex-direction: column !important; align-items: stretch !important; }
-        .cp-event-card-action { width: 100% !important; text-align: center !important; }
-        .cp-give-card-action { width: 100% !important; justify-content: center !important; }
-        .cp-services-strip { display: grid !important; grid-template-columns: 1fr !important; overflow: visible !important; }
-        .cp-service-card { min-width: 0 !important; padding: 28px 24px !important; }
-        .cp-map { height: 260px !important; }
-        .cp-footer {
-          padding: 28px 20px !important;
-          flex-direction: column !important;
-          align-items: flex-start !important;
-        }
+        .cp-services-strip { grid-template-columns: 1fr !important; }
+        .cp-map { height: 240px !important; }
+        .cp-footer { padding: 40px 18px 28px !important; }
+        .cp-footer .cp-contact-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
         .cp-auth-dialog {
           width: calc(100% - 24px) !important;
           max-height: 92svh !important;
           flex-direction: column !important;
           overflow-y: auto !important;
         }
-        .cp-auth-side {
-          width: auto !important;
-          min-height: auto !important;
-          padding: 28px 24px !important;
-          gap: 28px !important;
-        }
+        .cp-auth-side { width: auto !important; min-height: auto !important; padding: 28px 24px !important; gap: 28px !important; }
         .cp-auth-main { padding: 34px 24px 28px !important; }
       }
     `}</style>
@@ -103,46 +68,24 @@ function PageHero({ eyebrow, title, copy, accent }: {
   accent: string;
 }) {
   return (
-    <section className="cp-page-hero" style={{
-      background: 'linear-gradient(120deg, #111822 0%, #14213a 66%, #303846 100%)',
-      padding: '68px 28px 78px',
-    }}>
+    <section style={{ background: '#111822', padding: '72px 28px 80px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <p style={{
-          color: 'rgba(255,255,255,0.65)',
-          fontSize: 13,
-          fontWeight: 700,
-          margin: '0 0 18px',
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.22em',
+          textTransform: 'uppercase', color: accent, margin: '0 0 16px',
         }}>
-          Home <span style={{ color: 'rgba(255,255,255,0.35)', margin: '0 10px' }}>›</span>
-          <span style={{ color: accent }}>{eyebrow.replace('Partner With The Mission', 'Give')}</span>
+          {eyebrow.replace('Partner With The Mission', 'Give')}
         </p>
-        <p style={{
-          display: 'inline-flex',
-          border: `1px solid ${accent}`,
-          borderRadius: 999,
-          padding: '8px 20px',
-          color: accent,
-          fontSize: 12,
-          fontWeight: 800,
-          letterSpacing: '0.26em',
-          textTransform: 'uppercase',
-          margin: '0 0 20px',
-        }}>
-          {eyebrow}
-        </p>
-        <h1 className="cp-section-title cp-page-hero-title" style={{
+        <h1 className="cp-section-title" style={{
           fontFamily: 'Georgia, "Times New Roman", serif',
           color: '#fff',
-          fontSize: 'clamp(2.85rem, 6vw, 4.9rem)',
-          lineHeight: 1,
-          fontWeight: 800,
-          maxWidth: 940,
-          margin: '0 0 18px',
+          fontSize: 'clamp(2.4rem, 5.5vw, 4.2rem)',
+          lineHeight: 1.05, fontWeight: 800,
+          maxWidth: 860, margin: '0 0 16px',
         }}>
           {title}
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.78)', fontSize: 18, lineHeight: 1.6, maxWidth: 760, margin: 0 }}>
+        <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 16, lineHeight: 1.7, maxWidth: 640, margin: 0 }}>
           {copy}
         </p>
       </div>
@@ -199,12 +142,10 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
   if (loading) {
     return (
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: '#fff',
-        color: '#53617a',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100vh', background: '#111822', color: 'rgba(255,255,255,0.5)',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSize: 15,
       }}>
         Loading...
       </div>
@@ -214,17 +155,14 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
   if (notFound || !data) {
     return (
       <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        gap: 16,
-        background: '#faf9f7',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', minHeight: '100vh', gap: 14,
+        background: '#111822',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}>
-        <p style={{ fontSize: 12, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#8a94a6' }}>404</p>
-        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 32, color: '#101a30' }}>Page not found</h1>
-        <p style={{ color: '#53617a' }}>This church page does not exist or has not been published yet.</p>
+        <p style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>404</p>
+        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 28, color: '#fff', margin: 0 }}>Page not found</h1>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>This church page does not exist or has not been published yet.</p>
       </div>
     );
   }

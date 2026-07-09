@@ -1,5 +1,5 @@
-import { Clock, MapPin, Play } from 'lucide-react';
-import type React from 'react';
+import { useEffect, useState } from 'react';
+import { Play, Clock, MapPin, ArrowRight } from 'lucide-react';
 import type { ServiceTime } from './types';
 
 interface HeroProps {
@@ -14,179 +14,6 @@ interface HeroProps {
   hasCampaigns: boolean;
 }
 
-export function Hero({
-  ministryName,
-  bannerSrc,
-  accent,
-  tagline,
-  youtubeUrl,
-  serviceTimes,
-}: HeroProps) {
-  const nextService = serviceTimes[0];
-  const headline = tagline || 'A place of hope, community & faith.';
-
-  return (
-    <section id="home" className="cp-hero" style={{
-      minHeight: 690,
-      position: 'relative',
-      display: 'flex',
-      alignItems: 'center',
-      background: `linear-gradient(90deg, rgba(12,18,35,0.92) 0%, rgba(12,18,35,0.74) 44%, rgba(12,18,35,0.60) 100%), url(${bannerSrc}) center/cover no-repeat`,
-      padding: '92px 28px',
-    }}>
-      <div className="cp-home-hero" style={{
-        maxWidth: 1400,
-        width: '100%',
-        margin: '0 auto',
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1.05fr) minmax(360px, 0.95fr)',
-        gap: 54,
-        alignItems: 'center',
-      }}>
-        <div>
-          <p style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            color: accent,
-            border: `1px solid ${hexToRgba(accent, 0.45)}`,
-            borderRadius: 999,
-            padding: '7px 12px',
-            fontSize: 11,
-            fontWeight: 800,
-            letterSpacing: '0.24em',
-            textTransform: 'uppercase',
-            marginBottom: 26,
-          }}>
-            {ministryName}
-          </p>
-          <h1 className="cp-hero-title" style={{
-            fontFamily: 'Georgia, "Times New Roman", serif',
-            color: '#fff',
-            fontSize: 'clamp(3.5rem, 7vw, 6.75rem)',
-            lineHeight: 0.98,
-            fontWeight: 800,
-            margin: '0 0 24px',
-            maxWidth: 820,
-          }}>
-            {splitHeadline(headline, accent)}
-          </h1>
-          <p className="cp-hero-copy" style={{
-            color: 'rgba(255,255,255,0.78)',
-            fontSize: 18,
-            lineHeight: 1.75,
-            maxWidth: 640,
-            marginBottom: 34,
-          }}>
-            A Spirit-filled congregation committed to worship, discipleship, and serving our community together, in the love of Christ.
-          </p>
-          <div className="cp-hero-actions" style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-            <a href="#visit" style={primaryButton(accent)}>Plan Your Visit</a>
-            {youtubeUrl && (
-              <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" style={secondaryButton}>
-                <Play size={16} /> Watch Latest Sermon
-              </a>
-            )}
-          </div>
-        </div>
-
-        {nextService && (
-          <div className="cp-home-service-card" style={{
-            border: `1px solid ${hexToRgba(accent, 0.34)}`,
-            borderRadius: 22,
-            background: 'rgba(17,24,34,0.62)',
-            backdropFilter: 'blur(8px)',
-            padding: 24,
-            boxShadow: '0 28px 70px rgba(0,0,0,0.22)',
-          }}>
-            <p style={{
-              color: accent,
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
-              margin: '0 0 18px',
-            }}>
-              Next: {nextService.name || 'Service'}
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 22 }}>
-              {[
-                ['00', 'Days'],
-                ['21', 'Hours'],
-                ['37', 'Mins'],
-                ['51', 'Secs'],
-              ].map(([value, label]) => (
-                <div key={label} style={{
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  borderRadius: 14,
-                  padding: '14px 8px',
-                  textAlign: 'center',
-                  background: 'rgba(255,255,255,0.03)',
-                }}>
-                  <p style={{ color: accent, fontSize: 26, fontWeight: 900, margin: 0 }}>{value}</p>
-                  <p style={{ color: 'rgba(255,255,255,0.62)', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', margin: '4px 0 0' }}>{label}</p>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 18, color: 'rgba(255,255,255,0.72)', fontSize: 14, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <MapPin size={16} color={accent} /> {nextService.location || 'Main Auditorium'}
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <Clock size={16} color={accent} /> {nextService.day} {nextService.time}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function splitHeadline(text: string, accent: string) {
-  const normalized = text.trim().replace(/\.$/, '');
-  const words = normalized.split(' ');
-  if (words.length < 3) return normalized;
-  const last = words.slice(-2).join(' ');
-  const first = words.slice(0, -2).join(' ');
-  return (
-    <>
-      {first} <span style={{ color: accent }}>{last}.</span>
-    </>
-  );
-}
-
-function primaryButton(accent: string): React.CSSProperties {
-  return {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: accent,
-    color: '#101a30',
-    textDecoration: 'none',
-    borderRadius: 12,
-    padding: '16px 26px',
-    fontWeight: 800,
-    fontSize: 16,
-    boxShadow: '0 16px 34px rgba(197,137,16,0.24)',
-  };
-}
-
-const secondaryButton: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 10,
-  background: 'rgba(255,255,255,0.06)',
-  color: '#fff',
-  textDecoration: 'none',
-  borderRadius: 12,
-  padding: '15px 25px',
-  fontWeight: 800,
-  fontSize: 16,
-  border: '1px solid rgba(255,255,255,0.28)',
-};
-
 function hexToRgba(hex: string, alpha: number) {
   const clean = hex.replace('#', '');
   if (clean.length !== 6) return `rgba(224,165,26,${alpha})`;
@@ -194,4 +21,165 @@ function hexToRgba(hex: string, alpha: number) {
   const g = parseInt(clean.slice(2, 4), 16);
   const b = parseInt(clean.slice(4, 6), 16);
   return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function useCountdown(targetDay: string, targetTime: string) {
+  const [parts, setParts] = useState({ d: '00', h: '00', m: '00', s: '00' });
+
+  useEffect(() => {
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const dayIndex = days.findIndex(d => targetDay?.toLowerCase().startsWith(d.toLowerCase()));
+
+    function calc() {
+      const now = new Date();
+      const [timePart, meridiem] = targetTime?.split(' ') ?? ['00:00', ''];
+      const [rawH, rawM] = timePart.split(':').map(Number);
+      let hour = rawH;
+      if (meridiem?.toLowerCase() === 'pm' && hour < 12) hour += 12;
+      if (meridiem?.toLowerCase() === 'am' && hour === 12) hour = 0;
+
+      const target = new Date(now);
+      target.setHours(hour, rawM || 0, 0, 0);
+      const todayDay = now.getDay();
+      const targetDayNum = dayIndex >= 0 ? dayIndex : todayDay;
+      let diff = targetDayNum - todayDay;
+      if (diff < 0 || (diff === 0 && now >= target)) diff += 7;
+      target.setDate(target.getDate() + diff);
+
+      const ms = target.getTime() - now.getTime();
+      if (ms <= 0) return;
+      const totalSecs = Math.floor(ms / 1000);
+      const d = Math.floor(totalSecs / 86400);
+      const h = Math.floor((totalSecs % 86400) / 3600);
+      const m = Math.floor((totalSecs % 3600) / 60);
+      const s = totalSecs % 60;
+      setParts({
+        d: String(d).padStart(2, '0'),
+        h: String(h).padStart(2, '0'),
+        m: String(m).padStart(2, '0'),
+        s: String(s).padStart(2, '0'),
+      });
+    }
+
+    calc();
+    const id = setInterval(calc, 1000);
+    return () => clearInterval(id);
+  }, [targetDay, targetTime, dayIndex]);
+
+  return parts;
+}
+
+export function Hero({ ministryName, bannerSrc, accent, tagline, youtubeUrl, serviceTimes }: HeroProps) {
+  const nextService = serviceTimes[0];
+  const countdown = useCountdown(nextService?.day ?? '', nextService?.time ?? '');
+  const headline = tagline || 'A place of hope, community & faith.';
+
+  const words = headline.trim().replace(/\.$/, '').split(' ');
+  const last2 = words.slice(-2).join(' ');
+  const first = words.slice(0, -2).join(' ');
+
+  return (
+    <section id="home" className="cp-hero" style={{
+      minHeight: 680,
+      position: 'relative',
+      display: 'flex',
+      alignItems: 'center',
+      background: `linear-gradient(100deg, rgba(10,15,28,0.94) 0%, rgba(10,15,28,0.78) 50%, rgba(10,15,28,0.55) 100%), url(${bannerSrc}) center/cover no-repeat`,
+      padding: '96px 28px 80px',
+    }}>
+      <div className="cp-home-hero" style={{
+        maxWidth: 1400, width: '100%', margin: '0 auto',
+        display: 'grid',
+        gridTemplateColumns: nextService ? 'minmax(0,1.1fr) minmax(340px,0.9fr)' : '1fr',
+        gap: 56, alignItems: 'center',
+      }}>
+        {/* Left */}
+        <div>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            border: `1px solid ${hexToRgba(accent, 0.5)}`,
+            borderRadius: 999, padding: '6px 14px',
+            color: accent, fontSize: 11, fontWeight: 700,
+            letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 28,
+          }}>
+            {ministryName}
+          </span>
+
+          <h1 className="cp-hero-title" style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            color: '#fff', fontSize: 'clamp(3rem, 6.5vw, 6rem)',
+            lineHeight: 1, fontWeight: 800, margin: '0 0 22px', maxWidth: 800,
+          }}>
+            {words.length >= 3 ? <>{first} <span style={{ color: accent }}>{last2}.</span></> : headline}
+          </h1>
+
+          <p className="cp-hero-copy" style={{
+            color: 'rgba(255,255,255,0.72)', fontSize: 17, lineHeight: 1.75,
+            maxWidth: 580, marginBottom: 36,
+          }}>
+            A Spirit-filled congregation committed to worship, discipleship, and serving our community together, in the love of Christ.
+          </p>
+
+          <div className="cp-hero-actions" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <a href="#visit" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: accent, color: '#111822', textDecoration: 'none',
+              borderRadius: 8, padding: '14px 24px', fontWeight: 700, fontSize: 15,
+            }}>
+              Plan Your Visit <ArrowRight size={16} />
+            </a>
+            {youtubeUrl && (
+              <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: 'rgba(255,255,255,0.08)', color: '#fff', textDecoration: 'none',
+                borderRadius: 8, padding: '13px 22px', fontWeight: 600, fontSize: 15,
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}>
+                <Play size={15} /> Watch Sermon
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Right — service countdown card */}
+        {nextService && (
+          <div style={{
+            border: `1px solid ${hexToRgba(accent, 0.3)}`,
+            borderRadius: 16, background: 'rgba(17,24,34,0.7)',
+            backdropFilter: 'blur(10px)', padding: '28px 24px',
+          }}>
+            <p style={{
+              color: accent, fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.22em', textTransform: 'uppercase', margin: '0 0 20px',
+            }}>
+              Next Service — {nextService.name}
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 24 }}>
+              {[['Days', countdown.d], ['Hrs', countdown.h], ['Min', countdown.m], ['Sec', countdown.s]].map(([label, val]) => (
+                <div key={label} style={{
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 10, padding: '12px 6px', textAlign: 'center',
+                }}>
+                  <p style={{ color: accent, fontSize: 28, fontWeight: 800, margin: 0, lineHeight: 1 }}>{val}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', margin: '5px 0 0' }}>{label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+                <Clock size={14} color={accent} /> {nextService.day} · {nextService.time}
+              </span>
+              {nextService.location && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+                  <MapPin size={14} color={accent} /> {nextService.location}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }

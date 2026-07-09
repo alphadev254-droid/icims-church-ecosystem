@@ -12,111 +12,71 @@ export function Give({ campaigns, accent }: GiveProps) {
   if (!campaigns.length) return null;
 
   return (
-    <section id="give" className="cp-section" style={{ background: '#111822', padding: '82px 28px 100px' }}>
+    <section id="give" style={{ background: '#111822', padding: '80px 28px 96px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <p style={{
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: '0.22em',
-          textTransform: 'uppercase',
-          color: accent,
-          marginBottom: 18,
-        }}>
-          Support the Ministry
-        </p>
 
-        <div className="cp-section-heading-row" style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-end',
-          marginBottom: 18,
-          flexWrap: 'wrap',
-          gap: 18,
+        <p style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.22em',
+          textTransform: 'uppercase', color: accent, marginBottom: 12,
+        }}>Support the Ministry</p>
+
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+          marginBottom: 14, flexWrap: 'wrap', gap: 16,
         }}>
           <h2 className="cp-section-title" style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
-            fontSize: 'clamp(2.2rem, 5vw, 4rem)',
-            fontWeight: 800,
-            color: '#fff',
-            lineHeight: 1.08,
-            margin: 0,
-          }}>
-            Give online.
-          </h2>
+            fontSize: 'clamp(2rem, 4.5vw, 3.2rem)',
+            fontWeight: 800, color: '#fff', lineHeight: 1.1, margin: 0,
+          }}>Give online.</h2>
         </div>
 
         <p style={{
-          fontSize: 16,
-          color: 'rgba(255,255,255,0.76)',
-          lineHeight: 1.75,
-          marginBottom: 38,
-          maxWidth: 680,
+          fontSize: 15, color: 'rgba(255,255,255,0.65)', lineHeight: 1.75,
+          marginBottom: 40, maxWidth: 600,
         }}>
           Your generosity makes a difference. Every gift helps us serve our community, advance the mission, and proclaim the gospel.
         </p>
 
         <div className="cp-card-grid" style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: 24,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px,1fr))',
+          gap: 20,
         }}>
           {campaigns.map(campaign => (
             <article key={campaign.id} style={{
-              background: '#fff',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 16,
-              padding: 26,
-              boxShadow: '0 18px 48px rgba(0,0,0,0.18)',
-              display: 'flex',
-              flexDirection: 'column',
-              minHeight: 300,
+              background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 12, padding: 22,
+              display: 'flex', flexDirection: 'column', minHeight: 280,
             }}>
               <div style={{
-                width: 52,
-                height: 52,
-                borderRadius: 14,
-                background: `linear-gradient(135deg, ${accent}, #b9750f)`,
-                color: '#111822',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
+                width: 44, height: 44, borderRadius: 10,
+                background: `${accent}22`, color: accent,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 16,
               }}>
-                <HandHeart size={24} />
+                <HandHeart size={22} />
               </div>
 
               <p style={{
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: '0.16em',
-                textTransform: 'uppercase',
-                color: '#c7830f',
-                margin: '0 0 12px',
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
+                textTransform: 'uppercase', color: accent, margin: '0 0 8px',
               }}>
                 {campaign.category.replace(/_/g, ' ')}
               </p>
 
               <h3 style={{
-                fontFamily: 'Georgia, serif',
-                fontSize: 25,
-                fontWeight: 800,
-                color: '#101a30',
-                margin: '0 0 12px',
-                lineHeight: 1.2,
+                fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 700,
+                color: '#fff', margin: '0 0 10px', lineHeight: 1.25,
               }}>
                 {campaign.name}
               </h3>
 
               {campaign.description && (
                 <p style={{
-                  fontSize: 14,
-                  color: '#53617a',
-                  lineHeight: 1.7,
-                  margin: 0,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
+                  fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7, margin: 0,
+                  display: '-webkit-box', WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical', overflow: 'hidden',
                 }}>
                   {campaign.description}
                 </p>
@@ -128,18 +88,11 @@ export function Give({ campaigns, accent }: GiveProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  marginTop: 'auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  alignSelf: 'flex-start',
-                  borderRadius: 12,
-                  padding: '14px 20px',
-                  background: accent,
-                  color: '#101a30',
-                  fontSize: 14,
-                  fontWeight: 900,
-                  textDecoration: 'none',
+                  marginTop: 'auto', paddingTop: 18,
+                  display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start',
+                  borderRadius: 8, padding: '12px 18px',
+                  background: accent, color: '#111822',
+                  fontSize: 13, fontWeight: 700, textDecoration: 'none',
                 }}
               >
                 Give Now
