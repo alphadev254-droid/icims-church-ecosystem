@@ -59,7 +59,7 @@ export default function LoginPage() {
           </h2>
           <div className="space-y-3">
             {[
-              '12 integrated modules in one platform',
+              '20 integrated modules in one platform',
               'Multi-level hierarchy support',
               'Real-time giving and attendance tracking',
               'Secure, cloud-hosted infrastructure',

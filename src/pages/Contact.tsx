@@ -160,7 +160,7 @@ export default function ContactPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Get a personalised walkthrough of all 15+ modules with one of our team members. No commitment required.
+                  Get a personalised walkthrough of all 20 modules with one of our team members. No commitment required.
                 </p>
                 <Button
                   size="sm"

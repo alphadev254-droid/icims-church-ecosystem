@@ -104,6 +104,7 @@ export default function PublicFooter() {
             <h4 className="text-xs font-semibold uppercase tracking-widest text-background/40 dark:text-foreground/40 mb-4">Modules</h4>
             <ul className="space-y-2.5 text-sm text-background/60 dark:text-foreground/55">
               <li>Membership</li>
+              <li>Children & Dependents</li>
               <li>Giving & Offerings</li>
               <li>Event Management</li>
               <li>Attendance</li>

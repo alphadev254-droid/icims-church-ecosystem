@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import {
   Users, Church, Calendar, HandCoins, BarChart3, MessageSquare,
   BookOpen, ClipboardList, Building2, TrendingUp, Shield, Globe,
-  ArrowRight, CheckCircle2, ChevronRight, Smartphone, Download, X,
+  ArrowRight, Baby, CheckCircle2, ChevronRight, Smartphone, Download, X,
 } from 'lucide-react';
 const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
 
 const modules = [
   { icon: Users,        title: 'Members Management',            desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
+  { icon: Baby,         title: 'Children & Dependents',         desc: 'Record children, link them to parents or guardians, and keep family relationships clear inside the church register.' },
   { icon: Calendar,     title: 'Events Management',             desc: 'This module allows you to create church events and share them with all your church members. It also issues tickets for all ticketed events.' },
   { icon: HandCoins,    title: 'Giving',            desc: "Online giving is made easy! You can now manage your church's giving online." },
   { icon: ClipboardList,title: 'Attendance Tracking',           desc: 'Report every church meeting and retrieve the data at any time in the future.' },
@@ -34,7 +35,7 @@ const stats = [
   { value: '500+',   label: 'Churches onboarded' },
   { value: '50k+',   label: 'Members managed' },
   { value: '99.9%',  label: 'Platform uptime' },
-  { value: '15+',    label: 'Integrated modules' },
+  { value: '16+',    label: 'Integrated modules' },
 ];
 
 const whys = [
@@ -81,7 +82,7 @@ export default function LandingPage() {
 
   usePageMeta({
     title: 'The Complete Church Management Ecosystem',
-    description: 'ICIMS is a cloud-based church management platform with 12 integrated modules — membership, giving, attendance, events, communication and more.',
+    description: 'ICIMS is a cloud-based church management platform with integrated modules for membership, children and dependents, giving, attendance, events, communication and more.',
     canonical: 'https://churchcentral.church/',
     ogImage: 'https://media.aircnc.co.ke/media-images/420984ab-7d48-40fc-b653-a09eb1428d14.webp',
   });
@@ -123,7 +124,7 @@ export default function LandingPage() {
               transition={{ duration: 0.55, delay: 0.25 }}
               className="text-white/70 text-lg md:text-xl mb-10 max-w-xl leading-relaxed"
             >
-              15+ integrated modules covering every aspect of ministry — from membership and giving to events, attendance, and performance tracking.
+              16+ integrated modules covering every aspect of ministry — from membership and children records to giving, events, attendance, and performance tracking.
             </motion.p>
 
             <motion.div
@@ -244,7 +245,7 @@ export default function LandingPage() {
             <div>
               <p className="text-accent text-xs font-semibold tracking-widest uppercase mb-3">What's included</p>
               <h2 className="font-heading text-4xl md:text-5xl font-bold text-background dark:text-foreground leading-tight">
-                15+ modules.<br />One platform.
+                16+ modules.<br />One platform.
               </h2>
             </div>
             {/* Right */}

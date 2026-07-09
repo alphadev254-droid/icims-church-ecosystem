@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import {
   Users, Church, Calendar, HandCoins, BarChart3, MessageSquare,
   BookOpen, ClipboardList, Building2, TrendingUp, Shield, Globe,
-  Zap, Lock, Smartphone, FileText, ArrowRight, CheckCircle2,
+  Zap, Lock, Smartphone, FileText, ArrowRight, Baby, CheckCircle2,
   Users2, UsersRound, Bell, Ticket, Receipt, ShieldCheck,
 } from 'lucide-react';
 
@@ -20,28 +20,29 @@ const CATEGORY_LABEL: Record<string, string> = {
 const modules = [
   // Core
   { icon: Users,        cat: 'core',          num: '01', title: 'Members Management',           desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
-  { icon: Calendar,     cat: 'core',          num: '02', title: 'Events Management',             desc: 'This module allows you to create church events and share them with all your church members. It also issues tickets for all ticketed events.' },
-  { icon: HandCoins,    cat: 'core',          num: '03', title: 'Giving',            desc: "Online giving is made easy! You can now manage your church's giving online." },
-  { icon: ClipboardList,cat: 'core',          num: '04', title: 'Attendance Tracking',           desc: 'Report every church meeting and retrieve the data at any time in the future.' },
-  { icon: BookOpen,     cat: 'core',          num: '05', title: 'Resources Library',             desc: 'This module gives you a platform to keep resource materials that can be accessed by all church members.' },
-  { icon: Church,       cat: 'core',          num: '06', title: 'Churches Management',           desc: 'Create your church and manage how data flows from the churches under you in this module.' },
-  { icon: Receipt,      cat: 'core',          num: '07', title: 'Transactions View',             desc: 'View all the giving transactions on your account as they happen.' },
-  { icon: Users2,       cat: 'core',          num: '08', title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
+  { icon: Baby,         cat: 'core',          num: '02', title: 'Children & Dependents',         desc: 'Record children, link them to parents or guardians, and keep family relationships clear inside the church register.' },
+  { icon: Calendar,     cat: 'core',          num: '03', title: 'Events Management',             desc: 'This module allows you to create church events and share them with all your church members. It also issues tickets for all ticketed events.' },
+  { icon: HandCoins,    cat: 'core',          num: '04', title: 'Giving',            desc: "Online giving is made easy! You can now manage your church's giving online." },
+  { icon: ClipboardList,cat: 'core',          num: '05', title: 'Attendance Tracking',           desc: 'Report every church meeting and retrieve the data at any time in the future.' },
+  { icon: BookOpen,     cat: 'core',          num: '06', title: 'Resources Library',             desc: 'This module gives you a platform to keep resource materials that can be accessed by all church members.' },
+  { icon: Church,       cat: 'core',          num: '07', title: 'Churches Management',           desc: 'Create your church and manage how data flows from the churches under you in this module.' },
+  { icon: Receipt,      cat: 'core',          num: '08', title: 'Transactions View',             desc: 'View all the giving transactions on your account as they happen.' },
+  { icon: Users2,       cat: 'core',          num: '09', title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
   // Management
-  { icon: Users2,       cat: 'management',    num: '09', title: 'Users Management',              desc: 'Manage the users using this module.' },
-  { icon: ShieldCheck,  cat: 'management',    num: '10', title: 'Roles & Permissions',           desc: 'Assign roles and permissions to the users using this module.' },
-  { icon: Users2,       cat: 'management',    num: '11', title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
+  { icon: Users2,       cat: 'management',    num: '10', title: 'Users Management',              desc: 'Manage the users using this module.' },
+  { icon: ShieldCheck,  cat: 'management',    num: '11', title: 'Roles & Permissions',           desc: 'Assign roles and permissions to the users using this module.' },
+  { icon: Users2,       cat: 'management',    num: '12', title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
   // Communication
-  { icon: MessageSquare,cat: 'communication', num: '12', title: 'Communication & Announcements', desc: 'This module helps you manage your communication within the church. You communicate directly with your targeted audience in the church/ministry.' },
-  { icon: UsersRound,   cat: 'communication', num: '13', title: 'Teams Management',              desc: "Assign your church members to teams to ensure they are engaged in the ministry's work." },
-  { icon: Bell,         cat: 'communication', num: '14', title: 'Reminders Management',          desc: 'This module reminds you of special days, including anniversaries, birthdays, and ministry events, so that you do not miss any.' },
+  { icon: MessageSquare,cat: 'communication', num: '13', title: 'Communication & Announcements', desc: 'This module helps you manage your communication within the church. You communicate directly with your targeted audience in the church/ministry.' },
+  { icon: UsersRound,   cat: 'communication', num: '14', title: 'Teams Management',              desc: "Assign your church members to teams to ensure they are engaged in the ministry's work." },
+  { icon: Bell,         cat: 'communication', num: '15', title: 'Reminders Management',          desc: 'This module reminds you of special days, including anniversaries, birthdays, and ministry events, so that you do not miss any.' },
   // Reporting
-  { icon: BarChart3,    cat: 'reporting',     num: '15', title: 'Reports & Analytics',           desc: 'Access all your giving, attendance, and membership reports using this module.' },
-  { icon: TrendingUp,   cat: 'reporting',     num: '16', title: 'Performance Dashboard',         desc: 'Track all your Key Performance Indicators using this module.' },
-  { icon: FileText,     cat: 'reporting',     num: '17', title: 'Advanced Reports',              desc: 'Export and analyze your data using other analytical softwares.' },
+  { icon: BarChart3,    cat: 'reporting',     num: '16', title: 'Reports & Analytics',           desc: 'Access all your giving, attendance, and membership reports using this module.' },
+  { icon: TrendingUp,   cat: 'reporting',     num: '17', title: 'Performance Dashboard',         desc: 'Track all your Key Performance Indicators using this module.' },
+  { icon: FileText,     cat: 'reporting',     num: '18', title: 'Advanced Reports',              desc: 'Export and analyze your data using other analytical softwares.' },
   // Events
-  { icon: Ticket,       cat: 'events',        num: '18', title: 'Event Ticketing',               desc: 'Issue tickets for your events using this module.' },
-  { icon: ClipboardList,cat: 'events',        num: '19', title: 'Event Attendance Tracking',     desc: 'Report your service attendance using this module.' },
+  { icon: Ticket,       cat: 'events',        num: '19', title: 'Event Ticketing',               desc: 'Issue tickets for your events using this module.' },
+  { icon: ClipboardList,cat: 'events',        num: '20', title: 'Event Attendance Tracking',     desc: 'Report your service attendance using this module.' },
 ];
 
 const techSpecs = [
@@ -63,8 +64,8 @@ const inView = {
 
 export default function FeaturesPage() {
   usePageMeta({
-    title: '19 Integrated Modules & Features',
-    description: 'Explore all 19 ICIMS modules: membership, giving, attendance, events, communication, Bible study, revenue management, performance KPIs and more.',
+    title: '20 Integrated Modules & Features',
+    description: 'Explore all 20 ICIMS modules: membership, children and dependents, giving, attendance, events, communication, Bible study, revenue management, performance KPIs and more.',
     canonical: 'https://churchcentral.church/features',
     ogImage: 'https://media.aircnc.co.ke/media-images/20e847ba-fb2d-45f8-ad77-95b615ef85c8.webp',
   });
@@ -90,7 +91,7 @@ export default function FeaturesPage() {
               Everything your<br />ministry needs.
             </h1>
             <p className="text-white/65 text-lg leading-relaxed mb-8">
-              19 modules, one login. Every aspect of church operations unified in a platform built for how ministries actually work.
+              20 modules, one login. Every aspect of church operations unified in a platform built for how ministries actually work.
             </p>
             <Link to="/register">
               <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 h-12 px-7">
@@ -106,7 +107,7 @@ export default function FeaturesPage() {
         <div className="container">
           <div className="flex flex-wrap items-center justify-center gap-8 text-accent-foreground">
             {[
-              { n: '19', label: 'Integrated modules' },
+              { n: '20', label: 'Integrated modules' },
               { n: '500+', label: 'Churches using ICIMS' },
               { n: '50k+', label: 'Members managed' },
               { n: '99.5%', label: 'Uptime SLA' },
@@ -126,7 +127,7 @@ export default function FeaturesPage() {
           <div className="max-w-xl mb-14">
             <p className="text-accent text-xs font-semibold tracking-widest uppercase mb-3">All modules</p>
             <h2 className="font-heading text-4xl md:text-5xl font-bold text-foreground leading-tight">
-              19 features,<br />built to work together.
+              20 features,<br />built to work together.
             </h2>
           </div>
 
