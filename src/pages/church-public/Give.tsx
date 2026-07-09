@@ -10,7 +10,7 @@ interface GiveProps {
 
 export function Give({ campaigns, accent }: GiveProps) {
   return (
-    <section id="give" style={{ background: '#faf9f7', padding: '100px 40px' }}>
+    <section id="give" className="cp-section" style={{ background: '#faf9f7', padding: '100px 40px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         <p style={{
@@ -22,7 +22,7 @@ export function Give({ campaigns, accent }: GiveProps) {
           display: 'flex', justifyContent: 'space-between',
           alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap', gap: 16,
         }}>
-          <h2 style={{
+          <h2 className="cp-section-title" style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
             fontSize: 'clamp(2rem, 4vw, 3rem)',
             fontWeight: 400, color: '#0a0a0a',
@@ -39,7 +39,7 @@ export function Give({ campaigns, accent }: GiveProps) {
         </p>
 
         {/* Campaign grid */}
-        <div style={{
+        <div className="cp-card-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
           gap: 1,

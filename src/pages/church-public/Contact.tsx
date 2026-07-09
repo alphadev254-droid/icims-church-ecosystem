@@ -56,7 +56,7 @@ export function Contact({ profile, accent, churches }: ContactProps) {
   const showChurchList = churches.length > 1;
 
   return (
-    <section id="contact" style={{ background: '#fff', padding: '100px 40px' }}>
+    <section id="contact" className="cp-section" style={{ background: '#fff', padding: '100px 40px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         <p style={{
@@ -64,7 +64,7 @@ export function Contact({ profile, accent, churches }: ContactProps) {
           textTransform: 'uppercase', color: DIM, marginBottom: 20,
         }}>Get in Touch</p>
 
-        <h2 style={{
+        <h2 className="cp-section-title" style={{
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontSize: 'clamp(2rem, 4vw, 3rem)',
           fontWeight: 400, color: WHITE,
@@ -78,7 +78,7 @@ export function Contact({ profile, accent, churches }: ContactProps) {
           Reach out anytime — whether you're planning a visit, looking for prayer, or want to learn more about our community.
         </p>
 
-        <div style={{
+        <div className="cp-contact-grid" style={{
           display: 'grid',
           gridTemplateColumns: showMap ? '1fr 1fr' : '1fr',
           gap: 64, alignItems: 'start',
@@ -181,7 +181,7 @@ export function Contact({ profile, accent, churches }: ContactProps) {
           {/* ── Right: map ── */}
           {showMap && (
             <div>
-              <div style={{ height: 340, overflow: 'hidden', opacity: 0.9, marginBottom: 12 }}>
+              <div className="cp-map" style={{ height: 340, overflow: 'hidden', opacity: 0.9, marginBottom: 12 }}>
                 <iframe
                   key={mapSrc} // re-render when church changes
                   title="Church location"

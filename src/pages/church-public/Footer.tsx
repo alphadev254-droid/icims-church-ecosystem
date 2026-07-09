@@ -12,7 +12,7 @@ export function Footer({ ministryName, profile }: FooterProps) {
   const year = new Date().getFullYear();
 
   return (
-    <footer style={{
+    <footer className="cp-footer" style={{
       background: '#111822',
       borderTop: '1px solid rgba(255,255,255,0.08)',
       padding: '32px 40px',

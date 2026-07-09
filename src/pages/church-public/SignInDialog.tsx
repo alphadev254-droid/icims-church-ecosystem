@@ -49,7 +49,7 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
       />
 
       {/* Dialog — two-panel */}
-      <div style={{
+      <div className="cp-auth-dialog" style={{
         position: 'fixed', zIndex: 2001,
         top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
@@ -61,7 +61,7 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
       }}>
 
         {/* ── LEFT PANEL — dark ── */}
-        <div style={{
+        <div className="cp-auth-side" style={{
           width: '42%', flexShrink: 0,
           background: '#1c1f2e',
           padding: '48px 40px',
@@ -113,7 +113,7 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
         </div>
 
         {/* ── RIGHT PANEL — cream ── */}
-        <div style={{
+        <div className="cp-auth-main" style={{
           flex: 1,
           background: '#faf8f4',
           padding: '48px 44px',

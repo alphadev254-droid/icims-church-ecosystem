@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Globe, Lock, Plus, Trash2, ExternalLink,
   Palette, User, Clock, Phone, Save, CheckCircle2,
-  Upload, X, ImageIcon, Eye,
+  Upload, X, ImageIcon, Eye, BookOpen, HeartHandshake, Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
@@ -162,6 +162,29 @@ function ImageUploadPicker({
 
 interface ServiceTime { name: string; day: string; time: string; location: string; }
 
+interface WebsiteSermon {
+  id: string;
+  title: string;
+  youtubeUrl: string;
+  speaker?: string | null;
+  series?: string | null;
+  duration?: string | null;
+  sermonDate?: string | null;
+  description?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+interface WebsiteMinistry {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl?: string | null;
+  icon?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+}
+
 interface ProfileData {
   logoUrl?: string | null;
   bannerUrl?: string | null;
@@ -247,6 +270,260 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
       <Label className="text-xs sm:text-sm">{label}</Label>
       {children}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+const emptySermon = {
+  title: '',
+  youtubeUrl: '',
+  speaker: '',
+  series: '',
+  duration: '',
+  sermonDate: '',
+  description: '',
+  isActive: true,
+  sortOrder: 0,
+};
+
+const emptyMinistry = {
+  name: '',
+  description: '',
+  imageUrl: '',
+  icon: '',
+  isActive: true,
+  sortOrder: 0,
+};
+
+function toDateInput(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+}
+
+function WebsiteContentManager({ locked }: { locked: boolean }) {
+  const qc = useQueryClient();
+  const [sermonForm, setSermonForm] = useState({ ...emptySermon });
+  const [editingSermonId, setEditingSermonId] = useState<string | null>(null);
+  const [ministryForm, setMinistryForm] = useState({ ...emptyMinistry });
+  const [editingMinistryId, setEditingMinistryId] = useState<string | null>(null);
+
+  const sermonsQuery = useQuery({
+    queryKey: ['church-profile-sermons'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/church-profile/sermons');
+      return data.data as WebsiteSermon[];
+    },
+    staleTime: STALE_TIME.DEFAULT,
+  });
+
+  const ministriesQuery = useQuery({
+    queryKey: ['church-profile-ministries'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/church-profile/ministries');
+      return data.data as WebsiteMinistry[];
+    },
+    staleTime: STALE_TIME.DEFAULT,
+  });
+
+  const sermonMutation = useMutation({
+    mutationFn: (payload: typeof emptySermon) => editingSermonId
+      ? apiClient.put(`/church-profile/sermons/${editingSermonId}`, payload)
+      : apiClient.post('/church-profile/sermons', payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['church-profile-sermons'] });
+      toast.success(editingSermonId ? 'Sermon updated' : 'Sermon added');
+      setSermonForm({ ...emptySermon });
+      setEditingSermonId(null);
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Failed to save sermon'),
+  });
+
+  const ministryMutation = useMutation({
+    mutationFn: (payload: typeof emptyMinistry) => editingMinistryId
+      ? apiClient.put(`/church-profile/ministries/${editingMinistryId}`, payload)
+      : apiClient.post('/church-profile/ministries', payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['church-profile-ministries'] });
+      toast.success(editingMinistryId ? 'Ministry updated' : 'Ministry added');
+      setMinistryForm({ ...emptyMinistry });
+      setEditingMinistryId(null);
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Failed to save ministry'),
+  });
+
+  const deleteSermon = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/church-profile/sermons/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['church-profile-sermons'] });
+      toast.success('Sermon deleted');
+    },
+    onError: () => toast.error('Failed to delete sermon'),
+  });
+
+  const deleteMinistry = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/church-profile/ministries/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['church-profile-ministries'] });
+      toast.success('Ministry deleted');
+    },
+    onError: () => toast.error('Failed to delete ministry'),
+  });
+
+  const saveSermon = () => sermonMutation.mutate({
+    ...sermonForm,
+    sortOrder: Number(sermonForm.sortOrder) || 0,
+  });
+
+  const saveMinistry = () => ministryMutation.mutate({
+    ...ministryForm,
+    sortOrder: Number(ministryForm.sortOrder) || 0,
+  });
+
+  return (
+    <div className={`space-y-4 ${locked ? 'opacity-50 pointer-events-none select-none' : ''}`}>
+      <SettingsSection title="Sermons" icon={<BookOpen className="h-4 w-4 text-accent" />} locked={locked}>
+        <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Title">
+              <Input value={sermonForm.title} onChange={e => setSermonForm(f => ({ ...f, title: e.target.value }))} placeholder="The Weight of Glory" />
+            </Field>
+            <Field label="YouTube link">
+              <Input value={sermonForm.youtubeUrl} onChange={e => setSermonForm(f => ({ ...f, youtubeUrl: e.target.value }))} placeholder="https://youtube.com/watch?v=..." />
+            </Field>
+            <Field label="Speaker">
+              <Input value={sermonForm.speaker} onChange={e => setSermonForm(f => ({ ...f, speaker: e.target.value }))} placeholder="Pastor Sammy Anistar" />
+            </Field>
+            <Field label="Series">
+              <Input value={sermonForm.series} onChange={e => setSermonForm(f => ({ ...f, series: e.target.value }))} placeholder="Kingdom Foundations" />
+            </Field>
+            <Field label="Duration">
+              <Input value={sermonForm.duration} onChange={e => setSermonForm(f => ({ ...f, duration: e.target.value }))} placeholder="42 min" />
+            </Field>
+            <Field label="Date">
+              <Input type="date" value={sermonForm.sermonDate} onChange={e => setSermonForm(f => ({ ...f, sermonDate: e.target.value }))} />
+            </Field>
+          </div>
+          <Field label="Description">
+            <Textarea rows={2} value={sermonForm.description} onChange={e => setSermonForm(f => ({ ...f, description: e.target.value }))} placeholder="Short sermon summary..." />
+          </Field>
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Sort order">
+              <Input type="number" className="w-28" value={sermonForm.sortOrder} onChange={e => setSermonForm(f => ({ ...f, sortOrder: Number(e.target.value) }))} />
+            </Field>
+            <label className="flex items-center gap-2 text-sm pb-2">
+              <input type="checkbox" checked={sermonForm.isActive} onChange={e => setSermonForm(f => ({ ...f, isActive: e.target.checked }))} />
+              Show publicly
+            </label>
+            <Button type="button" size="sm" className="h-9 gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90" onClick={saveSermon} disabled={sermonMutation.isPending}>
+              <Save className="h-3.5 w-3.5" /> {editingSermonId ? 'Update sermon' : 'Add sermon'}
+            </Button>
+            {editingSermonId && (
+              <Button type="button" size="sm" variant="outline" className="h-9" onClick={() => { setEditingSermonId(null); setSermonForm({ ...emptySermon }); }}>
+                Cancel
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="space-y-2">
+          {(sermonsQuery.data ?? []).map(sermon => (
+            <div key={sermon.id} className="flex items-center gap-3 rounded-lg border p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{sermon.title}</p>
+                <p className="text-xs text-muted-foreground truncate">{sermon.speaker || 'No speaker'} - {sermon.isActive ? 'Public' : 'Hidden'}</p>
+              </div>
+              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
+                setEditingSermonId(sermon.id);
+                setSermonForm({
+                  title: sermon.title,
+                  youtubeUrl: sermon.youtubeUrl,
+                  speaker: sermon.speaker ?? '',
+                  series: sermon.series ?? '',
+                  duration: sermon.duration ?? '',
+                  sermonDate: toDateInput(sermon.sermonDate),
+                  description: sermon.description ?? '',
+                  isActive: sermon.isActive,
+                  sortOrder: sermon.sortOrder ?? 0,
+                });
+              }}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => deleteSermon.mutate(sermon.id)}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+          {!sermonsQuery.isLoading && !(sermonsQuery.data ?? []).length && (
+            <p className="text-xs text-muted-foreground">No sermons added yet.</p>
+          )}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="Ministries" icon={<HeartHandshake className="h-4 w-4 text-accent" />} locked={locked}>
+        <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Name">
+              <Input value={ministryForm.name} onChange={e => setMinistryForm(f => ({ ...f, name: e.target.value }))} placeholder="Outreach" />
+            </Field>
+            <Field label="Icon text">
+              <Input value={ministryForm.icon} onChange={e => setMinistryForm(f => ({ ...f, icon: e.target.value }))} placeholder="O" maxLength={8} />
+            </Field>
+          </div>
+          <Field label="Description">
+            <Textarea rows={3} value={ministryForm.description} onChange={e => setMinistryForm(f => ({ ...f, description: e.target.value }))} placeholder="Describe this ministry..." />
+          </Field>
+          <Field label="Image URL">
+            <Input value={ministryForm.imageUrl} onChange={e => setMinistryForm(f => ({ ...f, imageUrl: e.target.value }))} placeholder="https://..." />
+          </Field>
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Sort order">
+              <Input type="number" className="w-28" value={ministryForm.sortOrder} onChange={e => setMinistryForm(f => ({ ...f, sortOrder: Number(e.target.value) }))} />
+            </Field>
+            <label className="flex items-center gap-2 text-sm pb-2">
+              <input type="checkbox" checked={ministryForm.isActive} onChange={e => setMinistryForm(f => ({ ...f, isActive: e.target.checked }))} />
+              Show publicly
+            </label>
+            <Button type="button" size="sm" className="h-9 gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90" onClick={saveMinistry} disabled={ministryMutation.isPending}>
+              <Save className="h-3.5 w-3.5" /> {editingMinistryId ? 'Update ministry' : 'Add ministry'}
+            </Button>
+            {editingMinistryId && (
+              <Button type="button" size="sm" variant="outline" className="h-9" onClick={() => { setEditingMinistryId(null); setMinistryForm({ ...emptyMinistry }); }}>
+                Cancel
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="space-y-2">
+          {(ministriesQuery.data ?? []).map(ministry => (
+            <div key={ministry.id} className="flex items-center gap-3 rounded-lg border p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{ministry.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{ministry.isActive ? 'Public' : 'Hidden'} - {ministry.description}</p>
+              </div>
+              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
+                setEditingMinistryId(ministry.id);
+                setMinistryForm({
+                  name: ministry.name,
+                  description: ministry.description,
+                  imageUrl: ministry.imageUrl ?? '',
+                  icon: ministry.icon ?? '',
+                  isActive: ministry.isActive,
+                  sortOrder: ministry.sortOrder ?? 0,
+                });
+              }}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => deleteMinistry.mutate(ministry.id)}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+          {!ministriesQuery.isLoading && !(ministriesQuery.data ?? []).length && (
+            <p className="text-xs text-muted-foreground">No ministries added yet.</p>
+          )}
+        </div>
+      </SettingsSection>
     </div>
   );
 }
@@ -564,6 +841,8 @@ export default function ChurchProfileSettingsPage() {
       </SettingsSection>
 
       {/* ── Events & Giving (info only) ── */}
+      <WebsiteContentManager locked={!hasFeature} />
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -574,7 +853,7 @@ export default function ChurchProfileSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Events marked <strong>Allow Public Ticketing</strong> and giving campaigns marked <strong>Allow Public Donations</strong> are automatically shown on your public page — no extra setup needed.
+            Upcoming events that do not require tickets are shown automatically. Ticketed events must be marked <strong>Allow Public Ticketing</strong>, and giving campaigns must be marked <strong>Allow Public Donations</strong> to appear on your public page.
           </p>
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>

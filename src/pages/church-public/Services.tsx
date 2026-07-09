@@ -7,7 +7,7 @@ interface ServicesProps {
 
 export function Services({ serviceTimes, accent }: ServicesProps) {
   return (
-    <section id="services" style={{ background: '#fff', padding: '100px 40px' }}>
+    <section id="services" className="cp-section" style={{ background: '#fff', padding: '100px 40px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         <p style={{
@@ -19,7 +19,7 @@ export function Services({ serviceTimes, accent }: ServicesProps) {
           display: 'flex', justifyContent: 'space-between',
           alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap', gap: 16,
         }}>
-          <h2 style={{
+          <h2 className="cp-section-title" style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
             fontSize: 'clamp(2rem, 4vw, 3rem)',
             fontWeight: 400, color: '#0a0a0a',
@@ -36,7 +36,7 @@ export function Services({ serviceTimes, accent }: ServicesProps) {
         </p>
 
         {/* Service cards grid */}
-        <div style={{
+        <div className="cp-services-strip" style={{
           display: 'flex',
           gap: 1,
           overflowX: 'auto',
@@ -46,7 +46,7 @@ export function Services({ serviceTimes, accent }: ServicesProps) {
           scrollbarColor: '#ccc transparent',
         }}>
           {serviceTimes.map((s, i) => (
-            <div key={i} style={{
+            <div key={i} className="cp-service-card" style={{
               background: '#fff',
               minWidth: 220, flexShrink: 0,
               padding: '36px 32px',

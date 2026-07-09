@@ -52,12 +52,33 @@ export interface PublicCampaign {
   church: { name: string };
 }
 
+export interface PublicSermon {
+  id: string;
+  title: string;
+  speaker?: string | null;
+  youtubeUrl: string;
+  series?: string | null;
+  duration?: string | null;
+  sermonDate?: string | null;
+  description?: string | null;
+}
+
+export interface PublicMinistry {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl?: string | null;
+  icon?: string | null;
+}
+
 export interface PageData {
   profile: Profile;
   ministryName: string;
   events: PublicEvent[];
   campaigns: PublicCampaign[];
   churches: PublicChurch[];
+  sermons: PublicSermon[];
+  ministries: PublicMinistry[];
 }
 
 export interface PublicChurch {

@@ -17,14 +17,14 @@ export function Hero({
   tagline, youtubeUrl, serviceTimes,
 }: HeroProps) {
   return (
-    <section style={{
+    <section className="cp-hero" style={{
       position: 'relative',
       minHeight: '100vh',
       display: 'flex', alignItems: 'flex-end',
       background: `url(${bannerSrc}) center/cover no-repeat`,
     }}>
       {/* Dark overlay — heavier at bottom for text legibility */}
-      <div style={{
+      <div className="cp-hero-inner" style={{
         position: 'absolute', inset: 0,
         background: 'linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.82) 100%)',
       }} />
@@ -47,7 +47,7 @@ export function Hero({
         </p>
 
         {/* Headline — large serif */}
-        <h1 style={{
+        <h1 className="cp-hero-title" style={{
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontSize: 'clamp(2.8rem, 7vw, 5.5rem)',
           fontWeight: 400,
@@ -61,7 +61,7 @@ export function Hero({
         </h1>
 
         {/* Sub-tagline */}
-        <p style={{
+        <p className="cp-hero-copy" style={{
           fontSize: 16, color: 'rgba(255,255,255,0.70)',
           maxWidth: 480, lineHeight: 1.7,
           marginBottom: 40,
@@ -71,7 +71,7 @@ export function Hero({
         </p>
 
         {/* CTA buttons */}
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <div className="cp-hero-actions" style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           <a href="#services" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             background: '#fff', color: '#0a0a0a',

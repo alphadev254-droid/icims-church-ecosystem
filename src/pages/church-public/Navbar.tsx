@@ -33,7 +33,7 @@ export function Navbar({
         }
       `}</style>
 
-      <nav style={{
+      <nav className="cp-navbar" style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
         background: scrolled ? '#111822' : 'transparent',
         backdropFilter: scrolled ? 'blur(12px)' : 'none',
@@ -41,7 +41,7 @@ export function Navbar({
         transition: 'background 0.4s',
         padding: '0 40px',
       }}>
-        <div style={{
+        <div className="cp-nav-inner" style={{
           maxWidth: 1400, margin: '0 auto',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           height: 72,
@@ -61,7 +61,7 @@ export function Navbar({
                 color: '#fff',
               }}>{initial}</div>
             )}
-            <span style={{
+            <span className="cp-brand-name" style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
               fontSize: 15, fontWeight: 700, letterSpacing: '0.05em',
               color: '#fff',
@@ -98,7 +98,7 @@ export function Navbar({
             >
               Sign In
             </button>
-            <a href="#services" style={{
+            <a href="#visit" style={{
               fontSize: 13, fontWeight: 600, letterSpacing: '0.06em',
               color: '#fff', textDecoration: 'none',
               border: '1px solid rgba(255,255,255,0.5)',
@@ -129,7 +129,7 @@ export function Navbar({
 
         {/* Mobile menu */}
         {menuOpen && (
-          <div style={{
+          <div className="cp-mobile-menu" style={{
             background: 'rgba(10,10,10,0.98)',
             borderTop: '1px solid rgba(255,255,255,0.1)',
             padding: '16px 40px 24px',
@@ -145,6 +145,33 @@ export function Navbar({
                 }}
               >{link.label}</a>
             ))}
+            <button
+              onClick={() => {
+                onMenuClose();
+                onSignIn();
+              }}
+              style={{
+                display: 'block', width: '100%', padding: '14px 0',
+                background: 'none', border: 'none',
+                fontSize: 15, fontWeight: 500, letterSpacing: '0.04em',
+                color: 'rgba(255,255,255,0.85)', textDecoration: 'none',
+                textAlign: 'left', cursor: 'pointer',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              Sign In
+            </button>
+            <a
+              href="#visit"
+              onClick={onMenuClose}
+              style={{
+                display: 'block', padding: '14px 0',
+                fontSize: 15, fontWeight: 600, letterSpacing: '0.04em',
+                color: '#fff', textDecoration: 'none',
+              }}
+            >
+              Plan a Visit
+            </a>
           </div>
         )}
       </nav>

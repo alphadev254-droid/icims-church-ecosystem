@@ -10,7 +10,7 @@ interface EventsProps {
 
 export function Events({ events, accent }: EventsProps) {
   return (
-    <section id="events" style={{ background: '#fff', padding: '100px 40px' }}>
+    <section id="events" className="cp-section" style={{ background: '#fff', padding: '100px 40px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         <p style={{
@@ -18,7 +18,7 @@ export function Events({ events, accent }: EventsProps) {
           textTransform: 'uppercase', color: '#888', marginBottom: 20,
         }}>What's On</p>
 
-        <h2 style={{
+        <h2 className="cp-section-title" style={{
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontSize: 'clamp(2rem, 4vw, 3rem)',
           fontWeight: 400, color: '#0a0a0a',
@@ -26,7 +26,7 @@ export function Events({ events, accent }: EventsProps) {
           marginBottom: 56,
         }}>Upcoming events.</h2>
 
-        <div style={{
+        <div className="cp-card-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
           gap: 1,

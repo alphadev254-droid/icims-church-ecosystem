@@ -8,7 +8,7 @@ interface AboutProps {
 
 export function About({ profile, pastorSrc, accent }: AboutProps) {
   return (
-    <section id="about" style={{ background: '#faf9f7', padding: '100px 40px' }}>
+    <section id="about" className="cp-section" style={{ background: '#faf9f7', padding: '100px 40px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         {/* Section label */}
@@ -19,14 +19,14 @@ export function About({ profile, pastorSrc, accent }: AboutProps) {
           marginBottom: 20,
         }}>About Us</p>
 
-        <div style={{
+        <div className="cp-two-col" style={{
           display: 'grid',
           gridTemplateColumns: profile.pastorName ? '1fr 1fr' : '1fr',
           gap: 80, alignItems: 'start',
         }}>
           {/* Left: text */}
           <div>
-            <h2 style={{
+            <h2 className="cp-section-title" style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
               fontSize: 'clamp(2rem, 4vw, 3rem)',
               fontWeight: 400, color: '#0a0a0a',
