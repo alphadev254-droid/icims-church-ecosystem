@@ -31,9 +31,9 @@ import { STALE_TIME } from '@/lib/query-config';
 const campaignSchema = z.object({
   churchId: z.string().min(1, 'Church required'),
   name: z.string().min(1, 'Campaign name required'),
-  description: z.string().optional(),
+  description: z.preprocess(value => value ?? undefined, z.string().optional()),
   category: z.enum(['tithe', 'offering', 'fellowship_offering', 'partnership', 'welfare', 'missions']),
-  subcategory: z.string().optional(),
+  subcategory: z.preprocess(value => value ?? undefined, z.string().optional()),
   targetAmount: z.preprocess(
     (val) => {
       if (val === '' || val === null || val === undefined) return undefined;
@@ -43,7 +43,7 @@ const campaignSchema = z.object({
     z.number().positive().optional()
   ),
   currency: z.enum(['MWK', 'KES']).default('MWK'),
-  endDate: z.string().optional(),
+  endDate: z.preprocess(value => value ?? undefined, z.string().optional()),
   allowPublicDonations: z.boolean().default(false),
   allowPledging: z.boolean().default(false),
 });
