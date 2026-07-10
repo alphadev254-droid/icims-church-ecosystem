@@ -59,8 +59,9 @@ export interface ScheduledReminder {
   id: string;
   churchId: string;
   campaignId?: string | null;
-  type: 'giving' | 'pledge';
-  audience: 'all_members' | 'active_pledges' | 'overdue_pledges' | 'not_given_this_month';
+  eventId?: string | null;
+  type: 'giving' | 'pledge' | 'event';
+  audience: 'all_members' | 'active_pledges' | 'overdue_pledges' | 'not_given_this_month' | 'event_members';
   channelEmail: boolean;
   channelPush: boolean;
   title: string;
@@ -78,8 +79,9 @@ export interface ScheduledReminder {
 export interface ScheduledReminderPayload {
   churchId: string;
   campaignId?: string | null;
-  type: 'giving' | 'pledge';
-  audience: 'all_members' | 'active_pledges' | 'overdue_pledges' | 'not_given_this_month';
+  eventId?: string | null;
+  type: 'giving' | 'pledge' | 'event';
+  audience: 'all_members' | 'active_pledges' | 'overdue_pledges' | 'not_given_this_month' | 'event_members';
   channelEmail: boolean;
   channelPush: boolean;
   title: string;

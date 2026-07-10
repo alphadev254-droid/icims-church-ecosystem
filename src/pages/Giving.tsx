@@ -264,7 +264,7 @@ export default function GivingPage() {
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
     queryFn: async () => {
-      const { data } = await apiClient.get('/churches');
+      const { data } = await apiClient.get('/churches/select');
       return data.data || [];
     },
     enabled: !isMember,

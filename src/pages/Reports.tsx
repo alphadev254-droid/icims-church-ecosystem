@@ -236,8 +236,8 @@ export default function ReportsPage() {
   ]);
 
   const { data: stats } = useQuery({ queryKey: ['dashboard-stats'], queryFn: () => dashboardService.getStats(), enabled: !!user && hasReports });
-  const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: () => churchesService.getAll(), enabled: hasReports });
-  const { data: campaigns = [] } = useQuery({ queryKey: ['campaigns'], queryFn: () => givingService.getCampaigns(), enabled: hasReports });
+  const { data: churches = [] } = useQuery({ queryKey: ['churches-select'], queryFn: () => churchesService.getSelectable(), enabled: hasReports });
+  const { data: campaigns = [] } = useQuery({ queryKey: ['campaigns-select'], queryFn: () => givingService.getSelectableCampaigns(), enabled: hasReports });
   const { data: simpleCells = [] } = useQuery({ queryKey: ['cells-simple'], queryFn: () => cellsService.getSimple(), enabled: hasReports });
   const { data: teams = [] } = useQuery({ queryKey: ['teams-report', memberChurchFilter], queryFn: () => teamsService.getAll(memberChurchFilter !== 'all' ? memberChurchFilter : undefined), enabled: hasReports });
 

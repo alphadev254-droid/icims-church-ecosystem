@@ -55,6 +55,10 @@ export const churchesService = {
     const { data } = await apiClient.get('/churches');
     return data.data;
   },
+  getSelectable: async (): Promise<Church[]> => {
+    const { data } = await apiClient.get('/churches/select');
+    return data.data;
+  },
   getOne: async (id: string): Promise<Church> => {
     const { data } = await apiClient.get(`/churches/${id}`);
     return data.data;

@@ -81,7 +81,7 @@ export const cellsService = {
   },
 
   getSimple: async (): Promise<{ id: string; name: string; zone?: string | null }[]> => {
-    const { data } = await apiClient.get(`${BASE}/simple`);
+    const { data } = await apiClient.get(`${BASE}/select`);
     return data.data;
   },
 

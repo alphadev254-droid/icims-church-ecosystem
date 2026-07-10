@@ -14,6 +14,7 @@ import {
   ScheduledReminderLog,
 } from '@/services/reminders';
 import { givingService, type GivingCampaign } from '@/services/giving';
+import { eventsService } from '@/services/events';
 import { churchesService, Church } from '@/services/churches';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,8 +49,9 @@ const EMPTY_STATS: ReminderStats = {
 const DEFAULT_SCHEDULED_FORM = {
   churchId: '',
   campaignId: 'all',
-  type: 'giving' as 'giving' | 'pledge',
-  audience: 'all_members' as 'all_members' | 'active_pledges' | 'overdue_pledges' | 'not_given_this_month',
+  eventId: 'all',
+  type: 'giving' as 'giving' | 'pledge' | 'event',
+  audience: 'all_members' as 'all_members' | 'active_pledges' | 'overdue_pledges' | 'not_given_this_month' | 'event_members',
   channelEmail: true,
   channelPush: true,
   title: 'Giving Reminder',
@@ -81,6 +83,7 @@ const Reminders = () => {
   const [daysFilter, setDaysFilter] = useState(30);
   const [churches, setChurches] = useState<Church[]>([]);
   const [campaigns, setCampaigns] = useState<GivingCampaign[]>([]);
+  const [events, setEvents] = useState<Array<{ id: string; title: string; date: string; time: string; churchId: string; requiresTicket: boolean }>>([]);
   const [scheduledReminders, setScheduledReminders] = useState<ScheduledReminder[]>([]);
   const [scheduledLogs, setScheduledLogs] = useState<ScheduledReminderLog[]>([]);
   const [scheduledLogPagination, setScheduledLogPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 0 });
@@ -103,7 +106,7 @@ const Reminders = () => {
   useEffect(() => {
     if (!isMember) {
       console.log('Fetching churches for filter...');
-      churchesService.getAll()
+      churchesService.getSelectable()
         .then((data) => {
           console.log('Churches fetched:', data.length);
           setChurches(data);
@@ -114,10 +117,17 @@ const Reminders = () => {
 
   useEffect(() => {
     if (!canManageScheduled) return;
-    givingService.getCampaigns()
-      .then(data => setCampaigns(Array.isArray(data) ? data as GivingCampaign[] : []))
+    const churchId = scheduledForm.churchId || undefined;
+    Promise.all([
+      givingService.getSelectableCampaigns(churchId ? { churchId } : undefined),
+      eventsService.getSimple(),
+    ])
+      .then(([campaignData, eventData]) => {
+        setCampaigns(Array.isArray(campaignData) ? campaignData as GivingCampaign[] : []);
+        setEvents(Array.isArray(eventData) ? eventData : []);
+      })
       .catch(err => console.error('Failed to fetch campaigns for reminders:', err));
-  }, [canManageScheduled]);
+  }, [canManageScheduled, scheduledForm.churchId]);
 
   useEffect(() => {
     if (!scheduledForm.churchId && churches.length > 0) {
@@ -232,6 +242,10 @@ const Reminders = () => {
     if (!scheduledForm.churchId) return true;
     return campaign.churchId === scheduledForm.churchId;
   });
+  const filteredEvents = events.filter(event => {
+    if (!scheduledForm.churchId) return true;
+    return event.churchId === scheduledForm.churchId;
+  });
 
   const handleCreateScheduledReminder = async () => {
     if (!scheduledForm.churchId) {
@@ -254,6 +268,7 @@ const Reminders = () => {
       await createScheduledReminder({
         churchId: scheduledForm.churchId,
         campaignId: scheduledForm.campaignId === 'all' ? null : scheduledForm.campaignId,
+        eventId: scheduledForm.eventId === 'all' ? null : scheduledForm.eventId,
         type: scheduledForm.type,
         audience: scheduledForm.audience,
         channelEmail: scheduledForm.channelEmail,
@@ -629,7 +644,7 @@ const Reminders = () => {
               </div>
               <div>
                 <label className="text-xs font-medium">Church</label>
-                <Select value={scheduledForm.churchId} onValueChange={value => setScheduledForm(prev => ({ ...prev, churchId: value, campaignId: 'all' }))}>
+                <Select value={scheduledForm.churchId} onValueChange={value => setScheduledForm(prev => ({ ...prev, churchId: value, campaignId: 'all', eventId: 'all' }))}>
                   <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
                   <SelectContent>
                     {churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}
@@ -639,11 +654,20 @@ const Reminders = () => {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs font-medium">Type</label>
-                  <Select value={scheduledForm.type} onValueChange={value => setScheduledForm(prev => ({ ...prev, type: value as any, scheduleKind: value === 'pledge' ? prev.scheduleKind : 'monthly_days' }))}>
+                  <Select value={scheduledForm.type} onValueChange={value => setScheduledForm(prev => ({
+                    ...prev,
+                    type: value as any,
+                    campaignId: value === 'event' ? 'all' : prev.campaignId,
+                    eventId: value === 'event' ? prev.eventId : 'all',
+                    audience: value === 'event' ? 'event_members' : value === 'pledge' ? 'active_pledges' : 'all_members',
+                    title: value === 'event' ? 'Event Reminder' : value === 'pledge' ? 'Pledge Reminder' : 'Giving Reminder',
+                    scheduleKind: value === 'pledge' ? prev.scheduleKind : 'monthly_days',
+                  }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="giving">Giving</SelectItem>
                       <SelectItem value="pledge">Pledge</SelectItem>
+                      <SelectItem value="event">Event</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -652,31 +676,53 @@ const Reminders = () => {
                   <Select value={scheduledForm.audience} onValueChange={value => setScheduledForm(prev => ({ ...prev, audience: value as any }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all_members">All members</SelectItem>
-                      <SelectItem value="not_given_this_month">Not given this month</SelectItem>
-                      <SelectItem value="active_pledges">Active pledges</SelectItem>
-                      <SelectItem value="overdue_pledges">Overdue pledges</SelectItem>
+                      {scheduledForm.type === 'event' ? (
+                        <SelectItem value="event_members">Event church members</SelectItem>
+                      ) : (
+                        <>
+                          <SelectItem value="all_members">All members</SelectItem>
+                          <SelectItem value="not_given_this_month">Not given this month</SelectItem>
+                          <SelectItem value="active_pledges">Active pledges</SelectItem>
+                          <SelectItem value="overdue_pledges">Overdue pledges</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-medium">Campaign</label>
-                <Select value={scheduledForm.campaignId} onValueChange={value => setScheduledForm(prev => ({ ...prev, campaignId: value }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All campaigns</SelectItem>
-                    {filteredCampaigns.map(campaign => <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              {scheduledForm.type === 'event' ? (
+                <div>
+                  <label className="text-xs font-medium">Event</label>
+                  <Select value={scheduledForm.eventId} onValueChange={value => setScheduledForm(prev => ({ ...prev, eventId: value }))}>
+                    <SelectTrigger><SelectValue placeholder="Select event" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All events / general event reminder</SelectItem>
+                      {filteredEvents.map(event => <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs font-medium">Campaign</label>
+                  <Select value={scheduledForm.campaignId} onValueChange={value => setScheduledForm(prev => ({ ...prev, campaignId: value }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All campaigns</SelectItem>
+                      {filteredCampaigns.map(campaign => <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {filteredCampaigns.length === 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">No campaigns found for the selected church.</p>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="text-xs font-medium">Schedule</label>
                 <Select value={scheduledForm.scheduleKind} onValueChange={value => setScheduledForm(prev => ({ ...prev, scheduleKind: value as any }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="monthly_days">Monthly days</SelectItem>
-                    <SelectItem value="pledge_deadline">Pledge deadline offsets</SelectItem>
+                    {scheduledForm.type === 'pledge' && <SelectItem value="pledge_deadline">Pledge deadline offsets</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
@@ -711,7 +757,7 @@ const Reminders = () => {
                 <label className="text-xs font-medium">Message</label>
                 <Textarea rows={4} value={scheduledForm.message} onChange={e => setScheduledForm(prev => ({ ...prev, message: e.target.value }))} />
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Variables: {'{firstName}'} works for all reminders. {'{campaignName}'} works for pledge reminders or when one campaign is selected; with All campaigns it becomes general text. {'{balance}'} and {'{deadline}'} are for pledge reminders only.
+                  Variables: {'{firstName}'} works for all reminders. {'{campaignName}'} works for campaign/pledge reminders. {'{eventName}'} and {'{eventDate}'} work for event reminders. {'{balance}'} and {'{deadline}'} are for pledge reminders only.
                 </p>
               </div>
               <Button className="w-full" disabled={scheduledSaving} onClick={handleCreateScheduledReminder}>

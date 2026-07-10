@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionsService, type Transaction } from '@/services/transactions';
 import { churchesService } from '@/services/churches';
+import { givingService, type GivingCampaign } from '@/services/giving';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,6 +32,7 @@ export default function TransactionsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [churchFilter, setChurchFilter] = useState<string>('all');
+  const [campaignFilter, setCampaignFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const { hasPermission, role } = useRole();
@@ -58,7 +60,7 @@ export default function TransactionsPage() {
   });
 
   const { data, isLoading } = useQuery({ 
-    queryKey: ['transactions', page, limit, search, typeFilter, statusFilter, paymentFilter, churchFilter, startDate, endDate], 
+    queryKey: ['transactions', page, limit, search, typeFilter, statusFilter, paymentFilter, churchFilter, campaignFilter, startDate, endDate], 
     queryFn: () => transactionsService.getAll({ 
       page, 
       limit, 
@@ -67,6 +69,7 @@ export default function TransactionsPage() {
       status: statusFilter !== 'all' ? statusFilter : undefined,
       paymentMethod: paymentFilter !== 'all' ? paymentFilter : undefined,
       churchId: churchFilter !== 'all' ? churchFilter : undefined,
+      campaignId: campaignFilter !== 'all' ? campaignFilter : undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
     }),
@@ -76,6 +79,13 @@ export default function TransactionsPage() {
 
   const transactions = data?.data || [];
   const pagination = data?.pagination;
+
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['transaction-campaigns', churchFilter],
+    queryFn: () => givingService.getSelectableCampaigns(churchFilter !== 'all' ? { churchId: churchFilter } : undefined),
+    staleTime: STALE_TIME.DEFAULT,
+    enabled: hasTransactions,
+  });
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: Transaction['status'] }) => 
@@ -168,7 +178,7 @@ export default function TransactionsPage() {
               className="pl-8 h-8 text-xs sm:h-9 sm:text-sm"
             />
           </div>
-          <Select value={churchFilter} onValueChange={(v) => { setChurchFilter(v); setPage(1); }}>
+          <Select value={churchFilter} onValueChange={(v) => { setChurchFilter(v); setCampaignFilter('all'); setPage(1); }}>
             <SelectTrigger className="w-36 h-8 text-xs sm:h-9 sm:text-sm"><SelectValue placeholder="All Churches" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Churches</SelectItem>
@@ -182,6 +192,15 @@ export default function TransactionsPage() {
               <SelectItem value="event_ticket">Event Ticket</SelectItem>
               <SelectItem value="donation">Giving</SelectItem>
               <SelectItem value="subscription">Subscription</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={campaignFilter} onValueChange={(v) => { setCampaignFilter(v); setTypeFilter(v === 'all' ? typeFilter : 'donation'); setPage(1); }}>
+            <SelectTrigger className="w-44 h-8 text-xs sm:h-9 sm:text-sm"><SelectValue placeholder="All Campaigns" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Campaigns</SelectItem>
+              {campaigns.map((campaign: GivingCampaign) => (
+                <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
@@ -232,8 +251,8 @@ export default function TransactionsPage() {
               className="pl-8 h-8 text-xs sm:h-9 sm:text-sm w-36"
             />
           </div>
-          {(startDate || endDate || churchFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all' || paymentFilter !== 'all') && (
-            <Button variant="outline" size="sm" className="h-8 text-xs sm:h-9 sm:text-sm" onClick={() => { setStartDate(''); setEndDate(''); setChurchFilter('all'); setTypeFilter('all'); setStatusFilter('all'); setPaymentFilter('all'); setPage(1); }}>
+          {(startDate || endDate || churchFilter !== 'all' || campaignFilter !== 'all' || typeFilter !== 'all' || statusFilter !== 'all' || paymentFilter !== 'all') && (
+            <Button variant="outline" size="sm" className="h-8 text-xs sm:h-9 sm:text-sm" onClick={() => { setStartDate(''); setEndDate(''); setChurchFilter('all'); setCampaignFilter('all'); setTypeFilter('all'); setStatusFilter('all'); setPaymentFilter('all'); setPage(1); }}>
               Clear Filters
             </Button>
           )}

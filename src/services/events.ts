@@ -65,7 +65,7 @@ export const eventsService = {
   },
   // Lightweight list for dropdowns — returns flat array of { id, title, date, time, churchId }
   getSimple: async (): Promise<{ id: string; title: string; date: string; time: string; churchId: string; requiresTicket: boolean }[]> => {
-    const { data } = await apiClient.get('/events', { params: { simple: 'true' } });
+    const { data } = await apiClient.get('/events/select');
     return data.data;
   },
   getOne: async (id: string): Promise<ChurchEvent> => {

@@ -50,7 +50,7 @@ interface PaginationResponse {
 }
 
 export const transactionsService = {
-  getAll: async (params?: { page?: number; limit?: number; search?: string; type?: string; status?: string; paymentMethod?: string; churchId?: string; startDate?: string; endDate?: string }): Promise<PaginationResponse> => {
+  getAll: async (params?: { page?: number; limit?: number; search?: string; type?: string; status?: string; paymentMethod?: string; churchId?: string; campaignId?: string; startDate?: string; endDate?: string }): Promise<PaginationResponse> => {
     const { data } = await apiClient.get('/transactions', { params });
     return data;
   },

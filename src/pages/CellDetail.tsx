@@ -140,7 +140,7 @@ export default function CellDetailPage() {
       page: addMemberPage,
       limit: 100,
     }),
-    enabled: addMemberOpen && !!id,
+    enabled: addMemberOpen && !!id && (debouncedAddMemberQuery.trim().length === 0 || debouncedAddMemberQuery.trim().length >= 3),
     staleTime: 30_000,
   });
   const churchMembersList = churchMembersResponse?.data ?? [];
@@ -1037,7 +1037,7 @@ export default function CellDetailPage() {
           <DialogHeader>
             <DialogTitle>Add Member to Cell</DialogTitle>
             <p className="text-xs text-muted-foreground">
-              {churchMembersPagination ? `${churchMembersPagination.total} members in this church` : ''}
+              {debouncedAddMemberQuery.trim().length >= 3 && churchMembersPagination ? `${churchMembersPagination.total} related result${churchMembersPagination.total === 1 ? '' : 's'}` : churchMembersPagination ? `${churchMembersPagination.total} eligible members` : 'Type at least 3 characters to search members'}
             </p>
           </DialogHeader>
 
@@ -1073,7 +1073,7 @@ export default function CellDetailPage() {
                 </div>
               ) : churchMembersList.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  {addMemberQuery ? 'No members match your search.' : 'No members found in this church.'}
+                  {debouncedAddMemberQuery.trim().length > 0 && debouncedAddMemberQuery.trim().length < 3 ? 'Type at least 3 characters to search by name, email, or phone.' : 'No members match your search.'}
                 </p>
               ) : (
                 <div className="divide-y">
@@ -1082,14 +1082,12 @@ export default function CellDetailPage() {
                       key={u.id}
                       type="button"
                       onClick={() => setSelectedUserId(u.id)}
-                      className={`w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors ${selectedUserId === u.id ? 'bg-accent/10 border-l-2 border-accent' : ''}`}
+                      className={`w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors ${selectedUserId === u.id ? 'bg-accent/10 border-l-2 border-accent' : ''}`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{u.firstName} {u.lastName}{u.memberType === 'child' ? ' (Child)' : ''}</p>
-                          <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                        </div>
-                        {u.phone && <span className="text-xs text-muted-foreground shrink-0">{u.phone}</span>}
+                      <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-[minmax(130px,1.1fr)_minmax(170px,1.4fr)_minmax(105px,auto)] sm:items-center sm:gap-3">
+                        <p className="truncate text-sm font-medium">{u.firstName} {u.lastName}{u.memberType === 'child' ? ' (Child)' : ''}</p>
+                        <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                        <p className="truncate text-xs text-muted-foreground sm:text-right">{u.phone || '-'}</p>
                       </div>
                     </button>
                   ))}

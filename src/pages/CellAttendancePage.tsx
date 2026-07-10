@@ -226,7 +226,7 @@ export default function CellAttendancePage() {
 
   const { data: offeringCampaigns = [] } = useQuery({
     queryKey: ['fellowship-campaigns', (cell as any)?.churchId],
-    queryFn: () => givingService.getCampaigns({ category: 'fellowship_offering', churchId: (cell as any)?.churchId }),
+    queryFn: () => givingService.getSelectableCampaigns({ category: 'fellowship_offering', churchId: (cell as any)?.churchId }),
     enabled: !!cell && canManage,
     staleTime: STALE_TIME.DEFAULT,
   });

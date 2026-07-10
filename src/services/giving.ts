@@ -166,6 +166,11 @@ export const givingService = {
     return data.data;
   },
 
+  async getSelectableCampaigns(params?: { churchId?: string; category?: string; status?: string }): Promise<GivingCampaign[]> {
+    const { data } = await apiClient.get('/giving/campaigns/select', { params });
+    return data.data;
+  },
+
   async getSummary(params?: { churchId?: string; category?: string; startDate?: string; endDate?: string }): Promise<GivingSummary> {
     const { data } = await apiClient.get('/giving/summary', { params });
     return data.data;

@@ -19,8 +19,8 @@ export function ChurchSelect({
   placeholder = "Select a church"
 }: ChurchSelectProps) {
   const { data: churches = [], isLoading } = useQuery({
-    queryKey: ['churches'],
-    queryFn: churchesService.getAll
+    queryKey: ['churches-select'],
+    queryFn: churchesService.getSelectable
   });
 
   return (
