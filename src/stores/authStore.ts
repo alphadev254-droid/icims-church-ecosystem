@@ -10,6 +10,7 @@ export interface AuthUser {
   lastName: string;
   title?: string | null;
   ministryName?: string | null;
+  subdomain?: string | null;
   roleName: string;
   roleDisplayName?: string | null;
   role?: string;

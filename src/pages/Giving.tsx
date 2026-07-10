@@ -28,6 +28,7 @@ import { PledgeDialog } from '@/components/PledgeDialog';
 import { MultiGivingDialog } from '@/components/giving/MultiGivingDialog';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
+import { buildPublicGivingUrl } from '@/lib/public-links';
 
 const campaignSchema = z.object({
   churchId: z.string().min(1, 'Church required'),
@@ -343,7 +344,7 @@ export default function GivingPage() {
   });
 
   const copyPublicLink = (campaignId: string) => {
-    const url = `${window.location.origin}/giving/${campaignId}`;
+    const url = buildPublicGivingUrl(campaignId, user?.subdomain);
     navigator.clipboard.writeText(url);
     setCopiedCampaignId(campaignId);
     toast.success('Public link copied!');
@@ -351,13 +352,13 @@ export default function GivingPage() {
   };
 
   const shareWhatsApp = (campaign: GivingCampaign) => {
-    const url = `${window.location.origin}/giving/${campaign.id}`;
+    const url = buildPublicGivingUrl(campaign.id, user?.subdomain);
     const text = encodeURIComponent(`Support our campaign: ${campaign.name}\n${url}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
   const shareFacebook = (campaignId: string) => {
-    const url = encodeURIComponent(`${window.location.origin}/giving/${campaignId}`);
+    const url = encodeURIComponent(buildPublicGivingUrl(campaignId, user?.subdomain));
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
@@ -427,7 +428,7 @@ export default function GivingPage() {
 
   const renderCampaignCard = (campaign: any) => {
     const progress = campaign.targetAmount ? (campaign.totalRaised! / campaign.targetAmount) * 100 : 0;
-    const publicUrl = `${window.location.origin}/giving/${campaign.id}`;
+    const publicUrl = buildPublicGivingUrl(campaign.id, user?.subdomain);
     return (
       <Card key={campaign.id} className=''>
         <CardHeader className="pb-2 pt-3 px-3 sm:px-4">

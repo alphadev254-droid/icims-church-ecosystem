@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { MultiGivingDialog } from '@/components/giving/MultiGivingDialog';
 import type { PublicCampaign } from './types';
 
-const FRONTEND = 'https://churchcentral.church';
 const DARK = '#121D39';
 
 interface GiveProps {
@@ -209,7 +208,7 @@ export function Give({ campaigns, accent }: GiveProps) {
           </div>
 
           <div className="cp-give-impact-actions" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href={`${FRONTEND}/giving`} target="_blank" rel="noopener noreferrer" style={{
+            <a href="#give" style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 7,

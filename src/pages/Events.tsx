@@ -36,6 +36,7 @@ import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { Link } from 'react-router-dom';
+import { buildPublicEventUrl } from '@/lib/public-links';
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -595,20 +596,20 @@ export default function EventsPage() {
 
   // Share helpers
   const copyEventLink = (eventId: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/events/${eventId}`);
+    navigator.clipboard.writeText(buildPublicEventUrl(eventId, user?.subdomain));
     setCopiedEventId(eventId);
     toast.success('Event link copied!');
     setTimeout(() => setCopiedEventId(null), 2000);
   };
 
   const shareWhatsApp = (event: ChurchEvent) => {
-    const url = `${window.location.origin}/events/${event.id}`;
+    const url = buildPublicEventUrl(event.id, user?.subdomain);
     const text = encodeURIComponent(`Join our church event: ${event.title}\n${url}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
   const shareFacebook = (eventId: string) => {
-    const url = encodeURIComponent(`${window.location.origin}/events/${eventId}`);
+    const url = encodeURIComponent(buildPublicEventUrl(eventId, user?.subdomain));
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
