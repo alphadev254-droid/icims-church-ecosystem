@@ -14,6 +14,14 @@ import { Visit } from './church-public/Visit';
 import { Contact } from './church-public/Contact';
 import { Footer } from './church-public/Footer';
 import { SignInDialog } from './church-public/SignInDialog';
+import { MultiGivingDialog } from '@/components/giving/MultiGivingDialog';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Calendar, Check, Clock, Loader2, MapPin } from 'lucide-react';
+import { eventsService } from '@/services/events';
+import { toast } from 'sonner';
 
 const defaultHero = 'https://media.aircnc.co.ke/media-images/fa70812b-0345-4d35-b45b-3488def7c3e3.webp';
 const defaultGold = '#d89b12';
@@ -141,6 +149,193 @@ function PageHero({ eyebrow, title, copy, accent }: {
   );
 }
 
+function getPublicDetailRoute() {
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  if (parts.length === 2 && (parts[0] === 'giving' || parts[0] === 'events')) {
+    return { type: parts[0] as 'giving' | 'events', id: parts[1] };
+  }
+  return null;
+}
+
+function PublicGivingDetail({ campaign, campaigns, accent, ministryName }: {
+  campaign: NonNullable<PageData['campaigns'][number]>;
+  campaigns: PageData['campaigns'];
+  accent: string;
+  ministryName: string;
+}) {
+  const [giveOpen, setGiveOpen] = useState(false);
+
+  return (
+    <>
+      <PageHero
+        eyebrow="Give"
+        title={<>{campaign.name}</>}
+        copy={`Support ${ministryName} through secure online giving.`}
+        accent={accent}
+      />
+      <section className="cp-section" style={{ background: '#fff', padding: '44px 28px 64px' }}>
+        <div style={{ maxWidth: 1040, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, 0.6fr)', gap: 24 }} className="cp-two-col">
+          <article style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 24, boxShadow: '0 8px 30px rgba(18,29,57,0.08)' }}>
+            <p style={{ margin: '0 0 10px', color: accent, textTransform: 'uppercase', fontSize: 11, fontWeight: 800, letterSpacing: '0.14em' }}>
+              {campaign.category.replace(/_/g, ' ')}
+            </p>
+            <h2 className="cp-section-title" style={{ fontFamily: 'Georgia, serif', color: '#121D39', fontSize: 'clamp(1.7rem, 3vw, 2.45rem)', margin: '0 0 14px', lineHeight: 1.1 }}>
+              {campaign.name}
+            </h2>
+            <p style={{ color: '#64748b', lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>
+              {campaign.description || 'Thank you for partnering with this giving campaign.'}
+            </p>
+          </article>
+          <aside style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 20, background: '#f8fafc', alignSelf: 'start' }}>
+            <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>Currency</p>
+            <p style={{ margin: '2px 0 18px', color: '#121D39', fontWeight: 800, fontSize: 22 }}>{campaign.currency}</p>
+            {campaign.targetAmount ? (
+              <>
+                <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>Target</p>
+                <p style={{ margin: '2px 0 18px', color: '#121D39', fontWeight: 800, fontSize: 22 }}>{campaign.currency} {campaign.targetAmount.toLocaleString()}</p>
+              </>
+            ) : null}
+            <Button className="w-full" style={{ background: accent, color: '#121D39' }} onClick={() => setGiveOpen(true)}>
+              Give Now
+            </Button>
+            <p style={{ margin: '12px 0 0', color: '#64748b', fontSize: 12, lineHeight: 1.5 }}>
+              You can add other giving items before checkout.
+            </p>
+          </aside>
+        </div>
+      </section>
+      <MultiGivingDialog
+        open={giveOpen}
+        onOpenChange={setGiveOpen}
+        campaigns={campaigns}
+        initialCampaignId={campaign.id}
+        mode="guest"
+      />
+    </>
+  );
+}
+
+function PublicEventDetail({ event, accent }: {
+  event: NonNullable<PageData['events'][number]>;
+  accent: string;
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [feesLoading, setFeesLoading] = useState(false);
+  const [fees, setFees] = useState<any>(null);
+  const [freeSuccess, setFreeSuccess] = useState<{ ticketNumbers: string[]; guestEmail: string } | null>(null);
+  const [form, setForm] = useState({ guestName: '', guestEmail: '', guestPhone: '' });
+  const eventDate = new Date(event.date);
+
+  const openTicketDialog = async () => {
+    setDialogOpen(true);
+    if (event.isFree) return;
+    setFeesLoading(true);
+    try {
+      setFees(await eventsService.calculateGuestTicketFees(event.id));
+    } catch {
+      setFees(null);
+    } finally {
+      setFeesLoading(false);
+    }
+  };
+
+  const submitTicket = async (submitEvent: React.FormEvent) => {
+    submitEvent.preventDefault();
+    if (!form.guestName.trim() || !form.guestEmail.trim()) {
+      toast.error('Full name and email are required');
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await eventsService.purchaseGuestTicket({
+        eventId: event.id,
+        guestName: form.guestName.trim(),
+        guestEmail: form.guestEmail.trim(),
+        guestPhone: form.guestPhone.trim() || undefined,
+        quantity: 1,
+      });
+      if (result.isFree) {
+        setFreeSuccess({ ticketNumbers: result.ticketNumbers || [], guestEmail: result.guestEmail || form.guestEmail });
+      } else if (result.authorization_url) {
+        window.location.href = result.authorization_url;
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to get ticket');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <PageHero eyebrow="Event" title={<>{event.title}</>} copy={event.location || 'Join us for this upcoming church event.'} accent={accent} />
+      <section className="cp-section" style={{ background: '#fff', padding: '44px 28px 64px' }}>
+        <div style={{ maxWidth: 1040, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, 0.6fr)', gap: 24 }} className="cp-two-col">
+          <article style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 24, boxShadow: '0 8px 30px rgba(18,29,57,0.08)' }}>
+            <h2 className="cp-section-title" style={{ fontFamily: 'Georgia, serif', color: '#121D39', fontSize: 'clamp(1.7rem, 3vw, 2.45rem)', margin: '0 0 16px', lineHeight: 1.1 }}>
+              {event.title}
+            </h2>
+            <div style={{ display: 'grid', gap: 10, color: '#475569', fontSize: 14, marginBottom: 20 }}>
+              <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Calendar size={16} color={accent} /> {eventDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              {event.time && <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Clock size={16} color={accent} /> {event.time}</span>}
+              {event.location && <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><MapPin size={16} color={accent} /> {event.location}</span>}
+            </div>
+            <p style={{ color: '#64748b', lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>
+              {event.description || 'More details will be shared soon.'}
+            </p>
+          </article>
+          <aside style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 20, background: '#f8fafc', alignSelf: 'start' }}>
+            <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>Admission</p>
+            <p style={{ margin: '2px 0 18px', color: '#121D39', fontWeight: 800, fontSize: 22 }}>
+              {!event.requiresTicket ? 'No ticket needed' : event.isFree ? 'Free' : `${event.currency} ${event.ticketPrice?.toLocaleString()}`}
+            </p>
+            {event.requiresTicket ? (
+              <Button className="w-full" style={{ background: accent, color: '#121D39' }} onClick={openTicketDialog}>
+                {event.isFree ? 'Get Free Ticket' : 'Get Ticket'}
+              </Button>
+            ) : (
+              <p style={{ margin: 0, color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>You can attend this event without booking a ticket.</p>
+            )}
+          </aside>
+        </div>
+      </section>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{event.isFree ? 'Get Your Free Ticket' : 'Get Your Ticket'}</DialogTitle></DialogHeader>
+          {freeSuccess ? (
+            <div className="space-y-3 text-center">
+              <Check className="mx-auto h-8 w-8 text-green-600" />
+              <p className="font-semibold">Ticket Confirmed</p>
+              <p className="text-sm text-muted-foreground">Your ticket has been sent to {freeSuccess.guestEmail}.</p>
+            </div>
+          ) : (
+            <form onSubmit={submitTicket} className="space-y-4">
+              <div className="space-y-1"><Label>Full Name *</Label><Input value={form.guestName} onChange={e => setForm(f => ({ ...f, guestName: e.target.value }))} /></div>
+              <div className="space-y-1"><Label>Email *</Label><Input type="email" value={form.guestEmail} onChange={e => setForm(f => ({ ...f, guestEmail: e.target.value }))} /></div>
+              <div className="space-y-1"><Label>Phone (optional)</Label><Input value={form.guestPhone} onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))} /></div>
+              {!event.isFree && (
+                <div className="rounded-md bg-muted p-3 text-sm">
+                  {feesLoading ? 'Calculating fees...' : fees ? (
+                    <div className="space-y-1">
+                      <div className="flex justify-between"><span>Ticket</span><span>{fees.currency} {fees.baseAmount.toLocaleString()}</span></div>
+                      <div className="flex justify-between"><span>Transaction cost</span><span>{fees.currency} {fees.transactionCost.toLocaleString()}</span></div>
+                      <div className="flex justify-between border-t pt-1 font-semibold"><span>Total</span><span>{fees.currency} {fees.totalAmount.toLocaleString()}</span></div>
+                    </div>
+                  ) : `${event.currency} ${event.ticketPrice?.toLocaleString()}`}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : event.isFree ? 'Get Free Ticket' : 'Proceed to Payment'}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 export default function ChurchPublicPage({ slug }: { slug: string }) {
   const [data, setData] = useState<PageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,6 +344,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
   const [scrolled, setScrolled] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
   const [activeHref, setActiveHref] = useState('#home');
+  const detailRoute = getPublicDetailRoute();
 
   useEffect(() => {
     fetch(`${API_BASE}/p/${slug}`)
@@ -241,7 +437,9 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
     { label: 'Contact', href: '#contact', show: hasContact },
   ].filter(link => link.show);
 
-  const page = activeHref.replace('#', '') || 'home';
+  const page = detailRoute ? detailRoute.type : (activeHref.replace('#', '') || 'home');
+  const detailCampaign = detailRoute?.type === 'giving' ? campaigns.find(campaign => campaign.id === detailRoute.id) : null;
+  const detailEvent = detailRoute?.type === 'events' ? events.find(event => event.id === detailRoute.id) : null;
 
   return (
     <div className="cp-page" style={{
@@ -264,7 +462,19 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
         activeHref={activeHref}
       />
 
-      {page === 'home' && (
+      {detailRoute?.type === 'giving' && detailCampaign && (
+        <PublicGivingDetail campaign={detailCampaign} campaigns={campaigns} accent={accent} ministryName={ministryName} />
+      )}
+
+      {detailRoute?.type === 'events' && detailEvent && (
+        <PublicEventDetail event={detailEvent} accent={accent} />
+      )}
+
+      {detailRoute && !detailCampaign && !detailEvent && (
+        <PageHero eyebrow="Not Found" title={<>This public link was not found.</>} copy="It may have ended, been unpublished, or belongs to another ministry." accent={accent} />
+      )}
+
+      {!detailRoute && page === 'home' && (
         <>
           <Hero
             ministryName={ministryName}
@@ -286,7 +496,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
         </>
       )}
 
-      {page === 'about' && (
+      {!detailRoute && page === 'about' && (
         <>
           <PageHero eyebrow="About Us" title={<>Rooted in faith, <span style={{ color: accent }}>growing in love.</span></>} copy="A Spirit-filled congregation committed to worship, discipleship, and serving our community together." accent={accent} />
           {hasAbout && <About profile={profile} pastorSrc={pastorSrc} accent={accent} />}
@@ -294,37 +504,37 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
         </>
       )}
 
-      {page === 'ministries' && (
+      {!detailRoute && page === 'ministries' && (
         <>
           <PageHero eyebrow="Ministries" title={<>Serve with <span style={{ color: accent }}>purpose.</span></>} copy="Explore the teams, outreaches, and ministries that help our church love people well." accent={accent} />
           {hasMinistries && <Ministries ministries={ministries} accent={accent} />}
         </>
       )}
 
-      {page === 'sermons' && (
+      {!detailRoute && page === 'sermons' && (
         <>
           <PageHero eyebrow="Sermons" title={<>This week at <span style={{ color: accent }}>the pulpit.</span></>} copy="Watch recent messages and keep growing through the Word wherever you are." accent={accent} />
           {hasSermons && <Sermons sermons={sermons} accent={accent} variant="page" />}
         </>
       )}
 
-      {page === 'events' && (
+      {!detailRoute && page === 'events' && (
         <>
           <PageHero eyebrow="Events" title={<>Come and be <span style={{ color: accent }}>part of it.</span></>} copy="Conferences, worship nights, outreaches, and gatherings. There is always something happening." accent={accent} />
           {hasEvents && <Events events={events} accent={accent} variant="page" />}
         </>
       )}
 
-      {page === 'give' && (
+      {!detailRoute && page === 'give' && (
         <>
           <PageHero eyebrow="Partner With The Mission" title={<>Your generosity <span style={{ color: accent }}>changes lives.</span></>} copy={`Every tithe and offering fuels the ministries, outreach, and mission of ${ministryName}.`} accent={accent} />
           {hasCampaigns && <Give campaigns={campaigns} accent={accent} />}
         </>
       )}
 
-      {page === 'visit' && <Visit slug={slug} ministryName={ministryName} serviceTimes={serviceTimes} accent={accent} />}
+      {!detailRoute && page === 'visit' && <Visit slug={slug} ministryName={ministryName} serviceTimes={serviceTimes} accent={accent} />}
 
-      {page === 'contact' && hasContact && (
+      {!detailRoute && page === 'contact' && hasContact && (
         <>
           <PageHero eyebrow="Contact" title={<>We would love to <span style={{ color: accent }}>hear from you.</span></>} copy="Reach out for prayer, questions, directions, or anything you need before visiting." accent={accent} />
           <Contact profile={profile} accent={accent} churches={churches ?? []} />

@@ -1,6 +1,5 @@
 import type { PublicEvent } from './types';
 
-const FRONTEND = 'https://churchcentral.church';
 const DARK = '#121D39';
 
 interface EventsProps {
@@ -100,9 +99,7 @@ function EventCard({ event, accent }: { event: PublicEvent; accent: string }) {
           {event.requiresTicket ? (
             <a
               className="cp-event-card-action"
-              href={`${FRONTEND}/events/${event.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`/events/${event.id}`}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',

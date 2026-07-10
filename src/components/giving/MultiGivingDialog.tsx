@@ -155,7 +155,7 @@ export function MultiGivingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-24px)] max-w-2xl max-h-[90svh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>{rows.length > 1 ? 'Give Multiple' : 'Give Now'}</DialogTitle>
         </DialogHeader>
@@ -183,10 +183,10 @@ export function MultiGivingDialog({
               const campaign = campaignMap.get(row.campaignId);
               const cells = getCellsForRow(row.campaignId);
               return (
-                <div key={index} className="rounded-md border p-3 space-y-3">
+                <div key={index} className="rounded-md border p-2.5 sm:p-3 space-y-3">
                   <div className="grid gap-2 sm:grid-cols-[1fr_150px_auto]">
                     <div className="space-y-1">
-                      <Label>Campaign</Label>
+                      <Label className="text-xs sm:text-sm">Campaign</Label>
                       <Select value={row.campaignId} onValueChange={value => updateRow(index, { campaignId: value, cellId: '' })}>
                         <SelectTrigger><SelectValue placeholder="Select campaign" /></SelectTrigger>
                         <SelectContent>
@@ -202,7 +202,7 @@ export function MultiGivingDialog({
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <Label>Amount</Label>
+                      <Label className="text-xs sm:text-sm">Amount</Label>
                       <Input
                         type="number"
                         min="1"
@@ -212,7 +212,7 @@ export function MultiGivingDialog({
                       />
                     </div>
                     <div className="flex items-end">
-                      <Button type="button" variant="outline" size="icon" onClick={() => removeRow(index)} disabled={rows.length === 1}>
+                      <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeRow(index)} disabled={rows.length === 1}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -220,7 +220,7 @@ export function MultiGivingDialog({
 
                   {campaign?.category === 'fellowship_offering' && (
                     <div className="space-y-1">
-                      <Label>Cell / Fellowship *</Label>
+                      <Label className="text-xs sm:text-sm">Cell / Fellowship *</Label>
                       <Select value={row.cellId} onValueChange={value => updateRow(index, { cellId: value })}>
                         <SelectTrigger><SelectValue placeholder="Select cell" /></SelectTrigger>
                         <SelectContent>
