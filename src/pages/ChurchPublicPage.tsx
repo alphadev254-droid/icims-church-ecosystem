@@ -15,6 +15,7 @@ import { Contact } from './church-public/Contact';
 import { Footer } from './church-public/Footer';
 import { SignInDialog } from './church-public/SignInDialog';
 import { MultiGivingDialog } from '@/components/giving/MultiGivingDialog';
+import { PublicQrCheckIn } from '@/components/attendance/PublicQrCheckIn';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -154,6 +155,9 @@ function getPublicDetailRoute() {
   if (parts.length === 2 && (parts[0] === 'giving' || parts[0] === 'events')) {
     return { type: parts[0] as 'giving' | 'events', id: parts[1] };
   }
+  if (parts.length === 2 && parts[0] === 'check-in') {
+    return { type: 'check-in' as const, id: parts[1] };
+  }
   return null;
 }
 
@@ -226,6 +230,7 @@ function PublicEventDetail({ event, accent }: {
   const [freeSuccess, setFreeSuccess] = useState<{ ticketNumbers: string[]; guestEmail: string } | null>(null);
   const [form, setForm] = useState({ guestName: '', guestEmail: '', guestPhone: '' });
   const eventDate = new Date(event.date);
+  const eventImage = resolveImg(event.imageUrl);
 
   const openTicketDialog = async () => {
     setDialogOpen(true);
@@ -268,7 +273,42 @@ function PublicEventDetail({ event, accent }: {
 
   return (
     <>
-      <PageHero eyebrow="Event" title={<>{event.title}</>} copy={event.location || 'Join us for this upcoming church event.'} accent={accent} />
+      <section
+        className="cp-page-hero"
+        style={{
+          position: 'relative',
+          background: eventImage ? `linear-gradient(90deg, rgba(18,29,57,0.88), rgba(18,29,57,0.58)), url(${eventImage}) center/cover no-repeat` : '#121D39',
+          padding: '76px 28px 82px',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ maxWidth: 1400, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          <p style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            color: accent,
+            margin: '0 0 10px',
+          }}>
+            Event
+          </p>
+          <h1 className="cp-section-title" style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            color: '#fff',
+            fontSize: 'clamp(2rem, 4.4vw, 3.4rem)',
+            lineHeight: 1.05,
+            fontWeight: 800,
+            maxWidth: 860,
+            margin: '0 0 14px',
+          }}>
+            {event.title}
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,0.88)', fontSize: 15, lineHeight: 1.65, maxWidth: 620, margin: 0 }}>
+            {event.location || 'Join us for this upcoming church event.'}
+          </p>
+        </div>
+      </section>
       <section className="cp-section" style={{ background: '#fff', padding: '44px 28px 64px' }}>
         <div style={{ maxWidth: 1040, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, 0.6fr)', gap: 24 }} className="cp-two-col">
           <article style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 24, boxShadow: '0 8px 30px rgba(18,29,57,0.08)' }}>
@@ -470,7 +510,11 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
         <PublicEventDetail event={detailEvent} accent={accent} />
       )}
 
-      {detailRoute && !detailCampaign && !detailEvent && (
+      {detailRoute?.type === 'check-in' && (
+        <PublicQrCheckIn token={detailRoute.id} accent={accent} ministryName={ministryName} onRequireSignIn={() => setSignInOpen(true)} />
+      )}
+
+      {detailRoute && detailRoute.type !== 'check-in' && !detailCampaign && !detailEvent && (
         <PageHero eyebrow="Not Found" title={<>This public link was not found.</>} copy="It may have ended, been unpublished, or belongs to another ministry." accent={accent} />
       )}
 

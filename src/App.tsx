@@ -58,6 +58,7 @@ const PaymentCallback = lazy(() => import("./pages/PaymentCallback"));
 const MyTickets = lazy(() => import("./pages/MyTickets"));
 const Subaccount = lazy(() => import("./pages/Subaccount"));
 const PublicAttendanceEntry = lazy(() => import("./pages/PublicAttendanceEntry"));
+const PublicQrCheckInPage = lazy(() => import("./pages/PublicQrCheckInPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
@@ -104,6 +105,7 @@ const App = () => (
 
               {/* Public attendance link (no auth) */}
               <Route path="/attendance/enter/:token" element={<PublicAttendanceEntry />} />
+              <Route path="/check-in/:token" element={<PublicQrCheckInPage />} />
 
               {/* Auth routes */}
               <Route path="/login" element={<Login />} />

@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, UserCheck, Eye, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power } from 'lucide-react';
+import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, UserCheck, Eye, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power, QrCode } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
@@ -25,6 +25,7 @@ import { RegularServiceForm } from '@/components/attendance/RegularServiceForm';
 import { EditAttendanceForm } from '@/components/attendance/EditAttendanceForm';
 import { VisitorsManageDialog } from '@/components/attendance/VisitorsManageDialog';
 import { ViewAttendanceDialog } from '@/components/attendance/ViewAttendanceDialog';
+import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
 
 export default function AttendancePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -32,6 +33,7 @@ export default function AttendancePage() {
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
   const [visitorsRecord, setVisitorsRecord] = useState<any | null>(null);
   const [viewRecord, setViewRecord] = useState<any | null>(null);
+  const [qrRecord, setQrRecord] = useState<any | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkChurchFilter, setLinkChurchFilter] = useState('all');
   const [linkServiceType, setLinkServiceType] = useState('Sunday Service');
@@ -53,6 +55,7 @@ export default function AttendancePage() {
   const [appliedFilters, setAppliedFilters] = useState({ church: 'all', serviceType: 'all', startDate: '', endDate: '' });
   const { hasPermission } = useRole();
   const hasAttendanceFeature = useHasFeature('attendance_tracking');
+  const user = useAuthStore(state => state.user);
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -525,6 +528,13 @@ export default function AttendancePage() {
                           >
                             <UserCheck className="h-3.5 w-3.5" />
                           </button>
+                          <button
+                            onClick={() => setQrRecord(r)}
+                            className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                            title="QR check-in"
+                          >
+                            <QrCode className="h-3.5 w-3.5" />
+                          </button>
                           {canUpdate && (
                             <button
                               onClick={() => setEditRecord(r)}
@@ -591,6 +601,15 @@ export default function AttendancePage() {
           record={visitorsRecord}
           canUpdate={canUpdate}
           onClose={() => setVisitorsRecord(null)}
+        />
+      )}
+
+      {qrRecord && (
+        <AttendanceQrDialog
+          record={qrRecord}
+          subdomain={user?.subdomain}
+          canUpdate={canUpdate}
+          onClose={() => setQrRecord(null)}
         />
       )}
 

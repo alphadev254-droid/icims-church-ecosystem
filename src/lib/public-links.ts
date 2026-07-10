@@ -13,3 +13,7 @@ export function buildPublicGivingUrl(campaignId: string, subdomain?: string | nu
 export function buildPublicEventUrl(eventId: string, subdomain?: string | null) {
   return `${getPublicSiteOrigin(subdomain)}/events/${eventId}`;
 }
+
+export function buildPublicCheckInUrl(token: string, subdomain?: string | null) {
+  return `${getPublicSiteOrigin(subdomain)}/check-in/${token}`;
+}

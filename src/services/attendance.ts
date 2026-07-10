@@ -29,8 +29,56 @@ export interface AttendanceRecord {
   notes?: string;
   eventId?: string;
   createdAt?: string;
+  digitalCheckInEnabled?: boolean;
+  qrToken?: string | null;
+  qrStatus?: 'draft' | 'active' | 'closed';
+  qrActiveFrom?: string | null;
+  qrActiveUntil?: string | null;
+  qrRegeneratedAt?: string | null;
   church?: { id: string; name: string };
-  _count?: { visitors: number };
+  _count?: { visitors: number; participants?: number };
+}
+
+export interface AttendanceParticipant {
+  id: string;
+  attendanceId: string;
+  userId?: string | null;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  guestPhone?: string | null;
+  guestFirstTime?: boolean;
+  invitedBy?: string | null;
+  checkInMethod: string;
+  status: string;
+  checkedInAt: string;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    phone?: string | null;
+    memberType?: string | null;
+  } | null;
+}
+
+export interface QrCheckInSession {
+  id: string;
+  date: string;
+  serviceType: string;
+  church: {
+    id: string;
+    name: string;
+    ministryAdmin?: {
+      subdomain?: string | null;
+      churchProfile?: { logoUrl?: string | null; primaryColor?: string | null; tagline?: string | null } | null;
+    } | null;
+  };
+  event?: { id: string; title: string; date: string; time?: string | null; location?: string | null } | null;
+  qrStatus: 'draft' | 'active' | 'closed';
+  qrActiveFrom?: string | null;
+  qrActiveUntil?: string | null;
+  isOpen: boolean;
+  participantCount: number;
 }
 
 export interface CreateAttendanceDto {
@@ -72,6 +120,38 @@ export const attendanceService = {
   },
   deleteVisitor: async (id: string, visitorId: string): Promise<void> => {
     await apiClient.delete(`/attendance/${id}/visitors/${visitorId}`);
+  },
+  getParticipants: async (id: string, params?: { page?: number; limit?: number }): Promise<{ data: AttendanceParticipant[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
+    const { data } = await apiClient.get(`/attendance/${id}/participants`, { params });
+    return { data: data.data, pagination: data.pagination };
+  },
+  updateQrSettings: async (id: string, dto: { digitalCheckInEnabled?: boolean; qrStatus?: 'draft' | 'active' | 'closed'; qrActiveFrom?: string | null; qrActiveUntil?: string | null }): Promise<AttendanceRecord> => {
+    const { data } = await apiClient.put(`/attendance/${id}/qr`, dto);
+    return data.data;
+  },
+  activateQr: async (id: string): Promise<AttendanceRecord> => {
+    const { data } = await apiClient.post(`/attendance/${id}/qr/activate`);
+    return data.data;
+  },
+  closeQr: async (id: string): Promise<AttendanceRecord> => {
+    const { data } = await apiClient.post(`/attendance/${id}/qr/close`);
+    return data.data;
+  },
+  regenerateQr: async (id: string): Promise<AttendanceRecord> => {
+    const { data } = await apiClient.post(`/attendance/${id}/qr/regenerate`);
+    return data.data;
+  },
+  getQrCheckInSession: async (token: string): Promise<QrCheckInSession> => {
+    const { data } = await apiClient.get(`/attendance/check-in/${token}`);
+    return data.data;
+  },
+  checkInMemberByQr: async (token: string): Promise<AttendanceParticipant> => {
+    const { data } = await apiClient.post(`/attendance/check-in/${token}/member`);
+    return data.data;
+  },
+  checkInGuestByQr: async (token: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestFirstTime?: boolean; invitedBy?: string }): Promise<AttendanceParticipant> => {
+    const { data } = await apiClient.post(`/attendance/check-in/${token}/guest`, dto);
+    return data.data;
   },
   getServiceVisitors: async (params?: { churchId?: string; serviceType?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean }): Promise<any[] | { data: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
     const { data } = await apiClient.get('/attendance/visitors', { params });
