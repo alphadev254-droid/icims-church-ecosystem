@@ -103,6 +103,14 @@ export const attendanceService = {
     const { data } = await apiClient.post('/attendance', dto);
     return data.data;
   },
+  startQr: async (dto: { churchId: string; date: string; serviceType: string; eventId?: string; notes?: string; qrActiveFrom?: string | null; qrActiveUntil?: string | null }): Promise<AttendanceRecord> => {
+    const { data } = await apiClient.post('/attendance/start-qr', dto);
+    return data.data;
+  },
+  getById: async (id: string): Promise<AttendanceRecord> => {
+    const { data } = await apiClient.get(`/attendance/${id}`);
+    return data.data;
+  },
   update: async (id: string, dto: CreateAttendanceDto): Promise<AttendanceRecord> => {
     const { data } = await apiClient.put(`/attendance/${id}`, dto);
     return data.data;

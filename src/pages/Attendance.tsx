@@ -29,6 +29,11 @@ import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
 
 export default function AttendancePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [startQrOpen, setStartQrOpen] = useState(false);
+  const [startQrChurchId, setStartQrChurchId] = useState('');
+  const [startQrServiceType, setStartQrServiceType] = useState('Sunday Service');
+  const [startQrDate, setStartQrDate] = useState(() => new Date().toISOString().slice(0, 16));
+  const [startQrUntil, setStartQrUntil] = useState('');
   const [editRecord, setEditRecord] = useState<any | null>(null);
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
   const [visitorsRecord, setVisitorsRecord] = useState<any | null>(null);
@@ -136,6 +141,17 @@ export default function AttendancePage() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to record attendance'),
   });
 
+  const startQrMutation = useMutation({
+    mutationFn: attendanceService.startQr,
+    onSuccess: (record) => {
+      toast.success('QR attendance started');
+      qc.invalidateQueries({ queryKey: ['attendance'] });
+      setStartQrOpen(false);
+      setQrRecord(record);
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to start QR attendance'),
+  });
+
   const updateAttendanceMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => attendanceService.update(id, data),
     onSuccess: () => {
@@ -226,6 +242,18 @@ export default function AttendancePage() {
             ]}
             pdfTitle="Attendance Report"
           />
+          {canCreate && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                setStartQrChurchId(churchFilter !== 'all' ? churchFilter : (churches[0]?.id || ''));
+                setStartQrOpen(true);
+              }}
+            >
+              <QrCode className="h-4 w-4" /> Start QR Attendance
+            </Button>
+          )}
           {canCreate && (
             <Button
               variant="outline"
@@ -535,6 +563,13 @@ export default function AttendancePage() {
                           >
                             <QrCode className="h-3.5 w-3.5" />
                           </button>
+                          <button
+                            onClick={() => navigate(`/dashboard/attendance/${r.id}`)}
+                            className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                            title="Open attendance detail"
+                          >
+                            <CalendarClock className="h-3.5 w-3.5" />
+                          </button>
                           {canUpdate && (
                             <button
                               onClick={() => setEditRecord(r)}
@@ -570,6 +605,69 @@ export default function AttendancePage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={startQrOpen} onOpenChange={setStartQrOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Start QR Attendance</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Create an attendance record starting at 0 and activate QR check-in immediately.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Church</Label>
+              <Select value={startQrChurchId} onValueChange={setStartQrChurchId}>
+                <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+                <SelectContent>
+                  {churches.map((church: any) => (
+                    <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Service Type</Label>
+              <Select value={startQrServiceType} onValueChange={setStartQrServiceType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sunday Service">Sunday Service</SelectItem>
+                  <SelectItem value="Midweek Service">Midweek Service</SelectItem>
+                  <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
+                  <SelectItem value="Youth Service">Youth Service</SelectItem>
+                  <SelectItem value="Special Service">Special Service</SelectItem>
+                  <SelectItem value="Event">Event</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Date / Time</Label>
+                <Input type="datetime-local" value={startQrDate} onChange={e => setStartQrDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Active until</Label>
+                <Input type="datetime-local" value={startQrUntil} onChange={e => setStartQrUntil(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setStartQrOpen(false)}>Cancel</Button>
+              <Button
+                disabled={startQrMutation.isPending || !startQrChurchId || !startQrDate}
+                onClick={() => startQrMutation.mutate({
+                  churchId: startQrChurchId,
+                  date: startQrDate,
+                  serviceType: startQrServiceType,
+                  qrActiveFrom: startQrDate,
+                  qrActiveUntil: startQrUntil || null,
+                })}
+              >
+                {startQrMutation.isPending ? 'Starting...' : 'Start and Open QR'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={!!editRecord} onOpenChange={open => !open && setEditRecord(null)}>

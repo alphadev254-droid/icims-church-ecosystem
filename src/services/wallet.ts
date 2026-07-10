@@ -21,9 +21,22 @@ export const walletService = {
     bankCode?: string;
     accountName?: string;
     accountNumber?: string;
+    otpCode: string;
   }) => {
     const { data } = await apiClient.post('/wallet/withdraw', payload);
     return data.data;
+  },
+  sendWithdrawalOtp: async (payload: {
+    amount: number;
+    method: 'mobile_money' | 'bank_transfer';
+    mobileOperator?: 'airtel' | 'tnm';
+    mobileNumber?: string;
+    bankCode?: string;
+    accountName?: string;
+    accountNumber?: string;
+  }) => {
+    const { data } = await apiClient.post('/wallet/withdraw/otp', payload);
+    return data;
   },
   getSupportedBanks: async () => {
     const { data } = await apiClient.get('/wallet/supported-banks');

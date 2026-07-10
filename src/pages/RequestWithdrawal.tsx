@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { walletService } from '@/services/wallet';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Wallet } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,6 +41,9 @@ export default function RequestWithdrawalPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user } = useAuth();
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpExpiresIn, setOtpExpiresIn] = useState<number | null>(null);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<WithdrawalForm>({
     resolver: zodResolver(withdrawalSchema),
@@ -82,6 +86,18 @@ export default function RequestWithdrawalPage() {
         if (msgs.length > 0) errorMessage = msgs.join('. ');
       }
       toast.error(errorMessage);
+    },
+  });
+
+  const sendOtpMutation = useMutation({
+    mutationFn: walletService.sendWithdrawalOtp,
+    onSuccess: (result: any) => {
+      setOtpSent(true);
+      setOtpExpiresIn(result.expiresInSeconds ?? 300);
+      toast.success(result.message || 'OTP sent to your email');
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message || 'Failed to send OTP');
     },
   });
 
@@ -132,7 +148,20 @@ export default function RequestWithdrawalPage() {
           <CardTitle>Withdrawal Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(data => withdrawMutation.mutate(data as any))} className="space-y-4">
+          <form
+            onSubmit={handleSubmit(data => {
+              if (!otpSent) {
+                toast.error('Request an OTP code first');
+                return;
+              }
+              if (!/^\d{6}$/.test(otpCode)) {
+                toast.error('Enter the 6-digit OTP code');
+                return;
+              }
+              withdrawMutation.mutate({ ...(data as any), otpCode });
+            })}
+            className="space-y-4"
+          >
             <div>
               <Label className="text-xs sm:text-sm">Amount *</Label>
               <Input 
@@ -211,6 +240,43 @@ export default function RequestWithdrawalPage() {
 
             {errors.root && <p className="text-xs text-destructive">{errors.root.message}</p>}
 
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 h-5 w-5 text-accent" />
+                <div>
+                  <h3 className="text-sm font-semibold">Security OTP</h3>
+                  <p className="text-xs text-muted-foreground">
+                    We will send a 6-digit code to your account email. The code expires in 5 minutes.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={sendOtpMutation.isPending}
+                  onClick={handleSubmit(data => {
+                    setOtpCode('');
+                    sendOtpMutation.mutate(data as any);
+                  })}
+                >
+                  {sendOtpMutation.isPending ? 'Sending...' : otpSent ? 'Resend OTP' : 'Send OTP'}
+                </Button>
+                <Input
+                  value={otpCode}
+                  onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  inputMode="numeric"
+                  placeholder="Enter 6-digit OTP"
+                  className="h-10 text-sm tracking-[0.35em]"
+                />
+              </div>
+              {otpSent && (
+                <p className="text-xs text-muted-foreground">
+                  OTP sent. {otpExpiresIn ? `Expires in ${Math.ceil(otpExpiresIn / 60)} minute(s).` : 'Expires in 5 minutes.'}
+                </p>
+              )}
+            </div>
+
             <div className="flex gap-3 pt-4">
               <Button 
                 type="button" 
@@ -222,7 +288,7 @@ export default function RequestWithdrawalPage() {
               </Button>
               <Button 
                 type="submit" 
-                disabled={withdrawMutation.isPending} 
+                disabled={withdrawMutation.isPending || !otpSent || otpCode.length !== 6} 
                 className="flex-1 h-8 text-xs sm:h-10 sm:text-sm bg-accent text-accent-foreground hover:bg-accent/90"
               >
                 {withdrawMutation.isPending ? 'Processing...' : 'Submit Request'}
