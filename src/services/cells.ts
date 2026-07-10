@@ -30,7 +30,7 @@ export interface CellMember {
   tags?: string | null;
   isLeader: boolean;
   isAssistant: boolean;
-  user?: { id: string; firstName: string; lastName: string; email?: string; phone?: string; avatar?: string | null };
+  user?: { id: string; firstName: string; lastName: string; email?: string; phone?: string; avatar?: string | null; memberType?: string | null; loginEnabled?: boolean };
 }
 
 export interface CellMeeting {
@@ -54,7 +54,7 @@ export interface CellAttendanceRecord {
   isFirstTime?: boolean;
   invitedByUserId?: string;
   notes?: string;
-  user?: { id: string; firstName: string; lastName: string } | null;
+  user?: { id: string; firstName: string; lastName: string; memberType?: string | null } | null;
 }
 
 export interface CellStats {
@@ -133,7 +133,7 @@ export const cellsService = {
   },
 
   getChurchMembers: async (cellId: string, params?: { search?: string; page?: number; limit?: number }): Promise<{
-    data: { id: string; firstName: string; lastName: string; email: string; phone?: string | null }[];
+    data: { id: string; firstName: string; lastName: string; email: string; phone?: string | null; memberType?: string | null; loginEnabled?: boolean }[];
     pagination: { total: number; page: number; limit: number; pages: number };
   }> => {
     const { data } = await apiClient.get(`${BASE}/${cellId}/church-members`, { params });

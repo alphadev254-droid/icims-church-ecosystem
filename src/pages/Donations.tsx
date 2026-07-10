@@ -28,7 +28,7 @@ function MemberSearchDropdown({
 }: {
   value: { id: string; label: string } | null;
   onChange: (v: { id: string; label: string } | null) => void;
-  cellMembers?: { userId: string; user?: { firstName: string; lastName: string; email?: string } }[];
+  cellMembers?: { userId: string; user?: { firstName: string; lastName: string; email?: string; memberType?: string | null } }[];
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -61,7 +61,7 @@ function MemberSearchDropdown({
     : [];
 
   const members = useCellFilter
-    ? filteredCellMembers.map(m => ({ id: m.userId, firstName: m.user?.firstName ?? '', lastName: m.user?.lastName ?? '', email: m.user?.email ?? '' }))
+    ? filteredCellMembers.map(m => ({ id: m.userId, firstName: m.user?.firstName ?? '', lastName: m.user?.lastName ?? '', email: m.user?.email ?? '', memberType: m.user?.memberType }))
     : (data?.data ?? []);
 
   // Close on outside click
@@ -113,12 +113,13 @@ function MemberSearchDropdown({
                 type="button"
                 className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
                 onClick={() => {
-                  onChange({ id: m.id, label: `${m.firstName} ${m.lastName} (${m.email})` });
+                  const name = `${m.firstName} ${m.lastName}${m.memberType === 'child' ? ' (Child)' : ''}`;
+                  onChange({ id: m.id, label: `${name} (${m.email})` });
                   setOpen(false);
                   setQuery('');
                 }}
               >
-                <span className="font-medium">{m.firstName} {m.lastName}</span>
+                <span className="font-medium">{m.firstName} {m.lastName}{m.memberType === 'child' ? ' (Child)' : ''}</span>
                 <span className="text-xs text-muted-foreground">{m.email}</span>
               </button>
             ))

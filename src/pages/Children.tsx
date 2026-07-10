@@ -246,16 +246,18 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
   const [guardian, setGuardian] = useState<AppUser | { id: string; firstName: string; lastName: string; email: string } | null>(fixedGuardian ?? null);
   const [relationship, setRelationship] = useState('guardian');
   const calculatedAge = dateOfBirth ? calculateAge(dateOfBirth) : null;
+  const currentUser = useAuthStore(state => state.user);
+  const canEditChurch = currentUser?.roleName !== 'member' && !fixedGuardian;
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
     queryFn: churchesService.getAll,
-    enabled: !child && !fixedGuardian,
+    enabled: canEditChurch,
   });
 
   return (
     <div className="space-y-3">
-      {!child && (
+      {canEditChurch && (
         <div>
           <Label>Church</Label>
           <Select value={churchId} onValueChange={value => { setChurchId(value); setGuardian(null); }}>
@@ -358,7 +360,7 @@ function ChildForm({ child, defaultChurchId, onSubmit, isPending, disabledGuardi
         className="w-full"
         disabled={!firstName || !lastName || (!child && !churchId) || isPending}
         onClick={() => onSubmit({
-          ...(child ? {} : { churchId }),
+          churchId,
           firstName,
           lastName,
           dateOfBirth: dateOfBirth || null,

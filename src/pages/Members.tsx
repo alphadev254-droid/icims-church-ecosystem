@@ -172,6 +172,7 @@ export default function MembersPage() {
                   <TableHead>Name</TableHead>
                   <TableHead className="hidden sm:table-cell">Email</TableHead>
                   <TableHead className="hidden md:table-cell">Phone</TableHead>
+                  <TableHead className="hidden md:table-cell">Type</TableHead>
                   <TableHead className="hidden md:table-cell">Gender</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden lg:table-cell">Joined</TableHead>
@@ -181,21 +182,22 @@ export default function MembersPage() {
               <TableBody>
                 {filtered.map(m => (
                   <TableRow key={m.id}>
-                    <TableCell className="font-medium">{m.firstName} {m.lastName}</TableCell>
+                    <TableCell className="font-medium">{m.firstName} {m.lastName}{m.memberType === 'child' ? ' (Child)' : ''}</TableCell>
                     <TableCell className="hidden sm:table-cell text-muted-foreground">{m.email ?? '—'}</TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">{m.phone}</TableCell>
+                    <TableCell className="hidden md:table-cell"><Badge variant={m.memberType === 'child' ? 'secondary' : 'outline'}>{m.memberType === 'child' ? 'Child' : 'Adult'}</Badge></TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground capitalize">{m.gender ?? '—'}</TableCell>
                     <TableCell><Badge variant={statusVariant(m.status)}>{m.status}</Badge></TableCell>
                     <TableCell className="hidden lg:table-cell text-muted-foreground">{new Date(m.createdAt).toLocaleDateString()}</TableCell>
                     {(canUpdate || canDelete) && (
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          {canUpdate && (
+                          {canUpdate && m.memberType !== 'child' && (
                             <button onClick={() => setEditMember(m)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                           )}
-                          {canDelete && (
+                          {canDelete && m.memberType !== 'child' && (
                             <button onClick={() => setDeleteMember(m)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>

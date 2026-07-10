@@ -17,6 +17,8 @@ export interface Member {
   membershipType?: string | null;
   baptizedByImmersion?: boolean | null;
   status: 'active' | 'inactive' | 'pending';
+  memberType?: string | null;
+  loginEnabled?: boolean;
   roles?: string[];
   roleName?: string;
   familyId?: string | null;

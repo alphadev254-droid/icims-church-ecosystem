@@ -20,6 +20,7 @@ export interface ChildGuardianLink {
 
 export interface Child {
   id: string;
+  userId?: string | null;
   churchId: string;
   firstName: string;
   lastName: string;
@@ -31,6 +32,7 @@ export interface Child {
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
+  user?: { id: string; memberType: string; loginEnabled: boolean } | null;
   church?: { id: string; name: string };
   guardians?: ChildGuardianLink[];
 }
@@ -60,28 +62,50 @@ export interface GuardianPayload {
   emergencyContact?: boolean;
 }
 
+function calculateAge(value?: string | null): number | null {
+  if (!value) return null;
+  const dateOnly = value.split('T')[0];
+  const [year, month, day] = dateOnly.split('-').map(Number);
+  const dob = year && month && day ? new Date(year, month - 1, day) : new Date(value);
+  if (Number.isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const hasBirthdayPassed =
+    today.getMonth() > dob.getMonth() ||
+    (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+  if (!hasBirthdayPassed) age -= 1;
+  return age >= 0 ? age : null;
+}
+
+function normalizeChild(child: Child): Child {
+  return {
+    ...child,
+    age: child.dateOfBirth ? calculateAge(child.dateOfBirth) : child.age ?? null,
+  };
+}
+
 export const childrenService = {
   async list(params?: { churchId?: string; guardianId?: string; search?: string; unlinked?: boolean; page?: number; limit?: number }): Promise<{
     data: Child[];
     pagination: { page: number; limit: number; total: number; totalPages: number };
   }> {
     const { data } = await apiClient.get('/children', { params });
-    return data;
+    return { ...data, data: (data.data || []).map(normalizeChild) };
   },
 
   async get(id: string): Promise<Child> {
     const { data } = await apiClient.get(`/children/${id}`);
-    return data.data;
+    return normalizeChild(data.data);
   },
 
   async create(payload: ChildPayload): Promise<Child> {
     const { data } = await apiClient.post('/children', payload);
-    return data.data;
+    return normalizeChild(data.data);
   },
 
-  async update(id: string, payload: Partial<Omit<ChildPayload, 'churchId' | 'guardianId'>>): Promise<Child> {
+  async update(id: string, payload: Partial<Omit<ChildPayload, 'guardianId'>>): Promise<Child> {
     const { data } = await apiClient.put(`/children/${id}`, payload);
-    return data.data;
+    return normalizeChild(data.data);
   },
 
   async delete(id: string): Promise<void> {

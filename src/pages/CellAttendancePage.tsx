@@ -27,6 +27,7 @@ interface AttendanceRow {
   lastName?: string;
   email?: string;
   phone?: string;
+  memberType?: string | null;
   isLeader?: boolean;
   isAssistant?: boolean;
   visitorName?: string;
@@ -154,13 +155,13 @@ function OfferingMemberPicker({
                   onClick={() => {
                     onSelect(
                       m.userId,
-                      `${m.user?.firstName} ${m.user?.lastName}${m.user?.email ? ` (${m.user.email})` : ''}`,
+                      `${m.user?.firstName} ${m.user?.lastName}${m.user?.memberType === 'child' ? ' (Child)' : ''}${m.user?.email ? ` (${m.user.email})` : ''}`,
                     );
                     setOpen(false);
                     setSearch('');
                   }}
                 >
-                  <span className="font-medium">{m.user?.firstName} {m.user?.lastName}</span>
+                  <span className="font-medium">{m.user?.firstName} {m.user?.lastName}{m.user?.memberType === 'child' ? ' (Child)' : ''}</span>
                   <span className="text-xs text-muted-foreground">{m.user?.email}</span>
                 </button>
               ))
@@ -282,6 +283,7 @@ export default function CellAttendancePage() {
         firstName: m.user?.firstName,
         lastName: m.user?.lastName,
         email: m.user?.email,
+        memberType: m.user?.memberType,
         phone: m.user?.phone ?? saved?.user?.phone,
         isLeader: m.isLeader,
         isAssistant: m.isAssistant,
@@ -492,7 +494,7 @@ export default function CellAttendancePage() {
                   {row.isGuest && canManage ? (
                     <Input value={row.visitorName ?? ''} onChange={e => updateGuest(row.key, 'visitorName', e.target.value)} placeholder="Guest name *" className="h-7 text-xs w-36" />
                   ) : (
-                    <span>{row.isGuest ? (row.visitorName || '—') : `${row.firstName} ${row.lastName}`}</span>
+                    <span>{row.isGuest ? (row.visitorName || '—') : `${row.firstName} ${row.lastName}${row.memberType === 'child' ? ' (Child)' : ''}`}</span>
                   )}
                 </td>
 
@@ -740,7 +742,7 @@ export default function CellAttendancePage() {
       {/* Excuse dialog */}
       {excuseKey && excuseRow && (
         <ExcuseDialog
-          name={excuseRow.isGuest ? (excuseRow.visitorName || 'Guest') : `${excuseRow.firstName} ${excuseRow.lastName}`}
+          name={excuseRow.isGuest ? (excuseRow.visitorName || 'Guest') : `${excuseRow.firstName} ${excuseRow.lastName}${excuseRow.memberType === 'child' ? ' (Child)' : ''}`}
           reason={excuseRow.notes ?? ''}
           onSave={saveExcuseReason}
           onCancel={() => cancelExcuse(excuseRowWasAlreadyExcused)}

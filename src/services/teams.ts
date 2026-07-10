@@ -19,6 +19,8 @@ export interface TeamMember {
   lastName: string;
   email: string;
   phone?: string;
+  memberType?: string | null;
+  loginEnabled?: boolean;
   membershipType?: string;
   maritalStatus?: string;
   serviceInterest?: string;

@@ -284,7 +284,7 @@ export default function TeamMembersPage() {
                               disabled={addMutation.isPending}
                             />
                           </TableCell>
-                          <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{member.firstName} {member.lastName}</TableCell>
+                          <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{member.firstName} {member.lastName}{member.memberType === 'child' ? ' (Child)' : ''}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.email}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.phone || '—'}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{(member as any).gender || '—'}</TableCell>
@@ -388,7 +388,7 @@ export default function TeamMembersPage() {
                               disabled={removeMutation.isPending}
                             />
                           </TableCell>
-                          <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{member.firstName} {member.lastName}</TableCell>
+                          <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{member.firstName} {member.lastName}{member.memberType === 'child' ? ' (Child)' : ''}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.email}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.phone || '—'}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{(member as any).gender || '—'}</TableCell>

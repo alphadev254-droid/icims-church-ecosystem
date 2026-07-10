@@ -368,7 +368,7 @@ export default function CellDetailPage() {
                 <tbody className="divide-y">
                   {members.map((m: CellMember) => (
                     <tr key={m.id} className="hover:bg-muted/30">
-                      <td className="px-3 py-2 font-medium whitespace-nowrap">{m.user?.firstName} {m.user?.lastName}</td>
+                      <td className="px-3 py-2 font-medium whitespace-nowrap">{m.user?.firstName} {m.user?.lastName}{m.user?.memberType === 'child' ? ' (Child)' : ''}</td>
                       <td className="px-3 py-2 text-muted-foreground">{m.user?.email ?? '—'}</td>
                       <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{m.user?.phone ?? '—'}</td>
                       <td className="px-3 py-2">
@@ -964,7 +964,7 @@ export default function CellDetailPage() {
         <DialogContent className="w-full max-w-md sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Member Role</DialogTitle>
-            {editMember && <p className="text-sm text-muted-foreground">{editMember.user?.firstName} {editMember.user?.lastName}</p>}
+            {editMember && <p className="text-sm text-muted-foreground">{editMember.user?.firstName} {editMember.user?.lastName}{editMember.user?.memberType === 'child' ? ' (Child)' : ''}</p>}
           </DialogHeader>
           {editMember && (
             <div className="space-y-4 pt-1">
@@ -1058,7 +1058,7 @@ export default function CellDetailPage() {
               <div className="flex items-center justify-between rounded-md border border-accent bg-accent/5 px-3 py-2 text-sm">
                 <span className="font-medium text-accent">
                   {churchMembersList.find(u => u.id === selectedUserId)
-                    ? `${churchMembersList.find(u => u.id === selectedUserId)!.firstName} ${churchMembersList.find(u => u.id === selectedUserId)!.lastName}`
+                    ? `${churchMembersList.find(u => u.id === selectedUserId)!.firstName} ${churchMembersList.find(u => u.id === selectedUserId)!.lastName}${churchMembersList.find(u => u.id === selectedUserId)!.memberType === 'child' ? ' (Child)' : ''}`
                     : 'Selected'}
                 </span>
                 <button onClick={() => setSelectedUserId('')} className="text-xs text-muted-foreground hover:text-foreground">✕ Clear</button>
@@ -1086,7 +1086,7 @@ export default function CellDetailPage() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{u.firstName} {u.lastName}</p>
+                          <p className="text-sm font-medium truncate">{u.firstName} {u.lastName}{u.memberType === 'child' ? ' (Child)' : ''}</p>
                           <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                         </div>
                         {u.phone && <span className="text-xs text-muted-foreground shrink-0">{u.phone}</span>}

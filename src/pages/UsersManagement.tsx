@@ -23,6 +23,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -59,6 +60,30 @@ function getChurchDisplay(user: AppUser) {
   if (user.church?.name) return user.church.name;
   if (user.scopeChurches?.length) return user.scopeChurches.map(church => church.name).join(', ');
   return user.scopeLabel ?? '—';
+}
+
+function isChildUser(user?: AppUser | null) {
+  return user?.memberType === 'child' || !!user?.childProfile;
+}
+
+function userDisplayName(user: { firstName?: string; lastName?: string; memberType?: string | null }) {
+  const name = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
+  return user.memberType === 'child' ? `${name} (Child)` : name;
+}
+
+function calculateAge(value?: string | null) {
+  if (!value) return null;
+  const dateOnly = value.split('T')[0];
+  const [year, month, day] = dateOnly.split('-').map(Number);
+  const dob = year && month && day ? new Date(year, month - 1, day) : new Date(value);
+  if (Number.isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const hasBirthdayPassed =
+    today.getMonth() > dob.getMonth() ||
+    (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+  if (!hasBirthdayPassed) age -= 1;
+  return age >= 0 ? age : null;
 }
 
 const RELATIONSHIP_OPTIONS = [
@@ -763,6 +788,131 @@ function EditUserForm({ user, onSubmit, isPending }: {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
+function ChildUserEditForm({ child, onSubmit, isPending }: {
+  child: Child;
+  onSubmit: (payload: any) => void;
+  isPending: boolean;
+}) {
+  const [churchId, setChurchId] = useState(child.churchId);
+  const [firstName, setFirstName] = useState(child.firstName);
+  const [lastName, setLastName] = useState(child.lastName);
+  const [dateOfBirth, setDateOfBirth] = useState(child.dateOfBirth ? child.dateOfBirth.split('T')[0] : '');
+  const [age, setAge] = useState(child.age != null ? String(child.age) : '');
+  const [gender, setGender] = useState(child.gender ?? '');
+  const [phone, setPhone] = useState(child.phone ?? '');
+  const [status, setStatus] = useState(child.status ?? 'active');
+  const [notes, setNotes] = useState(child.notes ?? '');
+  const calculatedAge = dateOfBirth ? calculateAge(dateOfBirth) : null;
+
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches-for-child-user-edit'],
+    queryFn: churchesService.getAll,
+  });
+
+  return (
+    <div className="space-y-4">
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          This is a child member identity. Update the child profile here; the linked user record will stay in sync.
+        </AlertDescription>
+      </Alert>
+
+      <div>
+        <Label>Church</Label>
+        <Select value={churchId} onValueChange={setChurchId}>
+          <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+          <SelectContent>
+            {churches.map((church: any) => (
+              <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <Label>First Name</Label>
+          <Input value={firstName} onChange={event => setFirstName(event.target.value)} />
+        </div>
+        <div>
+          <Label>Last Name</Label>
+          <Input value={lastName} onChange={event => setLastName(event.target.value)} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <Label>Date of Birth</Label>
+          <Input type="date" value={dateOfBirth} onChange={event => setDateOfBirth(event.target.value)} />
+        </div>
+        <div>
+          <Label>Age</Label>
+          <Input
+            type="number"
+            min="0"
+            value={dateOfBirth ? String(calculatedAge ?? '') : age}
+            readOnly={!!dateOfBirth}
+            onChange={event => setAge(event.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <Label>Sex</Label>
+          <Select value={gender || undefined} onValueChange={setGender}>
+            <SelectTrigger><SelectValue placeholder="Select sex" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="male">Male</SelectItem>
+              <SelectItem value="female">Female</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Status</Label>
+          <Select value={status} onValueChange={value => setStatus(value as 'active' | 'inactive')}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label>Phone</Label>
+        <Input value={phone} onChange={event => setPhone(event.target.value)} placeholder="Optional" />
+      </div>
+
+      <div>
+        <Label>Notes</Label>
+        <Textarea rows={3} value={notes} onChange={event => setNotes(event.target.value)} />
+      </div>
+
+      <Button
+        className="w-full"
+        disabled={!churchId || !firstName || !lastName || isPending}
+        onClick={() => onSubmit({
+          churchId,
+          firstName,
+          lastName,
+          dateOfBirth: dateOfBirth || null,
+          age: dateOfBirth ? calculatedAge : age ? Number(age) : null,
+          gender: gender || null,
+          phone: phone || null,
+          status,
+          notes: notes || null,
+        })}
+      >
+        {isPending ? 'Saving...' : 'Save Child Profile'}
+      </Button>
+    </div>
+  );
+}
+
 export default function UsersManagement() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -832,6 +982,17 @@ export default function UsersManagement() {
       setEditUser(null);
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update user'),
+  });
+
+  const updateChildMutation = useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: Parameters<typeof childrenService.update>[1] }) => childrenService.update(id, dto),
+    onSuccess: () => {
+      toast.success('Child profile updated');
+      qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['children'] });
+      setEditUser(null);
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update child profile'),
   });
 
   const toggleStatusMutation = useMutation({
@@ -1339,6 +1500,7 @@ export default function UsersManagement() {
                   <TableHead className="hidden lg:table-cell">Residence</TableHead>
                   <TableHead className="hidden 2xl:table-cell">Baptized</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead className="hidden md:table-cell">Type</TableHead>
                   <TableHead className="hidden lg:table-cell">Church</TableHead>
                   <TableHead className="hidden xl:table-cell">Teams</TableHead>
                   <TableHead className="hidden xl:table-cell">Cell</TableHead>
@@ -1349,6 +1511,7 @@ export default function UsersManagement() {
               <TableBody>
                 {users.map(user => {
                   const isSelf = user.id === currentUser?.id;
+                  const isChildIdentity = isChildUser(user);
                   const scopeItems = user.roleName === 'district_admin'
                     ? user.districts
                     : user.roleName === 'branch_admin'
@@ -1363,7 +1526,7 @@ export default function UsersManagement() {
                   return (
                     <TableRow key={user.id} className="h-9 text-xs sm:text-sm">
                       <TableCell className="font-medium">
-                        {user.firstName} {user.lastName}
+                        {userDisplayName(user)}
                         {isSelf && <span className="ml-1.5 text-xs text-muted-foreground font-normal">(you)</span>}
                         {user.status === 'inactive' && <Badge variant="destructive" className="ml-2 text-xs">Inactive</Badge>}
                       </TableCell>
@@ -1379,6 +1542,11 @@ export default function UsersManagement() {
                       <TableCell>
                         <Badge variant={ROLE_BADGE_VARIANT[user.roleName] ?? 'outline'} className="text-xs capitalize">
                           {getRoleLabel(user)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant={isChildIdentity ? 'secondary' : 'outline'} className="text-xs">
+                          {isChildIdentity ? 'Child' : 'Adult'}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-[150px] truncate">
@@ -1406,18 +1574,20 @@ export default function UsersManagement() {
                                 <button onClick={() => setEditUser(user)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
                                   <Pencil className="h-3.5 w-3.5" />
                                 </button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs"
-                                  onClick={() => toggleStatusMutation.mutate({ id: user.id, status: user.status === 'active' ? 'inactive' : 'active' })}
-                                  disabled={isSelf}
-                                >
-                                  {user.status === 'active' ? 'Deactivate' : 'Activate'}
-                                </Button>
+                                {!isChildIdentity && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() => toggleStatusMutation.mutate({ id: user.id, status: user.status === 'active' ? 'inactive' : 'active' })}
+                                    disabled={isSelf}
+                                  >
+                                    {user.status === 'active' ? 'Deactivate' : 'Activate'}
+                                  </Button>
+                                )}
                               </>
                             )}
-                            {canDelete && !isSelf && (
+                            {canDelete && !isSelf && !isChildIdentity && (
                               <button onClick={() => setDeleteUser(user)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -1430,7 +1600,7 @@ export default function UsersManagement() {
                 })}
                 {users.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={15} className="text-center py-10 text-muted-foreground">
                       <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       {canCreate ? 'No users yet. Add your first user!' : 'No users found.'}
                     </TableCell>
@@ -1531,7 +1701,11 @@ export default function UsersManagement() {
                 <Label className="text-muted-foreground">Role</Label>
                 <p><Badge variant={ROLE_BADGE_VARIANT[viewUser.roleName] ?? 'outline'}>{getRoleLabel(viewUser)}</Badge></p>
               </div>
-              <MemberChildrenPanel member={viewUser} />
+              <div>
+                <Label className="text-muted-foreground">Type</Label>
+                <p><Badge variant={isChildUser(viewUser) ? 'secondary' : 'outline'}>{isChildUser(viewUser) ? 'Child' : 'Adult'}</Badge></p>
+              </div>
+              {!isChildUser(viewUser) && <MemberChildrenPanel member={viewUser} />}
               {(viewUser as any).teams?.length > 0 && (
                 <div>
                   <Label className="text-muted-foreground">Teams</Label>
@@ -1574,15 +1748,34 @@ export default function UsersManagement() {
       {/* Edit dialog */}
       <Dialog open={!!editUser} onOpenChange={open => !open && setEditUser(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle className="font-heading">Edit User</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-heading">{isChildUser(editUser) ? 'Edit Child Profile' : 'Edit User'}</DialogTitle></DialogHeader>
           {editUser && (
             <div className="space-y-4">
-              <EditUserForm
-                user={editUser}
-                onSubmit={handleEdit}
-                isPending={updateMutation.isPending}
-              />
-              <MemberChildrenPanel member={editUser} />
+              {isChildUser(editUser) ? (
+                editUser.childProfile ? (
+                  <ChildUserEditForm
+                    child={editUser.childProfile}
+                    onSubmit={payload => updateChildMutation.mutate({ id: editUser.childProfile!.id, dto: payload })}
+                    isPending={updateChildMutation.isPending}
+                  />
+                ) : (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      This child user is missing its linked child profile. Run the child identity backfill, then reload this page.
+                    </AlertDescription>
+                  </Alert>
+                )
+              ) : (
+                <>
+                  <EditUserForm
+                    user={editUser}
+                    onSubmit={handleEdit}
+                    isPending={updateMutation.isPending}
+                  />
+                  <MemberChildrenPanel member={editUser} />
+                </>
+              )}
             </div>
           )}
         </DialogContent>

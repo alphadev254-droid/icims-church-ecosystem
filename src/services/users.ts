@@ -1,4 +1,5 @@
 import apiClient from '@/lib/api-client';
+import type { Child } from './children';
 
 export interface AppUser {
   id: string;
@@ -10,6 +11,9 @@ export interface AppUser {
   roleId?: string | null;
   churchId?: string | null;
   status?: string;
+  memberType?: 'adult' | 'child' | string | null;
+  loginEnabled?: boolean;
+  childProfile?: Child | null;
   districts?: string[] | null;
   traditionalAuthorities?: string[] | null;
   regions?: string[] | null;
