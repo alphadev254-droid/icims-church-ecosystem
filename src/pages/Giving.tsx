@@ -184,7 +184,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditi
           type="checkbox"
           id="allowPublicDonations"
           checked={allowPublicDonations}
-          onChange={e => setValue('allowPublicDonations', e.target.checked)}
+          onChange={e => setValue('allowPublicDonations', e.target.checked, { shouldDirty: true, shouldValidate: true })}
           className="h-4 w-4"
         />
         <div>
@@ -198,7 +198,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditi
           type="checkbox"
           id="allowPledging"
           checked={allowPledging}
-          onChange={e => setValue('allowPledging', e.target.checked)}
+          onChange={e => setValue('allowPledging', e.target.checked, { shouldDirty: true, shouldValidate: true })}
           className="h-4 w-4"
         />
         <div>
@@ -790,7 +790,20 @@ export default function GivingPage() {
                 allowPublicDonations: editCampaign.allowPublicDonations,
                 allowPledging: editCampaign.allowPledging,
               }}
-              onSubmit={v => updateMutation.mutate({ id: editCampaign.id, dto: v })}
+              onSubmit={v => updateMutation.mutate({
+                id: editCampaign.id,
+                dto: {
+                  name: v.name,
+                  description: v.description || undefined,
+                  category: v.category,
+                  subcategory: v.category === 'tithe' || v.category === 'offering' ? undefined : v.subcategory || undefined,
+                  targetAmount: v.targetAmount,
+                  currency: v.currency,
+                  endDate: v.endDate || null,
+                  allowPublicDonations: Boolean(v.allowPublicDonations),
+                  allowPledging: Boolean(v.allowPledging),
+                },
+              })}
               isPending={updateMutation.isPending}
               submitLabel="Update"
               isEditing={true}

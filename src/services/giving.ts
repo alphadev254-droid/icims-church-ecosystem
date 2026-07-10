@@ -43,10 +43,12 @@ export interface CreateCampaignDto {
 export interface UpdateCampaignDto {
   name?: string;
   description?: string;
+  category?: string;
   subcategory?: string;
+  currency?: string;
   targetAmount?: number;
   status?: string;
-  endDate?: string;
+  endDate?: string | null;
   imageUrl?: string;
   allowPublicDonations?: boolean;
   allowPledging?: boolean;
