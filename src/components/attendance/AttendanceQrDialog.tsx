@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { jsPDF } from 'jspdf';
 import { attendanceService, type AttendanceRecord } from '@/services/attendance';
 import { buildPublicCheckInUrl } from '@/lib/public-links';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Download, Loader2, Power, QrCode, RefreshCcw, Square } from 'lucide-react';
+import { ChevronDown, Copy, Download, FileText, ImageIcon, Loader2, Power, QrCode, RefreshCcw, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
 function toLocalInputValue(value?: string | null) {
@@ -17,6 +18,10 @@ function toLocalInputValue(value?: string | null) {
   if (Number.isNaN(date.getTime())) return '';
   const offsetMs = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function safeFileName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'attendance';
 }
 
 export function AttendanceQrDialog({
@@ -41,12 +46,6 @@ export function AttendanceQrDialog({
   const qrImageUrl = checkInUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(checkInUrl)}`
     : '';
-
-  const { data: participantsResponse, isLoading: participantsLoading } = useQuery({
-    queryKey: ['attendance-participants', localRecord.id],
-    queryFn: () => attendanceService.getParticipants(localRecord.id, { limit: 100 }),
-    enabled: !!localRecord.id,
-  });
 
   const refreshAttendance = (updated: AttendanceRecord) => {
     setLocalRecord(updated);
@@ -101,15 +100,55 @@ export function AttendanceQrDialog({
     toast.success('Check-in link copied');
   };
 
-  const downloadQr = () => {
+  const downloadPng = async () => {
     if (!qrImageUrl) return;
-    const link = document.createElement('a');
-    link.href = qrImageUrl;
-    link.download = `${localRecord.serviceType || 'attendance'}-check-in-qr.png`;
-    link.click();
+    try {
+      const response = await fetch(qrImageUrl);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `${safeFileName(localRecord.serviceType || 'attendance')}-check-in-qr.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error('Failed to download PNG');
+    }
   };
 
-  const participants = participantsResponse?.data ?? [];
+  const downloadPdf = async () => {
+    if (!qrImageUrl) return;
+    try {
+      const response = await fetch(qrImageUrl);
+      const blob = await response.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const title = localRecord.serviceType || 'Attendance Check-in';
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text(title, 105, 30, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text(new Date(localRecord.date).toLocaleDateString(), 105, 40, { align: 'center' });
+      doc.addImage(dataUrl, 'PNG', 55, 55, 100, 100);
+      doc.setFontSize(12);
+      doc.text('Scan this QR code to check in for attendance.', 105, 170, { align: 'center' });
+      const lines = doc.splitTextToSize(checkInUrl, 160);
+      doc.setFontSize(9);
+      doc.text(lines, 105, 182, { align: 'center' });
+      doc.save(`${safeFileName(title)}-check-in-qr.pdf`);
+    } catch {
+      toast.error('Failed to download PDF');
+    }
+  };
+
   const status = localRecord.qrStatus || 'draft';
 
   return (
@@ -136,9 +175,21 @@ export function AttendanceQrDialog({
               <Button variant="outline" size="sm" onClick={copyLink} disabled={!checkInUrl}>
                 <Copy className="mr-2 h-4 w-4" /> Copy
               </Button>
-              <Button variant="outline" size="sm" onClick={downloadQr} disabled={!qrImageUrl}>
-                <Download className="mr-2 h-4 w-4" /> Download
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={!qrImageUrl}>
+                    <Download className="mr-2 h-4 w-4" /> Download QR <ChevronDown className="ml-2 h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={downloadPng}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> Download PNG
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={downloadPdf}>
+                    <FileText className="mr-2 h-4 w-4" /> Download PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {canUpdate && (
                 <Button
                   variant="outline"
@@ -198,49 +249,6 @@ export function AttendanceQrDialog({
                   )}
                 </div>
               )}
-            </div>
-
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold">Checked-in Participants</h3>
-                  <p className="text-xs text-muted-foreground">{participantsResponse?.pagination.total ?? 0} participant(s)</p>
-                </div>
-              </div>
-              <div className="max-h-80 overflow-auto rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead className="hidden sm:table-cell">Contact</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="hidden md:table-cell">Time</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {participantsLoading ? (
-                      <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Loading...</TableCell></TableRow>
-                    ) : participants.length ? participants.map(participant => {
-                      const name = participant.user
-                        ? `${participant.user.firstName} ${participant.user.lastName}`
-                        : participant.guestName || 'Guest';
-                      const contact = participant.user?.email || participant.user?.phone || participant.guestEmail || participant.guestPhone || '-';
-                      return (
-                        <TableRow key={participant.id}>
-                          <TableCell className="font-medium">{name}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{contact}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{participant.user ? (participant.user.memberType === 'child' ? 'Member (child)' : 'Member') : 'Guest'}</Badge>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{new Date(participant.checkedInAt).toLocaleTimeString()}</TableCell>
-                        </TableRow>
-                      );
-                    }) : (
-                      <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No QR check-ins yet.</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
             </div>
           </div>
         </div>

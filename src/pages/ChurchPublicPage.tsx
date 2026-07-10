@@ -87,7 +87,20 @@ function ResponsiveStyles() {
         .cp-trust-items { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
         .cp-map { height: 240px !important; }
         .cp-footer { padding: 40px 18px 28px !important; }
-        .cp-footer .cp-contact-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+        .cp-footer .cp-footer-grid {
+          grid-template-columns: 1fr 1fr !important;
+          gap: 26px 20px !important;
+        }
+        .cp-footer .cp-footer-brand {
+          grid-column: 1 / -1 !important;
+        }
+        .cp-footer .cp-footer-explore,
+        .cp-footer .cp-footer-contact {
+          min-width: 0 !important;
+        }
+        .cp-footer .cp-footer-contact span {
+          overflow-wrap: anywhere !important;
+        }
         .cp-auth-dialog {
           width: calc(100% - 24px) !important;
           max-height: 92svh !important;

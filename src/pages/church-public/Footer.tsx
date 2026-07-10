@@ -26,10 +26,10 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
         display: 'grid',
         gridTemplateColumns: 'minmax(0,1.3fr) minmax(160px,0.6fr) minmax(240px,0.7fr)',
         gap: 64,
-      }} className="cp-contact-grid">
+      }} className="cp-footer-grid cp-contact-grid">
 
         {/* Brand */}
-        <div>
+        <div className="cp-footer-brand">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
             {logoSrc ? (
               <img src={logoSrc} alt="" style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover' }} />
@@ -57,7 +57,7 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
         </div>
 
         {/* Explore */}
-        <div>
+        <div className="cp-footer-explore">
           <h3 style={{ fontFamily: 'Georgia, serif', color: accent, fontSize: 16, margin: '0 0 18px' }}>Explore</h3>
           <div style={{ display: 'grid', gap: 12 }}>
             {explore.map(link => (
@@ -72,7 +72,7 @@ export function Footer({ ministryName, logoSrc, profile, accent, navLinks }: Foo
         </div>
 
         {/* Contact */}
-        <div>
+        <div className="cp-footer-contact">
           <h3 style={{ fontFamily: 'Georgia, serif', color: accent, fontSize: 16, margin: '0 0 18px' }}>Contact</h3>
           <div style={{ display: 'grid', gap: 14 }}>
             {profile.email && (

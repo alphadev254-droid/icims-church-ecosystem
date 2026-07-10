@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, CheckCircle2, Clock, Loader2, MapPin, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,6 +40,8 @@ export function PublicQrCheckIn({
     guestName: '',
     guestEmail: '',
     guestPhone: '',
+    guestGender: '',
+    guestAgeBracket: '',
     guestFirstTime: false,
     invitedBy: '',
   });
@@ -95,6 +98,8 @@ export function PublicQrCheckIn({
         guestName: form.guestName.trim(),
         guestEmail: form.guestEmail.trim() || undefined,
         guestPhone: form.guestPhone.trim() || undefined,
+        guestGender: form.guestGender || undefined,
+        guestAgeBracket: form.guestAgeBracket || undefined,
         guestFirstTime: form.guestFirstTime,
         invitedBy: form.invitedBy.trim() || undefined,
       });
@@ -197,6 +202,32 @@ export function PublicQrCheckIn({
                   <div className="space-y-1.5">
                     <Label>Phone</Label>
                     <Input value={form.guestPhone} onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Gender</Label>
+                    <Select value={form.guestGender} onValueChange={value => setForm(f => ({ ...f, guestGender: value }))}>
+                      <SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Age</Label>
+                    <Select value={form.guestAgeBracket} onValueChange={value => setForm(f => ({ ...f, guestAgeBracket: value }))}>
+                      <SelectTrigger><SelectValue placeholder="Age" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0-12">0-12</SelectItem>
+                        <SelectItem value="13-17">13-17</SelectItem>
+                        <SelectItem value="18-35">18-35</SelectItem>
+                        <SelectItem value="36-59">36-59</SelectItem>
+                        <SelectItem value="60+">60+</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="space-y-1.5">

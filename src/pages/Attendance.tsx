@@ -17,14 +17,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, UserCheck, Eye, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power, QrCode } from 'lucide-react';
+import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power, QrCode } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 import { RegularServiceForm } from '@/components/attendance/RegularServiceForm';
 import { EditAttendanceForm } from '@/components/attendance/EditAttendanceForm';
-import { VisitorsManageDialog } from '@/components/attendance/VisitorsManageDialog';
-import { ViewAttendanceDialog } from '@/components/attendance/ViewAttendanceDialog';
 import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
 
 export default function AttendancePage() {
@@ -36,8 +34,6 @@ export default function AttendancePage() {
   const [startQrUntil, setStartQrUntil] = useState('');
   const [editRecord, setEditRecord] = useState<any | null>(null);
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
-  const [visitorsRecord, setVisitorsRecord] = useState<any | null>(null);
-  const [viewRecord, setViewRecord] = useState<any | null>(null);
   const [qrRecord, setQrRecord] = useState<any | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkChurchFilter, setLinkChurchFilter] = useState('all');
@@ -543,18 +539,11 @@ export default function AttendancePage() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => setViewRecord(r)}
+                            onClick={() => navigate(`/dashboard/attendance/${r.id}`)}
                             className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                            title="View details"
+                            title="Open attendance detail"
                           >
-                            <Eye className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setVisitorsRecord(r)}
-                            className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                            title="View / manage visitors"
-                          >
-                            <UserCheck className="h-3.5 w-3.5" />
+                            <CalendarClock className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => setQrRecord(r)}
@@ -562,13 +551,6 @@ export default function AttendancePage() {
                             title="QR check-in"
                           >
                             <QrCode className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => navigate(`/dashboard/attendance/${r.id}`)}
-                            className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                            title="Open attendance detail"
-                          >
-                            <CalendarClock className="h-3.5 w-3.5" />
                           </button>
                           {canUpdate && (
                             <button
@@ -684,23 +666,6 @@ export default function AttendancePage() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* View Attendance Dialog */}
-      {viewRecord && (
-        <ViewAttendanceDialog
-          record={viewRecord}
-          onClose={() => setViewRecord(null)}
-        />
-      )}
-
-      {/* Visitors Manage Dialog */}
-      {visitorsRecord && (
-        <VisitorsManageDialog
-          record={visitorsRecord}
-          canUpdate={canUpdate}
-          onClose={() => setVisitorsRecord(null)}
-        />
-      )}
 
       {qrRecord && (
         <AttendanceQrDialog

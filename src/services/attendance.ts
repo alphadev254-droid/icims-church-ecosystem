@@ -46,6 +46,8 @@ export interface AttendanceParticipant {
   guestName?: string | null;
   guestEmail?: string | null;
   guestPhone?: string | null;
+  guestGender?: string | null;
+  guestAgeBracket?: string | null;
   guestFirstTime?: boolean;
   invitedBy?: string | null;
   checkInMethod: string;
@@ -58,6 +60,8 @@ export interface AttendanceParticipant {
     email?: string | null;
     phone?: string | null;
     memberType?: string | null;
+    gender?: string | null;
+    dateOfBirth?: string | null;
   } | null;
 }
 
@@ -157,7 +161,7 @@ export const attendanceService = {
     const { data } = await apiClient.post(`/attendance/check-in/${token}/member`);
     return data.data;
   },
-  checkInGuestByQr: async (token: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestFirstTime?: boolean; invitedBy?: string }): Promise<AttendanceParticipant> => {
+  checkInGuestByQr: async (token: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestGender?: string; guestAgeBracket?: string; guestFirstTime?: boolean; invitedBy?: string }): Promise<AttendanceParticipant> => {
     const { data } = await apiClient.post(`/attendance/check-in/${token}/guest`, dto);
     return data.data;
   },
