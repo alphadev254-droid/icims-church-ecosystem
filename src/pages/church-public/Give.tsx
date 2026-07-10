@@ -1,4 +1,6 @@
 import { ArrowRight, HandHeart } from 'lucide-react';
+import { useState } from 'react';
+import { MultiGivingDialog } from '@/components/giving/MultiGivingDialog';
 import type { PublicCampaign } from './types';
 
 const FRONTEND = 'https://churchcentral.church';
@@ -9,7 +11,7 @@ interface GiveProps {
   accent: string;
 }
 
-function CampaignCard({ campaign, accent }: { campaign: PublicCampaign; accent: string }) {
+function CampaignCard({ campaign, accent, onGive }: { campaign: PublicCampaign; accent: string; onGive: (campaignId: string) => void }) {
   return (
     <article style={{
       borderRadius: 12,
@@ -70,11 +72,10 @@ function CampaignCard({ campaign, accent }: { campaign: PublicCampaign; accent: 
           </p>
         )}
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
-          <a
+          <button
             className="cp-give-card-action"
-            href={`${FRONTEND}/giving/${campaign.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            type="button"
+            onClick={() => onGive(campaign.id)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -85,11 +86,12 @@ function CampaignCard({ campaign, accent }: { campaign: PublicCampaign; accent: 
               color: DARK,
               fontSize: 12,
               fontWeight: 700,
-              textDecoration: 'none',
+              border: 0,
+              cursor: 'pointer',
             }}
           >
             Give Now <ArrowRight size={12} />
-          </a>
+          </button>
         </div>
       </div>
     </article>
@@ -97,6 +99,7 @@ function CampaignCard({ campaign, accent }: { campaign: PublicCampaign; accent: 
 }
 
 export function Give({ campaigns, accent }: GiveProps) {
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | undefined>();
   if (!campaigns.length) return null;
 
   return (
@@ -131,7 +134,14 @@ export function Give({ campaigns, accent }: GiveProps) {
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 14,
           }}>
-            {campaigns.map(campaign => <CampaignCard key={campaign.id} campaign={campaign} accent={accent} />)}
+            {campaigns.map(campaign => (
+              <CampaignCard
+                key={campaign.id}
+                campaign={campaign}
+                accent={accent}
+                onGive={setSelectedCampaignId}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -213,7 +223,7 @@ export function Give({ campaigns, accent }: GiveProps) {
             }}>
               View All Campaigns <ArrowRight size={14} />
             </a>
-            <a href="#give" style={{
+            <button type="button" onClick={() => setSelectedCampaignId(campaigns[0]?.id)} style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 7,
@@ -223,11 +233,11 @@ export function Give({ campaigns, accent }: GiveProps) {
               padding: '12px 22px',
               fontWeight: 600,
               fontSize: 14,
-              textDecoration: 'none',
               border: '1px solid rgba(255,255,255,0.15)',
+              cursor: 'pointer',
             }}>
               Give Now
-            </a>
+            </button>
           </div>
         </div>
       </div>
@@ -254,6 +264,16 @@ export function Give({ campaigns, accent }: GiveProps) {
           </div>
         </div>
       </div>
+
+      <MultiGivingDialog
+        open={!!selectedCampaignId}
+        onOpenChange={open => {
+          if (!open) setSelectedCampaignId(undefined);
+        }}
+        campaigns={campaigns}
+        initialCampaignId={selectedCampaignId}
+        mode="guest"
+      />
     </>
   );
 }

@@ -25,6 +25,7 @@ import { ChurchSelect } from '@/components/ChurchSelect';
 import { Plus, HandCoins, Target, Users, Pencil, Trash2, Wallet, Eye, Loader2, StopCircle, PlayCircle, Filter, Lock, Share2, Copy, Check, Handshake } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { PledgeDialog } from '@/components/PledgeDialog';
+import { MultiGivingDialog } from '@/components/giving/MultiGivingDialog';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 
@@ -812,7 +813,18 @@ export default function GivingPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!donateCampaign} onOpenChange={open => { if (!open) { setDonateCampaign(null); setDonateCellId(''); } }}>
+      <MultiGivingDialog
+        open={!!donateCampaign}
+        onOpenChange={open => {
+          if (!open) setDonateCampaign(null);
+        }}
+        campaigns={activeCampaigns}
+        initialCampaignId={donateCampaign?.id}
+        mode="member"
+        memberCells={memberCells}
+      />
+
+      <Dialog open={false} onOpenChange={open => { if (!open) { setDonateCampaign(null); setDonateCellId(''); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Give to {donateCampaign?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">

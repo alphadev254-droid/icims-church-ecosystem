@@ -88,6 +88,13 @@ export interface CreateDonationDto {
   pledgeId?: string;
 }
 
+export interface GivingLineDto {
+  campaignId: string;
+  amount: number;
+  cellId?: string;
+  pledgeId?: string;
+}
+
 // ─── Pledge types ─────────────────────────────────────────────────────────────
 
 export type PledgeStatus = 'pending' | 'partial' | 'fulfilled' | 'overdue';
@@ -156,6 +163,11 @@ export const givingService = {
     return data.data;
   },
 
+  async guestDonateMultiple(dto: { items: GivingLineDto[]; guestName: string; guestEmail: string; guestPhone?: string }): Promise<any> {
+    const { data } = await apiClient.post('/giving/guest-donate-multiple', dto);
+    return data.data;
+  },
+
   async createCampaign(dto: CreateCampaignDto): Promise<GivingCampaign> {
     const { data } = await apiClient.post('/giving/campaigns', dto);
     return data.data;
@@ -213,6 +225,11 @@ export const givingService = {
 
   async donate(dto: CreateDonationDto): Promise<any> {
     const { data } = await apiClient.post('/giving/donate', dto);
+    return data.data;
+  },
+
+  async donateMultiple(dto: { items: GivingLineDto[]; isAnonymous?: boolean; donorName?: string; donorEmail?: string; donorPhone?: string; notes?: string }): Promise<any> {
+    const { data } = await apiClient.post('/giving/donate-multiple', dto);
     return data.data;
   },
 
