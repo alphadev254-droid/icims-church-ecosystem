@@ -254,6 +254,19 @@ export default function AttendancePage() {
           />
           {canCreate && (
             <Button
+              variant="outline"
+              className="min-w-[calc(50%-0.25rem)] flex-1 gap-1.5 text-xs sm:min-w-0 sm:flex-none sm:gap-2 sm:text-sm"
+              onClick={() => {
+                setStartQrChurchId(churchFilter !== 'all' ? churchFilter : (churches[0]?.id || ''));
+                setStartQrServiceType('Sunday Service');
+                setStartQrDate(new Date().toISOString().slice(0, 16));
+                setStartQrOpen(true);
+              }}
+            >
+              <QrCode className="h-4 w-4" /> <span className="hidden sm:inline">Start QR Attendance</span><span className="sm:hidden">Start QR</span>
+            </Button>
+          )}          {canCreate && (
+            <Button
               className="min-w-[calc(50%-0.25rem)] flex-1 gap-1.5 bg-accent text-xs text-accent-foreground hover:bg-accent/90 sm:min-w-0 sm:flex-none sm:gap-2 sm:text-sm"
               onClick={() => {
                 setStartQrChurchId(churchFilter !== 'all' ? churchFilter : (churches[0]?.id || ''));

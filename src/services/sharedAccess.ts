@@ -149,6 +149,15 @@ export const sharedAccessService = {
     const { data } = await apiClient.post(`/public/shared-access/${token}/scan-member`, { memberQr, accessCode });
     return data.data;
   },
+  searchMembersByScannerLink: async (token: string, params: { q: string; page?: number; limit?: number; accessCode?: string }): Promise<{ data: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
+    const { data } = await apiClient.get(`/public/shared-access/${token}/member-search`, { params });
+    return { data: data.data, pagination: data.pagination };
+  },
+
+  addMembersByScannerLink: async (token: string, userIds: string[], accessCode?: string): Promise<{ data: any[]; created: number; skipped: number }> => {
+    const { data } = await apiClient.post(`/public/shared-access/${token}/manual-members`, { userIds, accessCode });
+    return { data: data.data, created: data.created ?? data.data.length, skipped: data.skipped ?? 0 };
+  },
 
   /** Public — Get attendance records for a link token */
   getAttendanceByLink: async (token: string): Promise<any[]> => {

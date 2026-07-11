@@ -6,8 +6,9 @@ import { useRole } from '@/hooks/useRole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Camera, CheckCircle2, Loader2, QrCode, RefreshCcw, ShieldAlert, XCircle } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle2, Loader2, QrCode, Search, ShieldAlert, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 type ScannerStatus = 'idle' | 'starting' | 'scanning' | 'unsupported' | 'error';
@@ -24,7 +25,9 @@ export default function AttendanceScanner() {
   const scanBusyRef = useRef(false);
   const lastScanRef = useRef<{ value: string; at: number } | null>(null);
   const [status, setStatus] = useState<ScannerStatus>('idle');
-  const [manualValue, setManualValue] = useState('');
+  const [searchValue, setSearchValue] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [recent, setRecent] = useState<AttendanceParticipant | null>(null);
   const [cameraError, setCameraError] = useState('');
 
@@ -78,6 +81,34 @@ export default function AttendanceScanner() {
     lastScanRef.current = { value: trimmed, at: now };
     scanMemberQr.mutate(trimmed);
   };
+  const memberSearch = useQuery({
+    queryKey: ['scanner-member-search', id, debouncedSearch],
+    queryFn: () => attendanceService.searchMembers(id, { q: debouncedSearch, page: 1, limit: 20 }),
+    enabled: !!id && debouncedSearch.length >= 3,
+  });
+
+  const addSelectedMembers = useMutation({
+    mutationFn: () => attendanceService.addManualMembers(id, Array.from(selectedIds)),
+    onMutate: () => { scanBusyRef.current = true; },
+    onSuccess: (response) => {
+      const first = response.data?.[0];
+      if (first) setRecent(first as any);
+      const user = first?.user;
+      toast.success(
+        response.created === 1 && user
+          ? `${user.firstName} ${user.lastName} checked in`
+          : `${response.created} member${response.created === 1 ? '' : 's'} checked in${response.skipped ? `, ${response.skipped} skipped` : ''}`
+      );
+      setSelectedIds(new Set());
+      memberSearch.refetch();
+      qc.invalidateQueries({ queryKey: ['attendance'] });
+      qc.invalidateQueries({ queryKey: ['attendance-detail', id] });
+      qc.invalidateQueries({ queryKey: ['attendance-participants', id] });
+      window.setTimeout(() => setRecent(null), 2000);
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to check in selected members'),
+    onSettled: () => { scanBusyRef.current = false; },
+  });
 
   const startCamera = async () => {
     const BarcodeDetectorCtor = (window as any).BarcodeDetector;
@@ -123,6 +154,10 @@ export default function AttendanceScanner() {
     }
   };
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchValue.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [searchValue]);
   useEffect(() => () => stopCamera(), []);
 
   const recentUser = recent?.user;
@@ -204,29 +239,67 @@ export default function AttendanceScanner() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Manual QR Input</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Search Member</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form
-            className="flex flex-col gap-2 sm:flex-row"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!manualValue.trim()) return;
-              handleDetected(manualValue);
-              setManualValue('');
-            }}
-          >
+        <CardContent className="space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              value={manualValue}
-              onChange={event => setManualValue(event.target.value)}
-              placeholder="Paste or scan member QR here"
+              value={searchValue}
+              onChange={event => {
+                setSearchValue(event.target.value);
+                setSelectedIds(new Set());
+              }}
+              placeholder="Type at least 3 letters, name or email"
+              className="pl-9"
               autoComplete="off"
             />
-            <Button type="submit" disabled={scanMemberQr.isPending}>
-              {scanMemberQr.isPending ? 'Checking...' : 'Check In'}
-            </Button>
-          </form>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border">
+            <div className="flex items-center justify-between border-b px-3 py-1.5 text-xs text-muted-foreground">
+              <span>{selectedIds.size ? `${selectedIds.size} selected` : 'Select member(s)'}</span>
+              {memberSearch.data?.pagination && <span>{memberSearch.data.pagination.total} match{memberSearch.data.pagination.total === 1 ? '' : 'es'}</span>}
+            </div>
+            <div className="max-h-72 overflow-y-auto">
+              {debouncedSearch.length < 3 ? (
+                <div className="px-3 py-6 text-center text-sm text-muted-foreground">Type 3 letters to search.</div>
+              ) : memberSearch.isLoading ? (
+                <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Searching...</div>
+              ) : (memberSearch.data?.data ?? []).length ? (
+                (memberSearch.data?.data ?? []).map(member => {
+                  const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed member';
+                  const checked = selectedIds.has(member.id);
+                  return (
+                    <label key={member.id} className={`grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b px-3 py-1.5 last:border-b-0 ${member.alreadyCheckedIn ? 'bg-muted/40 text-muted-foreground' : 'hover:bg-muted/40'}`}>
+                      <Checkbox
+                        checked={checked}
+                        disabled={member.alreadyCheckedIn}
+                        onCheckedChange={value => setSelectedIds(current => {
+                          const next = new Set(current);
+                          if (value === true) next.add(member.id);
+                          else next.delete(member.id);
+                          return next;
+                        })}
+                      />
+                      <div className="min-w-0 leading-tight">
+                        <div className="truncate text-sm font-medium">{name} {member.memberType === 'child' && <span className="text-xs text-accent">(Child)</span>}</div>
+                        {member.email && <div className="truncate text-xs text-muted-foreground">{member.email}</div>}
+                      </div>
+                      <div className="max-w-[110px] truncate text-right text-xs text-muted-foreground sm:max-w-[150px]">{member.alreadyCheckedIn ? 'Checked in' : member.phone || ''}</div>
+                    </label>
+                  );
+                })
+              ) : (
+                <div className="px-3 py-6 text-center text-sm text-muted-foreground">No members found.</div>
+              )}
+            </div>
+          </div>
+
+          <Button className="w-full" disabled={!selectedIds.size || addSelectedMembers.isPending || scanMemberQr.isPending} onClick={() => addSelectedMembers.mutate()}>
+            {addSelectedMembers.isPending ? 'Checking in...' : selectedIds.size ? `Check In ${selectedIds.size}` : 'Check In'}
+          </Button>
         </CardContent>
       </Card>
     </div>
