@@ -18,7 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power, QrCode, UserPlus, Eye, Camera, MoreHorizontal } from 'lucide-react';
+import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Copy, CalendarClock, Ban, XCircle, Power, QrCode, UserPlus, Eye, Camera, MoreHorizontal } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
@@ -46,17 +46,8 @@ export default function AttendancePage() {
   const [scannerLinkExpiresAt, setScannerLinkExpiresAt] = useState('');
   const [scannerLinkUsageLimit, setScannerLinkUsageLimit] = useState('');
   const [scannerLinkAccessCode, setScannerLinkAccessCode] = useState('');
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [linkChurchFilter, setLinkChurchFilter] = useState('all');
-  const [linkServiceType, setLinkServiceType] = useState('Sunday Service');
-  const [linkValidFrom, setLinkValidFrom] = useState('');
-  const [linkExpiresAt, setLinkExpiresAt] = useState('');
-  const [linkUsageLimit, setLinkUsageLimit] = useState('');
-  const [generatedLink, setGeneratedLink] = useState('');
-  const [generatedAccessCode, setGeneratedAccessCode] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [linkAccessCode, setLinkAccessCode] = useState('');
   const [linksListOpen, setLinksListOpen] = useState(false);
+  const [linkFilter, setLinkFilter] = useState<'all' | 'active' | 'expired' | 'entry' | 'scanner'>('all');
   const [deactivateLinkId, setDeactivateLinkId] = useState<string | null>(null);
   const [deleteLinkId, setDeleteLinkId] = useState<string | null>(null);
   const [activateLinkId, setActivateLinkId] = useState<string | null>(null);
@@ -90,17 +81,6 @@ export default function AttendancePage() {
   });
 
   const records = allRecords;
-
-  const generateLinkMutation = useMutation({
-    mutationFn: sharedAccessService.generateLink,
-    onSuccess: (link) => {
-      toast.success('Link generated successfully');
-      setGeneratedLink(`${window.location.origin}/attendance/enter/${link.token}`);
-      setGeneratedAccessCode(link.accessCode || '');
-      qc.invalidateQueries({ queryKey: ['my-links'] });
-    },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to generate link'),
-  });
 
   const { data: myLinks = [] } = useQuery({
     queryKey: ['my-links'],
@@ -220,6 +200,15 @@ export default function AttendancePage() {
   const totalAttendees = records.reduce((s, r) => s + r.totalAttendees, 0);
   const totalVisitors = records.reduce((s, r) => s + (r.newVisitors ?? 0), 0);
   const avgAttendance = totalServices ? Math.round(totalAttendees / totalServices) : 0;
+  const attendanceLinks = myLinks.filter((link: any) => link.type === 'attendance' || link.type === 'attendance_scanner');
+  const filteredAttendanceLinks = attendanceLinks.filter((link: any) => {
+    const expired = link.expiresAt ? new Date(link.expiresAt).getTime() < Date.now() : false;
+    if (linkFilter === 'active') return link.isActive && !expired;
+    if (linkFilter === 'expired') return expired;
+    if (linkFilter === 'entry') return link.type === 'attendance';
+    if (linkFilter === 'scanner') return link.type === 'attendance_scanner';
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -306,96 +295,128 @@ export default function AttendancePage() {
       {/* Links Management */}
       {canCreate && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Link2 className="h-4 w-4 text-muted-foreground" />
-              Generated Links
-            </CardTitle>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Link2 className="h-4 w-4 text-muted-foreground" />
+                Shared Attendance Links
+              </CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Manage attendance entry and scanner links created from row actions.
+              </p>
+            </div>
             <Button
               variant="ghost"
               size="sm"
+              className="self-start sm:self-auto"
               onClick={() => setLinksListOpen(!linksListOpen)}
             >
-              {linksListOpen ? 'Hide' : `Show (${myLinks.length})`}
+              {linksListOpen ? 'Hide' : `Show (${attendanceLinks.length})`}
             </Button>
           </CardHeader>
           {linksListOpen && (
-            <CardContent>
-              {myLinks.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No links generated yet.</p>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ['all', 'All'],
+                  ['active', 'Active'],
+                  ['expired', 'Expired'],
+                  ['entry', 'Manual Entry'],
+                  ['scanner', 'Scanner'],
+                ].map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    size="sm"
+                    variant={linkFilter === value ? 'default' : 'outline'}
+                    className="h-8 text-xs"
+                    onClick={() => setLinkFilter(value as typeof linkFilter)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              {attendanceLinks.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No shared attendance links yet. Open a row&apos;s Actions menu and choose Link to create one.
+                </p>
+              ) : filteredAttendanceLinks.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">No links match this filter.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Service / Attendance</TableHead>
                         <TableHead>Church</TableHead>
-                        <TableHead>Service</TableHead>
-                        <TableHead className="hidden sm:table-cell">Created</TableHead>
-                        <TableHead className="hidden sm:table-cell">Expires</TableHead>
+                        <TableHead className="hidden sm:table-cell">Type</TableHead>
+                        <TableHead className="hidden md:table-cell">Expires</TableHead>
                         <TableHead className="hidden sm:table-cell">Uses</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {myLinks.map((link: any) => (
-                        <TableRow key={link.id}>
-                          <TableCell className="text-sm">{link.church?.name || '—'}</TableCell>
-                          <TableCell className="text-sm">{link.serviceType || '—'}</TableCell>
-                          <TableCell className="text-sm hidden sm:table-cell text-muted-foreground">
-                            {new Date(link.createdAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="text-sm hidden sm:table-cell text-muted-foreground">
-                            {new Date(link.expiresAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="text-sm hidden sm:table-cell">
-                            {link.useCount}{link.usageLimit ? `/${link.usageLimit}` : ''}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={link.isActive ? 'default' : 'secondary'} className="text-xs">
-                              {link.isActive ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(link.url);
-                                  toast.success('Link copied');
-                                }}
-                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                                title="Copy link"
-                              >
-                                <Copy className="h-3.5 w-3.5" />
-                              </button>
-                              {link.isActive ? (
-                                <button
-                                  onClick={() => setDeactivateLinkId(link.id)}
-                                  className="p-1.5 text-muted-foreground hover:text-amber-600 transition-colors"
-                                  title="Deactivate"
-                                >
-                                  <Ban className="h-3.5 w-3.5" />
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => setActivateLinkId(link.id)}
-                                  className="p-1.5 text-muted-foreground hover:text-green-600 transition-colors"
-                                  title="Activate"
-                                >
-                                  <Power className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => setDeleteLinkId(link.id)}
-                                className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                                title="Delete permanently"
-                              >
-                                <XCircle className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {filteredAttendanceLinks.map((link: any) => {
+                        const expired = link.expiresAt ? new Date(link.expiresAt).getTime() < Date.now() : false;
+                        const statusLabel = expired ? 'Expired' : link.isActive ? 'Active' : 'Disabled';
+                        const statusVariant = expired || !link.isActive ? 'secondary' : 'default';
+                        const typeLabel = link.type === 'attendance_scanner' ? 'Scanner Link' : 'Manual Entry Link';
+                        return (
+                          <TableRow key={link.id}>
+                            <TableCell className="text-sm">
+                              <div className="font-medium">{link.serviceType || 'Attendance'}</div>
+                              <div className="text-xs text-muted-foreground sm:hidden">{typeLabel}</div>
+                            </TableCell>
+                            <TableCell className="text-sm">{link.church?.name || '�'}</TableCell>
+                            <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">{typeLabel}</TableCell>
+                            <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                              {link.expiresAt ? new Date(link.expiresAt).toLocaleDateString() : 'No expiry'}
+                            </TableCell>
+                            <TableCell className="hidden text-sm sm:table-cell">
+                              {link.useCount}{link.usageLimit ? `/${link.usageLimit}` : ''}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={statusVariant as any} className="text-xs">{statusLabel}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2.5">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    Actions
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40">
+                                  <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(link.url); toast.success('Link copied'); }}>
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Copy
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}>
+                                    <Link2 className="mr-2 h-4 w-4" />
+                                    Open
+                                  </DropdownMenuItem>
+                                  {link.isActive ? (
+                                    <DropdownMenuItem onClick={() => setDeactivateLinkId(link.id)}>
+                                      <Ban className="mr-2 h-4 w-4" />
+                                      Disable
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem onClick={() => setActivateLinkId(link.id)}>
+                                      <Power className="mr-2 h-4 w-4" />
+                                      Enable
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => setDeleteLinkId(link.id)} className="text-destructive focus:text-destructive">
+                                    <XCircle className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -943,129 +964,6 @@ export default function AttendancePage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Generate Link Dialog */}
-      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-heading">Generate Attendance Link</DialogTitle>
-          </DialogHeader>
-          {!generatedLink ? (
-            <div className="space-y-4">
-              <div>
-                <Label>Church</Label>
-                <Select value={linkChurchFilter} onValueChange={setLinkChurchFilter}>
-                  <SelectTrigger><SelectValue placeholder="Select Church" /></SelectTrigger>
-                  <SelectContent>
-                    {churches.map((church: any) => (
-                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Service Type</Label>
-                <Select value={linkServiceType} onValueChange={setLinkServiceType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Sunday Service">Sunday Service</SelectItem>
-                    <SelectItem value="Midweek">Midweek</SelectItem>
-                    <SelectItem value="Crusade">Crusade</SelectItem>
-                    <SelectItem value="Conference">Conference</SelectItem>
-                    <SelectItem value="Special">Special</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Valid From</Label>
-                <Input type="datetime-local" value={linkValidFrom} onChange={e => setLinkValidFrom(e.target.value)} />
-              </div>
-              <div>
-                <Label>Expires At</Label>
-                <Input type="datetime-local" value={linkExpiresAt} onChange={e => setLinkExpiresAt(e.target.value)} />
-              </div>
-              <div>
-                <Label>Usage Limit (optional)</Label>
-                <Input type="number" min="1" placeholder="Leave empty for unlimited" value={linkUsageLimit} onChange={e => setLinkUsageLimit(e.target.value)} />
-              </div>
-              <div>
-                <Label>Access Code (optional 4-digit PIN)</Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={4}
-                  pattern="[0-9]*"
-                  placeholder="e.g. 1234"
-                  value={linkAccessCode}
-                  onChange={e => setLinkAccessCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  If set, the helper must enter this code before accessing the form.
-                </p>
-              </div>
-              <Button
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90 gap-2"
-                onClick={() => {
-                  if (linkChurchFilter === 'all') { toast.error('Please select a church'); return; }
-                  if (!linkValidFrom) { toast.error('Please set valid from date'); return; }
-                  if (!linkExpiresAt) { toast.error('Please set expires at date'); return; }
-                  generateLinkMutation.mutate({
-                    churchId: linkChurchFilter,
-                    serviceType: linkServiceType,
-                    validFrom: new Date(linkValidFrom).toISOString(),
-                    expiresAt: new Date(linkExpiresAt).toISOString(),
-                    usageLimit: linkUsageLimit ? parseInt(linkUsageLimit) : undefined,
-                    accessCode: linkAccessCode || undefined,
-                  });
-                }}
-                disabled={generateLinkMutation.isPending}
-              >
-                <CalendarClock className="h-4 w-4" />
-                {generateLinkMutation.isPending ? 'Generating...' : 'Generate Link'}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 border border-green-200 rounded-md p-3">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>Link generated successfully! Share it with the helper.</span>
-              </div>
-              <div className="flex gap-2">
-                <Input value={generatedLink} readOnly className="flex-1" />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatedLink);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                >
-                  {copied ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-              {generatedAccessCode && (
-                <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-md p-3">
-                  <Lock className="h-4 w-4 shrink-0" />
-                  <span>Access Code: <strong className="text-base tracking-widest">{generatedAccessCode}</strong> — share this securely with the helper.</span>
-                </div>
-              )}
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setGeneratedLink('');
-                  setGeneratedAccessCode('');
-                  setLinkAccessCode('');
-                  setCopied(false);
-                  setLinkDialogOpen(false);
-                }}
-              >
-                Close
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
