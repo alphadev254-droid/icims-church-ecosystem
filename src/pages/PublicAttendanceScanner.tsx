@@ -221,18 +221,23 @@ export default function PublicAttendanceScanner() {
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Search Member</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchValue}
-              onChange={event => {
-                setSearchValue(event.target.value);
-                setSelectedIds(new Set());
-              }}
-              placeholder="Type at least 3 letters, name or email"
-              className="pl-9"
-              autoComplete="off"
-            />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            <div className="relative min-w-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchValue}
+                onChange={event => {
+                  setSearchValue(event.target.value);
+                  setSelectedIds(new Set());
+                }}
+                placeholder="Name or email"
+                className="pl-9"
+                autoComplete="off"
+              />
+            </div>
+            <Button className="min-w-24 px-3 text-xs sm:min-w-32 sm:text-sm" disabled={!selectedIds.size || addSelectedMembers.isPending || scanMemberQr.isPending} onClick={() => addSelectedMembers.mutate()}>
+              {addSelectedMembers.isPending ? 'Checking...' : selectedIds.size ? `Check In ${selectedIds.size}` : 'Check In'}
+            </Button>
           </div>
           <div className="overflow-hidden rounded-lg border">
             <div className="flex items-center justify-between border-b px-3 py-1.5 text-xs text-muted-foreground">
@@ -273,9 +278,6 @@ export default function PublicAttendanceScanner() {
               )}
             </div>
           </div>
-          <Button className="w-full" disabled={!selectedIds.size || addSelectedMembers.isPending || scanMemberQr.isPending} onClick={() => addSelectedMembers.mutate()}>
-            {addSelectedMembers.isPending ? 'Checking in...' : selectedIds.size ? `Check In ${selectedIds.size}` : 'Check In'}
-          </Button>
         </CardContent>
       </Card>
     </div>
