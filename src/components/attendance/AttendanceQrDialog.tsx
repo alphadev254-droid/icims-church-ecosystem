@@ -8,12 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
-import { ChevronDown, Copy, Download, FileText, ImageIcon, Loader2, Power, QrCode, RefreshCcw, Square, UserPlus } from 'lucide-react';
+import { ChevronDown, Copy, Download, FileText, ImageIcon, Loader2, Power, QrCode, RefreshCcw, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
 function toLocalInputValue(value?: string | null) {
@@ -43,17 +39,6 @@ export function AttendanceQrDialog({
   const [localRecord, setLocalRecord] = useState(record);
   const [activeFrom, setActiveFrom] = useState(toLocalInputValue(record.qrActiveFrom));
   const [activeUntil, setActiveUntil] = useState(toLocalInputValue(record.qrActiveUntil));
-  const [memberQrInput, setMemberQrInput] = useState('');
-  const [manualAddOpen, setManualAddOpen] = useState(false);
-  const [visitorForm, setVisitorForm] = useState({
-    guestName: '',
-    guestEmail: '',
-    guestPhone: '',
-    guestGender: '',
-    guestAgeBracket: '',
-    guestFirstTime: false,
-    invitedBy: '',
-  });
 
   const checkInUrl = useMemo(() => (
     localRecord.qrToken ? buildPublicCheckInUrl(localRecord.qrToken, subdomain) : ''
@@ -107,47 +92,6 @@ export function AttendanceQrDialog({
       toast.success('QR code regenerated');
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to regenerate QR'),
-  });
-
-  const scanMemberQr = useMutation({
-    mutationFn: () => attendanceService.scanMemberQr(localRecord.id, memberQrInput),
-    onSuccess: (participant: any, _vars: void, _ctx: unknown) => {
-      const memberName = participant.user ? `${participant.user.firstName} ${participant.user.lastName}` : 'Member';
-      toast.success(`${memberName} checked in`);
-      setMemberQrInput('');
-      qc.invalidateQueries({ queryKey: ['attendance'] });
-      qc.invalidateQueries({ queryKey: ['attendance-detail', localRecord.id] });
-      qc.invalidateQueries({ queryKey: ['attendance-participants', localRecord.id] });
-    },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to scan member QR'),
-  });
-
-  const scanVisitor = useMutation({
-    mutationFn: () => attendanceService.scanVisitor(localRecord.id, {
-      guestName: visitorForm.guestName.trim(),
-      guestEmail: visitorForm.guestEmail.trim() || undefined,
-      guestPhone: visitorForm.guestPhone.trim() || undefined,
-      guestGender: visitorForm.guestGender || undefined,
-      guestAgeBracket: visitorForm.guestAgeBracket || undefined,
-      guestFirstTime: visitorForm.guestFirstTime,
-      invitedBy: visitorForm.invitedBy.trim() || undefined,
-    }),
-    onSuccess: () => {
-      toast.success('Visitor checked in');
-      setVisitorForm({
-        guestName: '',
-        guestEmail: '',
-        guestPhone: '',
-        guestGender: '',
-        guestAgeBracket: '',
-        guestFirstTime: false,
-        invitedBy: '',
-      });
-      qc.invalidateQueries({ queryKey: ['attendance'] });
-      qc.invalidateQueries({ queryKey: ['attendance-detail', localRecord.id] });
-      qc.invalidateQueries({ queryKey: ['attendance-participants', localRecord.id] });
-    },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to check in visitor'),
   });
 
   const copyLink = async () => {
@@ -306,132 +250,8 @@ export function AttendanceQrDialog({
                 </div>
               )}
             </div>
-
-            {canUpdate && (
-              <div className="rounded-lg border p-4">
-                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold">Check-in Station</h3>
-                    <p className="text-xs text-muted-foreground">Scan QR codes, add visitors, or search members manually.</p>
-                  </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setManualAddOpen(true)} className="gap-2">
-                    <UserPlus className="h-4 w-4" /> Manual Add
-                  </Button>
-                </div>
-                <Tabs defaultValue="member" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="member">Member QR</TabsTrigger>
-                    <TabsTrigger value="visitor">Visitor</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="member" className="mt-4">
-                    <h3 className="text-sm font-semibold">Scan Member QR</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Paste or scan a member QR code to mark that member present.
-                    </p>
-                    <form
-                      className="mt-3 flex flex-col gap-2 sm:flex-row"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        if (!memberQrInput.trim()) {
-                          toast.error('Scan or paste a member QR first');
-                          return;
-                        }
-                        scanMemberQr.mutate();
-                      }}
-                    >
-                      <Input
-                        value={memberQrInput}
-                        onChange={event => setMemberQrInput(event.target.value)}
-                        placeholder="Scan member QR here"
-                        autoComplete="off"
-                      />
-                      <Button type="submit" disabled={scanMemberQr.isPending || status !== 'active'} className="shrink-0">
-                        {scanMemberQr.isPending ? 'Checking...' : 'Check In'}
-                      </Button>
-                    </form>
-                  </TabsContent>
-                  <TabsContent value="visitor" className="mt-4">
-                    <h3 className="text-sm font-semibold">Visitor Check-in</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Add a visitor manually, then continue scanning.
-                    </p>
-                    <form
-                      className="mt-3 space-y-3"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        if (!visitorForm.guestName.trim()) {
-                          toast.error('Visitor name is required');
-                          return;
-                        }
-                        scanVisitor.mutate();
-                      }}
-                    >
-                      <div className="space-y-1.5">
-                        <Label>Name *</Label>
-                        <Input value={visitorForm.guestName} onChange={event => setVisitorForm(form => ({ ...form, guestName: event.target.value }))} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label>Gender</Label>
-                          <Select value={visitorForm.guestGender} onValueChange={value => setVisitorForm(form => ({ ...form, guestGender: value }))}>
-                            <SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="male">Male</SelectItem>
-                              <SelectItem value="female">Female</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label>Age</Label>
-                          <Select value={visitorForm.guestAgeBracket} onValueChange={value => setVisitorForm(form => ({ ...form, guestAgeBracket: value }))}>
-                            <SelectTrigger><SelectValue placeholder="Age" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="0-12">0-12</SelectItem>
-                              <SelectItem value="13-17">13-17</SelectItem>
-                              <SelectItem value="18-35">18-35</SelectItem>
-                              <SelectItem value="36-59">36-59</SelectItem>
-                              <SelectItem value="60+">60+</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <Label>Phone</Label>
-                          <Input value={visitorForm.guestPhone} onChange={event => setVisitorForm(form => ({ ...form, guestPhone: event.target.value }))} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label>Email</Label>
-                          <Input type="email" value={visitorForm.guestEmail} onChange={event => setVisitorForm(form => ({ ...form, guestEmail: event.target.value }))} />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Invited by</Label>
-                        <Input value={visitorForm.invitedBy} onChange={event => setVisitorForm(form => ({ ...form, invitedBy: event.target.value }))} />
-                      </div>
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox checked={visitorForm.guestFirstTime} onCheckedChange={checked => setVisitorForm(form => ({ ...form, guestFirstTime: checked === true }))} />
-                        First time visiting
-                      </label>
-                      <Button type="submit" disabled={scanVisitor.isPending || status !== 'active'} className="w-full">
-                        {scanVisitor.isPending ? 'Checking in...' : 'Check In Visitor'}
-                      </Button>
-                    </form>
-                  </TabsContent>
-                </Tabs>
-              </div>
-            )}
           </div>
         </div>
-
-        {canUpdate && (
-          <AddAttendeesDialog
-            record={localRecord}
-            open={manualAddOpen}
-            onClose={() => setManualAddOpen(false)}
-          />
-        )}
       </DialogContent>
     </Dialog>
   );

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Calendar, QrCode, UserCheck, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, Camera, Calendar, QrCode, UserCheck, UserPlus, Users } from 'lucide-react';
 import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
 import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
 
@@ -107,6 +107,11 @@ export default function AttendanceDetailPage() {
           {canUpdate && (
             <Button variant="outline" onClick={() => setAddOpen(true)} className="gap-2">
               <UserPlus className="h-4 w-4" /> Add Manual
+            </Button>
+          )}
+          {canUpdate && (
+            <Button variant="outline" onClick={() => navigate(`/dashboard/attendance/${record.id}/scan`)} className="gap-2">
+              <Camera className="h-4 w-4" /> Scan Attendee QR
             </Button>
           )}
           <Button onClick={() => setQrOpen(true)} className="gap-2">

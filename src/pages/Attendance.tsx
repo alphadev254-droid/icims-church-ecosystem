@@ -599,7 +599,13 @@ export default function AttendancePage() {
         </CardContent>
       </Card>
 
-      <Dialog open={startQrOpen} onOpenChange={setStartQrOpen}>
+      <Dialog
+        open={startQrOpen}
+        onOpenChange={(open) => {
+          if (startQrMutation.isPending) return;
+          setStartQrOpen(open);
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-heading">Start QR Attendance</DialogTitle>
@@ -610,7 +616,7 @@ export default function AttendancePage() {
             </p>
             <div className="space-y-1.5">
               <Label>Church</Label>
-              <Select value={startQrChurchId} onValueChange={setStartQrChurchId}>
+              <Select value={startQrChurchId} onValueChange={setStartQrChurchId} disabled={startQrMutation.isPending}>
                 <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
                 <SelectContent>
                   {churches.map((church: any) => (
@@ -621,7 +627,7 @@ export default function AttendancePage() {
             </div>
             <div className="space-y-1.5">
               <Label>Service Type</Label>
-              <Select value={startQrServiceType} onValueChange={setStartQrServiceType}>
+              <Select value={startQrServiceType} onValueChange={setStartQrServiceType} disabled={startQrMutation.isPending}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Sunday Service">Sunday Service</SelectItem>
@@ -636,15 +642,15 @@ export default function AttendancePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Date / Time</Label>
-                <Input type="datetime-local" value={startQrDate} onChange={e => setStartQrDate(e.target.value)} />
+                <Input type="datetime-local" value={startQrDate} onChange={e => setStartQrDate(e.target.value)} disabled={startQrMutation.isPending} />
               </div>
               <div className="space-y-1.5">
                 <Label>Active until</Label>
-                <Input type="datetime-local" value={startQrUntil} onChange={e => setStartQrUntil(e.target.value)} />
+                <Input type="datetime-local" value={startQrUntil} onChange={e => setStartQrUntil(e.target.value)} disabled={startQrMutation.isPending} />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setStartQrOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setStartQrOpen(false)} disabled={startQrMutation.isPending}>Cancel</Button>
               <Button
                 disabled={startQrMutation.isPending || !startQrChurchId || !startQrDate}
                 onClick={() => startQrMutation.mutate({
