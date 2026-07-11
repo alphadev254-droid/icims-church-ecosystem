@@ -16,9 +16,10 @@ interface Props {
   defaultVisitors?: AttendanceVisitor[];
   submitLabel?: string;
   hideChurchSelect?: boolean;
+  summaryLocked?: boolean;
 }
 
-export function RegularServiceForm({ onSubmit, isPending, defaultValues, defaultVisitors = [], submitLabel = 'Save Record', hideChurchSelect = false }: Props) {
+export function RegularServiceForm({ onSubmit, isPending, defaultValues, defaultVisitors = [], submitLabel = 'Save Record', hideChurchSelect = false, summaryLocked = false }: Props) {
   const [churchId, setChurchId] = useState(defaultValues?.churchId ?? '');
   const [date, setDate] = useState(defaultValues?.date ?? '');
   const [serviceType, setServiceType] = useState(defaultValues?.serviceType ?? 'Sunday Service');
@@ -43,8 +44,30 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!churchId || !date || !maleCount || !femaleCount) {
-      toast.error('Church, date, and gender fields are required');
+    if (!churchId || !date) {
+      toast.error('Church and date are required');
+      return;
+    }
+    if (summaryLocked) {
+      onSubmit({
+        churchId,
+        date,
+        serviceType,
+        totalAttendees,
+        maleCount: parseInt(maleCount) || 0,
+        femaleCount: parseInt(femaleCount) || 0,
+        children: parseInt(children) || 0,
+        youth: parseInt(youth) || 0,
+        youngAdults: parseInt(youngAdults) || 0,
+        adults: parseInt(adults) || 0,
+        seniors: parseInt(seniors) || 0,
+        newVisitors: defaultValues?.newVisitors ?? defaultVisitors.length,
+        notes,
+      });
+      return;
+    }
+    if (!maleCount || !femaleCount) {
+      toast.error('Gender fields are required');
       return;
     }
     if (ageGroupMismatch) {
@@ -69,6 +92,12 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
     <form onSubmit={handleSubmit} className="space-y-4">
       {!hideChurchSelect && <ChurchSelect value={churchId} onValueChange={setChurchId} />}
 
+      {summaryLocked && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          This attendance was recorded through QR/digital check-in. Summary counts are calculated from checked-in attendees, so only church, date, and service type can be edited here.
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Date *</Label>
@@ -89,20 +118,20 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
         </div>
       </div>
 
-      <div>
+      {!summaryLocked && <div>
         <Label className="text-sm font-medium">Gender Breakdown *</Label>
         <div className="grid grid-cols-2 gap-4 mt-2">
           <div><Label className="text-xs sm:text-sm">Male *</Label><Input type="number" min={0} value={maleCount} onChange={e => setMaleCount(e.target.value)} required /></div>
           <div><Label className="text-xs sm:text-sm">Female *</Label><Input type="number" min={0} value={femaleCount} onChange={e => setFemaleCount(e.target.value)} required /></div>
         </div>
-      </div>
+      </div>}
 
-      <div className="p-3 bg-muted rounded-md">
+      {!summaryLocked && <div className="p-3 bg-muted rounded-md">
         <Label className="text-sm text-muted-foreground">Total Attendees (Auto-calculated)</Label>
         <div className="text-2xl font-bold">{totalAttendees}</div>
-      </div>
+      </div>}
 
-      <div>
+      {!summaryLocked && <div>
         <Label className="text-sm font-medium">Age Groups <span className="text-muted-foreground text-xs sm:text-sm font-normal">(optional)</span></Label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
           <div><Label className="text-xs sm:text-sm">Children (0-12)</Label><Input type="number" min={0} value={children} onChange={e => setChildren(e.target.value)} /></div>
@@ -112,15 +141,15 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
           <div><Label className="text-xs sm:text-sm">Seniors (60+)</Label><Input type="number" min={0} value={seniors} onChange={e => setSeniors(e.target.value)} /></div>
         </div>
         {ageGroupMismatch && <p className="text-xs text-destructive mt-2">Age groups total ({ageGroupTotal}) must equal total attendees ({totalAttendees})</p>}
-      </div>
+      </div>}
 
-      <div>
+      {!summaryLocked && <div>
         <Label>Notes <span className="text-muted-foreground text-xs sm:text-sm">(optional)</span></Label>
         <Input value={notes} onChange={e => setNotes(e.target.value)} />
-      </div>
+      </div>}
 
       {/* Visitor Details */}
-      <div className="border rounded-lg p-4 space-y-3">
+      {!summaryLocked && <div className="border rounded-lg p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <Label className="text-sm font-semibold flex items-center gap-2">
@@ -185,7 +214,7 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
             <div><Label className="text-xs sm:text-sm">Notes <span className="text-muted-foreground">(optional)</span></Label><Input className="h-9 sm:h-8 text-sm mt-0.5" placeholder="Any additional notes" value={v.notes ?? ''} onChange={e => updateVisitor(i, 'notes', e.target.value)} /></div>
           </div>
         ))}
-      </div>
+      </div>}
 
       <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
         {isPending ? 'Saving...' : submitLabel}

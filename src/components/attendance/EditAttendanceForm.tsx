@@ -9,10 +9,12 @@ interface Props {
 }
 
 export function EditAttendanceForm({ record, onSubmit, isPending }: Props) {
+  const summaryLocked = !!record.qrToken || !!record.digitalCheckInEnabled || ((record._count?.participants ?? 0) > 0);
   const { data: visitorsResult } = useQuery({
     queryKey: ['attendance-visitors', record.id, 'all'],
     queryFn: () => attendanceService.getVisitors(record.id, { page: 1, limit: 100 }),
     staleTime: 0,
+    enabled: !summaryLocked,
   });
   const existingVisitors = visitorsResult?.data ?? [];
 
@@ -30,12 +32,14 @@ export function EditAttendanceForm({ record, onSubmit, isPending }: Props) {
         youngAdults: record.youngAdults ?? 0,
         adults: record.adults ?? 0,
         seniors: record.seniors ?? 0,
+        newVisitors: record.newVisitors ?? 0,
         notes: record.notes ?? '',
       }}
       defaultVisitors={existingVisitors}
       onSubmit={onSubmit}
       isPending={isPending}
       submitLabel="Update Record"
+      summaryLocked={summaryLocked}
     />
   );
 }
