@@ -33,7 +33,13 @@ export interface ValidateLinkResult {
   valid: boolean;
   type?: string;
   serviceType?: string | null;
-  church?: { id: string; name: string };
+  church?: {
+    id: string;
+    name: string;
+    logoUrl?: string | null;
+    primaryColor?: string | null;
+    tagline?: string | null;
+  };
   hasAccessCode?: boolean;
   message?: string;
 }

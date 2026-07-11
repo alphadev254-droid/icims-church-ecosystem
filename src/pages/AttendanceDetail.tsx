@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Calendar, QrCode, UserCheck, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, QrCode, UserCheck, UserPlus, Users } from 'lucide-react';
 import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
+import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
 
 export default function AttendanceDetailPage() {
   const { id = '' } = useParams();
@@ -18,6 +19,7 @@ export default function AttendanceDetailPage() {
   const user = useAuthStore(state => state.user);
   const { hasPermission } = useRole();
   const [qrOpen, setQrOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [genderFilter, setGenderFilter] = useState('all');
   const [ageFilter, setAgeFilter] = useState('all');
   const canUpdate = hasPermission('attendance:update');
@@ -101,9 +103,16 @@ export default function AttendanceDetailPage() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setQrOpen(true)} className="gap-2">
-          <QrCode className="h-4 w-4" /> QR Controls
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {canUpdate && (
+            <Button variant="outline" onClick={() => setAddOpen(true)} className="gap-2">
+              <UserPlus className="h-4 w-4" /> Add Manual
+            </Button>
+          )}
+          <Button onClick={() => setQrOpen(true)} className="gap-2">
+            <QrCode className="h-4 w-4" /> QR Controls
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -249,6 +258,14 @@ export default function AttendanceDetailPage() {
           subdomain={user?.subdomain}
           canUpdate={canUpdate}
           onClose={() => setQrOpen(false)}
+        />
+      )}
+
+      {canUpdate && (
+        <AddAttendeesDialog
+          record={record}
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
         />
       )}
     </div>

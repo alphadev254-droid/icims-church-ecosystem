@@ -65,6 +65,18 @@ export interface AttendanceParticipant {
   } | null;
 }
 
+export interface AttendanceMemberSearchResult {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone?: string | null;
+  memberType?: string | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  alreadyCheckedIn?: boolean;
+}
+
 export interface QrCheckInSession {
   id: string;
   date: string;
@@ -151,6 +163,26 @@ export const attendanceService = {
   },
   regenerateQr: async (id: string): Promise<AttendanceRecord> => {
     const { data } = await apiClient.post(`/attendance/${id}/qr/regenerate`);
+    return data.data;
+  },
+  scanMemberQr: async (id: string, token: string): Promise<AttendanceParticipant> => {
+    const { data } = await apiClient.post(`/attendance/${id}/scan-member`, { token });
+    return data.data;
+  },
+  scanVisitor: async (id: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestGender?: string; guestAgeBracket?: string; guestFirstTime?: boolean; invitedBy?: string }): Promise<AttendanceParticipant> => {
+    const { data } = await apiClient.post(`/attendance/${id}/scan-visitor`, dto);
+    return data.data;
+  },
+  searchMembers: async (id: string, params: { q: string; page?: number; limit?: number }): Promise<{ data: AttendanceMemberSearchResult[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
+    const { data } = await apiClient.get(`/attendance/${id}/member-search`, { params });
+    return { data: data.data, pagination: data.pagination };
+  },
+  addManualMembers: async (id: string, userIds: string[]): Promise<{ data: AttendanceParticipant[]; created: number; skipped: number }> => {
+    const { data } = await apiClient.post(`/attendance/${id}/manual-members`, { userIds });
+    return { data: data.data, created: data.created ?? data.data.length, skipped: data.skipped ?? 0 };
+  },
+  addManualVisitor: async (id: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestGender?: string; guestAgeBracket?: string; guestFirstTime?: boolean; invitedBy?: string }): Promise<AttendanceParticipant> => {
+    const { data } = await apiClient.post(`/attendance/${id}/manual-visitor`, dto);
     return data.data;
   },
   getQrCheckInSession: async (token: string): Promise<QrCheckInSession> => {

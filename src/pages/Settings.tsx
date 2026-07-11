@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { jsPDF } from 'jspdf';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,11 +9,12 @@ import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { User, Lock, Bell, Sun, Moon, Building2, Shield, Eye, EyeOff, Camera, Upload } from 'lucide-react';
+import { User, Lock, Bell, Sun, Moon, Building2, Shield, Eye, EyeOff, Camera, Upload, QrCode, Download, ChevronDown, ImageIcon, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 const profileSchema = z.object({
@@ -42,6 +44,8 @@ export default function SettingsPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [attendanceQrToken, setAttendanceQrToken] = useState('');
+  const [qrLoading, setQrLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/['"]|\/$|^\/api$/g, '');
@@ -132,6 +136,60 @@ export default function SettingsPage() {
 
   const avatarPreview = profileForm.watch('avatar' as any) as any;
   const displayAvatar = avatarPreview?.preview || (user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${STATIC_BASE}${user.avatar}`) : null);
+  const memberQrValue = attendanceQrToken ? `${window.location.origin}/member-qr/${attendanceQrToken}` : '';
+  const memberQrImageUrl = memberQrValue
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(memberQrValue)}`
+    : '';
+
+  const loadAttendanceQr = async () => {
+    setQrLoading(true);
+    try {
+      const { data } = await apiClient.get('/auth/attendance-qr');
+      setAttendanceQrToken(data.data.token);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to load attendance QR');
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const downloadMemberQrPng = async () => {
+    if (!memberQrImageUrl) return;
+    const response = await fetch(memberQrImageUrl);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = `${user?.firstName || 'member'}-${user?.lastName || 'qr'}-attendance-qr.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  };
+
+  const downloadMemberQrPdf = async () => {
+    if (!memberQrImageUrl) return;
+    const response = await fetch(memberQrImageUrl);
+    const blob = await response.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Member';
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text('Attendance QR Code', 105, 30, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(13);
+    doc.text(fullName, 105, 42, { align: 'center' });
+    doc.addImage(dataUrl, 'PNG', 55, 58, 100, 100);
+    doc.setFontSize(11);
+    doc.text('Present this QR code for attendance check-in.', 105, 174, { align: 'center' });
+    doc.save(`${fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-attendance-qr.pdf`);
+  };
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -222,6 +280,54 @@ export default function SettingsPage() {
               {profileLoading ? 'Saving...' : 'Save Profile'}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <QrCode className="h-4 w-4" /> My Attendance QR
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex h-48 w-full items-center justify-center rounded-lg border bg-muted/30 sm:w-48">
+              {memberQrImageUrl ? (
+                <img src={memberQrImageUrl} alt="My attendance QR" className="h-40 w-40 rounded-md bg-white p-2" />
+              ) : (
+                <div className="text-center text-sm text-muted-foreground">
+                  <QrCode className="mx-auto mb-2 h-8 w-8" />
+                  Generate your QR code
+                </div>
+              )}
+            </div>
+            <div className="flex-1 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Use this QR when church admins are scanning member QR codes for attendance.
+              </p>
+              {memberQrValue && <p className="break-all rounded-md bg-muted p-3 text-xs text-muted-foreground">{memberQrValue}</p>}
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={loadAttendanceQr} disabled={qrLoading}>
+                  {qrLoading ? 'Loading...' : memberQrImageUrl ? 'Refresh QR' : 'View QR'}
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" disabled={!memberQrImageUrl}>
+                      <Download className="mr-2 h-4 w-4" /> Download <ChevronDown className="ml-2 h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={downloadMemberQrPng}>
+                      <ImageIcon className="mr-2 h-4 w-4" /> Download PNG
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={downloadMemberQrPdf}>
+                      <FileText className="mr-2 h-4 w-4" /> Download PDF
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

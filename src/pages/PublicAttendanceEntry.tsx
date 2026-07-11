@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, AlertCircle, Church, Eye, Pencil, UserCheck, ClipboardList, Lock, ShieldCheck, LogOut } from 'lucide-react';
@@ -26,7 +27,12 @@ export default function PublicAttendanceEntry() {
 
   // Validation state
   const [validationState, setValidationState] = useState<'loading' | 'valid' | 'invalid'>('loading');
-  const [linkInfo, setLinkInfo] = useState<{ type?: string; serviceType?: string | null; church?: { id: string; name: string }; hasAccessCode?: boolean } | null>(null);
+  const [linkInfo, setLinkInfo] = useState<{
+    type?: string;
+    serviceType?: string | null;
+    church?: { id: string; name: string; logoUrl?: string | null; primaryColor?: string | null; tagline?: string | null };
+    hasAccessCode?: boolean;
+  } | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   // Access code verification state
@@ -166,14 +172,25 @@ export default function PublicAttendanceEntry() {
     setRecords([]);
   };
 
+  const accentColor = linkInfo?.church?.primaryColor || '#d89b12';
+  const churchName = linkInfo?.church?.name || 'Church Attendance';
+  const serviceName = linkInfo?.serviceType || 'Attendance';
+  const brandMark = linkInfo?.church?.logoUrl ? (
+    <img src={linkInfo.church.logoUrl} alt={churchName} className="h-10 w-10 rounded-xl object-cover" />
+  ) : (
+    <div className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm" style={{ backgroundColor: accentColor }}>
+      <Church className="h-5 w-5" />
+    </div>
+  );
+
   // ── Loading State ──────────────────────────────────────────────────
   if (validationState === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center bg-[#f7f4ee] p-4">
+        <Card className="w-full max-w-md border-border/70 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-accent mb-4" />
-            <p className="text-muted-foreground">Validating access link...</p>
+            <Loader2 className="mb-4 h-8 w-8 animate-spin" style={{ color: '#d89b12' }} />
+            <p className="text-sm text-muted-foreground">Opening attendance link...</p>
           </CardContent>
         </Card>
       </div>
@@ -183,8 +200,8 @@ export default function PublicAttendanceEntry() {
   // ── Invalid State ──────────────────────────────────────────────────
   if (validationState === 'invalid') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center bg-[#f7f4ee] p-4">
+        <Card className="w-full max-w-md border-border/70 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
             <AlertCircle className="h-12 w-12 text-destructive" />
             <h2 className="text-xl font-semibold">Access Link Invalid</h2>
@@ -201,11 +218,19 @@ export default function PublicAttendanceEntry() {
   // ── Code Entry Screen ─────────────────────────────────────────────
   if (!codeVerified && linkInfo?.hasAccessCode) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 p-4">
-        <Card className="w-full max-w-sm">
+      <div className="min-h-screen bg-[#f7f4ee] p-4">
+        <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-md flex-col justify-center">
+          <div className="mb-5 flex items-center gap-3">
+            {brandMark}
+            <div className="min-w-0">
+              <h1 className="truncate font-heading text-lg font-bold text-slate-950">{churchName}</h1>
+              <p className="truncate text-xs text-muted-foreground">{serviceName}</p>
+            </div>
+          </div>
+        <Card className="w-full border-border/70 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-10 space-y-6">
-            <div className="rounded-full bg-accent/10 p-4">
-              <Lock className="h-10 w-10 text-accent" />
+            <div className="rounded-full p-4" style={{ backgroundColor: `${accentColor}1a` }}>
+              <Lock className="h-10 w-10" style={{ color: accentColor }} />
             </div>
             <div className="text-center space-y-2">
               <h2 className="text-xl font-semibold">Access Code Required</h2>
@@ -237,7 +262,8 @@ export default function PublicAttendanceEntry() {
                 <p className="text-sm text-destructive text-center">{codeError}</p>
               )}
               <Button
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90 gap-2"
+                className="w-full gap-2 text-white hover:opacity-90"
+                style={{ backgroundColor: accentColor }}
                 onClick={handleVerifyCode}
                 disabled={codeVerifying || accessCodeInput.length !== 4}
               >
@@ -250,45 +276,50 @@ export default function PublicAttendanceEntry() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 p-4 sm:p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#f7f4ee]">
+      <div className="mx-auto max-w-5xl px-3 py-4 sm:px-6 sm:py-6">
 
         {/* Header */}
-        <Card>
-          <CardHeader className="text-center relative">
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader className="relative space-y-0 p-4 sm:p-5">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="absolute top-2 right-2 text-destructive gap-1.5"
+              className="absolute right-2 top-2 gap-1.5 text-destructive"
             >
               <LogOut className="h-4 w-4" />
               <span className="text-xs hidden sm:inline">Logout</span>
             </Button>
-            <div className="flex justify-center mb-2">
-              <Church className="h-10 w-10 text-accent" />
+            <div className="flex items-center gap-3 pr-16">
+              {brandMark}
+              <div className="min-w-0">
+                <CardTitle className="truncate font-heading text-lg sm:text-xl">{churchName}</CardTitle>
+                <CardDescription className="truncate text-xs sm:text-sm">
+                  {linkInfo?.church?.tagline || 'Attendance entry'}
+                </CardDescription>
+              </div>
             </div>
-            <CardTitle className="font-heading text-xl">Attendance Entry</CardTitle>
-            {linkInfo?.church && (
-              <CardDescription>
-                Recording attendance for <strong>{linkInfo.church.name}</strong>
-                {linkInfo?.serviceType && <> &mdash; {linkInfo.serviceType}</>}
-              </CardDescription>
-            )}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="bg-white">{serviceName}</Badge>
+              <Badge variant="outline" className="bg-white">Fast entry</Badge>
+            </div>
           </CardHeader>
         </Card>
 
         {/* Attendance Form */}
-        <Card>
-          <CardHeader>
+        <Card className="mt-4 border-border/70 shadow-sm sm:mt-5">
+          <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-2">
             <CardTitle className="font-heading text-base">New Attendance Record</CardTitle>
+            <CardDescription>Enter totals for this service and submit.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-2 sm:p-5 sm:pt-3">
             <RegularServiceForm
               key={formKey}
               onSubmit={handleFormSubmit}
@@ -305,8 +336,8 @@ export default function PublicAttendanceEntry() {
         </Card>
 
         {/* Attendance Records Table */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+        <Card className="mt-4 border-border/70 shadow-sm sm:mt-5">
+          <CardHeader className="flex flex-row items-center justify-between p-4 sm:p-5">
             <CardTitle className="font-heading text-base flex items-center gap-2">
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
               Submitted Records
@@ -319,7 +350,40 @@ export default function PublicAttendanceEntry() {
                 No attendance records submitted yet via this link.
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="space-y-3 p-3 sm:hidden">
+                {records.map((r: any) => (
+                  <div key={r.id} className="rounded-lg border bg-white p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{r.serviceType}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(r.date).toLocaleDateString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-heading text-xl font-bold">{r.totalAttendees}</p>
+                        <p className="text-xs text-muted-foreground">total</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                      <span>Male <strong className="block text-foreground">{r.maleCount ?? 0}</strong></span>
+                      <span>Female <strong className="block text-foreground">{r.femaleCount ?? 0}</strong></span>
+                      <span>Visitors <strong className="block text-foreground">{r.newVisitors ?? 0}</strong></span>
+                    </div>
+                    <div className="mt-3 flex justify-end gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => setViewRecord(r)} title="View details">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setVisitorsRecord(r)} title="View / manage visitors">
+                        <UserCheck className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setEditRecord(r)} title="Edit">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto sm:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -377,6 +441,7 @@ export default function PublicAttendanceEntry() {
                 </TableBody>
               </Table>
               </div>
+              </>
             )}
           </CardContent>
         </Card>

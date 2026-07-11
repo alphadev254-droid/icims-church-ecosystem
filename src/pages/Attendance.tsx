@@ -17,13 +17,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power, QrCode } from 'lucide-react';
+import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power, QrCode, UserPlus } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 import { RegularServiceForm } from '@/components/attendance/RegularServiceForm';
 import { EditAttendanceForm } from '@/components/attendance/EditAttendanceForm';
 import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
+import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
 
 export default function AttendancePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -35,6 +36,7 @@ export default function AttendancePage() {
   const [editRecord, setEditRecord] = useState<any | null>(null);
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
   const [qrRecord, setQrRecord] = useState<any | null>(null);
+  const [addAttendeesRecord, setAddAttendeesRecord] = useState<any | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkChurchFilter, setLinkChurchFilter] = useState('all');
   const [linkServiceType, setLinkServiceType] = useState('Sunday Service');
@@ -554,6 +556,15 @@ export default function AttendancePage() {
                           </button>
                           {canUpdate && (
                             <button
+                              onClick={() => setAddAttendeesRecord(r)}
+                              className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                              title="Add members or guests"
+                            >
+                              <UserPlus className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {canUpdate && (
+                            <button
                               onClick={() => setEditRecord(r)}
                               className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
                               title="Edit"
@@ -673,6 +684,14 @@ export default function AttendancePage() {
           subdomain={user?.subdomain}
           canUpdate={canUpdate}
           onClose={() => setQrRecord(null)}
+        />
+      )}
+
+      {addAttendeesRecord && (
+        <AddAttendeesDialog
+          record={addAttendeesRecord}
+          open={!!addAttendeesRecord}
+          onClose={() => setAddAttendeesRecord(null)}
         />
       )}
 
