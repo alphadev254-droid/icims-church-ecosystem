@@ -88,6 +88,10 @@ export const sharedAccessService = {
     return data.data;
   },
 
+  generateEntryLink: async (attendanceId: string, dto: GenerateScannerLinkDto): Promise<SharedAccessLink & { attendanceId: string }> => {
+    const { data } = await apiClient.post(`/shared-access/attendance/${attendanceId}/entry-link`, dto);
+    return data.data;
+  },
   /** Protected — List all links created by the current admin */
   getMyLinks: async (): Promise<SharedAccessLink[]> => {
     const { data } = await apiClient.get('/shared-access/my-links');

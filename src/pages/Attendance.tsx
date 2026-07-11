@@ -180,6 +180,20 @@ export default function AttendancePage() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete'),
   });
 
+  const generateScannerLinkMutation = useMutation({
+    mutationFn: ({ attendanceId, payload, mode }: { attendanceId: string; payload: any; mode: 'entry' | 'scanner' }) => (
+      mode === 'scanner'
+        ? sharedAccessService.generateScannerLink(attendanceId, payload)
+        : sharedAccessService.generateEntryLink(attendanceId, payload)
+    ),
+    onSuccess: (link, variables) => {
+      toast.success(variables.mode === 'scanner' ? 'Scanner link generated' : 'Attendance link generated');
+      setScannerLink(`${window.location.origin}/attendance/${variables.mode === 'scanner' ? 'scan' : 'enter'}/${link.token}`);
+      qc.invalidateQueries({ queryKey: ['attendance'] });
+      qc.invalidateQueries({ queryKey: ['my-links'] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to generate link'),
+  });
   const canCreate = hasPermission('attendance:create') && hasAttendanceFeature;
   const canUpdate = hasPermission('attendance:update') && hasAttendanceFeature;
   const canDelete = hasPermission('attendance:update') && hasAttendanceFeature;
@@ -916,6 +930,7 @@ export default function AttendancePage() {
                       usageLimit: scannerLinkUsageLimit ? parseInt(scannerLinkUsageLimit) : undefined,
                       accessCode: scannerLinkAccessCode || undefined,
                     },
+                    mode: rowLinkMode,
                   });
                 }}
               >
