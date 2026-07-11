@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power, QrCode, UserPlus } from 'lucide-react';
+import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power, QrCode, UserPlus, Eye, Camera } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
@@ -25,6 +25,7 @@ import { RegularServiceForm } from '@/components/attendance/RegularServiceForm';
 import { EditAttendanceForm } from '@/components/attendance/EditAttendanceForm';
 import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
 import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
+import { ViewAttendanceDialog } from '@/components/attendance/ViewAttendanceDialog';
 
 export default function AttendancePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -34,6 +35,7 @@ export default function AttendancePage() {
   const [startQrDate, setStartQrDate] = useState(() => new Date().toISOString().slice(0, 16));
   const [startQrUntil, setStartQrUntil] = useState('');
   const [editRecord, setEditRecord] = useState<any | null>(null);
+  const [viewRecord, setViewRecord] = useState<any | null>(null);
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
   const [qrRecord, setQrRecord] = useState<any | null>(null);
   const [addAttendeesRecord, setAddAttendeesRecord] = useState<any | null>(null);
@@ -265,12 +267,12 @@ export default function AttendancePage() {
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="min-w-[calc(50%-0.25rem)] flex-1 gap-1.5 bg-accent text-xs text-accent-foreground hover:bg-accent/90 sm:min-w-0 sm:flex-none sm:gap-2 sm:text-sm">
-                <Plus className="h-4 w-4" /> Record Attendance
+                <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Record Manual Attendance</span><span className="sm:hidden">Manual Attendance</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="font-heading">Record Attendance</DialogTitle>
+                <DialogTitle className="font-heading">Record Manual Attendance</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -516,11 +518,13 @@ export default function AttendancePage() {
                   <TableHead className="text-right hidden lg:table-cell">Adults</TableHead>
                   <TableHead className="text-right hidden lg:table-cell">Seniors</TableHead>
                   <TableHead className="text-right hidden xl:table-cell">Visitors</TableHead>
-                  {(canUpdate || canDelete) && <TableHead className="w-20">Actions</TableHead>}
+                  <TableHead className="w-24">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {records.map(r => (
+                {records.map(r => {
+                  const isQrAttendance = !!(r as any).qrToken || !!(r as any).digitalCheckInEnabled || ((r as any).qrStatus && (r as any).qrStatus !== 'draft');
+                  return (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{new Date(r.date).toLocaleDateString()}</TableCell>
                     <TableCell className="text-sm">{(r as any).church?.name || '—'}</TableCell>
@@ -538,59 +542,81 @@ export default function AttendancePage() {
                         ? `${(r as any)._count.visitors} (detailed)`
                         : r.newVisitors ?? 0}
                     </TableCell>
-                    {(canUpdate || canDelete) && (
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => navigate(`/dashboard/attendance/${r.id}`)}
-                            className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                            title="Open attendance detail"
-                          >
-                            <CalendarClock className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setQrRecord(r)}
-                            className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                            title="QR check-in"
-                          >
-                            <QrCode className="h-3.5 w-3.5" />
-                          </button>
-                          {canUpdate && (
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {isQrAttendance ? (
+                          <>
                             <button
-                              onClick={() => setAddAttendeesRecord(r)}
+                              onClick={() => navigate(`/dashboard/attendance/${r.id}`)}
                               className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                              title="Add members or guests"
+                              title="Open attendance detail"
                             >
-                              <UserPlus className="h-3.5 w-3.5" />
+                              <CalendarClock className="h-3.5 w-3.5" />
                             </button>
-                          )}
-                          {canUpdate && (
-                            <button
-                              onClick={() => setEditRecord(r)}
-                              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                              title="Edit"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              onClick={() => setDeleteRecord({ id: r.id, date: new Date(r.date).toLocaleDateString(), serviceType: r.serviceType })}
-                              className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </TableCell>
-                    )}
+                            {canUpdate && (
+                              <button
+                                onClick={() => navigate(`/dashboard/attendance/${r.id}/scan`)}
+                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                                title="Scan attendee QR"
+                              >
+                                <Camera className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {canUpdate && (
+                              <button
+                                onClick={() => setQrRecord(r)}
+                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                                title="QR controls"
+                              >
+                                <QrCode className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {canUpdate && (
+                              <button
+                                onClick={() => setAddAttendeesRecord(r)}
+                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                                title="Add members or guests"
+                              >
+                                <UserPlus className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setViewRecord(r)}
+                            className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                            title="View attendance"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {canUpdate && (
+                          <button
+                            onClick={() => setEditRecord(r)}
+                            className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                            title={isQrAttendance ? 'Edit church, date, and service type' : 'Edit'}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => setDeleteRecord({ id: r.id, date: new Date(r.date).toLocaleDateString(), serviceType: r.serviceType })}
+                            className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
-                ))}
+                );})}
                 {records.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={(canUpdate || canDelete) ? 14 : 13} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={14} className="text-center py-10 text-muted-foreground">
                       <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      {canCreate ? 'No records yet. Record your first service attendance.' : 'No attendance records.'}
+                      {canCreate ? 'No records yet. Record manual attendance or start QR attendance.' : 'No attendance records.'}
                     </TableCell>
                   </TableRow>
                 )}
@@ -700,6 +726,13 @@ export default function AttendancePage() {
           record={addAttendeesRecord}
           open={!!addAttendeesRecord}
           onClose={() => setAddAttendeesRecord(null)}
+        />
+      )}
+
+      {viewRecord && (
+        <ViewAttendanceDialog
+          record={viewRecord}
+          onClose={() => setViewRecord(null)}
         />
       )}
 
