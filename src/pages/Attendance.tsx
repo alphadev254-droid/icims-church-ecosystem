@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,7 +22,6 @@ import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Co
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
-import { RegularServiceForm } from '@/components/attendance/RegularServiceForm';
 import { EditAttendanceForm } from '@/components/attendance/EditAttendanceForm';
 import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
 import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
@@ -142,7 +141,7 @@ export default function AttendancePage() {
   const createAttendanceMutation = useMutation({
     mutationFn: attendanceService.create,
     onSuccess: () => {
-      toast.success('Attendance recorded');
+      toast.success('Manual attendance started');
       qc.invalidateQueries({ queryKey: ['attendance'] });
       setDialogOpen(false);
     },
@@ -266,61 +265,17 @@ export default function AttendancePage() {
           />
           {canCreate && (
             <Button
-              variant="outline"
-              className="min-w-[calc(50%-0.25rem)] flex-1 gap-1.5 text-xs sm:min-w-0 sm:flex-none sm:gap-2 sm:text-sm"
+              className="min-w-[calc(50%-0.25rem)] flex-1 gap-1.5 bg-accent text-xs text-accent-foreground hover:bg-accent/90 sm:min-w-0 sm:flex-none sm:gap-2 sm:text-sm"
               onClick={() => {
                 setStartQrChurchId(churchFilter !== 'all' ? churchFilter : (churches[0]?.id || ''));
-                setStartQrOpen(true);
+                setStartQrServiceType('Sunday Service');
+                setStartQrDate(new Date().toISOString().slice(0, 16));
+                setDialogOpen(true);
               }}
             >
-              <QrCode className="h-4 w-4" /> Start QR Attendance
+              <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Start Manual Attendance</span><span className="sm:hidden">Start Manual</span>
             </Button>
           )}
-          {canCreate && (
-            <Button
-              variant="outline"
-              className="min-w-[calc(50%-0.25rem)] flex-1 gap-1.5 text-xs sm:min-w-0 sm:flex-none sm:gap-2 sm:text-sm"
-              onClick={() => setLinkDialogOpen(true)}
-            >
-              <Link2 className="h-4 w-4" /> Generate Link
-            </Button>
-          )}
-          {canCreate && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="min-w-[calc(50%-0.25rem)] flex-1 gap-1.5 bg-accent text-xs text-accent-foreground hover:bg-accent/90 sm:min-w-0 sm:flex-none sm:gap-2 sm:text-sm">
-                <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Record Manual Attendance</span><span className="sm:hidden">Manual Attendance</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="font-heading">Record Manual Attendance</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Attendance Type</Label>
-                  <Select defaultValue="service" onValueChange={(v: any) => {
-                    if (v === 'event') {
-                      navigate('/dashboard/event-attendance');
-                      setDialogOpen(false);
-                    }
-                  }}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="service">Regular Service</SelectItem>
-                      <SelectItem value="event">Event</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <RegularServiceForm
-                  onSubmit={(data) => createAttendanceMutation.mutate(data)}
-                  isPending={createAttendanceMutation.isPending}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
         </div>
       </div>
 
@@ -565,7 +520,7 @@ export default function AttendancePage() {
                         : r.newVisitors ?? 0}
                     </TableCell>
                     <TableCell>
-                      <div className="sm:hidden">
+                      <div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2.5">
@@ -607,6 +562,12 @@ export default function AttendancePage() {
                                   >
                                     <Link2 className="mr-2 h-4 w-4" />
                                     Link
+                                  </DropdownMenuItem>
+                                )}
+                                {canUpdate && (
+                                  <DropdownMenuItem onClick={() => setAddAttendeesRecord(r)}>
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    Add Attendees
                                   </DropdownMenuItem>
                                 )}
                               </>
@@ -653,110 +614,6 @@ export default function AttendancePage() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                      <div className="hidden items-center gap-1 sm:flex">
-                        {isQrAttendance ? (
-                          <>
-                            <button
-                              onClick={() => navigate(`/dashboard/attendance/${r.id}`)}
-                              className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                              title="Open attendance detail"
-                            >
-                              <CalendarClock className="h-3.5 w-3.5" />
-                            </button>
-                            {canUpdate && (
-                              <button
-                                onClick={() => navigate(`/dashboard/attendance/${r.id}/scan`)}
-                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                                title="Scan attendee QR"
-                              >
-                                <Camera className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            {canUpdate && (
-                              <button
-                                onClick={() => setQrRecord(r)}
-                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                                title="QR controls"
-                              >
-                                <QrCode className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            {canUpdate && (
-                              <button
-                                onClick={() => {
-                                  setScannerLinkRecord(r);
-                                  setRowLinkMode('scanner');
-                                  const existingLink = (r as any).sharedAccessLink;
-                                  setScannerLink(existingLink?.type === 'attendance_scanner' ? `${window.location.origin}/attendance/scan/${existingLink.token}` : '');
-                                  setScannerLinkValidFrom(new Date().toISOString().slice(0, 16));
-                                  setScannerLinkExpiresAt(existingLink?.type === 'attendance_scanner' && existingLink.expiresAt ? new Date(existingLink.expiresAt).toISOString().slice(0, 16) : '');
-                                  setScannerLinkUsageLimit('');
-                                  setScannerLinkAccessCode('');
-                                }}
-                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                                title="Generate scanner link"
-                              >
-                                <Link2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            {canUpdate && (
-                              <button
-                                onClick={() => setAddAttendeesRecord(r)}
-                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                                title="Add members or guests"
-                              >
-                                <UserPlus className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => setViewRecord(r)}
-                              className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                              title="View attendance"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </button>
-                            {canUpdate && (
-                              <button
-                                onClick={() => {
-                                  setScannerLinkRecord(r);
-                                  setRowLinkMode('entry');
-                                  const existingLink = (r as any).sharedAccessLink;
-                                  setScannerLink(existingLink?.type === 'attendance' ? `${window.location.origin}/attendance/enter/${existingLink.token}` : '');
-                                  setScannerLinkValidFrom(new Date().toISOString().slice(0, 16));
-                                  setScannerLinkExpiresAt(existingLink?.type === 'attendance' && existingLink.expiresAt ? new Date(existingLink.expiresAt).toISOString().slice(0, 16) : '');
-                                  setScannerLinkUsageLimit('');
-                                  setScannerLinkAccessCode('');
-                                }}
-                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                                title="Generate attendance link"
-                              >
-                                <Link2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </>
-                        )}
-                        {canUpdate && (
-                          <button
-                            onClick={() => setEditRecord(r)}
-                            className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                            title={isQrAttendance ? 'Edit church, date, and service type' : 'Edit'}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            onClick={() => setDeleteRecord({ id: r.id, date: new Date(r.date).toLocaleDateString(), serviceType: r.serviceType })}
-                            className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
                     </TableCell>
                   </TableRow>
                 );})}
@@ -764,7 +621,7 @@ export default function AttendancePage() {
                   <TableRow>
                     <TableCell colSpan={14} className="text-center py-10 text-muted-foreground">
                       <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      {canCreate ? 'No records yet. Record manual attendance or start QR attendance.' : 'No attendance records.'}
+                      {canCreate ? 'No records yet. Start manual attendance or QR attendance.' : 'No attendance records.'}
                     </TableCell>
                   </TableRow>
                 )}
@@ -775,6 +632,68 @@ export default function AttendancePage() {
         </CardContent>
       </Card>
 
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (createAttendanceMutation.isPending) return;
+          setDialogOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Start Manual Attendance</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Create an empty attendance record. You can add attendees or generate the attendance link from the row actions.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Church</Label>
+              <Select value={startQrChurchId} onValueChange={setStartQrChurchId} disabled={createAttendanceMutation.isPending}>
+                <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+                <SelectContent>
+                  {churches.map((church: any) => (
+                    <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Service Type</Label>
+              <Select value={startQrServiceType} onValueChange={setStartQrServiceType} disabled={createAttendanceMutation.isPending}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sunday Service">Sunday Service</SelectItem>
+                  <SelectItem value="Midweek Service">Midweek Service</SelectItem>
+                  <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
+                  <SelectItem value="Youth Service">Youth Service</SelectItem>
+                  <SelectItem value="Special Service">Special Service</SelectItem>
+                  <SelectItem value="Event">Event</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Date / Time</Label>
+              <Input type="datetime-local" value={startQrDate} onChange={e => setStartQrDate(e.target.value)} disabled={createAttendanceMutation.isPending} />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={createAttendanceMutation.isPending}>Cancel</Button>
+              <Button
+                disabled={createAttendanceMutation.isPending || !startQrChurchId || !startQrDate}
+                onClick={() => createAttendanceMutation.mutate({
+                  churchId: startQrChurchId,
+                  date: startQrDate,
+                  serviceType: startQrServiceType,
+                  totalAttendees: 0,
+                  newVisitors: 0,
+                })}
+              >
+                {createAttendanceMutation.isPending ? 'Starting...' : 'Start Manual Attendance'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={startQrOpen}
         onOpenChange={(open) => {
