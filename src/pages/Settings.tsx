@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -141,17 +141,21 @@ export default function SettingsPage() {
     ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(memberQrValue)}`
     : '';
 
-  const loadAttendanceQr = async () => {
+  const loadAttendanceQr = async (showError = true) => {
     setQrLoading(true);
     try {
       const { data } = await apiClient.get('/auth/attendance-qr');
       setAttendanceQrToken(data.data.token);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to load attendance QR');
+      if (showError) toast.error(err.response?.data?.message || 'Failed to load attendance QR');
     } finally {
       setQrLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadAttendanceQr(false);
+  }, []);
 
   const downloadMemberQrPng = async () => {
     if (!memberQrImageUrl) return;
@@ -297,7 +301,7 @@ export default function SettingsPage() {
               ) : (
                 <div className="text-center text-sm text-muted-foreground">
                   <QrCode className="mx-auto mb-2 h-8 w-8" />
-                  Generate your QR code
+                  {qrLoading ? 'Loading your QR code...' : 'QR code unavailable'}
                 </div>
               )}
             </div>
@@ -308,7 +312,7 @@ export default function SettingsPage() {
               {memberQrValue && <p className="break-all rounded-md bg-muted p-3 text-xs text-muted-foreground">{memberQrValue}</p>}
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" onClick={loadAttendanceQr} disabled={qrLoading}>
-                  {qrLoading ? 'Loading...' : memberQrImageUrl ? 'Refresh QR' : 'View QR'}
+                  {qrLoading ? 'Loading...' : 'Refresh QR'}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
