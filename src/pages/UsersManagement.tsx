@@ -943,7 +943,7 @@ export default function UsersManagement() {
       limit, 
       search: search || undefined,
       churchId: churchFilter !== 'all' ? churchFilter : undefined,
-      role: roleFilter !== 'all' ? roleFilter : undefined,
+      roleId: roleFilter !== 'all' ? roleFilter : undefined,
       cellId: cellFilter !== 'all' ? cellFilter : undefined,
       minAge,
       maxAge,
@@ -954,6 +954,12 @@ export default function UsersManagement() {
   const { data: churches = [] } = useQuery({
     queryKey: ['churches-for-filter'],
     queryFn: churchesService.getAll,
+  });
+
+  const { data: rolesForFilter = [] } = useQuery({
+    queryKey: ['roles-for-users-filter'],
+    queryFn: rolesService.getRoles,
+    enabled: hasUsers,
   });
 
   // Cells for filter dropdown — use simple endpoint
@@ -1438,11 +1444,13 @@ export default function UsersManagement() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="ministry_admin">Ministry Administrator</SelectItem>
-            <SelectItem value="regional_admin">Regional Administrator</SelectItem>
-            <SelectItem value="district_admin">District Administrator</SelectItem>
-            <SelectItem value="branch_admin">Branch Administrator</SelectItem>
-            <SelectItem value="member">Member</SelectItem>
+            {rolesForFilter
+              .filter(role => role.name !== 'system_admin')
+              .map(role => (
+                <SelectItem key={role.id} value={role.id}>
+                  {ROLE_DISPLAY[role.name] ?? role.displayName}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
         <Select value={churchFilter} onValueChange={(v) => { setChurchFilter(v); setPage(1); }}>

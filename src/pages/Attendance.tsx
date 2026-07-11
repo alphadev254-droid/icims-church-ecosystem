@@ -200,12 +200,12 @@ export default function AttendancePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="font-heading text-2xl font-bold">Attendance</h1>
           <p className="text-sm text-muted-foreground">{totalServices} service records</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
           <ExportImportButtons
             data={records.map(r => ({
               date: new Date(r.date).toLocaleDateString(),
@@ -243,7 +243,7 @@ export default function AttendancePage() {
           {canCreate && (
             <Button
               variant="outline"
-              className="gap-2"
+              className="min-w-[calc(50%-0.25rem)] flex-1 gap-1.5 text-xs sm:min-w-0 sm:flex-none sm:gap-2 sm:text-sm"
               onClick={() => {
                 setStartQrChurchId(churchFilter !== 'all' ? churchFilter : (churches[0]?.id || ''));
                 setStartQrOpen(true);
@@ -255,7 +255,7 @@ export default function AttendancePage() {
           {canCreate && (
             <Button
               variant="outline"
-              className="gap-2"
+              className="min-w-[calc(50%-0.25rem)] flex-1 gap-1.5 text-xs sm:min-w-0 sm:flex-none sm:gap-2 sm:text-sm"
               onClick={() => setLinkDialogOpen(true)}
             >
               <Link2 className="h-4 w-4" /> Generate Link
@@ -264,7 +264,7 @@ export default function AttendancePage() {
           {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
+              <Button className="min-w-[calc(50%-0.25rem)] flex-1 gap-1.5 bg-accent text-xs text-accent-foreground hover:bg-accent/90 sm:min-w-0 sm:flex-none sm:gap-2 sm:text-sm">
                 <Plus className="h-4 w-4" /> Record Attendance
               </Button>
             </DialogTrigger>
@@ -300,27 +300,27 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Services</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Total Services</CardTitle>
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold font-heading">{totalServices}</div></CardContent>
+          <CardContent><div className="font-heading text-xl font-bold sm:text-2xl">{totalServices}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Attendance</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Avg. Attendance</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold font-heading">{avgAttendance}</div></CardContent>
+          <CardContent><div className="font-heading text-xl font-bold sm:text-2xl">{avgAttendance}</div></CardContent>
         </Card>
-        <Card>
+        <Card className="col-span-2 sm:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total New Visitors</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Total New Visitors</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold font-heading">{totalVisitors}</div></CardContent>
+          <CardContent><div className="font-heading text-xl font-bold sm:text-2xl">{totalVisitors}</div></CardContent>
         </Card>
       </div>
 
@@ -432,8 +432,8 @@ export default function AttendancePage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+              <div className="min-w-0">
                 <Label className="text-sm">Filter by Church</Label>
                 <Select value={churchFilter} onValueChange={setChurchFilter}>
                   <SelectTrigger><SelectValue placeholder="All Churches" /></SelectTrigger>
@@ -445,7 +445,7 @@ export default function AttendancePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label className="text-sm">Filter by Service Type</Label>
                 <Select value={serviceTypeFilter} onValueChange={setServiceTypeFilter}>
                   <SelectTrigger><SelectValue placeholder="All Service Types" /></SelectTrigger>
@@ -460,16 +460,16 @@ export default function AttendancePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label className="text-sm">Start Date</Label>
                 <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label className="text-sm">End Date</Label>
                 <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               <Button 
                 onClick={() => setAppliedFilters({ church: churchFilter, serviceType: serviceTypeFilter, startDate, endDate })}
                 className="bg-accent text-accent-foreground hover:bg-accent/90"
@@ -500,6 +500,7 @@ export default function AttendancePage() {
               <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
             </div>
           ) : (
+            <div className="w-full overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -595,6 +596,7 @@ export default function AttendancePage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

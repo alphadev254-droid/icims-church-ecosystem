@@ -92,7 +92,7 @@ interface PaginationResponse {
 }
 
 export const usersService = {
-  getAll: async (params?: { page?: number; limit?: number; search?: string; churchId?: string; role?: string; cellId?: string; minAge?: number; maxAge?: number }): Promise<PaginationResponse> => {
+  getAll: async (params?: { page?: number; limit?: number; search?: string; churchId?: string; role?: string; roleId?: string; cellId?: string; minAge?: number; maxAge?: number }): Promise<PaginationResponse> => {
     const { data } = await apiClient.get('/users', { params });
     return data;
   },

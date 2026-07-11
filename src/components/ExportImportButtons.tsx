@@ -72,7 +72,7 @@ export function ExportImportButtons({
   };
 
   return (
-    <div className="flex gap-1.5">
+    <div className="flex min-w-0 flex-wrap gap-1.5">
       <CSVLink
         data={data}
         headers={headers}
