@@ -324,7 +324,7 @@ export default function PublicAttendanceEntry() {
               key={formKey}
               onSubmit={handleFormSubmit}
               isPending={isSubmitting}
-              submitLabel="Record Attendance"
+              submitLabel={records[0] ? "Update Attendance" : "Record Attendance"}
               hideChurchSelect
               defaultValues={{
                 churchId: linkInfo?.church?.id || '',

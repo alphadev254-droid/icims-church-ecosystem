@@ -14,10 +14,11 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power, QrCode, UserPlus, Eye, Camera } from 'lucide-react';
+import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Copy, CheckCircle2, CalendarClock, Ban, XCircle, Power, QrCode, UserPlus, Eye, Camera, MoreHorizontal } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
@@ -39,6 +40,13 @@ export default function AttendancePage() {
   const [deleteRecord, setDeleteRecord] = useState<{ id: string; date: string; serviceType: string } | null>(null);
   const [qrRecord, setQrRecord] = useState<any | null>(null);
   const [addAttendeesRecord, setAddAttendeesRecord] = useState<any | null>(null);
+  const [scannerLinkRecord, setScannerLinkRecord] = useState<any | null>(null);
+  const [rowLinkMode, setRowLinkMode] = useState<'entry' | 'scanner'>('scanner');
+  const [scannerLink, setScannerLink] = useState('');
+  const [scannerLinkValidFrom, setScannerLinkValidFrom] = useState('');
+  const [scannerLinkExpiresAt, setScannerLinkExpiresAt] = useState('');
+  const [scannerLinkUsageLimit, setScannerLinkUsageLimit] = useState('');
+  const [scannerLinkAccessCode, setScannerLinkAccessCode] = useState('');
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkChurchFilter, setLinkChurchFilter] = useState('all');
   const [linkServiceType, setLinkServiceType] = useState('Sunday Service');
@@ -543,7 +551,95 @@ export default function AttendancePage() {
                         : r.newVisitors ?? 0}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
+                      <div className="sm:hidden">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2.5">
+                              <MoreHorizontal className="h-4 w-4" />
+                              Actions
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            {isQrAttendance ? (
+                              <>
+                                <DropdownMenuItem onClick={() => navigate(`/dashboard/attendance/${r.id}`)}>
+                                  <CalendarClock className="mr-2 h-4 w-4" />
+                                  View
+                                </DropdownMenuItem>
+                                {canUpdate && (
+                                  <DropdownMenuItem onClick={() => navigate(`/dashboard/attendance/${r.id}/scan`)}>
+                                    <Camera className="mr-2 h-4 w-4" />
+                                    Scan QR
+                                  </DropdownMenuItem>
+                                )}
+                                {canUpdate && (
+                                  <DropdownMenuItem onClick={() => setQrRecord(r)}>
+                                    <QrCode className="mr-2 h-4 w-4" />
+                                    QR Controls
+                                  </DropdownMenuItem>
+                                )}
+                                {canUpdate && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setScannerLinkRecord(r);
+                                      setRowLinkMode('scanner');
+                                      const existingLink = (r as any).sharedAccessLink;
+                                      setScannerLink(existingLink?.type === 'attendance_scanner' ? `${window.location.origin}/attendance/scan/${existingLink.token}` : '');
+                                      setScannerLinkValidFrom(new Date().toISOString().slice(0, 16));
+                                      setScannerLinkExpiresAt(existingLink?.type === 'attendance_scanner' && existingLink.expiresAt ? new Date(existingLink.expiresAt).toISOString().slice(0, 16) : '');
+                                      setScannerLinkUsageLimit('');
+                                      setScannerLinkAccessCode('');
+                                    }}
+                                  >
+                                    <Link2 className="mr-2 h-4 w-4" />
+                                    Link
+                                  </DropdownMenuItem>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <DropdownMenuItem onClick={() => setViewRecord(r)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View
+                                </DropdownMenuItem>
+                                {canUpdate && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setScannerLinkRecord(r);
+                                      setRowLinkMode('entry');
+                                      const existingLink = (r as any).sharedAccessLink;
+                                      setScannerLink(existingLink?.type === 'attendance' ? `${window.location.origin}/attendance/enter/${existingLink.token}` : '');
+                                      setScannerLinkValidFrom(new Date().toISOString().slice(0, 16));
+                                      setScannerLinkExpiresAt(existingLink?.type === 'attendance' && existingLink.expiresAt ? new Date(existingLink.expiresAt).toISOString().slice(0, 16) : '');
+                                      setScannerLinkUsageLimit('');
+                                      setScannerLinkAccessCode('');
+                                    }}
+                                  >
+                                    <Link2 className="mr-2 h-4 w-4" />
+                                    Link
+                                  </DropdownMenuItem>
+                                )}
+                              </>
+                            )}
+                            {canUpdate && (
+                              <DropdownMenuItem onClick={() => setEditRecord(r)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete && (
+                              <DropdownMenuItem
+                                onClick={() => setDeleteRecord({ id: r.id, date: new Date(r.date).toLocaleDateString(), serviceType: r.serviceType })}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <div className="hidden items-center gap-1 sm:flex">
                         {isQrAttendance ? (
                           <>
                             <button
@@ -573,6 +669,24 @@ export default function AttendancePage() {
                             )}
                             {canUpdate && (
                               <button
+                                onClick={() => {
+                                  setScannerLinkRecord(r);
+                                  setRowLinkMode('scanner');
+                                  const existingLink = (r as any).sharedAccessLink;
+                                  setScannerLink(existingLink?.type === 'attendance_scanner' ? `${window.location.origin}/attendance/scan/${existingLink.token}` : '');
+                                  setScannerLinkValidFrom(new Date().toISOString().slice(0, 16));
+                                  setScannerLinkExpiresAt(existingLink?.type === 'attendance_scanner' && existingLink.expiresAt ? new Date(existingLink.expiresAt).toISOString().slice(0, 16) : '');
+                                  setScannerLinkUsageLimit('');
+                                  setScannerLinkAccessCode('');
+                                }}
+                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                                title="Generate scanner link"
+                              >
+                                <Link2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {canUpdate && (
+                              <button
                                 onClick={() => setAddAttendeesRecord(r)}
                                 className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
                                 title="Add members or guests"
@@ -582,13 +696,33 @@ export default function AttendancePage() {
                             )}
                           </>
                         ) : (
-                          <button
-                            onClick={() => setViewRecord(r)}
-                            className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
-                            title="View attendance"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => setViewRecord(r)}
+                              className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                              title="View attendance"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                            {canUpdate && (
+                              <button
+                                onClick={() => {
+                                  setScannerLinkRecord(r);
+                                  setRowLinkMode('entry');
+                                  const existingLink = (r as any).sharedAccessLink;
+                                  setScannerLink(existingLink?.type === 'attendance' ? `${window.location.origin}/attendance/enter/${existingLink.token}` : '');
+                                  setScannerLinkValidFrom(new Date().toISOString().slice(0, 16));
+                                  setScannerLinkExpiresAt(existingLink?.type === 'attendance' && existingLink.expiresAt ? new Date(existingLink.expiresAt).toISOString().slice(0, 16) : '');
+                                  setScannerLinkUsageLimit('');
+                                  setScannerLinkAccessCode('');
+                                }}
+                                className="p-1.5 text-muted-foreground hover:text-accent transition-colors"
+                                title="Generate attendance link"
+                              >
+                                <Link2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </>
                         )}
                         {canUpdate && (
                           <button
@@ -735,6 +869,62 @@ export default function AttendancePage() {
           onClose={() => setViewRecord(null)}
         />
       )}
+
+      <Dialog open={!!scannerLinkRecord} onOpenChange={open => { if (!open) setScannerLinkRecord(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading">{rowLinkMode === 'scanner' ? 'Scanner Link' : 'Attendance Link'}</DialogTitle>
+          </DialogHeader>
+          {scannerLink ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">{rowLinkMode === 'scanner' ? 'Share this link with the person scanning attendee QR codes.' : 'Share this link with the person entering manual attendance for this record.'}</p>
+              <div className="rounded-md border bg-muted p-3 text-xs break-all">{scannerLink}</div>
+              <Button className="w-full" onClick={() => { navigator.clipboard.writeText(scannerLink); toast.success(rowLinkMode === 'scanner' ? 'Scanner link copied' : 'Attendance link copied'); }}>
+                <Copy className="mr-2 h-4 w-4" /> Copy Link
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Label>Valid From</Label>
+                <Input type="datetime-local" value={scannerLinkValidFrom} onChange={e => setScannerLinkValidFrom(e.target.value)} />
+              </div>
+              <div>
+                <Label>Expires At</Label>
+                <Input type="datetime-local" value={scannerLinkExpiresAt} onChange={e => setScannerLinkExpiresAt(e.target.value)} />
+              </div>
+              <div>
+                <Label>Usage Limit (optional)</Label>
+                <Input type="number" min="1" placeholder="Leave empty for unlimited" value={scannerLinkUsageLimit} onChange={e => setScannerLinkUsageLimit(e.target.value)} />
+              </div>
+              <div>
+                <Label>Access Code (optional 4-digit PIN)</Label>
+                <Input type="text" inputMode="numeric" maxLength={4} pattern="[0-9]*" value={scannerLinkAccessCode} onChange={e => setScannerLinkAccessCode(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+              </div>
+              <Button
+                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                disabled={generateScannerLinkMutation.isPending}
+                onClick={() => {
+                  if (!scannerLinkRecord) return;
+                  if (!scannerLinkValidFrom) { toast.error('Please set valid from date'); return; }
+                  if (!scannerLinkExpiresAt) { toast.error('Please set expires at date'); return; }
+                  generateScannerLinkMutation.mutate({
+                    attendanceId: scannerLinkRecord.id,
+                    payload: {
+                      validFrom: new Date(scannerLinkValidFrom).toISOString(),
+                      expiresAt: new Date(scannerLinkExpiresAt).toISOString(),
+                      usageLimit: scannerLinkUsageLimit ? parseInt(scannerLinkUsageLimit) : undefined,
+                      accessCode: scannerLinkAccessCode || undefined,
+                    },
+                  });
+                }}
+              >
+                {generateScannerLinkMutation.isPending ? 'Generating...' : rowLinkMode === 'scanner' ? 'Generate Scanner Link' : 'Generate Attendance Link'}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteRecord} onOpenChange={open => !open && setDeleteRecord(null)}>
         <AlertDialogContent>

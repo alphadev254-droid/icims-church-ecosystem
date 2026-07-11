@@ -11,6 +11,13 @@ export interface GenerateLinkDto {
   accessCode?: string;  // 4-digit access code (optional)
 }
 
+export interface GenerateScannerLinkDto {
+  validFrom?: string;
+  expiresAt: string;
+  usageLimit?: number;
+  accessCode?: string;
+}
+
 export interface SharedAccessLink {
   id: string;
   token: string;
@@ -76,6 +83,11 @@ export const sharedAccessService = {
     return data.data;
   },
 
+  generateScannerLink: async (attendanceId: string, dto: GenerateScannerLinkDto): Promise<SharedAccessLink & { attendanceId: string }> => {
+    const { data } = await apiClient.post(`/shared-access/attendance/${attendanceId}/scanner-link`, dto);
+    return data.data;
+  },
+
   /** Protected — List all links created by the current admin */
   getMyLinks: async (): Promise<SharedAccessLink[]> => {
     const { data } = await apiClient.get('/shared-access/my-links');
@@ -122,6 +134,16 @@ export const sharedAccessService = {
   submitAttendance: async (token: string, formData: PublicAttendanceSubmission): Promise<any> => {
     const { data } = await apiClient.post(`/public/shared-access/submit/${token}`, formData);
     return data;
+  },
+
+  getScannerAttendance: async (token: string): Promise<any> => {
+    const { data } = await apiClient.get(`/public/shared-access/${token}/scanner-attendance`);
+    return data.data;
+  },
+
+  scanMemberByScannerLink: async (token: string, memberQr: string, accessCode?: string): Promise<any> => {
+    const { data } = await apiClient.post(`/public/shared-access/${token}/scan-member`, { memberQr, accessCode });
+    return data.data;
   },
 
   /** Public — Get attendance records for a link token */
