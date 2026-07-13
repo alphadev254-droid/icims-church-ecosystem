@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import apiClient from '@/lib/api-client';
-import { Users, Building2, HandCoins, Calendar, TrendingUp, Globe, MapPin, Landmark, DollarSign, Ticket, Bell, BookOpen, ExternalLink, X } from 'lucide-react';
+import { Users, Building2, HandCoins, Calendar, TrendingUp, Globe, MapPin, Landmark, DollarSign, Ticket, Bell, BookOpen, ExternalLink, X, Baby, Network, UserRoundCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -109,6 +109,27 @@ export default function DashboardPage() {
       icon: HandCoins,
       change: stats.donationGrowth ?? 0,
       show: hasPermission('giving:read'),
+    },
+    {
+      title: 'Children',
+      value: stats.totalChildren ?? 0,
+      icon: Baby,
+      change: 0,
+      show: hasPermission('children:read'),
+    },
+    {
+      title: 'Cells',
+      value: stats.totalCells ?? 0,
+      icon: Network,
+      change: 0,
+      show: hasPermission('cells:read'),
+    },
+    {
+      title: 'Teams',
+      value: stats.totalTeams ?? 0,
+      icon: UserRoundCheck,
+      change: 0,
+      show: hasPermission('teams:read'),
     },
     {
       title: 'Avg. Attendance',

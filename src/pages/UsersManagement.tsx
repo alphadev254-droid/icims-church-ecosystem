@@ -312,13 +312,13 @@ const createSchema = z.object({
     if (!data.churchId || data.churchId === 'CHURCH_ID_HERE' || data.churchId.includes('placeholder')) {
       return false;
     }
-    if (!data.dateOfBirth || !data.maritalStatus || !data.residentialNeighbourhood) {
+    if (!data.dateOfBirth || !data.maritalStatus) {
       return false;
     }
   }
   return true;
 }, {
-  message: 'Church, date of birth, marital status, and residential neighbourhood are required for members',
+  message: 'Church, date of birth, and marital status are required for members',
   path: ['churchId'],
 });
 type CreateValues = z.infer<typeof createSchema>;
@@ -1324,7 +1324,6 @@ export default function UsersManagement() {
                   if (!row.phone) rowErrors.phone = 'Required';
                   if (!row.dateOfBirth) rowErrors.dateOfBirth = 'Required';
                   if (!row.maritalStatus) rowErrors.maritalStatus = 'Required';
-                  if (!row.residentialNeighbourhood) rowErrors.residentialNeighbourhood = 'Required';
                   if (!row.churchId || row.churchId === 'CHURCH_ID_HERE') rowErrors.churchId = 'Valid church required';
                   if (Object.keys(rowErrors).length > 0) errors[idx] = rowErrors;
                 });
@@ -2075,7 +2074,6 @@ export default function UsersManagement() {
                   if (!row.phone) rowErrors.phone = 'Required';
                   if (!row.dateOfBirth) rowErrors.dateOfBirth = 'Required';
                   if (!row.maritalStatus) rowErrors.maritalStatus = 'Required';
-                  if (!row.residentialNeighbourhood) rowErrors.residentialNeighbourhood = 'Required';
                   if (!row.churchId || row.churchId === 'CHURCH_ID_HERE' || row.churchId.includes('placeholder')) rowErrors.churchId = 'Valid church required';
                   if (Object.keys(rowErrors).length > 0) errors[idx] = rowErrors;
                 });

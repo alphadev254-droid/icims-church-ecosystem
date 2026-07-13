@@ -53,6 +53,7 @@ interface AuthState {
 
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; redirectTo?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; message?: string; isNewRegistration?: boolean; subdomain?: string | null }>;
+  registerMember: (data: MemberRegisterData) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   fetchMe: () => Promise<void>;
   setLoading: (v: boolean) => void;
@@ -73,6 +74,23 @@ export interface RegisterData {
   accountCountry?: string;
   anniversary?: string;
   inviteToken?: string;
+}
+
+export interface MemberRegisterData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phone: string;
+  gender: string;
+  dateOfBirth: string;
+  maritalStatus: string;
+  weddingDate?: string;
+  residentialNeighbourhood?: string;
+  membershipType: string;
+  serviceInterest?: string;
+  baptizedByImmersion?: boolean;
+  inviteToken: string;
 }
 
 function applyPermissions(permissions: string[], user: AuthUser) {
@@ -139,6 +157,23 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
+      registerMember: async (formData) => {
+        try {
+          const { data } = await apiClient.post('/auth/register/member', formData);
+          if (data.success) {
+            const permissions: string[] = data.user.permissions ?? [];
+            set({
+              user: data.user,
+              ...applyPermissions(permissions, data.user),
+              isLoading: false,
+            });
+            return { success: true };
+          }
+          return { success: false, message: data.message };
+        } catch (err: any) {
+          return { success: false, message: err.response?.data?.message || 'Registration failed' };
+        }
+      },
       logout: async () => {
         try { await apiClient.post('/auth/logout'); } catch { /* ignore */ }
         set({ user: null, allowedRoutes: ['/dashboard'], navItems: [], isLoading: false });

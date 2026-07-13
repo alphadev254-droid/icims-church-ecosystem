@@ -25,7 +25,7 @@ const schema = z.object({
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced'], { required_error: 'Marital status is required' }),
   weddingDate: z.string().optional(),
-  residentialNeighbourhood: z.string().min(1, 'Neighbourhood is required'),
+  residentialNeighbourhood: z.string().optional(),
   membershipType: z.enum(['member', 'pastor', 'deacon', 'other'], { required_error: 'Membership type is required' }),
   baptizedByImmersion: z.boolean().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters')
@@ -40,7 +40,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function MemberRegisterPage() {
-  const { register: authRegister } = useAuth();
+  const { registerMember } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
@@ -92,7 +92,7 @@ export default function MemberRegisterPage() {
       return;
     }
 
-    const result = await authRegister({
+    const result = await registerMember({
       firstName: values.firstName,
       lastName: values.lastName,
       email: values.email,
@@ -101,7 +101,7 @@ export default function MemberRegisterPage() {
       dateOfBirth: values.dateOfBirth,
       maritalStatus: values.maritalStatus,
       weddingDate: values.weddingDate,
-      residentialNeighbourhood: values.residentialNeighbourhood,
+      residentialNeighbourhood: values.residentialNeighbourhood?.trim() || undefined,
       membershipType: values.membershipType,
       serviceInterest: serviceInterests.join(', '),
       baptizedByImmersion: baptized,
@@ -217,7 +217,7 @@ export default function MemberRegisterPage() {
           )}
 
           <div className="space-y-1">
-            <Label>Residential Neighbourhood</Label>
+            <Label>Residential Neighbourhood <span className="text-xs text-muted-foreground">(optional)</span></Label>
             <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47"
               className={errors.residentialNeighbourhood ? 'border-destructive' : ''} />
             {errors.residentialNeighbourhood && <p className="text-xs text-destructive">{errors.residentialNeighbourhood.message}</p>}

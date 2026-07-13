@@ -4,6 +4,9 @@ export interface DashboardStats {
   totalMembers: number;
   activeMembers: number;
   totalChurches: number;
+  totalChildren?: number;
+  totalCells?: number;
+  totalTeams?: number;
   totalDonations: number;
   upcomingEvents: number;
   averageAttendance: number;

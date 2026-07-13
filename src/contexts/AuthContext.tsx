@@ -4,7 +4,7 @@
  * while the real state lives in useAuthStore (with cookie auth + persist).
  */
 import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react';
-import { useAuthStore, type RegisterData, type AuthUser } from '@/stores/authStore';
+import { useAuthStore, type RegisterData, type MemberRegisterData, type AuthUser } from '@/stores/authStore';
 import { getFcmToken, onForegroundMessage } from '@/lib/firebase';
 import { registerPushToken } from '@/services/pushTokens';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; redirectTo?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; message?: string }>;
+  registerMember: (data: MemberRegisterData) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 }
 
@@ -22,7 +23,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BJv-iKvfMlyjzTR6rNXTYwxZ8TEvYhhKsC1RXXvcGmHT7ioGSfG6TEOTLpt8AExnaaKHiMjEd07V5rxwXhaC9EA';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { user, isLoading, login, register, logout: storeLogout, fetchMe } = useAuthStore();
+  const { user, isLoading, login, register, registerMember, logout: storeLogout, fetchMe } = useAuthStore();
   const fcmTokenRef = useRef<string | null>(null);
 
   // On every app load, re-validate the httpOnly cookie and refresh user data
@@ -64,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, registerMember, logout }}>
       {children}
     </AuthContext.Provider>
   );
