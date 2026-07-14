@@ -344,6 +344,46 @@ export interface AdminWithdrawalSummary {
   }>;
 }
 
+export interface AdminTreasurySummary {
+  currency: string;
+  paychanguBalance: number;
+  ministryWalletBalance: number;
+  ministryWalletCount: number;
+  pendingMinistryPayouts: number;
+  pendingMinistryWithdrawalCount: number;
+  pendingPlatformPayouts: number;
+  pendingPlatformWithdrawalCount: number;
+  safeAvailableBalance: number;
+  systemRevenue: number;
+  paychanguRaw?: unknown;
+}
+
+export interface AdminPlatformWithdrawal {
+  id: string;
+  initiatedBy: string;
+  amount: number;
+  fee: number;
+  gatewayFeeAmount: number;
+  gatewayFeeRate?: number | null;
+  bankFixedFeeAmount: number;
+  netAmount: number;
+  payoutAmount: number;
+  method: string;
+  status: string;
+  mobileOperator?: string | null;
+  mobileNumber?: string | null;
+  bankCode?: string | null;
+  accountName?: string | null;
+  accountNumber?: string | null;
+  chargeId?: string | null;
+  gatewayPayload?: string | null;
+  gatewayResponse?: string | null;
+  failureReason?: string | null;
+  processedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AdminPaymentSummary {
   total: number;
   byStatus: Record<string, number>;
@@ -482,6 +522,36 @@ export const adminApi = {
     pagination: Pagination;
     summary: AdminWithdrawalSummary;
   }>('/admin/withdrawals', { params }),
+
+  getTreasurySummary: () =>
+    apiClient.get<{ success: boolean; data: AdminTreasurySummary }>('/admin/treasury/summary'),
+
+  getTreasuryWithdrawals: (params: { page?: number; limit?: number; status?: string }) =>
+    apiClient.get<{ success: boolean; data: AdminPlatformWithdrawal[]; pagination: Pagination }>('/admin/treasury/withdrawals', { params }),
+
+  getTreasuryBanks: () =>
+    apiClient.get<{ success: boolean; data: Array<{ uuid?: string; bank_uuid?: string; id?: string | number; name?: string }> }>('/admin/treasury/banks'),
+
+  sendTreasuryOtp: (payload: {
+    amount: number;
+    method: 'mobile_money' | 'bank_transfer';
+    mobileOperator?: 'airtel' | 'tnm';
+    mobileNumber?: string;
+    bankCode?: string;
+    accountName?: string;
+    accountNumber?: string;
+  }) => apiClient.post<{ success: boolean; message: string; expiresInSeconds?: number }>('/admin/treasury/withdraw/otp', payload),
+
+  requestTreasuryWithdrawal: (payload: {
+    amount: number;
+    method: 'mobile_money' | 'bank_transfer';
+    mobileOperator?: 'airtel' | 'tnm';
+    mobileNumber?: string;
+    bankCode?: string;
+    accountName?: string;
+    accountNumber?: string;
+    otpCode: string;
+  }) => apiClient.post<{ success: boolean; data: AdminPlatformWithdrawal }>('/admin/treasury/withdraw', payload),
 
   getPendingTransactions: (params: {
     page?: number;
