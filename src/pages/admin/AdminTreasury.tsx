@@ -239,24 +239,24 @@ export default function AdminTreasury() {
       {summaryLoading ? <div className="h-36 rounded-lg bg-muted animate-pulse" /> : summary && (
         <div className="rounded-xl border bg-card overflow-hidden">
           <div className="grid gap-0 lg:grid-cols-[1.2fr_1fr]">
-            <div className="p-4 sm:p-5 bg-gradient-to-br from-emerald-50 to-background border-b lg:border-b-0 lg:border-r">
+            <div className="p-4 sm:p-5 bg-white border-b lg:border-b-0 lg:border-r">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Safe to withdraw</p>
-                  <p className="text-2xl sm:text-3xl font-bold tracking-tight mt-1">{money(summary.currency, summary.safeAvailableBalance)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">After reserving ministry wallets and unsettled payouts.</p>
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Safe to withdraw</p>
+                  <p className="text-2xl sm:text-3xl font-bold tracking-tight mt-1 text-slate-950">{money(summary.currency, summary.safeAvailableBalance)}</p>
+                  <p className="text-xs text-slate-600 mt-1">After reserving ministry wallets and unsettled payouts.</p>
                 </div>
                 <Badge className={summary.safeAvailableBalance > 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}>
                   {summary.safeAvailableBalance > 0 ? 'Available' : 'Locked'}
                 </Badge>
               </div>
-              <div className="mt-4 h-2 rounded-full bg-muted overflow-hidden flex">
+              <div className="mt-4 h-2.5 rounded-full bg-slate-200 overflow-hidden flex">
                 <div className="bg-amber-400" style={{ width: `${liabilityPercent}%` }} />
                 <div className="bg-emerald-500" style={{ width: `${safePercent}%` }} />
               </div>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                <span><span className="inline-block h-2 w-2 rounded-full bg-amber-400 mr-1" />Protected: {money(summary.currency, totalProtected)}</span>
-                <span><span className="inline-block h-2 w-2 rounded-full bg-emerald-500 mr-1" />Available: {money(summary.currency, summary.safeAvailableBalance)}</span>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-600">
+                <span><span className="inline-block h-2 w-2 rounded-full bg-amber-400 mr-1" />Protected: <span className="font-medium text-slate-800">{money(summary.currency, totalProtected)}</span></span>
+                <span><span className="inline-block h-2 w-2 rounded-full bg-emerald-500 mr-1" />Available: <span className="font-medium text-slate-800">{money(summary.currency, summary.safeAvailableBalance)}</span></span>
               </div>
             </div>
 
