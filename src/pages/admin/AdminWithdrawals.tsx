@@ -1,6 +1,6 @@
 import { useState, type ElementType } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Banknote, CreditCard, DollarSign, Eye, Search, TrendingUp, Wallet, Zap } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Banknote, CreditCard, Eye, RefreshCw, Search, TrendingUp, Wallet, Zap } from 'lucide-react';
 import { adminApi, type AdminWithdrawal } from '@/services/adminApi';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,18 +9,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
+import { toast } from 'sonner';
 
 type Ministry = { id: string; label: string; country: string | null };
 type DatePreset = 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth';
 type JsonObject = Record<string, unknown>;
 
-const STATUSES = ['pending', 'processing', 'completed', 'failed'];
+const STATUSES = ['pending', 'processing', 'review_required', 'completed', 'failed'];
 const METHODS = ['mobile_money', 'bank_transfer'];
 const CURRENCIES = ['MWK', 'KES'];
 
 function statusBadge(status: string) {
   if (status === 'completed') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Completed</Badge>;
   if (status === 'processing') return <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Processing</Badge>;
+  if (status === 'review_required') return <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs">Review Required</Badge>;
   if (status === 'pending') return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs">Pending</Badge>;
   if (status === 'failed') return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Failed</Badge>;
   return <Badge variant="outline" className="text-xs capitalize">{status}</Badge>;
@@ -221,6 +223,7 @@ function WithdrawalDetailDialog({ withdrawal, onClose }: { withdrawal: AdminWith
 }
 
 export default function AdminWithdrawals() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [method, setMethod] = useState('');
@@ -259,6 +262,18 @@ export default function AdminWithdrawals() {
   const withdrawals = data?.data ?? [];
   const pagination = data?.pagination;
   const summary = data?.summary;
+
+  const reconcileMutation = useMutation({
+    mutationFn: (id: string) => adminApi.reconcileWithdrawal('ministry', id),
+    onSuccess: (res) => {
+      toast.success(res.data.message || 'Withdrawal reconciliation checked');
+      queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message || 'Failed to reconcile withdrawal');
+      queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
+    },
+  });
 
   const applyDatePreset = (preset: DatePreset) => {
     const range = getDatePresetRange(preset);
@@ -324,6 +339,7 @@ export default function AdminWithdrawals() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <CountPill label="Pending" value={summary.byStatus?.pending ?? 0} />
             <CountPill label="Processing" value={summary.byStatus?.processing ?? 0} />
+            <CountPill label="Review" value={summary.byStatus?.review_required ?? 0} />
             <CountPill label="Completed" value={summary.byStatus?.completed ?? 0} />
             <CountPill label="Failed" value={summary.byStatus?.failed ?? 0} />
           </div>
@@ -449,9 +465,23 @@ export default function AdminWithdrawals() {
                   <td className="p-3 text-xs font-mono max-w-36 truncate">{w.chargeId ?? '-'}</td>
                   <td className="p-3 text-xs whitespace-nowrap">{formatDateTime(w.createdAt)}</td>
                   <td className="p-3 text-right">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelected(w)} title="View withdrawal trace">
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      {['pending', 'processing', 'review_required'].includes(w.status) && w.chargeId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => reconcileMutation.mutate(w.id)}
+                          disabled={reconcileMutation.isPending}
+                          title="Reconcile with PayChangu"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${reconcileMutation.isPending ? 'animate-spin' : ''}`} />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelected(w)} title="View withdrawal trace">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

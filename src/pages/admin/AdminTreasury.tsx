@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Banknote, CreditCard, Eye, ShieldCheck, Wallet, Zap } from 'lucide-react';
+import { AlertTriangle, Banknote, CreditCard, Eye, RefreshCw, ShieldCheck, Wallet, Zap } from 'lucide-react';
 import { adminApi, type AdminPlatformWithdrawal } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ function money(currency = 'MWK', value?: number | null) {
 function statusBadge(status: string) {
   if (status === 'completed') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Completed</Badge>;
   if (status === 'processing') return <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Processing</Badge>;
+  if (status === 'review_required') return <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs">Review Required</Badge>;
   if (status === 'pending') return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs">Pending</Badge>;
   if (status === 'failed') return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Failed</Badge>;
   return <Badge variant="outline" className="text-xs capitalize">{status}</Badge>;
@@ -173,6 +174,20 @@ export default function AdminTreasury() {
     onError: (err: { response?: { data?: { message?: string } } }) => toast.error(err.response?.data?.message || 'Platform withdrawal failed'),
   });
 
+  const reconcileMutation = useMutation({
+    mutationFn: (id: string) => adminApi.reconcileWithdrawal('platform', id),
+    onSuccess: (res) => {
+      toast.success(res.data.message || 'Platform withdrawal reconciliation checked');
+      qc.invalidateQueries({ queryKey: ['admin-treasury-summary'] });
+      qc.invalidateQueries({ queryKey: ['admin-treasury-withdrawals'] });
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message || 'Failed to reconcile platform withdrawal');
+      qc.invalidateQueries({ queryKey: ['admin-treasury-summary'] });
+      qc.invalidateQueries({ queryKey: ['admin-treasury-withdrawals'] });
+    },
+  });
+
   const onSendOtp = () => {
     const error = validate();
     if (error) { toast.error(error); return; }
@@ -197,7 +212,7 @@ export default function AdminTreasury() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <SummaryCard label="PayChangu Wallet" value={money(summary.currency, summary.paychanguBalance)} sub="Raw gateway wallet balance" icon={Wallet} tone="bg-blue-100 text-blue-700" />
             <SummaryCard label="Ministry Liability" value={money(summary.currency, summary.ministryWalletBalance)} sub={`${summary.ministryWalletCount} ministry wallet(s)`} icon={Banknote} tone="bg-yellow-100 text-yellow-700" />
-            <SummaryCard label="Reserved Payouts" value={money(summary.currency, summary.pendingMinistryPayouts + summary.pendingPlatformPayouts)} sub="Pending/processing payouts" icon={CreditCard} tone="bg-purple-100 text-purple-700" />
+            <SummaryCard label="Reserved Payouts" value={money(summary.currency, summary.pendingMinistryPayouts + summary.pendingPlatformPayouts)} sub="Pending, processing, and review payouts" icon={CreditCard} tone="bg-purple-100 text-purple-700" />
             <SummaryCard label="Safe Platform Balance" value={money(summary.currency, summary.safeAvailableBalance)} sub="Maximum platform-safe pool" icon={Zap} tone="bg-emerald-100 text-emerald-700" />
           </div>
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex gap-2">
@@ -313,7 +328,21 @@ export default function AdminTreasury() {
                     <td className="p-3 text-xs text-right font-mono">{money('MWK', row.fee)}</td>
                     <td className="p-3">{statusBadge(row.status)}</td>
                     <td className="p-3 text-right">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelected(row)}><Eye className="h-4 w-4" /></Button>
+                      <div className="flex justify-end gap-1">
+                        {['pending', 'processing', 'review_required'].includes(row.status) && row.chargeId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => reconcileMutation.mutate(row.id)}
+                            disabled={reconcileMutation.isPending}
+                            title="Reconcile with PayChangu"
+                          >
+                            <RefreshCw className={`h-4 w-4 ${reconcileMutation.isPending ? 'animate-spin' : ''}`} />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelected(row)}><Eye className="h-4 w-4" /></Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -553,6 +553,9 @@ export const adminApi = {
     otpCode: string;
   }) => apiClient.post<{ success: boolean; data: AdminPlatformWithdrawal }>('/admin/treasury/withdraw', payload),
 
+  reconcileWithdrawal: (kind: 'ministry' | 'platform', id: string) =>
+    apiClient.post<{ success: boolean; message: string; data: AdminWithdrawal | AdminPlatformWithdrawal }>(`/admin/treasury/withdrawals/${kind}/${id}/reconcile`),
+
   getPendingTransactions: (params: {
     page?: number;
     limit?: number;

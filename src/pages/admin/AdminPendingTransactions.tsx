@@ -264,8 +264,8 @@ export default function AdminPendingTransactions() {
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
         <span><span className="font-medium text-yellow-600">pending</span> - user initiated, not yet paid</span>
         <span><span className="font-medium text-red-600">failed</span> - gateway/system failed before final record creation</span>
-        <span><span className="font-medium text-muted-foreground">abandoned</span> - deliberately marked abandoned</span>
-        <span className="text-orange-500 font-medium">orange expired badge</span> = status pending + past expiresAt = abandoned checkout
+        <span><span className="font-medium text-muted-foreground">abandoned</span> - expired checkout marked by cleanup cron</span>
+        <span className="text-orange-500 font-medium">orange expired badge</span> = status pending + past expiresAt, waiting for abandonment cron
       </div>
 
       {/* Filters */}
