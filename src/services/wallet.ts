@@ -13,6 +13,32 @@ export const walletService = {
     const { data } = await apiClient.get('/wallet/withdrawals', { params });
     return data.data;
   },
+  getWithdrawalFeePreview: async (params: {
+    amount: number;
+    method: 'mobile_money' | 'bank_transfer';
+    mobileOperator?: 'airtel' | 'tnm';
+    mobileNumber?: string;
+    bankCode?: string;
+    accountName?: string;
+    accountNumber?: string;
+  }) => {
+    const { data } = await apiClient.get('/wallet/withdraw/fees', { params });
+    return data.data as {
+      amount: number;
+      fee: number;
+      gatewayFeeAmount: number;
+      gatewayFeeRate: number;
+      bankFixedFeeAmount: number;
+      systemFeeAmount: number;
+      systemFeeRate: number;
+      netAmount: number;
+      payoutAmount: number;
+      availableBalance: number;
+      hasEnoughBalance: boolean;
+      shortfall: number;
+      currency: string;
+    };
+  },
   requestWithdrawal: async (payload: {
     amount: number;
     method: 'mobile_money' | 'bank_transfer';

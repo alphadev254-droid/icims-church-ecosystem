@@ -14,6 +14,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
+function getMobileOperatorFromNumber(value?: string): 'airtel' | 'tnm' | null {
+  const digits = String(value || '').replace(/\D/g, '');
+  const local = digits.startsWith('265') ? `0${digits.slice(3)}` : digits;
+  if (local.startsWith('099') || local.startsWith('098')) return 'airtel';
+  if (local.startsWith('088') || local.startsWith('089')) return 'tnm';
+  return null;
+}
+
 const withdrawalSchema = z.object({
   amount: z.number().positive('Amount must be positive'),
   method: z.enum(['mobile_money', 'bank_transfer']),
@@ -22,20 +30,35 @@ const withdrawalSchema = z.object({
   bankCode: z.string().optional(),
   accountName: z.string().optional(),
   accountNumber: z.string().optional(),
-}).refine(
-  (data) => {
-    if (data.method === 'mobile_money') {
-      return !!data.mobileOperator && !!data.mobileNumber;
+}).superRefine((data, ctx) => {
+  if (data.method === 'mobile_money') {
+    if (!data.mobileOperator || !data.mobileNumber) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Missing required fields for withdrawal method' });
+      return;
     }
-    if (data.method === 'bank_transfer') {
-      return !!data.bankCode && !!data.accountName && !!data.accountNumber;
+    const detected = getMobileOperatorFromNumber(data.mobileNumber);
+    if (!detected) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['mobileNumber'], message: 'Enter a valid Airtel Money or TNM Mpamba number.' });
+      return;
     }
-    return true;
-  },
-  { message: 'Missing required fields for withdrawal method' }
-);
+    if (detected !== data.mobileOperator) {
+      const expected = data.mobileOperator === 'airtel' ? 'Airtel Money' : 'TNM Mpamba';
+      const actual = detected === 'airtel' ? 'Airtel Money' : 'TNM Mpamba';
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['mobileNumber'],
+        message: `The selected operator is ${expected}, but the number looks like ${actual}. Please correct the operator or mobile number.`,
+      });
+    }
+  }
+  if (data.method === 'bank_transfer' && (!data.bankCode || !data.accountName || !data.accountNumber)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Missing required fields for withdrawal method' });
+  }
+});
 
 type WithdrawalForm = z.infer<typeof withdrawalSchema>;
+type WithdrawalOtpResult = { message?: string; expiresInSeconds?: number };
+type SupportedBank = { uuid?: string; bank_uuid?: string; id?: string | number; name?: string };
 
 export default function RequestWithdrawalPage() {
   const navigate = useNavigate();
@@ -91,7 +114,7 @@ export default function RequestWithdrawalPage() {
 
   const sendOtpMutation = useMutation({
     mutationFn: walletService.sendWithdrawalOtp,
-    onSuccess: (result: any) => {
+    onSuccess: (result: WithdrawalOtpResult) => {
       setOtpSent(true);
       setOtpExpiresIn(result.expiresInSeconds ?? 300);
       toast.success(result.message || 'OTP sent to your email');
@@ -158,7 +181,7 @@ export default function RequestWithdrawalPage() {
                 toast.error('Enter the 6-digit OTP code');
                 return;
               }
-              withdrawMutation.mutate({ ...(data as any), otpCode });
+              withdrawMutation.mutate({ ...data, otpCode });
             })}
             className="space-y-4"
           >
@@ -176,7 +199,7 @@ export default function RequestWithdrawalPage() {
 
             <div>
               <Label className="text-xs sm:text-sm">Withdrawal Method *</Label>
-              <Select value={method} onValueChange={(v: any) => setValue('method', v)}>
+              <Select value={method} onValueChange={(v) => setValue('method', v as WithdrawalForm['method'])}>
                 <SelectTrigger className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="mobile_money">Mobile Money</SelectItem>
@@ -189,7 +212,7 @@ export default function RequestWithdrawalPage() {
               <>
                 <div>
                   <Label className="text-xs sm:text-sm">Mobile Operator *</Label>
-                  <Select defaultValue="airtel" onValueChange={(v: any) => setValue('mobileOperator', v)}>
+                  <Select defaultValue="airtel" onValueChange={(v) => setValue('mobileOperator', v as WithdrawalForm['mobileOperator'])}>
                     <SelectTrigger className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="airtel">Airtel Money</SelectItem>
@@ -204,6 +227,7 @@ export default function RequestWithdrawalPage() {
                     placeholder="e.g. 0991234567" 
                     className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm"
                   />
+                  {errors.mobileNumber && <p className="text-xs text-destructive mt-1">{errors.mobileNumber.message}</p>}
                 </div>
               </>
             )}
@@ -212,12 +236,12 @@ export default function RequestWithdrawalPage() {
               <>
                 <div>
                   <Label className="text-xs sm:text-sm">Bank *</Label>
-                  <Select onValueChange={(v: any) => setValue('bankCode', v, { shouldValidate: true })}>
+                  <Select onValueChange={(v) => setValue('bankCode', v, { shouldValidate: true })}>
                     <SelectTrigger className="mt-1.5 h-8 text-xs sm:h-10 sm:text-sm">
                       <SelectValue placeholder={isLoadingBanks ? 'Loading banks...' : 'Select bank'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {(banks as any[]).map((b: any) => {
+                      {(banks as SupportedBank[]).map((b) => {
                         const value = String(b.uuid || b.bank_uuid || b.id);
                         return (
                           <SelectItem key={value} value={value}>{b.name || value}</SelectItem>
@@ -257,7 +281,7 @@ export default function RequestWithdrawalPage() {
                   disabled={sendOtpMutation.isPending}
                   onClick={handleSubmit(data => {
                     setOtpCode('');
-                    sendOtpMutation.mutate(data as any);
+                    sendOtpMutation.mutate(data);
                   })}
                 >
                   {sendOtpMutation.isPending ? 'Sending...' : otpSent ? 'Resend OTP' : 'Send OTP'}
