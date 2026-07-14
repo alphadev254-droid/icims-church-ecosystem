@@ -347,6 +347,8 @@ export interface AdminWithdrawalSummary {
 export interface AdminTreasurySummary {
   currency: string;
   paychanguBalance: number;
+  paychanguCollectionBalance: number;
+  paychanguTotalBalance: number;
   ministryWalletBalance: number;
   ministryWalletCount: number;
   pendingMinistryPayouts: number;

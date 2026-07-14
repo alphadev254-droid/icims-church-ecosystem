@@ -50,6 +50,27 @@ function SummaryCard({ label, value, sub, icon: Icon, tone }: {
   );
 }
 
+function CompactMetric({ label, value, sub, icon: Icon, tone }: {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: React.ElementType;
+  tone: string;
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-3 flex gap-3 min-w-0">
+      <div className={`h-8 w-8 rounded-md flex items-center justify-center shrink-0 ${tone}`}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-sm font-semibold leading-tight break-words">{value}</p>
+        {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
 function getMobileOperatorFromNumber(value?: string): Operator | null {
   const digits = String(value || '').replace(/\D/g, '');
   const local = digits.startsWith('265') ? `0${digits.slice(3)}` : digits;
@@ -200,6 +221,14 @@ export default function AdminTreasury() {
     withdrawMutation.mutate();
   };
 
+  const reservedPayouts = summary ? summary.pendingMinistryPayouts + summary.pendingPlatformPayouts : 0;
+  const totalProtected = summary ? summary.ministryWalletBalance + reservedPayouts : 0;
+  const paychanguTotal = summary ? summary.paychanguTotalBalance ?? (summary.paychanguBalance + (summary.paychanguCollectionBalance ?? 0)) : 0;
+  const paychanguCollection = summary ? summary.paychanguCollectionBalance ?? 0 : 0;
+  const coverageTotal = summary ? paychanguTotal + totalProtected + summary.safeAvailableBalance : 0;
+  const liabilityPercent = coverageTotal > 0 ? Math.min(100, (totalProtected / coverageTotal) * 100) : 0;
+  const safePercent = coverageTotal > 0 ? Math.min(100, (summary!.safeAvailableBalance / coverageTotal) * 100) : 0;
+
   return (
     <div className="space-y-4">
       <div>
@@ -207,17 +236,41 @@ export default function AdminTreasury() {
         <p className="text-sm text-muted-foreground">System-admin PayChangu balance, safe balance, and platform payouts.</p>
       </div>
 
-      {summaryLoading ? <div className="h-24 rounded-lg bg-muted animate-pulse" /> : summary && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <SummaryCard label="PayChangu Wallet" value={money(summary.currency, summary.paychanguBalance)} sub="Raw gateway wallet balance" icon={Wallet} tone="bg-blue-100 text-blue-700" />
-            <SummaryCard label="Ministry Liability" value={money(summary.currency, summary.ministryWalletBalance)} sub={`${summary.ministryWalletCount} ministry wallet(s)`} icon={Banknote} tone="bg-yellow-100 text-yellow-700" />
-            <SummaryCard label="Reserved Payouts" value={money(summary.currency, summary.pendingMinistryPayouts + summary.pendingPlatformPayouts)} sub="Pending, processing, and review payouts" icon={CreditCard} tone="bg-purple-100 text-purple-700" />
-            <SummaryCard label="Safe Platform Balance" value={money(summary.currency, summary.safeAvailableBalance)} sub="Maximum platform-safe pool" icon={Zap} tone="bg-emerald-100 text-emerald-700" />
+      {summaryLoading ? <div className="h-36 rounded-lg bg-muted animate-pulse" /> : summary && (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="grid gap-0 lg:grid-cols-[1.2fr_1fr]">
+            <div className="p-4 sm:p-5 bg-gradient-to-br from-emerald-50 to-background border-b lg:border-b-0 lg:border-r">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Safe to withdraw</p>
+                  <p className="text-2xl sm:text-3xl font-bold tracking-tight mt-1">{money(summary.currency, summary.safeAvailableBalance)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">After reserving ministry wallets and unsettled payouts.</p>
+                </div>
+                <Badge className={summary.safeAvailableBalance > 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}>
+                  {summary.safeAvailableBalance > 0 ? 'Available' : 'Locked'}
+                </Badge>
+              </div>
+              <div className="mt-4 h-2 rounded-full bg-muted overflow-hidden flex">
+                <div className="bg-amber-400" style={{ width: `${liabilityPercent}%` }} />
+                <div className="bg-emerald-500" style={{ width: `${safePercent}%` }} />
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                <span><span className="inline-block h-2 w-2 rounded-full bg-amber-400 mr-1" />Protected: {money(summary.currency, totalProtected)}</span>
+                <span><span className="inline-block h-2 w-2 rounded-full bg-emerald-500 mr-1" />Available: {money(summary.currency, summary.safeAvailableBalance)}</span>
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <CompactMetric label="PayChangu Total" value={money(summary.currency, paychanguTotal)} sub={`Main ${money(summary.currency, summary.paychanguBalance)}`} icon={Wallet} tone="bg-blue-100 text-blue-700" />
+              <CompactMetric label="Collection Balance" value={money(summary.currency, paychanguCollection)} sub="Gateway collection wallet" icon={CreditCard} tone="bg-sky-100 text-sky-700" />
+              <CompactMetric label="System Revenue" value={money(summary.currency, summary.systemRevenue)} sub="Fees and rounding earned" icon={Zap} tone="bg-emerald-100 text-emerald-700" />
+              <CompactMetric label="Ministry Wallets" value={money(summary.currency, summary.ministryWalletBalance)} sub={`${summary.ministryWalletCount} wallet(s)`} icon={Banknote} tone="bg-yellow-100 text-yellow-700" />
+              <CompactMetric label="Reserved Payouts" value={money(summary.currency, reservedPayouts)} sub={`${summary.pendingMinistryWithdrawalCount + summary.pendingPlatformWithdrawalCount} payout(s)`} icon={CreditCard} tone="bg-purple-100 text-purple-700" />
+            </div>
           </div>
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 flex gap-2">
+          <div className="border-t bg-amber-50 px-4 py-2.5 text-xs text-amber-900 flex gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>Security rule: platform withdrawals are blocked when payout plus gateway cost exceeds safe platform balance. Ministry wallet balances are reserved first.</span>
+            <span>Platform withdrawals are blocked when payout plus gateway cost exceeds the safe balance.</span>
           </div>
         </div>
       )}
