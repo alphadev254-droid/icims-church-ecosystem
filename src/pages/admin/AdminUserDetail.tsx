@@ -29,13 +29,6 @@ function subStatusBadge(status: string) {
   return <Badge variant="outline" className="text-xs">{status}</Badge>;
 }
 
-function payStatusBadge(status: string) {
-  if (status === 'completed') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Completed</Badge>;
-  if (status === 'pending') return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs">Pending</Badge>;
-  if (status === 'failed') return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Failed</Badge>;
-  return <Badge variant="outline" className="text-xs capitalize">{status}</Badge>;
-}
-
 function addMonths(date: Date, months: number) {
   const d = new Date(date);
   d.setMonth(d.getMonth() + months);
@@ -55,6 +48,80 @@ interface SubForm {
   status: string;
 }
 
+type EditUserData = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  status: string;
+  roleId: string;
+  accountCountry: string;
+  title: string;
+  titleOther: string;
+  ministryName: string;
+  currentMembership: string;
+  gender: string;
+  dateOfBirth: string;
+  maritalStatus: string;
+  weddingDate: string;
+  residentialNeighbourhood: string;
+  membershipType: string;
+  serviceInterest: string;
+  baptizedByImmersion: boolean;
+  memberType: string;
+  loginEnabled: boolean;
+  churchId: string;
+  regions: string;
+  districts: string;
+  traditionalAuthorities: string;
+};
+
+const emptyEditData: EditUserData = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  status: 'active',
+  roleId: '',
+  accountCountry: '',
+  title: '',
+  titleOther: '',
+  ministryName: '',
+  currentMembership: '',
+  gender: '',
+  dateOfBirth: '',
+  maritalStatus: '',
+  weddingDate: '',
+  residentialNeighbourhood: '',
+  membershipType: '',
+  serviceInterest: '',
+  baptizedByImmersion: false,
+  memberType: 'adult',
+  loginEnabled: true,
+  churchId: '',
+  regions: '',
+  districts: '',
+  traditionalAuthorities: '',
+};
+
+function listToInput(value: unknown) {
+  if (Array.isArray(value)) return value.join(', ');
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.join(', ');
+    } catch {
+      return value;
+    }
+    return value;
+  }
+  return '';
+}
+
+function inputToList(value: string) {
+  return value.split(',').map(v => v.trim()).filter(Boolean);
+}
+
 export default function AdminUserDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -64,7 +131,8 @@ export default function AdminUserDetail() {
   const [resetOpen, setResetOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [editOpen, setEditOpen] = useState(false);
-  const [editData, setEditData] = useState({ firstName: '', lastName: '', email: '', phone: '' });
+  const [editData, setEditData] = useState<EditUserData>(emptyEditData);
+  const [churchSearch, setChurchSearch] = useState('');
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailForm, setEmailForm] = useState({ subject: '', message: '' });
 
@@ -84,6 +152,24 @@ export default function AdminUserDetail() {
     queryFn: () => adminApi.getPackages().then(r => r.data.data),
   });
   const packages = packagesData ?? [];
+
+  const { data: churchesData } = useQuery({
+    queryKey: ['admin-all-churches', churchSearch],
+    queryFn: () => adminApi.getAllChurches({ q: churchSearch || undefined, limit: 30 }).then(r => r.data),
+    enabled: editOpen && !!data && ((data.roleName ?? data.role?.name) === 'member' || !!data.church),
+  });
+  const churches = churchesData?.data ?? [];
+  const selectedChurch = data?.church && !churches.some((church: any) => church.id === data.church?.id)
+    ? [data.church]
+    : [];
+  const churchOptions = [...selectedChurch, ...churches];
+
+  const { data: roleOptionsData } = useQuery({
+    queryKey: ['admin-user-role-options', id],
+    queryFn: () => adminApi.getUserRoleOptions(id!).then(r => r.data.data),
+    enabled: editOpen && !!id,
+  });
+  const roleOptions = roleOptionsData?.roles ?? [];
 
   const updateMutation = useMutation({
     mutationFn: (d: any) => adminApi.updateUser(id!, d),
@@ -121,6 +207,90 @@ export default function AdminUserDetail() {
     onError: () => toast.error('Failed to update subscription'),
   });
 
+  const openEditUser = () => {
+    if (!data) return;
+    setEditData({
+      firstName: data.firstName ?? '',
+      lastName: data.lastName ?? '',
+      email: data.email ?? '',
+      phone: data.phone ?? '',
+      status: data.status ?? 'active',
+      roleId: data.role?.id ?? data.roleId ?? '',
+      accountCountry: data.accountCountry ?? '',
+      title: data.title ?? '',
+      titleOther: data.titleOther ?? '',
+      ministryName: data.ministryName ?? '',
+      currentMembership: data.currentMembership != null ? String(data.currentMembership) : '',
+      gender: data.gender ?? '',
+      dateOfBirth: data.dateOfBirth ? toDateInput(data.dateOfBirth) : '',
+      maritalStatus: data.maritalStatus ?? '',
+      weddingDate: data.weddingDate ? toDateInput(data.weddingDate) : '',
+      residentialNeighbourhood: data.residentialNeighbourhood ?? '',
+      membershipType: data.membershipType ?? '',
+      serviceInterest: data.serviceInterest ?? '',
+      baptizedByImmersion: !!data.baptizedByImmersion,
+      memberType: data.memberType ?? 'adult',
+      loginEnabled: data.loginEnabled ?? true,
+      churchId: data.church?.id ?? '',
+      regions: listToInput(data.regions),
+      districts: listToInput(data.districts),
+      traditionalAuthorities: listToInput(data.traditionalAuthorities),
+    });
+    setChurchSearch(data.church?.name ?? '');
+    setEditOpen(true);
+  };
+
+  const nullable = (value: string) => value.trim() ? value.trim() : null;
+  const nullableNumber = (value: string) => value.trim() ? Number(value) : null;
+
+  const saveEditUser = () => {
+    const roleName = data?.roleName ?? data?.role?.name;
+    const isMemberEdit = roleName === 'member';
+    const isMinistryAdminEdit = roleName === 'ministry_admin';
+    const hasChurchProfile = !!editData.churchId || !!data?.church?.id;
+    const payload: Record<string, any> = {
+      firstName: editData.firstName.trim(),
+      lastName: editData.lastName.trim(),
+      email: editData.email.trim(),
+      phone: nullable(editData.phone),
+      status: editData.status,
+      roleId: editData.roleId || undefined,
+      loginEnabled: editData.loginEnabled,
+    };
+
+    if (isMinistryAdminEdit || (!isMemberEdit && !hasChurchProfile)) {
+      payload.accountCountry = editData.accountCountry || null;
+    }
+
+    if (isMinistryAdminEdit) {
+      payload.title = nullable(editData.title);
+      payload.titleOther = nullable(editData.titleOther);
+      payload.ministryName = nullable(editData.ministryName);
+      payload.currentMembership = nullableNumber(editData.currentMembership);
+    }
+
+    if (isMemberEdit || hasChurchProfile) {
+      payload.churchId = editData.churchId || null;
+      payload.memberType = editData.memberType || 'adult';
+      payload.gender = editData.gender || null;
+      payload.dateOfBirth = editData.dateOfBirth || null;
+      payload.maritalStatus = editData.maritalStatus || null;
+      payload.weddingDate = editData.weddingDate || null;
+      payload.residentialNeighbourhood = nullable(editData.residentialNeighbourhood);
+      payload.membershipType = editData.membershipType || null;
+      payload.serviceInterest = nullable(editData.serviceInterest);
+      payload.baptizedByImmersion = editData.baptizedByImmersion;
+    }
+
+    if (!isMemberEdit && !isMinistryAdminEdit) {
+      payload.regions = inputToList(editData.regions);
+      payload.districts = inputToList(editData.districts);
+      payload.traditionalAuthorities = inputToList(editData.traditionalAuthorities);
+    }
+
+    updateMutation.mutate(payload);
+  };
+
   const toggleStatus = () => updateMutation.mutate({ status: data?.status === 'active' ? 'suspended' : 'active' });
 
   const openCreateSub = () => {
@@ -157,7 +327,14 @@ export default function AdminUserDetail() {
 
   if (!data) return <p className="text-sm text-muted-foreground">User not found</p>;
 
-  const isMinistryAdmin = data.roleName === 'ministry_admin';
+  const roleName = data.roleName ?? data.role?.name;
+  const isMinistryAdmin = roleName === 'ministry_admin';
+  const isMemberUser = roleName === 'member';
+  const hasChurchProfile = !!data.church;
+  const showCountryField = isMinistryAdmin || (!isMemberUser && !hasChurchProfile);
+  const showMinistryProfile = isMinistryAdmin;
+  const showMemberProfile = isMemberUser || hasChurchProfile;
+  const showScopeProfile = !isMemberUser && !isMinistryAdmin;
 
   return (
     <div className="space-y-4">
@@ -174,7 +351,7 @@ export default function AdminUserDetail() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5"
-            onClick={() => { setEditData({ firstName: data.firstName, lastName: data.lastName, email: data.email, phone: data.phone ?? '' }); setEditOpen(true); }}>
+            onClick={openEditUser}>
             <Edit2 className="h-3.5 w-3.5" /> Edit
           </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={toggleStatus}>
@@ -226,10 +403,36 @@ export default function AdminUserDetail() {
             <InfoRow label="Title" value={data.title} />
             <InfoRow label="Email" value={data.email} />
             <InfoRow label="Phone" value={data.phone} />
-            <InfoRow label="Country" value={data.accountCountry} />
-            <InfoRow label="Ministry Name" value={(data as any).ministryName} />
-            <InfoRow label="Membership" value={(data as any).currentMembership?.toLocaleString()} />
-            <InfoRow label="Branches" value={(data as any).numberOfBranches} />
+            {showCountryField && <InfoRow label="Country" value={data.accountCountry} />}
+            <InfoRow label="Login Enabled" value={data.loginEnabled ? 'Yes' : 'No'} />
+            {showMemberProfile && (
+              <>
+                <InfoRow label="Church" value={data.church?.name} />
+                <InfoRow label="Gender" value={data.gender} />
+                <InfoRow label="Date of Birth" value={data.dateOfBirth ? new Date(data.dateOfBirth).toLocaleDateString() : null} />
+                <InfoRow label="Marital Status" value={data.maritalStatus} />
+                <InfoRow label="Wedding Date" value={data.weddingDate ? new Date(data.weddingDate).toLocaleDateString() : null} />
+                <InfoRow label="Neighbourhood" value={data.residentialNeighbourhood} />
+                <InfoRow label="Membership Type" value={data.membershipType} />
+                <InfoRow label="Member Type" value={data.memberType} />
+                <InfoRow label="Service Interest" value={data.serviceInterest} />
+                <InfoRow label="Baptized" value={data.baptizedByImmersion == null ? null : data.baptizedByImmersion ? 'Yes' : 'No'} />
+              </>
+            )}
+            {showMinistryProfile && (
+              <>
+                <InfoRow label="Ministry Name" value={(data as any).ministryName} />
+                <InfoRow label="Membership" value={(data as any).currentMembership?.toLocaleString()} />
+                <InfoRow label="Branches" value={data.ownedChurches?.length ?? data.churchCount ?? 0} />
+              </>
+            )}
+            {showScopeProfile && (
+              <>
+                <InfoRow label="Regions" value={listToInput(data.regions)} />
+                <InfoRow label="Districts" value={listToInput(data.districts)} />
+                <InfoRow label="T/Authorities" value={listToInput(data.traditionalAuthorities)} />
+              </>
+            )}
             <InfoRow label="Role" value={data.role?.displayName} />
             <InfoRow label="Joined" value={new Date(data.createdAt).toLocaleDateString()} />
             <div className="flex items-start gap-2 py-1.5">
@@ -273,6 +476,45 @@ export default function AdminUserDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {data.childProfile && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Child Profile</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-3">
+            <div className="grid sm:grid-cols-2 gap-x-4">
+              <InfoRow label="Child Name" value={`${data.childProfile.firstName} ${data.childProfile.lastName}`} />
+              <InfoRow label="Status" value={data.childProfile.status} />
+              <InfoRow label="Church" value={data.childProfile.church?.name} />
+              <InfoRow label="Gender" value={data.childProfile.gender} />
+              <InfoRow label="Date of Birth" value={data.childProfile.dateOfBirth ? new Date(data.childProfile.dateOfBirth).toLocaleDateString() : null} />
+              <InfoRow label="Age" value={data.childProfile.age} />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Guardians</p>
+              {data.childProfile.guardians?.length ? (
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {data.childProfile.guardians.map(link => (
+                    <div key={link.guardian.id} className="rounded-md border p-2">
+                      <p className="text-xs font-medium">{link.guardian.firstName} {link.guardian.lastName}</p>
+                      <p className="text-xs text-muted-foreground">{link.guardian.email || link.guardian.phone || 'No contact'}</p>
+                      <p className="text-[11px] text-muted-foreground capitalize">
+                        {link.relationship}{link.isPrimary ? ' · Primary' : ''}{link.emergencyContact ? ' · Emergency' : ''}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No guardians linked.</p>
+              )}
+            </div>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate('/dashboard/children')}>
+              Open Children Page
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Churches */}
       {data.ownedChurches && data.ownedChurches.length > 0 && (
@@ -336,43 +578,6 @@ export default function AdminUserDetail() {
                           Edit
                         </Button>
                       </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Payment Transactions */}
-      {isMinistryAdmin && data.payments && data.payments.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Package Payment History ({data.payments.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/50 border-b">
-                  <tr>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Package</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Amount</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Status</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground hidden md:table-cell">Gateway</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground hidden md:table-cell">Cycle</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {data.payments.map((p: any) => (
-                    <tr key={p.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-2.5 font-medium">{p.package?.displayName ?? p.packageName}</td>
-                      <td className="px-4 py-2.5">{p.currency} {p.amount?.toLocaleString()}</td>
-                      <td className="px-4 py-2.5">{payStatusBadge(p.status)}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground hidden md:table-cell capitalize">{p.gateway ?? '—'}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground hidden md:table-cell capitalize">{p.billingCycle ?? '—'}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">{new Date(p.createdAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -477,19 +682,216 @@ export default function AdminUserDetail() {
 
       {/* Edit user dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-base">Edit User</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            {(['firstName', 'lastName', 'email', 'phone'] as const).map(field => (
-              <div key={field} className="space-y-1">
-                <Label className="text-xs capitalize">{field.replace(/([A-Z])/g, ' $1')}</Label>
-                <Input className="h-8 text-xs" value={editData[field]} onChange={e => setEditData(d => ({ ...d, [field]: e.target.value }))} />
+          <div className="space-y-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Account</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">First Name</Label>
+                  <Input className="h-8 text-xs" value={editData.firstName} onChange={e => setEditData(d => ({ ...d, firstName: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Last Name</Label>
+                  <Input className="h-8 text-xs" value={editData.lastName} onChange={e => setEditData(d => ({ ...d, lastName: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Email</Label>
+                  <Input className="h-8 text-xs" type="email" value={editData.email} onChange={e => setEditData(d => ({ ...d, email: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Phone</Label>
+                  <Input className="h-8 text-xs" value={editData.phone} onChange={e => setEditData(d => ({ ...d, phone: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Status</Label>
+                  <Select value={editData.status} onValueChange={v => setEditData(d => ({ ...d, status: v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active" className="text-xs">Active</SelectItem>
+                      <SelectItem value="suspended" className="text-xs">Suspended</SelectItem>
+                      <SelectItem value="inactive" className="text-xs">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Role</Label>
+                  <Select value={editData.roleId || 'none'} onValueChange={v => setEditData(d => ({ ...d, roleId: v === 'none' ? '' : v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select role" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs">No role</SelectItem>
+                      {roleOptions.map(role => (
+                        <SelectItem key={role.id} value={role.id} className="text-xs">
+                          {role.displayName}{role.isSystemRole ? ' (system)' : ' (ministry)'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">Roles are loaded from this user&apos;s ministry plus global system roles.</p>
+                </div>
+                {showCountryField && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Account Country</Label>
+                    <Select value={editData.accountCountry || 'none'} onValueChange={v => setEditData(d => ({ ...d, accountCountry: v === 'none' ? '' : v }))}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select country" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" className="text-xs">Not set</SelectItem>
+                        <SelectItem value="Malawi" className="text-xs">Malawi</SelectItem>
+                        <SelectItem value="Kenya" className="text-xs">Kenya</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <label className="flex items-center gap-2 text-xs rounded-md border p-2">
+                  <input type="checkbox" checked={editData.loginEnabled} onChange={e => setEditData(d => ({ ...d, loginEnabled: e.target.checked }))} />
+                  Login enabled
+                </label>
               </div>
-            ))}
+            </div>
+
+            {showMinistryProfile && <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Ministry Admin Profile</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Title</Label>
+                  <Input className="h-8 text-xs" value={editData.title} onChange={e => setEditData(d => ({ ...d, title: e.target.value }))} placeholder="Pastor, Rev, Dr..." />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Other Title</Label>
+                  <Input className="h-8 text-xs" value={editData.titleOther} onChange={e => setEditData(d => ({ ...d, titleOther: e.target.value }))} />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label className="text-xs">Ministry Name</Label>
+                  <Input className="h-8 text-xs" value={editData.ministryName} onChange={e => setEditData(d => ({ ...d, ministryName: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Current Membership</Label>
+                  <Input className="h-8 text-xs" type="number" min={0} value={editData.currentMembership} onChange={e => setEditData(d => ({ ...d, currentMembership: e.target.value }))} />
+                </div>
+              </div>
+            </div>}
+
+            {showMemberProfile && <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Member Profile</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Church</Label>
+                  <Input
+                    className="h-8 text-xs mb-1"
+                    value={churchSearch}
+                    onChange={e => setChurchSearch(e.target.value)}
+                    placeholder="Search church by name, location, region, district"
+                  />
+                  <Select value={editData.churchId || 'none'} onValueChange={v => setEditData(d => ({ ...d, churchId: v === 'none' ? '' : v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select church" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs">No church</SelectItem>
+                      {churchOptions.map((church: any) => (
+                        <SelectItem key={church.id} value={church.id} className="text-xs">
+                          {church.name}{church.location ? ` - ${church.location}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">Showing up to 30 matches. Type to narrow results.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Member Type</Label>
+                  <Select value={editData.memberType} onValueChange={v => setEditData(d => ({ ...d, memberType: v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="adult" className="text-xs">Adult</SelectItem>
+                      <SelectItem value="child" className="text-xs">Child</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Gender</Label>
+                  <Select value={editData.gender || 'none'} onValueChange={v => setEditData(d => ({ ...d, gender: v === 'none' ? '' : v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs">Not set</SelectItem>
+                      <SelectItem value="male" className="text-xs">Male</SelectItem>
+                      <SelectItem value="female" className="text-xs">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Date of Birth</Label>
+                  <Input className="h-8 text-xs" type="date" value={editData.dateOfBirth} onChange={e => setEditData(d => ({ ...d, dateOfBirth: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Marital Status</Label>
+                  <Select value={editData.maritalStatus || 'none'} onValueChange={v => setEditData(d => ({ ...d, maritalStatus: v === 'none' ? '' : v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs">Not set</SelectItem>
+                      <SelectItem value="single" className="text-xs">Single</SelectItem>
+                      <SelectItem value="married" className="text-xs">Married</SelectItem>
+                      <SelectItem value="widowed" className="text-xs">Widowed</SelectItem>
+                      <SelectItem value="divorced" className="text-xs">Divorced</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Wedding Date</Label>
+                  <Input className="h-8 text-xs" type="date" value={editData.weddingDate} onChange={e => setEditData(d => ({ ...d, weddingDate: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Residential Neighbourhood</Label>
+                  <Input className="h-8 text-xs" value={editData.residentialNeighbourhood} onChange={e => setEditData(d => ({ ...d, residentialNeighbourhood: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Membership Type</Label>
+                  <Select value={editData.membershipType || 'none'} onValueChange={v => setEditData(d => ({ ...d, membershipType: v === 'none' ? '' : v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select membership" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs">Not set</SelectItem>
+                      <SelectItem value="member" className="text-xs">Member</SelectItem>
+                      <SelectItem value="pastor" className="text-xs">Pastor</SelectItem>
+                      <SelectItem value="deacon" className="text-xs">Deacon</SelectItem>
+                      <SelectItem value="other" className="text-xs">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <label className="flex items-center gap-2 text-xs rounded-md border p-2">
+                  <input type="checkbox" checked={editData.baptizedByImmersion} onChange={e => setEditData(d => ({ ...d, baptizedByImmersion: e.target.checked }))} />
+                  Baptized by immersion
+                </label>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label className="text-xs">Service Interest</Label>
+                  <textarea
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs min-h-16 resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={editData.serviceInterest}
+                    onChange={e => setEditData(d => ({ ...d, serviceInterest: e.target.value }))}
+                    placeholder="Choir, ushering, outreach..."
+                  />
+                </div>
+              </div>
+            </div>}
+
+            {showScopeProfile && <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Scope / Location</p>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Regions</Label>
+                  <Input className="h-8 text-xs" value={editData.regions} onChange={e => setEditData(d => ({ ...d, regions: e.target.value }))} placeholder="Comma separated" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Districts</Label>
+                  <Input className="h-8 text-xs" value={editData.districts} onChange={e => setEditData(d => ({ ...d, districts: e.target.value }))} placeholder="Comma separated" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Traditional Authorities</Label>
+                  <Input className="h-8 text-xs" value={editData.traditionalAuthorities} onChange={e => setEditData(d => ({ ...d, traditionalAuthorities: e.target.value }))} placeholder="Comma separated" />
+                </div>
+              </div>
+            </div>}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button size="sm" disabled={updateMutation.isPending} onClick={() => updateMutation.mutate(editData)}>
+            <Button size="sm" disabled={updateMutation.isPending || !editData.firstName.trim() || !editData.lastName.trim() || !editData.email.trim()} onClick={saveEditUser}>
               {updateMutation.isPending ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>

@@ -78,8 +78,11 @@ export default function WithdrawalsPage() {
           <ExportImportButtons
             data={withdrawals.map((w: any) => ({
               amount: w.amount,
+              gatewayFee: w.gatewayFeeAmount ?? w.fee,
+              systemFee: w.systemFeeAmount ?? 0,
               fee: w.fee,
               netAmount: w.netAmount,
+              payoutAmount: w.payoutAmount ?? w.netAmount,
               method: w.method.replace('_', ' '),
               status: w.status,
               date: new Date(w.createdAt).toLocaleDateString(),
@@ -87,8 +90,11 @@ export default function WithdrawalsPage() {
             filename="withdrawals"
             headers={[
               { label: 'Amount', key: 'amount' },
-              { label: 'Fee', key: 'fee' },
+              { label: 'Gateway Fee', key: 'gatewayFee' },
+              { label: 'System Fee', key: 'systemFee' },
+              { label: 'Total Fee', key: 'fee' },
               { label: 'Net Amount', key: 'netAmount' },
+              { label: 'Amount Sent', key: 'payoutAmount' },
               { label: 'Method', key: 'method' },
               { label: 'Status', key: 'status' },
               { label: 'Date', key: 'date' },
@@ -147,12 +153,15 @@ export default function WithdrawalsPage() {
           <Card>
           <CardContent className="p-0">
           <div className="overflow-x-auto">
-          <Table className="min-w-[500px]">
+          <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs sm:text-sm">Amount</TableHead>
-                  <TableHead className="text-xs sm:text-sm">Fee</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Gateway Fee</TableHead>
+                  <TableHead className="text-xs sm:text-sm">System Fee</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Total Fee</TableHead>
                   <TableHead className="text-xs sm:text-sm">Net Amount</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Amount Sent</TableHead>
                   <TableHead className="text-xs sm:text-sm">Method</TableHead>
                   <TableHead className="text-xs sm:text-sm">Status</TableHead>
                   <TableHead className="text-xs sm:text-sm">Date</TableHead>
@@ -162,8 +171,11 @@ export default function WithdrawalsPage() {
                 {withdrawals.map((w: any) => (
                   <TableRow key={w.id}>
                     <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{formatCurrency(w.amount)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.gatewayFeeAmount ?? w.fee)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.systemFeeAmount ?? 0)}</TableCell>
                     <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.fee)}</TableCell>
                     <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{formatCurrency(w.netAmount)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{formatCurrency(w.payoutAmount ?? w.netAmount)}</TableCell>
                     <TableCell className="text-xs sm:text-sm capitalize whitespace-nowrap">{w.method.replace('_', ' ')}</TableCell>
                     <TableCell>
                       <Badge variant={statusVariant(w.status)} className="text-xs">{w.status}</Badge>
@@ -175,7 +187,7 @@ export default function WithdrawalsPage() {
                 ))}
                 {withdrawals.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                       <ArrowDownToLine className="h-10 w-10 mx-auto mb-2 opacity-50" />
                       <p>No withdrawals yet.</p>
                     </TableCell>

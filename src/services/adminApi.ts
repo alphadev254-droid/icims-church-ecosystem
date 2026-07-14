@@ -11,12 +11,33 @@ export interface AdminStats {
   suspendedUsers: number;
   activeSubscriptions: number;
   expiredSubscriptions: number;
+  expiringSoonSubscriptions: number;
+  totalPackages: number;
+  pendingPayments: number;
+  failedPayments: number;
   totalRevenue: number;
   totalPayments: number;
   malawiRevenue: number;
   malawiPayments: number;
   kenyaRevenue: number;
   kenyaPayments: number;
+  mainRevenue: number;
+  mainRevenueTransactions: number;
+  malawiMainRevenue: number;
+  malawiMainRevenueTransactions: number;
+  kenyaMainRevenue: number;
+  kenyaMainRevenueTransactions: number;
+  withdrawalSystemRevenue: number;
+  withdrawalSystemRevenueCount: number;
+  packageBreakdown: Array<{
+    packageId: string;
+    packageName: string;
+    displayName: string;
+    active: number;
+    expired: number;
+    cancelled: number;
+    total: number;
+  }>;
   recentRegistrations: Array<{
     id: string;
     firstName: string;
@@ -47,20 +68,52 @@ export interface AdminUser {
   phone?: string;
   status: string;
   accountCountry?: string;
+  title?: string | null;
+  titleOther?: string | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  maritalStatus?: string | null;
+  weddingDate?: string | null;
+  residentialNeighbourhood?: string | null;
+  serviceInterest?: string | null;
+  membershipType?: string | null;
+  memberType?: string | null;
+  baptizedByImmersion?: boolean | null;
+  loginEnabled?: boolean;
   roleName: string;
   role?: { id: string; name: string; displayName: string };
+  roleId?: string | null;
   church?: { id: string; name: string } | null;
   churchCount?: number;
   createdAt: string;
-  ministryName?: string;
-  title?: string;
+  ministryName?: string | null;
   numberOfBranches?: number;
   currentMembership?: number;
+  regions?: string[] | string | null;
+  districts?: string[] | string | null;
+  traditionalAuthorities?: string[] | string | null;
   resolvedCountry?: string | null;
   resolvedMinistryName?: string | null;
 }
 
 export interface AdminUserDetail extends AdminUser {
+  childProfile?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth?: string | null;
+    age?: number | null;
+    gender?: string | null;
+    status: string;
+    church?: { id: string; name: string } | null;
+    guardians?: Array<{
+      relationship: string;
+      isPrimary: boolean;
+      canPickup: boolean;
+      emergencyContact: boolean;
+      guardian: { id: string; firstName: string; lastName: string; email?: string | null; phone?: string | null };
+    }>;
+  } | null;
   ownedChurches: Array<{
     id: string;
     name: string;
@@ -100,6 +153,26 @@ export interface AdminPayment {
   gateway?: string;
   paymentMethod?: string;
   reference?: string;
+  baseAmount?: number;
+  convenienceFee?: number;
+  systemFeeAmount?: number;
+  ceilRoundingAmount?: number;
+  totalAmount?: number;
+  gatewayCharge?: number;
+  systemGatewayFeeRate?: number;
+  systemFeeRate?: number;
+  subaccountCode?: string;
+  subaccountName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  cardLast4?: string;
+  cardBank?: string;
+  channel?: string;
+  billingCycle?: string;
+  expiresAt?: string;
+  gatewayPayload?: string;
+  gatewayResponse?: string;
+  notes?: string;
   paidAt?: string;
   createdAt: string;
   package?: { name: string; displayName: string } | null;
@@ -197,13 +270,91 @@ export interface AdminSystemTransaction {
 
 export interface AdminSystemTransactionSummary {
   total: number;
+  byStatus: Record<string, number>;
+  byType: Record<string, number>;
   byCurrency: Array<{
     currency: string;
     count: number;
     totalBaseAmount: number;
     totalSystemFee: number;
+    totalSystemFeeOnly: number;
+    totalRounding: number;
     totalGatewayFee: number;
+    totalTransactionCost: number;
     totalCharged: number;
+  }>;
+}
+
+export interface AdminWithdrawal {
+  id: string;
+  walletId: string;
+  ministryAdminId: string;
+  initiatedBy?: string | null;
+  amount: number;
+  fee: number;
+  gatewayFeeAmount?: number;
+  gatewayFeeRate?: number | null;
+  bankFixedFeeAmount?: number;
+  systemFeeAmount?: number;
+  systemFeeRate?: number | null;
+  netAmount: number;
+  payoutAmount?: number;
+  method: string;
+  status: string;
+  mobileOperator?: string | null;
+  mobileNumber?: string | null;
+  bankCode?: string | null;
+  accountName?: string | null;
+  accountNumber?: string | null;
+  chargeId?: string | null;
+  gatewayPayload?: string | null;
+  gatewayResponse?: string | null;
+  failureReason?: string | null;
+  processedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  currency: string;
+  church?: { id: string; name: string; ministryAdminId?: string | null } | null;
+  ministryAdmin?: { id: string; firstName: string; lastName: string; email: string; ministryName?: string | null; accountCountry?: string | null } | null;
+  initiatedByUser?: { id: string; firstName: string; lastName: string; email: string; phone?: string | null } | null;
+}
+
+export interface AdminWithdrawalSummary {
+  total: number;
+  byStatus: Record<string, number>;
+  byMethod: Record<string, number>;
+  byCurrencyCount: Record<string, number>;
+  byCurrency: Array<{
+    currency: string;
+    count: number;
+    totalRequested: number;
+    totalFee: number;
+    gatewayFee: number;
+    bankFixedFee: number;
+    systemFee: number;
+    netAmount: number;
+    payoutAmount: number;
+    completedSystemRevenue: number;
+    completedCount: number;
+  }>;
+}
+
+export interface AdminPaymentSummary {
+  total: number;
+  byStatus: Record<string, number>;
+  byType: Record<string, number>;
+  byGateway: Record<string, number>;
+  byCurrency: Array<{
+    currency: string;
+    count: number;
+    totalCollected: number;
+    packageRevenue: number;
+    gatewayCost: number;
+    icimsFee: number;
+    feeOnly: number;
+    rounding: number;
+    totalRevenue: number;
+    totalPaymentCost: number;
   }>;
 }
 
@@ -227,7 +378,10 @@ export const adminApi = {
   getUser: (id: string) =>
     apiClient.get<{ success: boolean; data: AdminUserDetail }>(`/admin/users/${id}`),
 
-  updateUser: (id: string, data: Partial<{ firstName: string; lastName: string; email: string; phone: string; status: string; accountCountry: string }>) =>
+  getUserRoleOptions: (id: string) =>
+    apiClient.get<{ success: boolean; data: { ministryAdminId: string | null; roles: Array<{ id: string; name: string; displayName: string; isSystemRole: boolean; ministryAdminId?: string | null }> } }>(`/admin/users/${id}/role-options`),
+
+  updateUser: (id: string, data: Partial<AdminUser> & Record<string, unknown>) =>
     apiClient.put<{ success: boolean; data: AdminUser }>(`/admin/users/${id}`, data),
 
   deleteUser: (id: string) =>
@@ -260,6 +414,20 @@ export const adminApi = {
   updateSubscription: (userId: string, subId: string, data: { packageId: string; startsAt: string; expiresAt: string; status: string }) =>
     apiClient.put<{ success: boolean; data: AdminSubscription }>(`/admin/users/${userId}/subscription/${subId}`, data),
 
+  getPackagePayments: (params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    package?: string;
+    status?: string;
+    country?: string;
+    ministry?: string;
+    gateway?: string;
+    cycle?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) => apiClient.get<{ success: boolean; data: AdminPayment[]; pagination: Pagination; summary: AdminPaymentSummary }>('/admin/transactions', { params }),
+
   getTransactions: (params: {
     page?: number;
     limit?: number;
@@ -267,9 +435,12 @@ export const adminApi = {
     package?: string;
     status?: string;
     country?: string;
+    ministry?: string;
+    gateway?: string;
+    cycle?: string;
     dateFrom?: string;
     dateTo?: string;
-  }) => apiClient.get<{ success: boolean; data: AdminPayment[]; pagination: Pagination }>('/admin/transactions', { params }),
+  }) => apiClient.get<{ success: boolean; data: AdminPayment[]; pagination: Pagination; summary: AdminPaymentSummary }>('/admin/transactions', { params }),
 
   getSystemTransactions: (params: {
     page?: number;
@@ -290,6 +461,23 @@ export const adminApi = {
     summary: AdminSystemTransactionSummary;
   }>('/admin/system-transactions', { params }),
 
+  getWithdrawals: (params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    method?: string;
+    currency?: string;
+    ministry?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) => apiClient.get<{
+    success: boolean;
+    data: AdminWithdrawal[];
+    pagination: Pagination;
+    summary: AdminWithdrawalSummary;
+  }>('/admin/withdrawals', { params }),
+
   getPendingTransactions: (params: {
     page?: number;
     limit?: number;
@@ -302,14 +490,14 @@ export const adminApi = {
     dateTo?: string;
   }) => apiClient.get<{
     success: boolean;
-    data: any[];
+    data: unknown[];
     pagination: Pagination;
   }>('/admin/pending-transactions', { params }),
 
   // Returns all churches (for filter dropdowns)
-  getAllChurches: (ministryId?: string) =>
-    apiClient.get<{ success: boolean; data: Array<{ id: string; name: string; ministryAdminId?: string }> }>(
+  getAllChurches: (params?: { ministryId?: string; q?: string; page?: number; limit?: number }) =>
+    apiClient.get<{ success: boolean; data: Array<{ id: string; name: string; ministryAdminId?: string; location?: string; region?: string; district?: string }>; pagination?: Pagination }>(
       '/admin/all-churches',
-      { params: ministryId ? { ministry: ministryId } : {} }
+      { params: { ...(params?.ministryId ? { ministry: params.ministryId } : {}), q: params?.q, page: params?.page, limit: params?.limit } }
     ),
 };

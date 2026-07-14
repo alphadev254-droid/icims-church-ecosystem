@@ -69,6 +69,7 @@ const AdminUserDetail = lazy(() => import("./pages/admin/AdminUserDetail"));
 const AdminChurchDetail = lazy(() => import("./pages/admin/AdminChurchDetail"));
 const AdminPayments = lazy(() => import("./pages/admin/AdminPayments"));
 const AdminTransactions = lazy(() => import("./pages/admin/AdminTransactions"));
+const AdminWithdrawals = lazy(() => import("./pages/admin/AdminWithdrawals"));
 const AdminPackages = lazy(() => import("./pages/admin/AdminPackages"));
 const AdminPendingTransactions = lazy(() => import("./pages/admin/AdminPendingTransactions"));
 
@@ -164,6 +165,7 @@ const App = () => (
                 <Route path="churches/:id" element={<AdminChurchDetail />} />
                 <Route path="payments" element={<AdminPayments />} />
                 <Route path="transactions" element={<AdminTransactions />} />
+                <Route path="withdrawals" element={<AdminWithdrawals />} />
                 <Route path="packages" element={<AdminPackages />} />
                 <Route path="payment-metadata" element={<AdminPendingTransactions />} />
               </Route>

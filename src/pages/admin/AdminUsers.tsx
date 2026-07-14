@@ -136,6 +136,8 @@ export default function AdminUsers() {
             placeholder="Search name, email, phone..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
+            autoComplete="off"
+            name="admin-user-search"
           />
         </div>
         <Select value={role} onValueChange={v => { setRole(v === 'all' ? '' : v); setPage(1); }}>
@@ -332,7 +334,7 @@ export default function AdminUsers() {
       </Dialog>
 
       {/* Reset password dialog */}
-      <Dialog open={!!resetTarget} onOpenChange={() => setResetTarget(null)}>
+      <Dialog open={!!resetTarget} onOpenChange={open => { if (!open && !resetMutation.isPending) { setResetTarget(null); setNewPassword(''); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-base">Reset Password</DialogTitle>
@@ -340,17 +342,33 @@ export default function AdminUsers() {
           <p className="text-xs text-muted-foreground mb-2">
             Set a new password for <strong>{resetTarget?.firstName} {resetTarget?.lastName}</strong>
           </p>
+          <form
+            className="space-y-3"
+            autoComplete="off"
+            onSubmit={e => {
+              e.preventDefault();
+              if (resetTarget && newPassword.length >= 8) resetMutation.mutate({ id: resetTarget.id, password: newPassword });
+            }}
+          >
           <div className="space-y-1">
             <Label className="text-xs">New Password</Label>
-            <Input className="h-8 text-xs" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min 8 characters" />
+            <Input
+              className="h-8 text-xs"
+              type="password"
+              name={`admin-reset-password-${resetTarget?.id ?? 'user'}`}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="Min 8 characters"
+            />
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setResetTarget(null)}>Cancel</Button>
-            <Button size="sm" disabled={newPassword.length < 8 || resetMutation.isPending}
-              onClick={() => resetTarget && resetMutation.mutate({ id: resetTarget.id, password: newPassword })}>
+            <Button variant="outline" type="button" size="sm" onClick={() => { setResetTarget(null); setNewPassword(''); }}>Cancel</Button>
+            <Button type="submit" size="sm" disabled={newPassword.length < 8 || resetMutation.isPending}>
               {resetMutation.isPending ? 'Resetting...' : 'Reset'}
             </Button>
           </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

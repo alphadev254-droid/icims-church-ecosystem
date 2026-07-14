@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Eye, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Search, Eye, Clock, XCircle, AlertTriangle } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { adminApi } from '@/services/adminApi';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 
 type Ministry = { id: string; label: string; country: string | null };
 type Church   = { id: string; name: string; ministryAdminId?: string };
+type JsonObject = Record<string, unknown>;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ interface PendingTx {
   expiresAt: string;
   createdAt: string;
   metadata: string | null;
-  metadataParsed: Record<string, any> | null;
+  metadataParsed: JsonObject | null;
   user: { id: string; firstName: string; lastName: string; email: string } | null;
   churchName: string | null;
 }
@@ -37,7 +38,6 @@ interface PendingTx {
 
 function statusBadge(status: string) {
   if (status === 'pending')   return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs gap-1"><Clock className="h-3 w-3" />Pending</Badge>;
-  if (status === 'completed') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs gap-1"><CheckCircle2 className="h-3 w-3" />Completed</Badge>;
   if (status === 'failed')    return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs gap-1"><XCircle className="h-3 w-3" />Failed</Badge>;
   return <Badge variant="outline" className="text-xs capitalize">{status}</Badge>;
 }
@@ -61,7 +61,7 @@ function isExpired(expiresAt: string) {
 
 // ─── JSON renderer — collapsible, pretty ─────────────────────────────────────
 
-function JsonValue({ value, depth = 0 }: { value: any; depth?: number }) {
+function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
   const [open, setOpen] = useState(depth < 2);
 
   if (value === null || value === undefined) return <span className="text-gray-400">null</span>;
@@ -103,7 +103,7 @@ function JsonValue({ value, depth = 0 }: { value: any; depth?: number }) {
             {keys.map(k => (
               <div key={k} className="text-xs font-mono flex gap-1 flex-wrap">
                 <span className="text-accent shrink-0">"{k}":</span>
-                <JsonValue value={(value as any)[k]} depth={depth + 1} />
+                <JsonValue value={(value as JsonObject)[k]} depth={depth + 1} />
               </div>
             ))}
           </div>
@@ -120,7 +120,7 @@ function JsonValue({ value, depth = 0 }: { value: any; depth?: number }) {
 function DetailDialog({ tx, onClose }: { tx: PendingTx; onClose: () => void }) {
   const expired = isExpired(tx.expiresAt);
 
-  const fields: [string, any][] = [
+  const fields: [string, unknown][] = [
     ['ID', tx.id],
     ['Reference (tx_ref)', tx.reference ?? '— not yet assigned'],
     ['Type', tx.type],
@@ -196,7 +196,7 @@ function DetailDialog({ tx, onClose }: { tx: PendingTx; onClose: () => void }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const STATUSES = ['pending', 'completed', 'failed'];
+const STATUSES = ['pending', 'failed', 'abandoned'];
 const TYPES    = ['donation', 'event_ticket', 'package_subscription'];
 
 export default function AdminPendingTransactions() {
@@ -223,7 +223,7 @@ export default function AdminPendingTransactions() {
   // Church dropdown — filtered by selected ministry
   const { data: churchesData } = useQuery({
     queryKey: ['admin-all-churches', ministry],
-    queryFn: () => adminApi.getAllChurches(ministry || undefined).then(r => r.data.data),
+    queryFn: () => adminApi.getAllChurches({ ministryId: ministry || undefined, limit: 100 }).then(r => r.data.data),
     staleTime: 60_000,
   });
   const churches: Church[] = churchesData ?? [];
@@ -231,7 +231,7 @@ export default function AdminPendingTransactions() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-pending-transactions', debouncedSearch, status, type, ministry, churchId, dateFrom, dateTo, page],
     queryFn: async () => {
-      const params: any = { page, limit: 50 };
+      const params: Record<string, string | number> = { page, limit: 50 };
       if (debouncedSearch) params.search   = debouncedSearch;
       if (status)          params.status   = status;
       if (type)            params.type     = type;
@@ -252,19 +252,19 @@ export default function AdminPendingTransactions() {
     <div className="space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold">Payment Metadata</h1>
+        <h1 className="text-xl font-bold">Pending Payment Attempts</h1>
         <p className="text-sm text-muted-foreground">
           {pagination
-            ? `${pagination.total.toLocaleString()} pending transactions — full metadata view`
-            : 'Inspect PendingTransaction records with full metadata'}
+            ? `${pagination.total.toLocaleString()} pending/stuck payment attempt(s)`
+            : 'Inspect pending, expired, and failed payment attempts'}
         </p>
       </div>
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
-        <span><span className="font-medium text-yellow-600">pending</span> — user initiated, not yet paid</span>
-        <span><span className="font-medium text-green-600">completed</span> — webhook/callback deleted it (rare to see)</span>
-        <span><span className="font-medium text-red-600">failed</span> — payment succeeded at gateway but our system crashed</span>
+        <span><span className="font-medium text-yellow-600">pending</span> - user initiated, not yet paid</span>
+        <span><span className="font-medium text-red-600">failed</span> - gateway/system failed before final record creation</span>
+        <span><span className="font-medium text-muted-foreground">abandoned</span> - deliberately marked abandoned</span>
         <span className="text-orange-500 font-medium">orange expired badge</span> = status pending + past expiresAt = abandoned checkout
       </div>
 

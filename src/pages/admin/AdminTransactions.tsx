@@ -12,10 +12,30 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 
 type Ministry = { id: string; label: string; country: string | null };
-type Church   = { id: string; name: string; ministryAdminId?: string };
+type Church   = { id: string; name: string; ministryAdminId?: string; location?: string; region?: string; district?: string };
+type DatePreset = 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth';
+type JsonObject = Record<string, unknown>;
+type TransactionDetail = AdminSystemTransaction & {
+  gatewayResponseParsed?: JsonObject | null;
+  gatewayResponse?: string | null;
+  channel?: string | null;
+  cellName?: string | null;
+  tickets?: Array<{ ticketNumber?: string | null }>;
+  subaccountName?: string | null;
+  gatewayCharge?: number | null;
+  notes?: string | null;
+};
+
+function asObject(value: unknown): JsonObject | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as JsonObject : null;
+}
+
+function jsonString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
 
 // ─── JSON viewer (reused from AdminPendingTransactions pattern) ───────────────
-function JsonValue({ value, depth = 0 }: { value: any; depth?: number }) {
+function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
   const [open, setOpen] = useState(depth < 2);
   if (value === null || value === undefined) return <span className="text-gray-400">null</span>;
   if (typeof value === 'boolean') return <span className="text-blue-500">{String(value)}</span>;
@@ -54,7 +74,7 @@ function JsonValue({ value, depth = 0 }: { value: any; depth?: number }) {
             {keys.map(k => (
               <div key={k} className="text-xs font-mono flex gap-1 flex-wrap">
                 <span className="text-accent shrink-0">"{k}":</span>
-                <JsonValue value={(value as any)[k]} depth={depth + 1} />
+                <JsonValue value={(value as JsonObject)[k]} depth={depth + 1} />
               </div>
             ))}
           </div>
@@ -67,7 +87,7 @@ function JsonValue({ value, depth = 0 }: { value: any; depth?: number }) {
 
 // ─── Detail dialog ─────────────────────────────────────────────────────────────
 function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => void }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<TransactionDetail>({
     queryKey: ['admin-system-transaction', id],
     queryFn: () => apiClient.get(`/admin/system-transactions/${id}`).then(r => r.data.data),
     staleTime: 60_000,
@@ -77,10 +97,11 @@ function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => v
 
   // Extract PayChangu-specific fields from gatewayResponse
   const gwr = tx?.gatewayResponseParsed;
-  const paychanguRefId = gwr?.reference ?? gwr?.data?.reference ?? gwr?.ref_id ?? gwr?.data?.ref_id ?? null;
-  const paychanguTxId  = gwr?.id ?? gwr?.data?.id ?? null;
+  const gwrData = asObject(gwr?.data);
+  const paychanguRefId = jsonString(gwr?.reference) ?? jsonString(gwrData?.reference) ?? jsonString(gwr?.ref_id) ?? jsonString(gwrData?.ref_id);
+  const paychanguTxId  = jsonString(gwr?.id) ?? jsonString(gwrData?.id);
 
-  const fields: [string, any][] = tx ? [
+  const fields: [string, unknown][] = tx ? [
     ['ID',                tx.id],
     ['Reference (tx_ref)', tx.reference ?? '—'],
     ['PayChangu ref_id',  paychanguRefId ?? '— (see Gateway Response below)'],
@@ -90,7 +111,7 @@ function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => v
     ['Gateway',           tx.gateway ?? '—'],
     ['Country',           tx.gatewayCountry ?? '—'],
     ['Currency',          tx.currency],
-    ['Base Amount',       tx.baseAmount != null ? `${tx.currency} ${tx.baseAmount.toLocaleString()}` : '—'],
+    ['Settlement Amount', tx.baseAmount != null ? `${tx.currency} ${tx.baseAmount.toLocaleString()}` : '—'],
     ['Convenience Fee',   tx.convenienceFee != null ? `${tx.currency} ${tx.convenienceFee.toLocaleString()}` : '—'],
     ['System Fee',        tx.systemFeeAmount != null ? `${tx.currency} ${tx.systemFeeAmount.toLocaleString()}` : '—'],
     ['Rounding',          tx.ceilRoundingAmount ? `${tx.currency} ${tx.ceilRoundingAmount.toLocaleString()}` : '—'],
@@ -102,7 +123,7 @@ function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => v
     ['Campaign',          tx.campaignName ?? '—'],
     ['Campaign Category', tx.campaignCategory ?? '—'],
     ['Cell',              tx.cellName ?? '—'],
-    ['Event Tickets',     tx.tickets?.length > 0 ? tx.tickets.map((t: any) => t.ticketNumber).join(', ') : '—'],
+    ['Event Tickets',     tx.tickets?.length > 0 ? tx.tickets.map((t) => t.ticketNumber).join(', ') : '—'],
     ['Subaccount',        tx.subaccountName ?? '—'],
     ['Gateway Charge',    tx.gatewayCharge != null ? `${tx.currency} ${tx.gatewayCharge.toLocaleString()}` : '—'],
     ['Paid At',           tx.paidAt ? new Date(tx.paidAt).toLocaleString() : '—'],
@@ -202,11 +223,52 @@ function SummaryCard({ label, value, sub, icon: Icon, color }: {
       </div>
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-bold mt-0.5 truncate">{value}</p>
+        <p className="text-sm font-bold mt-0.5 whitespace-normal break-words">{value}</p>
         {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </div>
     </div>
   );
+}
+
+function CountPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border bg-card px-3 py-2">
+      <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="text-lg font-bold leading-tight">{value.toLocaleString()}</p>
+    </div>
+  );
+}
+
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getDatePresetRange(preset: DatePreset) {
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+
+  if (preset === 'today') {
+    return { from: toDateInputValue(start), to: toDateInputValue(end) };
+  }
+
+  if (preset === 'thisWeek') {
+    const mondayOffset = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - mondayOffset);
+    return { from: toDateInputValue(start), to: toDateInputValue(end) };
+  }
+
+  if (preset === 'thisMonth') {
+    start.setDate(1);
+    return { from: toDateInputValue(start), to: toDateInputValue(end) };
+  }
+
+  start.setMonth(start.getMonth() - 1, 1);
+  end.setDate(0);
+  return { from: toDateInputValue(start), to: toDateInputValue(end) };
 }
 
 export default function AdminTransactions() {
@@ -217,12 +279,15 @@ export default function AdminTransactions() {
   const [country, setCountry]   = useState('');
   const [ministry, setMinistry] = useState('');
   const [churchId, setChurchId] = useState('');
+  const [churchSearch, setChurchSearch] = useState('');
+  const [selectedChurch, setSelectedChurch] = useState<Church | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
   const [page, setPage]         = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(search, 400);
+  const debouncedChurchSearch = useDebounce(churchSearch, 300);
 
   // Load ministries for dropdown
   const { data: ministriesData } = useQuery({
@@ -232,13 +297,20 @@ export default function AdminTransactions() {
   });
   const ministries: Ministry[] = ministriesData ?? [];
 
-  // Load churches — filtered by selected ministry if set
+  // Load churches — searchable and filtered by selected ministry if set
   const { data: churchesData } = useQuery({
-    queryKey: ['admin-all-churches', ministry],
-    queryFn: () => adminApi.getAllChurches(ministry || undefined).then(r => r.data.data),
+    queryKey: ['admin-all-churches', ministry, debouncedChurchSearch],
+    queryFn: () => adminApi.getAllChurches({
+      ministryId: ministry || undefined,
+      q: debouncedChurchSearch || undefined,
+      limit: 30,
+    }).then(r => r.data.data),
     staleTime: 60_000,
   });
   const churches: Church[] = churchesData ?? [];
+  const churchOptions = selectedChurch && !churches.some(c => c.id === selectedChurch.id)
+    ? [selectedChurch, ...churches]
+    : churches;
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-system-transactions', debouncedSearch, type, status, gateway, country, ministry, churchId, dateFrom, dateTo, page],
@@ -268,6 +340,13 @@ export default function AdminTransactions() {
     t.isGuest ? (t.guestEmail ?? '') : (t.user?.email ?? '');
 
   const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const applyDatePreset = (preset: DatePreset) => {
+    const range = getDatePresetRange(preset);
+    setDateFrom(range.from);
+    setDateTo(range.to);
+    setPage(1);
+  };
 
   return (
     <div className="space-y-4">
@@ -310,7 +389,7 @@ export default function AdminTransactions() {
             { label: 'Church',           key: 'church' },
             { label: 'Campaign',         key: 'campaign' },
             { label: 'Event',            key: 'event' },
-            { label: 'Base Amount',      key: 'baseAmount' },
+            { label: 'Settlement Amount', key: 'baseAmount' },
             { label: 'Transaction Cost', key: 'transactionCost' },
             { label: 'Gateway Fee',      key: 'gatewayFee' },
             { label: 'System Fee',       key: 'systemFee' },
@@ -324,40 +403,65 @@ export default function AdminTransactions() {
             { label: 'Reference',        key: 'reference' },
             { label: 'Date',             key: 'date' },
           ]}
-          pdfColumns={['Giver','Email','Type','Church','Campaign','Event','Base Amount','Transaction Cost','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Country','Method','Status','Reference','Date']}
+          pdfColumns={['Giver','Email','Type','Church','Campaign','Event','Settlement Amount','Transaction Cost','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Country','Method','Status','Reference','Date']}
         />
       </div>
 
       {/* Summary cards — one set per currency */}
       {summary && summary.byCurrency.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <CountPill label="Completed" value={summary.byStatus?.completed ?? 0} />
+            <CountPill label="Pending" value={summary.byStatus?.pending ?? 0} />
+            <CountPill label="Giving" value={summary.byType?.donation ?? 0} />
+            <CountPill label="Event Tickets" value={summary.byType?.event_ticket ?? 0} />
+          </div>
           {summary.byCurrency.map(c => (
-            <div key={c.currency} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div key={c.currency} className="rounded-xl border bg-muted/20 p-3 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold">{c.currency} Summary</p>
+                  <p className="text-xs text-muted-foreground">{c.count.toLocaleString()} matching transaction(s)</p>
+                </div>
+                <Badge variant="outline" className="text-xs">{c.currency}</Badge>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
               <SummaryCard
-                label={`Total Charged (${c.currency})`}
+                label="Total Collected"
                 value={`${c.currency} ${fmt(c.totalCharged)}`}
-                sub={`${c.count} transactions`}
+                sub="Amount paid by donors/buyers"
                 icon={TrendingUp}
                 color="bg-accent/10 text-accent"
               />
               <SummaryCard
-                label={`Base Amount (${c.currency})`}
+                label="Settlement Amount"
                 value={`${c.currency} ${fmt(c.totalBaseAmount)}`}
+                sub="Amount due to churches"
                 icon={DollarSign}
                 color="bg-green-100 text-green-700"
               />
               <SummaryCard
-                label={`Platform Fee (${c.currency})`}
+                label="ICIMS Revenue"
                 value={`${c.currency} ${fmt(c.totalSystemFee)}`}
+                sub={`Fee ${fmt(c.totalSystemFeeOnly)} + rounding ${fmt(c.totalRounding)}`}
                 icon={Zap}
                 color="bg-purple-100 text-purple-700"
               />
               <SummaryCard
-                label={`Gateway Fee (${c.currency})`}
+                label="Gateway Cost"
                 value={`${c.currency} ${fmt(c.totalGatewayFee)}`}
+                sub="Processor/mobile money cost"
                 icon={CreditCard}
                 color="bg-blue-100 text-blue-700"
               />
+              <SummaryCard
+                label="Total Fees"
+                value={`${c.currency} ${fmt(c.totalTransactionCost)}`}
+                sub="ICIMS revenue + gateway cost"
+                icon={CreditCard}
+                color="bg-yellow-100 text-yellow-700"
+              />
+              </div>
             </div>
           ))}
         </div>
@@ -399,7 +503,13 @@ export default function AdminTransactions() {
           </SelectContent>
         </Select>
         {/* Ministry filter */}
-        <Select value={ministry} onValueChange={v => { setMinistry(v === 'all' ? '' : v); setChurchId(''); setPage(1); }}>
+        <Select value={ministry} onValueChange={v => {
+          setMinistry(v === 'all' ? '' : v);
+          setChurchId('');
+          setChurchSearch('');
+          setSelectedChurch(null);
+          setPage(1);
+        }}>
           <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="All ministries" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all" className="text-xs">All ministries</SelectItem>
@@ -409,19 +519,71 @@ export default function AdminTransactions() {
           </SelectContent>
         </Select>
         {/* Church filter — options narrow when ministry is selected */}
-        <Select value={churchId} onValueChange={v => { setChurchId(v === 'all' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="All churches" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-xs">All churches</SelectItem>
-            {churches.map(c => (
-              <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex min-w-56 flex-col gap-1">
+          <Input
+            className="h-8 text-xs"
+            value={churchSearch}
+            onChange={e => setChurchSearch(e.target.value)}
+            placeholder="Search churches..."
+          />
+          <Select
+            value={churchId || 'all'}
+            onValueChange={v => {
+              if (v === 'all') {
+                setChurchId('');
+                setSelectedChurch(null);
+              } else {
+                setChurchId(v);
+                setSelectedChurch(churchOptions.find(c => c.id === v) ?? null);
+              }
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="All churches" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">All churches</SelectItem>
+              {churchOptions.map(c => (
+                <SelectItem key={c.id} value={c.id} className="text-xs">
+                  {c.name}
+                  {c.location ? ` - ${c.location}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Input className="h-8 text-xs w-36" type="date" value={dateFrom}
           onChange={e => { setDateFrom(e.target.value); setPage(1); }} title="From date" />
         <Input className="h-8 text-xs w-36" type="date" value={dateTo}
           onChange={e => { setDateTo(e.target.value); setPage(1); }} title="To date" />
+        <div className="flex flex-wrap gap-1">
+          <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={() => applyDatePreset('today')}>
+            Today
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={() => applyDatePreset('thisWeek')}>
+            This Week
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={() => applyDatePreset('thisMonth')}>
+            This Month
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={() => applyDatePreset('lastMonth')}>
+            Last Month
+          </Button>
+          {(dateFrom || dateTo) && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => {
+                setDateFrom('');
+                setDateTo('');
+                setPage(1);
+              }}
+            >
+              Clear Dates
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -435,7 +597,7 @@ export default function AdminTransactions() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Church</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Campaign</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Event</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Amount</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Settlement</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Transaction Cost</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Gateway Fee</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ System Fee</th>
