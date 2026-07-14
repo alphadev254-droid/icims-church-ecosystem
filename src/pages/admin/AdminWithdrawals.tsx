@@ -327,6 +327,20 @@ export default function AdminWithdrawals() {
             <CountPill label="Completed" value={summary.byStatus?.completed ?? 0} />
             <CountPill label="Failed" value={summary.byStatus?.failed ?? 0} />
           </div>
+          {summary.walletBalances.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {summary.walletBalances.map(w => (
+                <SummaryCard
+                  key={w.currency}
+                  label={`${w.currency} Wallet Balance`}
+                  value={money(w.currency, w.balance)}
+                  sub={`${w.walletCount.toLocaleString()} ministry wallet(s)${ministry ? ' in selected ministry' : ' across system'}`}
+                  icon={Wallet}
+                  color="bg-emerald-100 text-emerald-700"
+                />
+              ))}
+            </div>
+          )}
           {summary.byCurrency.map(c => (
             <div key={c.currency} className="rounded-xl border bg-muted/20 p-3 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">

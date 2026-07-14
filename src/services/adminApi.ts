@@ -324,6 +324,11 @@ export interface AdminWithdrawalSummary {
   byStatus: Record<string, number>;
   byMethod: Record<string, number>;
   byCurrencyCount: Record<string, number>;
+  walletBalances: Array<{
+    currency: string;
+    balance: number;
+    walletCount: number;
+  }>;
   byCurrency: Array<{
     currency: string;
     count: number;
