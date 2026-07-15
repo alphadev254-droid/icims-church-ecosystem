@@ -230,11 +230,12 @@ export function MultiGivingDialog({
               const cells = getCellsForRow(row.campaignId);
               return (
                 <div key={index} className="rounded-md border p-2.5 sm:p-3 space-y-3">
-                  <div className={showChurchSelector ? 'grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_150px_auto]' : 'grid gap-2 sm:grid-cols-[1fr_150px_auto]'}>
-                    <div className="space-y-1">
-                      <Label className="text-xs sm:text-sm">Campaign</Label>
+                  <div className="grid gap-2">
+                    <div className={showChurchSelector ? 'grid grid-cols-2 gap-2' : 'grid gap-2'}>
+                      <div className="min-w-0 space-y-1">
+                        <Label className="text-[11px] sm:text-xs">Campaign</Label>
                       <Select value={row.campaignId} onValueChange={value => updateRow(index, { campaignId: value, cellId: '' })}>
-                        <SelectTrigger><SelectValue placeholder="Select campaign" /></SelectTrigger>
+                        <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm"><SelectValue placeholder="Select campaign" /></SelectTrigger>
                         <SelectContent>
                           {activeCampaigns.map(option => {
                             const alreadySelected = selectedIds.includes(option.id) && option.id !== row.campaignId;
@@ -248,10 +249,10 @@ export function MultiGivingDialog({
                       </Select>
                     </div>
                     {showChurchSelector && (
-                      <div className="space-y-1">
-                        <Label className="text-xs sm:text-sm">Church {rows.length > 1 ? '(all giving)' : ''} *</Label>
+                      <div className="min-w-0 space-y-1">
+                        <Label className="text-[11px] sm:text-xs">Church {rows.length > 1 ? '(all)' : ''} *</Label>
                         <Select value={selectedChurchId} onValueChange={setSelectedChurchId}>
-                          <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+                          <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm"><SelectValue placeholder="Select church" /></SelectTrigger>
                           <SelectContent>
                             {commonChurches.map(church => (
                               <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
@@ -260,17 +261,19 @@ export function MultiGivingDialog({
                         </Select>
                       </div>
                     )}
-                    <div className="space-y-1">
-                      <Label className="text-xs sm:text-sm">Amount</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={row.amount}
-                        onChange={event => updateRow(index, { amount: event.target.value })}
-                        placeholder="0"
-                      />
                     </div>
-                    <div className="flex items-end">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+                      <div className="min-w-0 space-y-1">
+                        <Label className="text-[11px] sm:text-xs">Amount</Label>
+                        <Input
+                          className="h-9 text-sm"
+                          type="number"
+                          min="1"
+                          value={row.amount}
+                          onChange={event => updateRow(index, { amount: event.target.value })}
+                          placeholder="0"
+                        />
+                      </div>
                       <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeRow(index)} disabled={rows.length === 1}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
