@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, CheckCircle2, Clock, Loader2, MapPin, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
+import { SignInDialog } from '@/pages/church-public/SignInDialog';
 
 function formatDate(value?: string | null) {
   if (!value) return '';
@@ -36,6 +38,8 @@ export function PublicQrCheckIn({
   const [memberLoading, setMemberLoading] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
   const [successName, setSuccessName] = useState<string | null>(null);
+  const [signInOpen, setSignInOpen] = useState(false);
+  const user = useAuthStore(state => state.user);
   const [form, setForm] = useState({
     guestName: '',
     guestEmail: '',
@@ -68,6 +72,13 @@ export function PublicQrCheckIn({
   }, [session]);
 
   const checkInMember = async () => {
+    if (!user) {
+      toast.message('Sign in first, then tap member check-in again.');
+      if (onRequireSignIn) onRequireSignIn();
+      else setSignInOpen(true);
+      return;
+    }
+
     setMemberLoading(true);
     try {
       const participant = await attendanceService.checkInMemberByQr(token);
@@ -78,6 +89,9 @@ export function PublicQrCheckIn({
       if (err.response?.status === 401 && onRequireSignIn) {
         toast.message('Sign in first, then tap member check-in again.');
         onRequireSignIn();
+      } else if (err.response?.status === 401) {
+        toast.message('Sign in first, then tap member check-in again.');
+        setSignInOpen(true);
       } else {
         toast.error(err.response?.data?.message || 'Could not check you in');
       }
@@ -137,6 +151,7 @@ export function PublicQrCheckIn({
   const location = session.event?.location;
 
   return (
+    <>
     <section className="min-h-[70vh] bg-[#f8fafc] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="rounded-xl bg-[#121D39] p-6 text-white shadow-xl sm:p-8">
@@ -248,5 +263,15 @@ export function PublicQrCheckIn({
         </div>
       </div>
     </section>
+    {!onRequireSignIn && (
+      <SignInDialog
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        accent={accent}
+        ministryName={displayName}
+        logoInitial={displayName.charAt(0).toUpperCase()}
+      />
+    )}
+    </>
   );
 }
