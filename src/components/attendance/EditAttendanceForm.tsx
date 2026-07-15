@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { attendanceService } from '@/services/attendance';
+import { toDateInputValue } from '@/lib/date-time';
 import { RegularServiceForm } from './RegularServiceForm';
 
 interface Props {
@@ -23,7 +24,7 @@ export function EditAttendanceForm({ record, onSubmit, isPending }: Props) {
       key={`${record.id}-${existingVisitors.length}`}
       defaultValues={{
         churchId: record.churchId,
-        date: new Date(record.date).toISOString().split('T')[0],
+        date: toDateInputValue(record.date),
         serviceType: record.serviceType,
         maleCount: record.maleCount ?? 0,
         femaleCount: record.femaleCount ?? 0,

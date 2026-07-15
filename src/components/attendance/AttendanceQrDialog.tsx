@@ -3,22 +3,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { jsPDF } from 'jspdf';
 import { attendanceService, type AttendanceRecord } from '@/services/attendance';
 import { buildPublicCheckInUrl } from '@/lib/public-links';
+import { dateTimeLocalToIso, toDateTimeLocalInputValue } from '@/lib/date-time';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, Copy, Download, FileText, ImageIcon, Loader2, Power, QrCode, RefreshCcw, Square } from 'lucide-react';
 import { toast } from 'sonner';
-
-function toLocalInputValue(value?: string | null) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const offsetMs = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
-}
 
 function safeFileName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'attendance';
@@ -37,8 +30,8 @@ export function AttendanceQrDialog({
 }) {
   const qc = useQueryClient();
   const [localRecord, setLocalRecord] = useState(record);
-  const [activeFrom, setActiveFrom] = useState(toLocalInputValue(record.qrActiveFrom));
-  const [activeUntil, setActiveUntil] = useState(toLocalInputValue(record.qrActiveUntil));
+  const [activeFrom, setActiveFrom] = useState(toDateTimeLocalInputValue(record.qrActiveFrom));
+  const [activeUntil, setActiveUntil] = useState(toDateTimeLocalInputValue(record.qrActiveUntil));
 
   const checkInUrl = useMemo(() => (
     localRecord.qrToken ? buildPublicCheckInUrl(localRecord.qrToken, subdomain) : ''
@@ -49,22 +42,31 @@ export function AttendanceQrDialog({
 
   const refreshAttendance = (updated: AttendanceRecord) => {
     setLocalRecord(updated);
-    setActiveFrom(toLocalInputValue(updated.qrActiveFrom));
-    setActiveUntil(toLocalInputValue(updated.qrActiveUntil));
+    setActiveFrom(toDateTimeLocalInputValue(updated.qrActiveFrom));
+    setActiveUntil(toDateTimeLocalInputValue(updated.qrActiveUntil));
     qc.invalidateQueries({ queryKey: ['attendance'] });
   };
 
   const saveSettings = useMutation({
-    mutationFn: () => attendanceService.updateQrSettings(localRecord.id, {
-      digitalCheckInEnabled: true,
-      qrActiveFrom: activeFrom || null,
-      qrActiveUntil: activeUntil || null,
-    }),
+    mutationFn: () => {
+      const qrActiveFrom = dateTimeLocalToIso(activeFrom);
+      const qrActiveUntil = dateTimeLocalToIso(activeUntil);
+      if (activeFrom && !qrActiveFrom) throw new Error('Invalid active from date');
+      if (activeUntil && !qrActiveUntil) throw new Error('Invalid active until date');
+      if (qrActiveFrom && qrActiveUntil && new Date(qrActiveUntil) <= new Date(qrActiveFrom)) {
+        throw new Error('Active until must be after active from');
+      }
+      return attendanceService.updateQrSettings(localRecord.id, {
+        digitalCheckInEnabled: true,
+        qrActiveFrom,
+        qrActiveUntil,
+      });
+    },
     onSuccess: (updated) => {
       refreshAttendance(updated);
       toast.success('QR settings saved');
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to save QR settings'),
+    onError: (err: any) => toast.error(err.response?.data?.message || err.message || 'Failed to save QR settings'),
   });
 
   const activateQr = useMutation({
@@ -224,11 +226,11 @@ export function AttendanceQrDialog({
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Active from</Label>
-                  <Input type="datetime-local" value={activeFrom} onChange={e => setActiveFrom(e.target.value)} disabled={!canUpdate} />
+                  <DateTimePicker value={activeFrom} onChange={setActiveFrom} disabled={!canUpdate} placeholder="Pick active from" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Active until</Label>
-                  <Input type="datetime-local" value={activeUntil} onChange={e => setActiveUntil(e.target.value)} disabled={!canUpdate} />
+                  <DateTimePicker value={activeUntil} onChange={setActiveUntil} disabled={!canUpdate} placeholder="Pick active until" />
                 </div>
               </div>
 

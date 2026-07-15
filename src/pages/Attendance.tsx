@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -22,6 +23,7 @@ import { Plus, ClipboardList, TrendingUp, Users, Trash2, Lock, Pencil, Link2, Co
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
+import { dateTimeLocalToIso, toDateTimeLocalInputValue } from '@/lib/date-time';
 import { EditAttendanceForm } from '@/components/attendance/EditAttendanceForm';
 import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
 import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
@@ -32,7 +34,7 @@ export default function AttendancePage() {
   const [startQrOpen, setStartQrOpen] = useState(false);
   const [startQrChurchId, setStartQrChurchId] = useState('');
   const [startQrServiceType, setStartQrServiceType] = useState('Sunday Service');
-  const [startQrDate, setStartQrDate] = useState(() => new Date().toISOString().slice(0, 16));
+  const [startQrDate, setStartQrDate] = useState(() => toDateTimeLocalInputValue(new Date()));
   const [startQrUntil, setStartQrUntil] = useState('');
   const [editRecord, setEditRecord] = useState<any | null>(null);
   const [viewRecord, setViewRecord] = useState<any | null>(null);
@@ -259,7 +261,7 @@ export default function AttendancePage() {
               onClick={() => {
                 setStartQrChurchId(churchFilter !== 'all' ? churchFilter : (churches[0]?.id || ''));
                 setStartQrServiceType('Sunday Service');
-                setStartQrDate(new Date().toISOString().slice(0, 16));
+                setStartQrDate(toDateTimeLocalInputValue(new Date()));
                 setStartQrOpen(true);
               }}
             >
@@ -271,7 +273,7 @@ export default function AttendancePage() {
               onClick={() => {
                 setStartQrChurchId(churchFilter !== 'all' ? churchFilter : (churches[0]?.id || ''));
                 setStartQrServiceType('Sunday Service');
-                setStartQrDate(new Date().toISOString().slice(0, 16));
+                setStartQrDate(toDateTimeLocalInputValue(new Date()));
                 setDialogOpen(true);
               }}
             >
@@ -588,8 +590,8 @@ export default function AttendancePage() {
                                       setRowLinkMode('scanner');
                                       const existingLink = (r as any).sharedAccessLink;
                                       setScannerLink(existingLink?.type === 'attendance_scanner' ? `${window.location.origin}/attendance/scan/${existingLink.token}` : '');
-                                      setScannerLinkValidFrom(new Date().toISOString().slice(0, 16));
-                                      setScannerLinkExpiresAt(existingLink?.type === 'attendance_scanner' && existingLink.expiresAt ? new Date(existingLink.expiresAt).toISOString().slice(0, 16) : '');
+                                      setScannerLinkValidFrom(toDateTimeLocalInputValue(new Date()));
+                                      setScannerLinkExpiresAt(existingLink?.type === 'attendance_scanner' && existingLink.expiresAt ? toDateTimeLocalInputValue(existingLink.expiresAt) : '');
                                       setScannerLinkUsageLimit('');
                                       setScannerLinkAccessCode('');
                                     }}
@@ -618,8 +620,8 @@ export default function AttendancePage() {
                                       setRowLinkMode('entry');
                                       const existingLink = (r as any).sharedAccessLink;
                                       setScannerLink(existingLink?.type === 'attendance' ? `${window.location.origin}/attendance/enter/${existingLink.token}` : '');
-                                      setScannerLinkValidFrom(new Date().toISOString().slice(0, 16));
-                                      setScannerLinkExpiresAt(existingLink?.type === 'attendance' && existingLink.expiresAt ? new Date(existingLink.expiresAt).toISOString().slice(0, 16) : '');
+                                      setScannerLinkValidFrom(toDateTimeLocalInputValue(new Date()));
+                                      setScannerLinkExpiresAt(existingLink?.type === 'attendance' && existingLink.expiresAt ? toDateTimeLocalInputValue(existingLink.expiresAt) : '');
                                       setScannerLinkUsageLimit('');
                                       setScannerLinkAccessCode('');
                                     }}
@@ -708,19 +710,23 @@ export default function AttendancePage() {
             </div>
             <div className="space-y-1.5">
               <Label>Date / Time</Label>
-              <Input type="datetime-local" value={startQrDate} onChange={e => setStartQrDate(e.target.value)} disabled={createAttendanceMutation.isPending} />
+              <DateTimePicker value={startQrDate} onChange={setStartQrDate} disabled={createAttendanceMutation.isPending} placeholder="Pick attendance date and time" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={createAttendanceMutation.isPending}>Cancel</Button>
               <Button
                 disabled={createAttendanceMutation.isPending || !startQrChurchId || !startQrDate}
-                onClick={() => createAttendanceMutation.mutate({
-                  churchId: startQrChurchId,
-                  date: startQrDate,
-                  serviceType: startQrServiceType,
-                  totalAttendees: 0,
-                  newVisitors: 0,
-                })}
+                onClick={() => {
+                  const date = dateTimeLocalToIso(startQrDate);
+                  if (!date) { toast.error('Please enter a valid attendance date and time'); return; }
+                  createAttendanceMutation.mutate({
+                    churchId: startQrChurchId,
+                    date,
+                    serviceType: startQrServiceType,
+                    totalAttendees: 0,
+                    newVisitors: 0,
+                  });
+                }}
               >
                 {createAttendanceMutation.isPending ? 'Starting...' : 'Start Manual Attendance'}
               </Button>
@@ -771,24 +777,34 @@ export default function AttendancePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Date / Time</Label>
-                <Input type="datetime-local" value={startQrDate} onChange={e => setStartQrDate(e.target.value)} disabled={startQrMutation.isPending} />
+                <DateTimePicker value={startQrDate} onChange={setStartQrDate} disabled={startQrMutation.isPending} placeholder="Pick attendance date and time" />
               </div>
               <div className="space-y-1.5">
                 <Label>Active until</Label>
-                <Input type="datetime-local" value={startQrUntil} onChange={e => setStartQrUntil(e.target.value)} disabled={startQrMutation.isPending} />
+                <DateTimePicker value={startQrUntil} onChange={setStartQrUntil} disabled={startQrMutation.isPending} placeholder="Pick active until" />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setStartQrOpen(false)} disabled={startQrMutation.isPending}>Cancel</Button>
               <Button
                 disabled={startQrMutation.isPending || !startQrChurchId || !startQrDate}
-                onClick={() => startQrMutation.mutate({
-                  churchId: startQrChurchId,
-                  date: startQrDate,
-                  serviceType: startQrServiceType,
-                  qrActiveFrom: startQrDate,
-                  qrActiveUntil: startQrUntil || null,
-                })}
+                onClick={() => {
+                  const date = dateTimeLocalToIso(startQrDate);
+                  const qrActiveUntil = dateTimeLocalToIso(startQrUntil);
+                  if (!date) { toast.error('Please enter a valid attendance date and time'); return; }
+                  if (startQrUntil && !qrActiveUntil) { toast.error('Please enter a valid active until time'); return; }
+                  if (qrActiveUntil && new Date(qrActiveUntil) <= new Date(date)) {
+                    toast.error('Active until must be after the attendance start time');
+                    return;
+                  }
+                  startQrMutation.mutate({
+                    churchId: startQrChurchId,
+                    date,
+                    serviceType: startQrServiceType,
+                    qrActiveFrom: date,
+                    qrActiveUntil,
+                  });
+                }}
               >
                 {startQrMutation.isPending ? 'Starting...' : 'Start and Open QR'}
               </Button>
@@ -854,11 +870,11 @@ export default function AttendancePage() {
             <div className="space-y-4">
               <div>
                 <Label>Valid From</Label>
-                <Input type="datetime-local" value={scannerLinkValidFrom} onChange={e => setScannerLinkValidFrom(e.target.value)} />
+                <DateTimePicker value={scannerLinkValidFrom} onChange={setScannerLinkValidFrom} placeholder="Pick valid from" />
               </div>
               <div>
                 <Label>Expires At</Label>
-                <Input type="datetime-local" value={scannerLinkExpiresAt} onChange={e => setScannerLinkExpiresAt(e.target.value)} />
+                <DateTimePicker value={scannerLinkExpiresAt} onChange={setScannerLinkExpiresAt} placeholder="Pick expiry time" />
               </div>
               <div>
                 <Label>Usage Limit (optional)</Label>
