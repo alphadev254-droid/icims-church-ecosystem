@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { HandCoins, Share2, Copy, Check, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { givingService } from '@/services/giving';
 
@@ -15,6 +15,7 @@ export default function PublicCampaignPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const churchIdParam = searchParams.get('churchId') || '';
+  const churchIdsParam = searchParams.get('churchIds') || '';
   const [copied, setCopied] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,16 +31,30 @@ export default function PublicCampaignPage() {
     enabled: !!id,
   });
   const campaignUrl = window.location.href;
-  const availableChurches = campaign?.availableChurches || (campaign?.churchId ? [{ id: campaign.churchId, name: campaign.church?.name || 'Church' }] : []);
-  const hasLockedChurch = !!churchIdParam && availableChurches.some(church => church.id === churchIdParam);
+  const campaignChurches = campaign?.availableChurches || (campaign?.churchId ? [{ id: campaign.churchId, name: campaign.church?.name || 'Church' }] : []);
+  const linkedChurchIds = useMemo(() => {
+    const fromMulti = churchIdsParam
+      .split(',')
+      .map(id => id.trim())
+      .filter(Boolean);
+    return fromMulti.length > 0 ? fromMulti : churchIdParam ? [churchIdParam] : [];
+  }, [churchIdParam, churchIdsParam]);
+  const hasChurchRestriction = linkedChurchIds.length > 0;
+  const availableChurches = hasChurchRestriction
+    ? campaignChurches.filter(church => linkedChurchIds.includes(church.id))
+    : campaignChurches;
+  const hasLockedChurch = linkedChurchIds.length === 1 && availableChurches.some(church => church.id === linkedChurchIds[0]);
   const resolvedChurchId = availableChurches.length === 1 ? availableChurches[0].id : selectedChurchId;
 
   useEffect(() => {
-    if (!churchIdParam || availableChurches.length <= 1) return;
     if (hasLockedChurch) {
-      setSelectedChurchId(churchIdParam);
+      setSelectedChurchId(linkedChurchIds[0]);
+      return;
     }
-  }, [availableChurches, churchIdParam, hasLockedChurch]);
+    if (selectedChurchId && !availableChurches.some(church => church.id === selectedChurchId)) {
+      setSelectedChurchId('');
+    }
+  }, [availableChurches, hasLockedChurch, linkedChurchIds, selectedChurchId]);
 
   // Load cells for fellowship_offering campaigns
   const { data: cells = [] } = useQuery({

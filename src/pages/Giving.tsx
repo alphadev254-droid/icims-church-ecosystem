@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -287,7 +288,7 @@ export default function GivingPage() {
   const [donateCampaign, setDonateCampaign] = useState<GivingCampaign | null>(null);
   const [pledgeCampaign, setPledgeCampaign] = useState<GivingCampaign | null>(null);
   const [shareCampaign, setShareCampaign] = useState<GivingCampaign | null>(null);
-  const [selectedShareChurchId, setSelectedShareChurchId] = useState('');
+  const [selectedShareChurchIds, setSelectedShareChurchIds] = useState<string[]>([]);
   const [donateAmount, setDonateAmount] = useState('');
   const [donateCellId, setDonateCellId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -426,11 +427,12 @@ export default function GivingPage() {
   const openShareDialog = (campaign: GivingCampaign) => {
     const options = getCampaignShareChurches(campaign);
     setShareCampaign(campaign);
-    setSelectedShareChurchId(options[0]?.id || '');
+    setSelectedShareChurchIds(options.map(church => church.id));
   };
 
-  const copyPublicLink = (campaign: GivingCampaign, churchId?: string) => {
-    const url = buildPublicGivingUrl(campaign.id, user?.subdomain, churchId);
+  const copyPublicLink = (campaign: GivingCampaign, churchIds?: string[]) => {
+    const ids = churchIds?.length ? churchIds : undefined;
+    const url = buildPublicGivingUrl(campaign.id, user?.subdomain, ids);
     navigator.clipboard.writeText(url);
     setCopiedCampaignId(campaign.id);
     toast.success('Public link copied!');
@@ -438,21 +440,37 @@ export default function GivingPage() {
   };
 
   const shareWhatsApp = (campaign: GivingCampaign) => {
-    const url = buildPublicGivingUrl(campaign.id, user?.subdomain, selectedShareChurchId || undefined);
+    if (selectedShareChurchIds.length === 0) {
+      toast.error('Select at least one church');
+      return;
+    }
+    const url = buildPublicGivingUrl(campaign.id, user?.subdomain, selectedShareChurchIds);
     const text = encodeURIComponent(`Support our campaign: ${campaign.name}\n${url}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
   const shareFacebook = (campaign: GivingCampaign) => {
-    const url = encodeURIComponent(buildPublicGivingUrl(campaign.id, user?.subdomain, selectedShareChurchId || undefined));
+    if (selectedShareChurchIds.length === 0) {
+      toast.error('Select at least one church');
+      return;
+    }
+    const url = encodeURIComponent(buildPublicGivingUrl(campaign.id, user?.subdomain, selectedShareChurchIds));
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
   const shareChurches = shareCampaign ? getCampaignShareChurches(shareCampaign) : [];
-  const qrGivingUrl = shareCampaign ? buildPublicGivingUrl(shareCampaign.id, user?.subdomain, selectedShareChurchId || undefined) : '';
+  const qrGivingUrl = shareCampaign && selectedShareChurchIds.length > 0
+    ? buildPublicGivingUrl(shareCampaign.id, user?.subdomain, selectedShareChurchIds)
+    : '';
   const qrImageUrl = qrGivingUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(qrGivingUrl)}`
     : '';
+
+  const toggleShareChurch = (churchId: string, checked: boolean) => {
+    setSelectedShareChurchIds(prev => checked
+      ? [...prev, churchId].filter((id, index, arr) => arr.indexOf(id) === index)
+      : prev.filter(id => id !== churchId));
+  };
 
   const downloadGivingQrPng = async () => {
     if (!shareCampaign || !qrImageUrl) return;
@@ -967,34 +985,58 @@ export default function GivingPage() {
           {shareCampaign && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <Label className="text-xs">Church</Label>
-                <Select value={selectedShareChurchId} onValueChange={setSelectedShareChurchId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select church" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {shareChurches.map(church => (
-                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-xs">Churches for this link</Label>
+                  <span className="text-[11px] text-muted-foreground">
+                    {selectedShareChurchIds.length} selected
+                  </span>
+                </div>
+                <div className="max-h-44 overflow-y-auto rounded-md border">
+                  {shareChurches.map(church => {
+                    const checked = selectedShareChurchIds.includes(church.id);
+                    return (
+                      <label
+                        key={church.id}
+                        className="flex cursor-pointer items-center gap-2 border-b px-3 py-2 text-sm last:border-b-0 hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={value => toggleShareChurch(church.id, value === true)}
+                        />
+                        <span className="min-w-0 flex-1 truncate">{church.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  The public giving page will only show the churches checked here.
+                </p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-4 text-center">
-                <img
-                  src={qrImageUrl}
-                  alt={`${shareCampaign.name} giving QR code`}
-                  className="mx-auto h-64 w-64 rounded-md bg-white p-2"
-                />
+                {qrImageUrl ? (
+                  <img
+                    src={qrImageUrl}
+                    alt={`${shareCampaign.name} giving QR code`}
+                    className="mx-auto h-64 w-64 rounded-md bg-white p-2"
+                  />
+                ) : (
+                  <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                    Select at least one church to generate the QR code.
+                  </div>
+                )}
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-semibold leading-snug">{shareCampaign.name}</p>
-                <p className="break-all rounded-md bg-muted p-3 text-xs text-muted-foreground">{qrGivingUrl}</p>
+                <p className="break-all rounded-md bg-muted p-3 text-xs text-muted-foreground">
+                  {qrGivingUrl || 'No link generated yet.'}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={!qrGivingUrl}
                   onClick={async () => {
                     await navigator.clipboard.writeText(qrGivingUrl);
                     toast.success('Giving link copied');
@@ -1013,7 +1055,7 @@ export default function GivingPage() {
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="outline" size="sm">
+                    <Button type="button" variant="outline" size="sm" disabled={!qrGivingUrl}>
                       <Download className="mr-2 h-4 w-4" />
                       Download QR
                       <ChevronDown className="ml-2 h-3.5 w-3.5" />

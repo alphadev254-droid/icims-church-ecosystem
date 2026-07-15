@@ -6,9 +6,15 @@ export function getPublicSiteOrigin(subdomain?: string | null) {
   return `https://${host}`;
 }
 
-export function buildPublicGivingUrl(campaignId: string, subdomain?: string | null, churchId?: string | null) {
+export function buildPublicGivingUrl(campaignId: string, subdomain?: string | null, churchIds?: string | string[] | null) {
   const url = `${getPublicSiteOrigin(subdomain)}/giving/${campaignId}`;
-  return churchId ? `${url}?churchId=${encodeURIComponent(churchId)}` : url;
+  const ids = (Array.isArray(churchIds) ? churchIds : churchIds ? [churchIds] : [])
+    .map(id => id.trim())
+    .filter(Boolean);
+
+  if (ids.length === 0) return url;
+  if (ids.length === 1) return `${url}?churchId=${encodeURIComponent(ids[0])}`;
+  return `${url}?churchIds=${encodeURIComponent(ids.join(','))}`;
 }
 
 export function buildPublicEventUrl(eventId: string, subdomain?: string | null) {

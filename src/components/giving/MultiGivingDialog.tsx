@@ -33,6 +33,7 @@ interface MultiGivingDialogProps {
   campaigns: CampaignOption[];
   initialCampaignId?: string;
   initialChurchId?: string;
+  allowedChurchIds?: string[];
   lockInitialCampaign?: boolean;
   lockInitialChurch?: boolean;
   mode: 'member' | 'guest';
@@ -50,6 +51,7 @@ export function MultiGivingDialog({
   campaigns,
   initialCampaignId,
   initialChurchId,
+  allowedChurchIds,
   lockInitialCampaign = false,
   lockInitialChurch = false,
   mode,
@@ -79,6 +81,10 @@ export function MultiGivingDialog({
     () => rows.map(row => campaignMap.get(row.campaignId)).filter(Boolean) as CampaignOption[],
     [campaignMap, rows],
   );
+  const allowedChurchSet = useMemo(
+    () => allowedChurchIds?.length ? new Set(allowedChurchIds) : null,
+    [allowedChurchIds],
+  );
   const commonChurches = useMemo(() => {
     if (selectedCampaigns.length === 0) return [];
     const toChurches = (campaign: CampaignOption) => {
@@ -91,8 +97,11 @@ export function MultiGivingDialog({
       const ids = new Set(toChurches(campaign).map(church => church.id));
       common = common.filter(church => ids.has(church.id));
     }
+    if (allowedChurchSet) {
+      common = common.filter(church => allowedChurchSet.has(church.id));
+    }
     return common;
-  }, [selectedCampaigns]);
+  }, [allowedChurchSet, selectedCampaigns]);
   const resolvedChurchId = mode === 'member'
     ? (memberChurchId || '')
     : (commonChurches.length === 1 ? commonChurches[0].id : selectedChurchId);

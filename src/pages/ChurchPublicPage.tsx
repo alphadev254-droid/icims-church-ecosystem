@@ -181,13 +181,19 @@ function PublicGivingDetail({ campaign, campaigns, accent, ministryName }: {
   ministryName: string;
 }) {
   const [giveOpen, setGiveOpen] = useState(false);
-  const churchIdParam = new URLSearchParams(window.location.search).get('churchId') || '';
+  const searchParams = new URLSearchParams(window.location.search);
+  const churchIdParam = searchParams.get('churchId') || '';
+  const churchIdsParam = searchParams.get('churchIds') || '';
   const campaignChurches = campaign.availableChurches?.length
     ? campaign.availableChurches
     : campaign.churchId
       ? [{ id: campaign.churchId }]
       : [];
-  const initialChurchId = campaignChurches.some(church => church.id === churchIdParam) ? churchIdParam : undefined;
+  const linkedChurchIds = (churchIdsParam
+    ? churchIdsParam.split(',').map(id => id.trim()).filter(Boolean)
+    : churchIdParam ? [churchIdParam] : [])
+    .filter(id => campaignChurches.some(church => church.id === id));
+  const initialChurchId = linkedChurchIds.length === 1 ? linkedChurchIds[0] : undefined;
 
   return (
     <>
@@ -233,9 +239,10 @@ function PublicGivingDetail({ campaign, campaigns, accent, ministryName }: {
         onOpenChange={setGiveOpen}
         campaigns={campaigns}
         initialCampaignId={campaign.id}
-        initialChurchId={initialChurchId}
-        lockInitialCampaign={!!initialChurchId}
-        lockInitialChurch={!!initialChurchId}
+        initialChurchId={initialChurchId || linkedChurchIds[0]}
+        allowedChurchIds={linkedChurchIds}
+        lockInitialCampaign={linkedChurchIds.length > 0}
+        lockInitialChurch={linkedChurchIds.length === 1}
         mode="guest"
       />
     </>
