@@ -71,6 +71,14 @@ export default function AttendanceDetailPage() {
     if (age <= 59) return '36-59';
     return '60+';
   };
+  const getAgeGroupLabel = (ageBracket?: string | null) => {
+    if (ageBracket === '0-12') return 'Children';
+    if (ageBracket === '13-17') return 'Youth';
+    if (ageBracket === '18-35') return 'Young Adults';
+    if (ageBracket === '36-59') return 'Adults';
+    if (ageBracket === '60+') return 'Seniors';
+    return '';
+  };
   const getMemberAgeMeta = (memberType?: string | null, dateOfBirth?: string | null) => {
     const normalizedType = (memberType || '').toLowerCase();
     const age = getAge(dateOfBirth);
@@ -110,6 +118,7 @@ export default function AttendanceDetailPage() {
       gender: participant.user?.gender || participant.guestGender || '',
       ageLabel: participant.user ? memberAgeMeta?.ageLabel || '' : participant.guestAgeBracket || '',
       ageBracket: participant.user ? memberAgeMeta?.ageBracket || '' : getAgeBracket(null, participant.guestAgeBracket),
+      ageGroupLabel: getAgeGroupLabel(participant.user ? memberAgeMeta?.ageBracket || '' : getAgeBracket(null, participant.guestAgeBracket)),
       memberTypeLabel,
       participantType,
       homeChurch: participant.user ? participant.user.church?.name || record.church?.name || '' : participant.ministryMember?.church?.name || '',
@@ -132,6 +141,7 @@ export default function AttendanceDetailPage() {
       gender: meta.gender || '',
       age: meta.ageLabel || '',
       ageBracket: meta.ageBracket || '',
+      ageGroup: meta.ageGroupLabel || '',
       type: meta.participantType,
       memberType: meta.memberTypeLabel || '',
       homeChurch: meta.homeChurch || '',
@@ -154,6 +164,7 @@ export default function AttendanceDetailPage() {
     { label: 'Gender', key: 'gender' },
     { label: 'Age', key: 'age' },
     { label: 'Age Bracket', key: 'ageBracket' },
+    { label: 'Age Group', key: 'ageGroup' },
     { label: 'Type', key: 'type' },
     { label: 'Member Type', key: 'memberType' },
     { label: 'Home Church', key: 'homeChurch' },
@@ -298,8 +309,9 @@ export default function AttendanceDetailPage() {
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                     <span>Gender: <strong className="text-foreground">{meta.gender || '-'}</strong></span>
                     <span>Age: <strong className="text-foreground">{meta.ageLabel || '-'}</strong></span>
+                    <span>Age group: <strong className="text-foreground">{meta.ageGroupLabel || '-'}</strong></span>
                     <span>Member type: <strong className="text-foreground capitalize">{meta.memberTypeLabel || '-'}</strong></span>
-                    <span>Home church: <strong className="text-foreground">{meta.homeChurch || '-'}</strong></span>
+                    <span className="col-span-2">Home church: <strong className="text-foreground">{meta.homeChurch || '-'}</strong></span>
                     <span className="col-span-2">Checked in: {new Date(participant.checkedInAt).toLocaleString()}</span>
                   </div>
                 </div>
@@ -316,6 +328,7 @@ export default function AttendanceDetailPage() {
                   <TableHead>Contact</TableHead>
                   <TableHead>Gender</TableHead>
                   <TableHead>Age</TableHead>
+                  <TableHead>Age Group</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Member Type</TableHead>
                   <TableHead>Home Church</TableHead>
@@ -325,7 +338,7 @@ export default function AttendanceDetailPage() {
               </TableHeader>
               <TableBody>
                 {participantsLoading ? (
-                  <TableRow><TableCell colSpan={9} className="py-10 text-center text-muted-foreground">Loading participants...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="py-10 text-center text-muted-foreground">Loading participants...</TableCell></TableRow>
                 ) : filteredParticipants.length ? filteredParticipants.map(participant => {
                   const meta = getParticipantMeta(participant);
                   return (
@@ -334,6 +347,7 @@ export default function AttendanceDetailPage() {
                       <TableCell className="text-sm text-muted-foreground">{meta.contact}</TableCell>
                       <TableCell className="text-sm capitalize text-muted-foreground">{meta.gender || '-'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{meta.ageLabel || '-'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{meta.ageGroupLabel || '-'}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{meta.participantType}</Badge>
                       </TableCell>
@@ -344,7 +358,7 @@ export default function AttendanceDetailPage() {
                     </TableRow>
                   );
                 }) : (
-                  <TableRow><TableCell colSpan={9} className="py-10 text-center text-muted-foreground">No participants match the filters.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="py-10 text-center text-muted-foreground">No participants match the filters.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
