@@ -14,6 +14,9 @@ type CampaignOption = {
   category: string;
   currency: string;
   status?: string;
+  churchId?: string;
+  church?: { id?: string; name: string };
+  availableChurches?: Array<{ id: string; name: string }>;
 };
 
 type CellOption = { id: string; name: string; zone?: string | null };
@@ -30,6 +33,7 @@ interface MultiGivingDialogProps {
   campaigns: CampaignOption[];
   initialCampaignId?: string;
   mode: 'member' | 'guest';
+  memberChurchId?: string | null;
   memberCells?: CellOption[];
 }
 
@@ -43,6 +47,7 @@ export function MultiGivingDialog({
   campaigns,
   initialCampaignId,
   mode,
+  memberChurchId,
   memberCells = [],
 }: MultiGivingDialogProps) {
   const activeCampaigns = useMemo(
@@ -54,26 +59,54 @@ export function MultiGivingDialog({
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
+  const [selectedChurchId, setSelectedChurchId] = useState('');
   const [publicCellsByCampaign, setPublicCellsByCampaign] = useState<Record<string, CellOption[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setRows([emptyRow(initialCampaignId || activeCampaigns[0]?.id || '')]);
+    setSelectedChurchId('');
   }, [activeCampaigns, initialCampaignId, open]);
+
+  const selectedCampaigns = useMemo(
+    () => rows.map(row => campaignMap.get(row.campaignId)).filter(Boolean) as CampaignOption[],
+    [campaignMap, rows],
+  );
+  const commonChurches = useMemo(() => {
+    if (selectedCampaigns.length === 0) return [];
+    const toChurches = (campaign: CampaignOption) => {
+      if (campaign.availableChurches?.length) return campaign.availableChurches;
+      if (campaign.churchId) return [{ id: campaign.churchId, name: campaign.church?.name || 'Church' }];
+      return [];
+    };
+    let common = toChurches(selectedCampaigns[0]);
+    for (const campaign of selectedCampaigns.slice(1)) {
+      const ids = new Set(toChurches(campaign).map(church => church.id));
+      common = common.filter(church => ids.has(church.id));
+    }
+    return common;
+  }, [selectedCampaigns]);
+  const resolvedChurchId = mode === 'member'
+    ? (memberChurchId || '')
+    : (commonChurches.length === 1 ? commonChurches[0].id : selectedChurchId);
+
+  useEffect(() => {
+    if (mode === 'guest') setPublicCellsByCampaign({});
+  }, [mode, resolvedChurchId]);
 
   useEffect(() => {
     if (!open || mode !== 'guest') return;
     const fellowshipIds = rows
       .map(row => row.campaignId)
-      .filter(id => campaignMap.get(id)?.category === 'fellowship_offering' && !publicCellsByCampaign[id]);
+      .filter(id => campaignMap.get(id)?.category === 'fellowship_offering' && !!resolvedChurchId && !publicCellsByCampaign[id]);
 
     [...new Set(fellowshipIds)].forEach(campaignId => {
-      givingService.getPublicCampaignCells(campaignId)
+      givingService.getPublicCampaignCells(campaignId, resolvedChurchId || undefined)
         .then(cells => setPublicCellsByCampaign(prev => ({ ...prev, [campaignId]: cells })))
         .catch(() => setPublicCellsByCampaign(prev => ({ ...prev, [campaignId]: [] })));
     });
-  }, [campaignMap, mode, open, publicCellsByCampaign, rows]);
+  }, [campaignMap, mode, open, publicCellsByCampaign, resolvedChurchId, rows]);
 
   const selectedIds = rows.map(row => row.campaignId).filter(Boolean);
   const total = rows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
@@ -122,6 +155,16 @@ export function MultiGivingDialog({
       return;
     }
 
+    if (mode === 'member') {
+      if (!memberChurchId || !commonChurches.some(church => church.id === memberChurchId)) {
+        toast.error('This campaign is not available for your church');
+        return;
+      }
+    } else if (!resolvedChurchId) {
+      toast.error('Select the church this giving should go to');
+      return;
+    }
+
     for (const row of normalized) {
       const campaign = campaignMap.get(row.campaignId);
       if (campaign?.category === 'fellowship_offering' && !row.cellId) {
@@ -135,11 +178,12 @@ export function MultiGivingDialog({
       const result = mode === 'guest'
         ? await givingService.guestDonateMultiple({
             items: normalized,
+            churchId: resolvedChurchId,
             guestName: guestName.trim(),
             guestEmail: guestEmail.trim(),
             guestPhone: guestPhone.trim() || undefined,
           })
-        : await givingService.donateMultiple({ items: normalized });
+        : await givingService.donateMultiple({ items: normalized, churchId: resolvedChurchId });
 
       if (result?.authorization_url) {
         window.location.href = result.authorization_url;
@@ -175,6 +219,20 @@ export function MultiGivingDialog({
                 <Label>Phone (optional)</Label>
                 <Input value={guestPhone} onChange={event => setGuestPhone(event.target.value)} placeholder="+265 999 000 000" />
               </div>
+            </div>
+          )}
+
+          {mode === 'guest' && commonChurches.length > 1 && (
+            <div className="space-y-1">
+              <Label>Church *</Label>
+              <Select value={selectedChurchId} onValueChange={setSelectedChurchId}>
+                <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+                <SelectContent>
+                  {commonChurches.map(church => (
+                    <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

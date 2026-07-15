@@ -43,13 +43,16 @@ export interface PublicEvent {
 
 export interface PublicCampaign {
   id: string;
+  churchId?: string;
+  scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
+  availableChurches?: Array<{ id: string; name: string }>;
   name: string;
   description?: string;
   category: string;
   targetAmount?: number;
   currency: string;
   imageUrl?: string;
-  church: { name: string };
+  church: { id?: string; name: string };
 }
 
 export interface PublicSermon {

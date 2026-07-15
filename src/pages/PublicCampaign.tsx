@@ -17,6 +17,7 @@ export default function PublicCampaignPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ guestName: '', guestEmail: '', guestPhone: '', amount: '' });
+  const [selectedChurchId, setSelectedChurchId] = useState('');
   const [cellId, setCellId] = useState('');
   const [fees, setFees] = useState<{ currency: string; baseAmount: number; convenienceFee: number; systemFeeAmount: number; totalAmount: number } | null>(null);
   const [feesLoading, setFeesLoading] = useState(false);
@@ -26,15 +27,16 @@ export default function PublicCampaignPage() {
     queryFn: () => givingService.getPublicCampaign(id!),
     enabled: !!id,
   });
+  const campaignUrl = window.location.href;
+  const availableChurches = campaign?.availableChurches || (campaign?.churchId ? [{ id: campaign.churchId, name: campaign.church?.name || 'Church' }] : []);
+  const resolvedChurchId = availableChurches.length === 1 ? availableChurches[0].id : selectedChurchId;
 
   // Load cells for fellowship_offering campaigns
   const { data: cells = [] } = useQuery({
-    queryKey: ['public-campaign-cells', id],
-    queryFn: () => givingService.getPublicCampaignCells(id!),
-    enabled: !!id && campaign?.category === 'fellowship_offering',
+    queryKey: ['public-campaign-cells', id, selectedChurchId],
+    queryFn: () => givingService.getPublicCampaignCells(id!, resolvedChurchId || undefined),
+    enabled: !!id && campaign?.category === 'fellowship_offering' && (availableChurches.length <= 1 || !!resolvedChurchId),
   });
-
-  const campaignUrl = window.location.href;
 
   const copyLink = () => {
     navigator.clipboard.writeText(campaignUrl);
@@ -59,7 +61,7 @@ export default function PublicCampaignPage() {
     try {
       const { default: apiClient } = await import('@/lib/api-client');
       const { data } = await apiClient.get('/payments/guest-donation/fees', {
-        params: { campaignId: id, amount },
+        params: { campaignId: id, amount, churchId: resolvedChurchId || undefined },
       });
       setFees(data.data);
     } catch {
@@ -89,10 +91,15 @@ export default function PublicCampaignPage() {
       toast.error('Please select your cell/fellowship');
       return;
     }
+    if (availableChurches.length > 1 && !resolvedChurchId) {
+      toast.error('Please select your church');
+      return;
+    }
     setLoading(true);
     try {
       const result = await givingService.guestDonate({
         campaignId: id!,
+        churchId: resolvedChurchId || undefined,
         amount,
         guestName: form.guestName.trim(),
         guestEmail: form.guestEmail.trim(),
@@ -234,6 +241,22 @@ export default function PublicCampaignPage() {
                 onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))}
               />
             </div>
+
+            {availableChurches.length > 1 && (
+              <div className="space-y-1">
+                <Label>Church <span className="text-destructive">*</span></Label>
+                <Select value={selectedChurchId} onValueChange={value => { setSelectedChurchId(value); setCellId(''); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select church" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableChurches.map(church => (
+                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Cell dropdown — only for fellowship_offering */}
             {campaign?.category === 'fellowship_offering' && (

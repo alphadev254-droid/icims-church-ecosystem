@@ -33,7 +33,9 @@ import { STALE_TIME } from '@/lib/query-config';
 import { buildPublicGivingUrl } from '@/lib/public-links';
 
 const campaignSchema = z.object({
-  churchId: z.string().min(1, 'Church required'),
+  churchId: z.string().optional().default(''),
+  scopeType: z.enum(['one_church', 'selected_churches', 'all_churches']).default('one_church'),
+  churchIds: z.array(z.string()).default([]),
   name: z.string().min(1, 'Campaign name required'),
   description: z.preprocess(value => value ?? undefined, z.string().optional()),
   category: z.enum(['tithe', 'offering', 'fellowship_offering', 'partnership', 'welfare', 'missions']),
@@ -50,6 +52,13 @@ const campaignSchema = z.object({
   endDate: z.preprocess(value => value ?? undefined, z.string().optional()),
   allowPublicDonations: z.boolean().default(false),
   allowPledging: z.boolean().default(false),
+}).superRefine((value, ctx) => {
+  if (value.scopeType === 'one_church' && !value.churchId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['churchId'], message: 'Church required' });
+  }
+  if (value.scopeType === 'selected_churches' && value.churchIds.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['churchIds'], message: 'Select at least one church' });
+  }
 });
 
 type CampaignFormValues = z.infer<typeof campaignSchema>;
@@ -94,12 +103,13 @@ function getSummaryDateRange(period: GivingSummaryPeriod, customStart: string, c
   };
 }
 
-function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditing = false }: {
+function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditing = false, churches = [] }: {
   defaultValues?: Partial<CampaignFormValues>;
   onSubmit: (v: CampaignFormValues) => void;
   isPending: boolean;
   submitLabel: string;
   isEditing?: boolean;
+  churches?: Array<{ id: string; name: string }>;
 }) {
   const { register, handleSubmit, setValue, watch, formState: { errors, isValid } } = useForm<CampaignFormValues>({
     resolver: zodResolver(campaignSchema),
@@ -107,6 +117,8 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditi
   });
 
   const churchId = watch('churchId');
+  const scopeType = watch('scopeType');
+  const selectedChurchIds = watch('churchIds') || [];
   const category = watch('category');
   const allowPublicDonations = watch('allowPublicDonations');
   const allowPledging = watch('allowPledging');
@@ -126,10 +138,56 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditi
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit, handleInvalid)} className="space-y-3 sm:space-y-4">
-      <div className={isEditing ? 'opacity-60 pointer-events-none' : ''}>
-        <ChurchSelect value={churchId} onValueChange={v => setValue('churchId', v, { shouldValidate: true })} />
-        {isEditing && <p className="text-xs text-muted-foreground mt-1">Church cannot be changed after creation.</p>}
-        {!isEditing && errors.churchId && <p className="text-xs text-destructive">{errors.churchId.message}</p>}
+      <div className="space-y-2 rounded-md border p-2 sm:p-3">
+        <Label className="text-xs sm:text-sm">Campaign Availability</Label>
+        <Select value={scopeType} onValueChange={value => {
+          setValue('scopeType', value as CampaignFormValues['scopeType'], { shouldValidate: true, shouldDirty: true });
+          if (value === 'one_church') setValue('churchIds', [], { shouldValidate: true, shouldDirty: true });
+        }}>
+          <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="one_church">One church</SelectItem>
+            <SelectItem value="selected_churches">Selected churches</SelectItem>
+            <SelectItem value="all_churches">All my churches</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {scopeType === 'one_church' && (
+          <div>
+            <ChurchSelect value={churchId} onValueChange={v => setValue('churchId', v, { shouldValidate: true })} />
+            {errors.churchId && <p className="text-xs text-destructive">{errors.churchId.message}</p>}
+          </div>
+        )}
+
+        {scopeType === 'selected_churches' && (
+          <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
+            {(churches || []).map(church => {
+              const checked = selectedChurchIds.includes(church.id);
+              return (
+                <label key={church.id} className="flex items-center gap-2 text-xs sm:text-sm">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={event => {
+                      const next = event.target.checked
+                        ? [...selectedChurchIds, church.id]
+                        : selectedChurchIds.filter(id => id !== church.id);
+                      setValue('churchIds', next, { shouldDirty: true, shouldValidate: true });
+                      if (next[0]) setValue('churchId', next[0], { shouldDirty: true, shouldValidate: true });
+                    }}
+                  />
+                  <span>{church.name}</span>
+                </label>
+              );
+            })}
+            {errors.churchIds && <p className="text-xs text-destructive">{errors.churchIds.message}</p>}
+          </div>
+        )}
+
+        {scopeType === 'all_churches' && (
+          <p className="text-xs text-muted-foreground">This campaign will be available to every church you can manage.</p>
+        )}
+        {isEditing && <p className="text-xs text-muted-foreground">Availability changes affect future giving and pledges.</p>}
       </div>
 
       <div>
@@ -483,6 +541,12 @@ export default function GivingPage() {
   const summaryRangeLabel = summaryDateRange.startDate && summaryDateRange.endDate
     ? `${summaryDateRange.startDate} to ${summaryDateRange.endDate}`
     : 'Choose a custom date range';
+  const getCampaignChurchLabel = (campaign: GivingCampaign) => {
+    if (campaign.scopeType === 'all_churches') return 'All churches';
+    const churchesForCampaign = campaign.availableChurches || [];
+    if (churchesForCampaign.length > 1) return `${churchesForCampaign.length} churches`;
+    return churchesForCampaign[0]?.name || campaign.church?.name;
+  };
 
   const renderCampaignCard = (campaign: any) => {
     const progress = campaign.targetAmount ? (campaign.totalRaised! / campaign.targetAmount) * 100 : 0;
@@ -504,8 +568,8 @@ export default function GivingPage() {
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <CardTitle className="text-sm sm:text-base leading-snug break-words">{campaign.name}</CardTitle>
-              {campaign.church?.name && (
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">{campaign.church.name}</p>
+              {getCampaignChurchLabel(campaign) && (
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{getCampaignChurchLabel(campaign)}</p>
               )}
               <div className="flex flex-wrap items-center gap-1 mt-1">
                 <Badge variant="outline" className="text-xs capitalize px-1.5 py-0">{campaign.category}</Badge>
@@ -775,6 +839,7 @@ export default function GivingPage() {
                   }}
                   isPending={createMutation.isPending}
                   submitLabel="Create"
+                  churches={churches}
                 />
               </DialogContent>
             </Dialog>
@@ -958,6 +1023,8 @@ export default function GivingPage() {
             <CampaignForm
               defaultValues={{
                 churchId: editCampaign.churchId,
+                scopeType: editCampaign.scopeType || 'one_church',
+                churchIds: editCampaign.availableChurchIds || editCampaign.linkedChurches?.map(link => link.churchId) || [],
                 name: editCampaign.name,
                 description: editCampaign.description,
                 category: editCampaign.category,
@@ -972,6 +1039,9 @@ export default function GivingPage() {
                 id: editCampaign.id,
                 dto: {
                   name: v.name,
+                  churchId: v.scopeType === 'selected_churches' ? (v.churchIds[0] || v.churchId) : v.churchId,
+                  scopeType: v.scopeType,
+                  churchIds: v.scopeType === 'all_churches' ? [] : v.scopeType === 'selected_churches' ? v.churchIds : [v.churchId],
                   description: v.description || undefined,
                   category: v.category,
                   subcategory: v.category === 'tithe' || v.category === 'offering' ? undefined : v.subcategory || undefined,
@@ -985,6 +1055,7 @@ export default function GivingPage() {
               isPending={updateMutation.isPending}
               submitLabel="Update"
               isEditing={true}
+              churches={churches}
             />
           )}
         </DialogContent>
@@ -998,6 +1069,7 @@ export default function GivingPage() {
         campaigns={activeCampaigns}
         initialCampaignId={donateCampaign?.id}
         mode="member"
+        memberChurchId={user?.churchId}
         memberCells={memberCells}
       />
 

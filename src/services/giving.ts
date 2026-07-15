@@ -3,6 +3,11 @@ import apiClient from '@/lib/api-client';
 export interface GivingCampaign {
   id: string;
   churchId: string;
+  scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
+  churchIds?: string[];
+  availableChurchIds?: string[];
+  availableChurches?: Array<{ id: string; name: string }>;
+  linkedChurches?: Array<{ churchId: string; church?: { id: string; name: string } }>;
   name: string;
   description?: string;
   category: 'tithe' | 'offering' | 'fellowship_offering' | 'partnership' | 'welfare' | 'missions';
@@ -18,7 +23,7 @@ export interface GivingCampaign {
   cellId?: string;
   createdAt: string;
   updatedAt: string;
-  church?: { name: string };
+  church?: { id?: string; name: string };
   totalRaised?: number;
   donorCount?: number;
   userHasDonated?: boolean;
@@ -27,6 +32,8 @@ export interface GivingCampaign {
 
 export interface CreateCampaignDto {
   churchId: string;
+  scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
+  churchIds?: string[];
   name: string;
   description?: string;
   category: string;
@@ -41,6 +48,9 @@ export interface CreateCampaignDto {
 }
 
 export interface UpdateCampaignDto {
+  churchId?: string;
+  scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
+  churchIds?: string[];
   name?: string;
   description?: string;
   category?: string;
@@ -78,6 +88,7 @@ export interface DonationTransaction {
 
 export interface CreateDonationDto {
   campaignId: string;
+  churchId?: string;
   amount: number;
   isAnonymous?: boolean;
   donorName?: string;
@@ -124,6 +135,7 @@ export interface Pledge {
 
 export interface CreatePledgeDto {
   campaignId: string;
+  churchId?: string;
   pledgedAmount: number;
   fulfillmentDeadline?: string;
   notes?: string;
@@ -153,17 +165,17 @@ export const givingService = {
     return data.data;
   },
 
-  async getPublicCampaignCells(campaignId: string): Promise<{ id: string; name: string; zone?: string | null }[]> {
-    const { data } = await apiClient.get(`/giving/campaigns/${campaignId}/cells`);
+  async getPublicCampaignCells(campaignId: string, churchId?: string): Promise<{ id: string; name: string; zone?: string | null }[]> {
+    const { data } = await apiClient.get(`/giving/campaigns/${campaignId}/cells`, { params: churchId ? { churchId } : undefined });
     return data.data;
   },
 
-  async guestDonate(dto: { campaignId: string; amount: number; guestName: string; guestEmail: string; guestPhone?: string; cellId?: string }): Promise<any> {
+  async guestDonate(dto: { campaignId: string; churchId?: string; amount: number; guestName: string; guestEmail: string; guestPhone?: string; cellId?: string }): Promise<any> {
     const { data } = await apiClient.post('/giving/guest-donate', dto);
     return data.data;
   },
 
-  async guestDonateMultiple(dto: { items: GivingLineDto[]; guestName: string; guestEmail: string; guestPhone?: string }): Promise<any> {
+  async guestDonateMultiple(dto: { items: GivingLineDto[]; churchId?: string; guestName: string; guestEmail: string; guestPhone?: string }): Promise<any> {
     const { data } = await apiClient.post('/giving/guest-donate-multiple', dto);
     return data.data;
   },
@@ -228,7 +240,7 @@ export const givingService = {
     return data.data;
   },
 
-  async donateMultiple(dto: { items: GivingLineDto[]; isAnonymous?: boolean; donorName?: string; donorEmail?: string; donorPhone?: string; notes?: string }): Promise<any> {
+  async donateMultiple(dto: { items: GivingLineDto[]; churchId?: string; isAnonymous?: boolean; donorName?: string; donorEmail?: string; donorPhone?: string; notes?: string }): Promise<any> {
     const { data } = await apiClient.post('/giving/donate-multiple', dto);
     return data.data;
   },
@@ -240,6 +252,7 @@ export const givingService = {
 
   async recordCashDonation(dto: {
     campaignId: string;
+    churchId?: string;
     donorType: 'member' | 'guest' | 'anonymous';
     memberId?: string;
     guestName?: string;
