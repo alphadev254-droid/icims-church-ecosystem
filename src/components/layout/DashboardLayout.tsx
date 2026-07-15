@@ -98,7 +98,7 @@ export default function DashboardLayout() {
   );
 
   return (
-    <div className="flex h-dvh min-h-0 overflow-hidden">
+    <div className="fixed inset-0 flex min-h-0 overflow-hidden bg-background">
       {/* Desktop sidebar */}
       <aside className="hidden min-h-0 lg:flex w-60 flex-col bg-sidebar border-r border-sidebar-border">
         <SidebarContent />
