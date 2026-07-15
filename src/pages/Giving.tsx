@@ -294,7 +294,7 @@ export default function GivingPage() {
   const [endCampaignId, setEndCampaignId] = useState<string | null>(null);
   const [activateCampaignId, setActivateCampaignId] = useState<string | null>(null);
   const [copiedCampaignId, setCopiedCampaignId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed' | 'cancelled'>('active');
   const [churchFilter, setChurchFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [summaryPeriod, setSummaryPeriod] = useState<GivingSummaryPeriod>('this_month');
@@ -313,10 +313,11 @@ export default function GivingPage() {
   const canViewDonations = hasPermission('donations:read');
 
   const { data: campaignsResponse = [], isLoading } = useQuery({
-    queryKey: ['campaigns', churchFilter, categoryFilter],
+    queryKey: ['campaigns', churchFilter, categoryFilter, statusFilter],
     queryFn: () => givingService.getCampaigns({
       churchId: churchFilter !== 'all' ? churchFilter : undefined,
       category: categoryFilter !== 'all' ? categoryFilter : undefined,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
     }),
     staleTime: STALE_TIME.DEFAULT,
   });
@@ -820,6 +821,7 @@ export default function GivingPage() {
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
           )}
