@@ -21,8 +21,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChurchSelect } from '@/components/ChurchSelect';
-import { Plus, HandCoins, Target, Users, Pencil, Trash2, Wallet, Eye, Loader2, StopCircle, PlayCircle, Filter, Lock, Share2, Copy, Check, Handshake } from 'lucide-react';
+import { Plus, HandCoins, Target, Users, Pencil, Trash2, Wallet, Eye, Loader2, StopCircle, PlayCircle, Filter, Lock, Share2, Copy, Check, Handshake, MoreHorizontal } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { PledgeDialog } from '@/components/PledgeDialog';
 import { MultiGivingDialog } from '@/components/giving/MultiGivingDialog';
@@ -429,6 +430,17 @@ export default function GivingPage() {
   const renderCampaignCard = (campaign: any) => {
     const progress = campaign.targetAmount ? (campaign.totalRaised! / campaign.targetAmount) * 100 : 0;
     const publicUrl = buildPublicGivingUrl(campaign.id, user?.subdomain);
+    const hasMemberActions = isMember && (campaign.status === 'active' || campaign.allowPledging || campaign.userHasDonated);
+    const hasAdminActions = !isMember && (
+      canViewDonations ||
+      canUpdate ||
+      canDelete ||
+      campaign.allowPublicDonations
+    );
+    const hasAdminPrimaryActions = !isMember && (canViewDonations || canUpdate);
+    const hasAdminNonDeleteActions = !isMember && (canViewDonations || canUpdate || campaign.allowPublicDonations);
+    const hasCardActions = hasMemberActions || hasAdminActions;
+
     return (
       <Card key={campaign.id} className="min-w-0">
         <CardHeader className="pb-2 pt-3 px-3 sm:px-4">
@@ -443,31 +455,102 @@ export default function GivingPage() {
                 )}
               </div>
             </div>
-            {canUpdate && (
-              <div className="flex gap-0.5 shrink-0">
-                <button onClick={() => setEditCampaign(campaign)} className="p-1 text-muted-foreground hover:text-foreground rounded" title="Edit">
-                  <Pencil className="h-3 w-3" />
-                </button>
-                {canDelete && (
-                  <button onClick={() => setDeleteCampaign(campaign)} className="p-1 text-muted-foreground hover:text-destructive rounded" title="Delete">
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                )}
-                {campaign.allowPublicDonations && (
-                  <button onClick={() => copyPublicLink(campaign.id)} className="p-1 text-muted-foreground hover:text-foreground rounded" title="Copy public link">
-                    {copiedCampaignId === campaign.id ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-                  </button>
-                )}
-                {campaign.status === 'active' ? (
-                  <button onClick={() => setEndCampaignId(campaign.id)} className="p-1 text-muted-foreground hover:text-destructive rounded" title="End campaign">
-                    <StopCircle className="h-3 w-3" />
-                  </button>
-                ) : campaign.status === 'completed' && (
-                  <button onClick={() => setActivateCampaignId(campaign.id)} className="p-1 text-muted-foreground hover:text-green-600 rounded" title="Reactivate">
-                    <PlayCircle className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
+            {hasCardActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Campaign actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {isMember ? (
+                    <>
+                      {campaign.status === 'active' && (
+                        <DropdownMenuItem className="gap-2" onClick={() => setDonateCampaign(campaign)}>
+                          <Wallet className="h-4 w-4" />
+                          Give
+                        </DropdownMenuItem>
+                      )}
+                      {campaign.allowPledging && (
+                        <DropdownMenuItem className="gap-2" onClick={() => setPledgeCampaign(campaign)}>
+                          <Handshake className="h-4 w-4" />
+                          Pledge
+                        </DropdownMenuItem>
+                      )}
+                      {campaign.userHasDonated && (
+                        <DropdownMenuItem className="gap-2" onClick={() => navigate(`/dashboard/donations?campaignId=${campaign.id}`)}>
+                          <Eye className="h-4 w-4" />
+                          My Givings
+                        </DropdownMenuItem>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {canViewDonations && (
+                        <DropdownMenuItem className="gap-2" onClick={() => navigate(`/dashboard/donations?campaignId=${campaign.id}`)}>
+                          <Eye className="h-4 w-4" />
+                          View Givings
+                        </DropdownMenuItem>
+                      )}
+                      {canViewDonations && campaign.allowPledging && hasPledgesFeature && (
+                        <DropdownMenuItem className="gap-2" onClick={() => navigate(`/dashboard/pledges?campaignId=${campaign.id}`)}>
+                          <Handshake className="h-4 w-4" />
+                          View Pledges
+                        </DropdownMenuItem>
+                      )}
+                      {canUpdate && (
+                        <DropdownMenuItem className="gap-2" onClick={() => setEditCampaign(campaign)}>
+                          <Pencil className="h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                      )}
+                      {campaign.allowPublicDonations && (
+                        <>
+                          {hasAdminPrimaryActions && <DropdownMenuSeparator />}
+                          <DropdownMenuItem className="gap-2" onClick={() => copyPublicLink(campaign.id)}>
+                            {copiedCampaignId === campaign.id ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                            Copy Public Link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onClick={() => shareWhatsApp(campaign)}>
+                            <Share2 className="h-4 w-4" />
+                            Share WhatsApp
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onClick={() => shareFacebook(campaign.id)}>
+                            <Share2 className="h-4 w-4" />
+                            Share Facebook
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      {canUpdate && (campaign.status === 'active' || campaign.status === 'completed') && (
+                        <>
+                          {(hasAdminPrimaryActions || campaign.allowPublicDonations) && <DropdownMenuSeparator />}
+                          {campaign.status === 'active' ? (
+                            <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => setEndCampaignId(campaign.id)}>
+                              <StopCircle className="h-4 w-4" />
+                              End Campaign
+                            </DropdownMenuItem>
+                          ) : campaign.status === 'completed' ? (
+                            <DropdownMenuItem className="gap-2" onClick={() => setActivateCampaignId(campaign.id)}>
+                              <PlayCircle className="h-4 w-4" />
+                              Reactivate
+                            </DropdownMenuItem>
+                          ) : null}
+                        </>
+                      )}
+                      {canDelete && (
+                        <>
+                          {hasAdminNonDeleteActions && <DropdownMenuSeparator />}
+                          <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => setDeleteCampaign(campaign)}>
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </CardHeader>
@@ -517,47 +600,8 @@ export default function GivingPage() {
                   {copiedCampaignId === campaign.id ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-1">
-                <button onClick={() => shareWhatsApp(campaign)} className="flex min-w-0 items-center justify-center gap-1 rounded border bg-background px-1.5 py-1 text-xs hover:bg-muted">
-                  <svg className="h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg>
-                  WhatsApp
-                </button>
-                <button onClick={() => shareFacebook(campaign.id)} className="flex min-w-0 items-center justify-center gap-1 rounded border bg-background px-1.5 py-1 text-xs hover:bg-muted">
-                  <svg className="h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
-                  Facebook
-                </button>
-              </div>
             </div>
           )}
-
-          {isMember ? (
-            <div className="grid grid-cols-2 gap-1.5 pt-1">
-              <Button size="sm" className="h-7 min-w-0 text-xs" onClick={() => setDonateCampaign(campaign)}>
-                <Wallet className="h-3 w-3 mr-1" /> Give
-              </Button>
-              {campaign.allowPledging && (
-                <Button size="sm" variant="outline" className="h-7 min-w-0 text-xs" onClick={() => setPledgeCampaign(campaign)}>
-                  <Handshake className="h-3 w-3 mr-1" /> Pledge
-                </Button>
-              )}
-              {campaign.userHasDonated && (
-                <Button size="sm" variant="outline" className="col-span-2 h-7 min-w-0 text-xs sm:col-span-1" onClick={() => navigate(`/dashboard/donations?campaignId=${campaign.id}`)}>
-                  <Eye className="h-3 w-3 mr-1" /> <span className="sm:hidden">Mine</span><span className="hidden sm:inline">My Givings</span>
-                </Button>
-              )}
-            </div>
-          ) : canViewDonations ? (
-            <div className="grid grid-cols-2 gap-1.5 pt-1">
-              <Button size="sm" variant="outline" className="h-7 min-w-0 text-xs" onClick={() => navigate(`/dashboard/donations?campaignId=${campaign.id}`)}>
-                <Eye className="h-3 w-3 mr-1" /> <span className="sm:hidden">Givings</span><span className="hidden sm:inline">View Givings</span>
-              </Button>
-              {campaign.allowPledging && hasPledgesFeature && (
-                <Button size="sm" variant="outline" className="h-7 min-w-0 text-xs" onClick={() => navigate(`/dashboard/pledges?campaignId=${campaign.id}`)}>
-                  <Handshake className="h-3 w-3 mr-1" /> <span className="sm:hidden">Pledges</span><span className="hidden sm:inline">View Pledges</span>
-                </Button>
-              )}
-            </div>
-          ) : null}
         </CardContent>
       </Card>
     );
