@@ -98,9 +98,9 @@ export default function DashboardLayout() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh min-h-0 overflow-hidden">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-60 flex-col bg-sidebar border-r border-sidebar-border">
+      <aside className="hidden min-h-0 lg:flex w-60 flex-col bg-sidebar border-r border-sidebar-border">
         <SidebarContent />
       </aside>
 
@@ -115,8 +115,8 @@ export default function DashboardLayout() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4">
+      <div className="min-h-0 min-w-0 flex-1 flex flex-col overflow-hidden">
+        <header className="h-14 shrink-0 border-b border-border bg-background flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-5 w-5" />
@@ -183,7 +183,7 @@ export default function DashboardLayout() {
           </DropdownMenu>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <SubscriptionCheck />
           <Outlet />
         </main>
