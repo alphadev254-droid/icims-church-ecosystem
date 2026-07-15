@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
 import { givingService, type GivingCampaign } from '@/services/giving';
 import { cellsService } from '@/services/cells';
 import { useRole } from '@/hooks/useRole';
@@ -23,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChurchSelect } from '@/components/ChurchSelect';
-import { Plus, HandCoins, Target, Users, Pencil, Trash2, Wallet, Eye, Loader2, StopCircle, PlayCircle, Filter, Lock, Share2, Copy, Check, Handshake, MoreHorizontal } from 'lucide-react';
+import { Plus, HandCoins, Target, Users, Pencil, Trash2, Wallet, Eye, Loader2, StopCircle, PlayCircle, Filter, Lock, Share2, Copy, Check, Handshake, MoreHorizontal, QrCode, Download, ChevronDown, ImageIcon, FileText } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { PledgeDialog } from '@/components/PledgeDialog';
 import { MultiGivingDialog } from '@/components/giving/MultiGivingDialog';
@@ -54,6 +55,10 @@ const campaignSchema = z.object({
 type CampaignFormValues = z.infer<typeof campaignSchema>;
 
 type GivingSummaryPeriod = 'this_week' | 'this_month' | 'last_month' | 'last_3_months' | 'custom';
+
+function safeFileName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'giving-campaign';
+}
 
 function toDateInputValue(date: Date) {
   const copy = new Date(date);
@@ -223,6 +228,7 @@ export default function GivingPage() {
   const [deleteCampaign, setDeleteCampaign] = useState<GivingCampaign | null>(null);
   const [donateCampaign, setDonateCampaign] = useState<GivingCampaign | null>(null);
   const [pledgeCampaign, setPledgeCampaign] = useState<GivingCampaign | null>(null);
+  const [qrCampaign, setQrCampaign] = useState<GivingCampaign | null>(null);
   const [donateAmount, setDonateAmount] = useState('');
   const [donateCellId, setDonateCellId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -361,6 +367,57 @@ export default function GivingPage() {
   const shareFacebook = (campaignId: string) => {
     const url = encodeURIComponent(buildPublicGivingUrl(campaignId, user?.subdomain));
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+  };
+
+  const qrGivingUrl = qrCampaign ? buildPublicGivingUrl(qrCampaign.id, user?.subdomain) : '';
+  const qrImageUrl = qrGivingUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(qrGivingUrl)}`
+    : '';
+
+  const downloadGivingQrPng = async () => {
+    if (!qrCampaign || !qrImageUrl) return;
+    try {
+      const response = await fetch(qrImageUrl);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `${safeFileName(qrCampaign.name)}-giving-qr.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error('Failed to download PNG');
+    }
+  };
+
+  const downloadGivingQrPdf = async () => {
+    if (!qrCampaign || !qrImageUrl) return;
+    try {
+      const response = await fetch(qrImageUrl);
+      const blob = await response.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text(qrCampaign.name || 'Giving Campaign', 105, 30, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text('Scan this QR code to give securely.', 105, 42, { align: 'center' });
+      doc.addImage(dataUrl, 'PNG', 55, 55, 100, 100);
+      const lines = doc.splitTextToSize(qrGivingUrl, 160);
+      doc.setFontSize(9);
+      doc.text(lines, 105, 172, { align: 'center' });
+      doc.save(`${safeFileName(qrCampaign.name)}-giving-qr.pdf`);
+    } catch {
+      toast.error('Failed to download PDF');
+    }
   };
 
   if (!isMember && !hasGivingFeature) {
@@ -512,6 +569,10 @@ export default function GivingPage() {
                             {copiedCampaignId === campaign.id ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                             Copy Public Link
                           </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onClick={() => setQrCampaign(campaign)}>
+                            <QrCode className="h-4 w-4" />
+                            Show QR Code
+                          </DropdownMenuItem>
                           <DropdownMenuItem className="gap-2" onClick={() => shareWhatsApp(campaign)}>
                             <Share2 className="h-4 w-4" />
                             Share WhatsApp
@@ -600,6 +661,16 @@ export default function GivingPage() {
                   {copiedCampaignId === campaign.id ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
                 </button>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 w-full text-xs"
+                onClick={() => setQrCampaign(campaign)}
+              >
+                <QrCode className="mr-1.5 h-3.5 w-3.5" />
+                Generate QR Code
+              </Button>
             </div>
           )}
         </CardContent>
@@ -820,6 +891,62 @@ export default function GivingPage() {
           {campaigns.map((campaign: any) => renderCampaignCard(campaign))}
         </div>
       )}
+
+      <Dialog open={!!qrCampaign} onOpenChange={open => !open && setQrCampaign(null)}>
+        <DialogContent className="max-w-md max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base sm:text-lg">Giving QR Code</DialogTitle>
+          </DialogHeader>
+          {qrCampaign && (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/30 p-4 text-center">
+                <img
+                  src={qrImageUrl}
+                  alt={`${qrCampaign.name} giving QR code`}
+                  className="mx-auto h-64 w-64 rounded-md bg-white p-2"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold leading-snug">{qrCampaign.name}</p>
+                <p className="break-all rounded-md bg-muted p-3 text-xs text-muted-foreground">{qrGivingUrl}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(qrGivingUrl);
+                    toast.success('Giving link copied');
+                  }}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy Link
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" size="sm">
+                      <Download className="mr-2 h-4 w-4" />
+                      Download QR
+                      <ChevronDown className="ml-2 h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={downloadGivingQrPng}>
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Download PNG
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={downloadGivingQrPdf}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Download PDF
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editCampaign} onOpenChange={open => !open && setEditCampaign(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
