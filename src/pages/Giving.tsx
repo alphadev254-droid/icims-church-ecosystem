@@ -504,6 +504,9 @@ export default function GivingPage() {
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <CardTitle className="text-sm sm:text-base leading-snug break-words">{campaign.name}</CardTitle>
+              {campaign.church?.name && (
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{campaign.church.name}</p>
+              )}
               <div className="flex flex-wrap items-center gap-1 mt-1">
                 <Badge variant="outline" className="text-xs capitalize px-1.5 py-0">{campaign.category}</Badge>
                 {campaign.status !== 'active' && <Badge variant="secondary" className="text-xs px-1.5 py-0">{campaign.status}</Badge>}
