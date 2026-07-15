@@ -197,6 +197,8 @@ export function MultiGivingDialog({
     }
   };
 
+  const showChurchSelector = mode === 'guest' && commonChurches.length > 1;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100vw-24px)] max-w-2xl max-h-[90svh] overflow-y-auto p-4 sm:p-6">
@@ -222,27 +224,13 @@ export function MultiGivingDialog({
             </div>
           )}
 
-          {mode === 'guest' && commonChurches.length > 1 && (
-            <div className="space-y-1">
-              <Label>Church *</Label>
-              <Select value={selectedChurchId} onValueChange={setSelectedChurchId}>
-                <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
-                <SelectContent>
-                  {commonChurches.map(church => (
-                    <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           <div className="space-y-3">
             {rows.map((row, index) => {
               const campaign = campaignMap.get(row.campaignId);
               const cells = getCellsForRow(row.campaignId);
               return (
                 <div key={index} className="rounded-md border p-2.5 sm:p-3 space-y-3">
-                  <div className="grid gap-2 sm:grid-cols-[1fr_150px_auto]">
+                  <div className={showChurchSelector ? 'grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_150px_auto]' : 'grid gap-2 sm:grid-cols-[1fr_150px_auto]'}>
                     <div className="space-y-1">
                       <Label className="text-xs sm:text-sm">Campaign</Label>
                       <Select value={row.campaignId} onValueChange={value => updateRow(index, { campaignId: value, cellId: '' })}>
@@ -259,6 +247,19 @@ export function MultiGivingDialog({
                         </SelectContent>
                       </Select>
                     </div>
+                    {showChurchSelector && (
+                      <div className="space-y-1">
+                        <Label className="text-xs sm:text-sm">Church {rows.length > 1 ? '(all giving)' : ''} *</Label>
+                        <Select value={selectedChurchId} onValueChange={setSelectedChurchId}>
+                          <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+                          <SelectContent>
+                            {commonChurches.map(church => (
+                              <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-1">
                       <Label className="text-xs sm:text-sm">Amount</Label>
                       <Input

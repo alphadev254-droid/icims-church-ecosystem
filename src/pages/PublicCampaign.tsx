@@ -243,18 +243,26 @@ export default function PublicCampaignPage() {
             </div>
 
             {availableChurches.length > 1 && (
-              <div className="space-y-1">
-                <Label>Church <span className="text-destructive">*</span></Label>
-                <Select value={selectedChurchId} onValueChange={value => { setSelectedChurchId(value); setCellId(''); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select church" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableChurches.map(church => (
-                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>Campaign</Label>
+                  <div className="flex h-10 items-center rounded-md border bg-muted px-3 text-sm font-medium">
+                    <span className="truncate">{campaign.name}</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Church <span className="text-destructive">*</span></Label>
+                  <Select value={selectedChurchId} onValueChange={value => { setSelectedChurchId(value); setCellId(''); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select church" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableChurches.map(church => (
+                        <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
 
