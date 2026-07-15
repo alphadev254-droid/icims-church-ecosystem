@@ -95,12 +95,23 @@ export default function AttendanceDetailPage() {
     const memberAgeMeta = participant.user
       ? getMemberAgeMeta(participant.user.memberType, participant.user.dateOfBirth)
       : null;
+    const memberTypeLabel = participant.user?.memberType
+      ? participant.user.memberType
+      : participant.ministryMember?.memberType || '';
+    const participantType = participant.user
+      ? 'Member'
+      : participant.ministryMember
+        ? 'Ministry member guest'
+        : 'Guest';
     return {
       name: participant.user ? `${participant.user.firstName} ${participant.user.lastName}` : participant.guestName || 'Guest',
       contact: participant.user?.email || participant.user?.phone || participant.guestEmail || participant.guestPhone || '-',
       gender: participant.user?.gender || participant.guestGender || '',
       ageLabel: participant.user ? memberAgeMeta?.ageLabel || '' : participant.guestAgeBracket || '',
       ageBracket: participant.user ? memberAgeMeta?.ageBracket || '' : getAgeBracket(null, participant.guestAgeBracket),
+      memberTypeLabel,
+      participantType,
+      homeChurch: participant.user ? participant.user.church?.name || record.church?.name || '' : participant.ministryMember?.church?.name || '',
     };
   };
   const filteredParticipants = participants.filter(participant => {
@@ -228,11 +239,13 @@ export default function AttendanceDetailPage() {
                       <p className="font-medium">{meta.name}</p>
                       <p className="mt-1 text-xs text-muted-foreground break-all">{meta.contact}</p>
                     </div>
-                    <Badge variant="outline">{participant.user ? (participant.user.memberType === 'child' ? 'Member (child)' : 'Member') : 'Guest'}</Badge>
+                    <Badge variant="outline">{meta.participantType}</Badge>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                     <span>Gender: <strong className="text-foreground">{meta.gender || '-'}</strong></span>
                     <span>Age: <strong className="text-foreground">{meta.ageLabel || '-'}</strong></span>
+                    <span>Member type: <strong className="text-foreground capitalize">{meta.memberTypeLabel || '-'}</strong></span>
+                    <span>Home church: <strong className="text-foreground">{meta.homeChurch || '-'}</strong></span>
                     <span className="col-span-2">Checked in: {new Date(participant.checkedInAt).toLocaleString()}</span>
                   </div>
                 </div>
@@ -250,13 +263,15 @@ export default function AttendanceDetailPage() {
                   <TableHead>Gender</TableHead>
                   <TableHead>Age</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Member Type</TableHead>
+                  <TableHead>Home Church</TableHead>
                   <TableHead>Method</TableHead>
                   <TableHead className="text-right">Checked In</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {participantsLoading ? (
-                  <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">Loading participants...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="py-10 text-center text-muted-foreground">Loading participants...</TableCell></TableRow>
                 ) : filteredParticipants.length ? filteredParticipants.map(participant => {
                   const meta = getParticipantMeta(participant);
                   return (
@@ -266,14 +281,16 @@ export default function AttendanceDetailPage() {
                       <TableCell className="text-sm capitalize text-muted-foreground">{meta.gender || '-'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{meta.ageLabel || '-'}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{participant.user ? (participant.user.memberType === 'child' ? 'Member (child)' : 'Member') : 'Guest'}</Badge>
+                        <Badge variant="outline">{meta.participantType}</Badge>
                       </TableCell>
+                      <TableCell className="text-sm capitalize text-muted-foreground">{meta.memberTypeLabel || '-'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{meta.homeChurch || '-'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{participant.checkInMethod.replace(/_/g, ' ')}</TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">{new Date(participant.checkedInAt).toLocaleString()}</TableCell>
                     </TableRow>
                   );
                 }) : (
-                  <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">No participants match the filters.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="py-10 text-center text-muted-foreground">No participants match the filters.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>

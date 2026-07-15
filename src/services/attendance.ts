@@ -62,6 +62,16 @@ export interface AttendanceParticipant {
     memberType?: string | null;
     gender?: string | null;
     dateOfBirth?: string | null;
+    church?: { id: string; name: string } | null;
+  } | null;
+  ministryMember?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    phone?: string | null;
+    memberType?: string | null;
+    church?: { id: string; name: string } | null;
   } | null;
 }
 
