@@ -26,7 +26,6 @@ export function PublicQrCheckIn({
   token,
   accent = '#d89b12',
   ministryName,
-  onRequireSignIn,
 }: {
   token: string;
   accent?: string;
@@ -71,25 +70,16 @@ export function PublicQrCheckIn({
     return session.event?.title || session.serviceType || 'Attendance Check-in';
   }, [session]);
 
-  const checkInMember = async () => {
-    if (!user) {
-      toast.message('Sign in first, then tap member check-in again.');
-      if (onRequireSignIn) onRequireSignIn();
-      else setSignInOpen(true);
-      return;
-    }
-
+  const runMemberCheckIn = async () => {
     setMemberLoading(true);
     try {
       const participant = await attendanceService.checkInMemberByQr(token);
       const user = participant.user;
       setSuccessName(user ? `${user.firstName} ${user.lastName}` : 'Member');
       toast.success('You are checked in');
+      setSignInOpen(false);
     } catch (err: any) {
-      if (err.response?.status === 401 && onRequireSignIn) {
-        toast.message('Sign in first, then tap member check-in again.');
-        onRequireSignIn();
-      } else if (err.response?.status === 401) {
+      if (err.response?.status === 401) {
         toast.message('Sign in first, then tap member check-in again.');
         setSignInOpen(true);
       } else {
@@ -98,6 +88,15 @@ export function PublicQrCheckIn({
     } finally {
       setMemberLoading(false);
     }
+  };
+
+  const checkInMember = async () => {
+    if (!user) {
+      setSignInOpen(true);
+      return;
+    }
+
+    await runMemberCheckIn();
   };
 
   const checkInGuest = async (event: React.FormEvent) => {
@@ -263,15 +262,18 @@ export function PublicQrCheckIn({
         </div>
       </div>
     </section>
-    {!onRequireSignIn && (
-      <SignInDialog
-        open={signInOpen}
-        onClose={() => setSignInOpen(false)}
-        accent={accent}
-        ministryName={displayName}
-        logoInitial={displayName.charAt(0).toUpperCase()}
-      />
-    )}
+    <SignInDialog
+      open={signInOpen}
+      onClose={() => setSignInOpen(false)}
+      accent={accent}
+      ministryName={displayName}
+      logoInitial={displayName.charAt(0).toUpperCase()}
+      mode="check-in"
+      contextTitle="Sign in to be checked in."
+      contextDescription={`Use your ${displayName} member account and we will mark you present for ${title}.`}
+      submitLabel="Sign In & Check In"
+      onSuccess={runMemberCheckIn}
+    />
     </>
   );
 }

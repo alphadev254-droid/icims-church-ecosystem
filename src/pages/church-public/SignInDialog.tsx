@@ -8,16 +8,33 @@ interface SignInDialogProps {
   accent: string;
   ministryName: string;
   logoInitial: string;
+  mode?: 'default' | 'check-in';
+  contextTitle?: string;
+  contextDescription?: string;
+  submitLabel?: string;
+  onSuccess?: () => void | Promise<void>;
 }
 
 const DARK = '#121D39';
 
-export function SignInDialog({ open, onClose, accent, ministryName, logoInitial }: SignInDialogProps) {
+export function SignInDialog({
+  open,
+  onClose,
+  accent,
+  ministryName,
+  logoInitial,
+  mode = 'default',
+  contextTitle,
+  contextDescription,
+  submitLabel,
+  onSuccess,
+}: SignInDialogProps) {
   const login = useAuthStore(s => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const isCheckIn = mode === 'check-in';
 
   if (!open) return null;
 
@@ -29,8 +46,8 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
     setLoading(false);
 
     if (result.success) {
-      if (window.location.pathname.startsWith('/check-in/')) {
-        window.location.reload();
+      if (onSuccess) {
+        await onSuccess();
         return;
       }
 
@@ -122,7 +139,7 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
               color: accent,
               margin: '0 0 16px',
             }}>
-              Members
+              {isCheckIn ? 'Attendance' : 'Members'}
             </p>
             <h2 style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
@@ -132,7 +149,7 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
               lineHeight: 1.08,
               margin: '0 0 18px',
             }}>
-              Welcome back home.
+              {isCheckIn ? 'Sign in to check in.' : 'Welcome back home.'}
             </h2>
             <p style={{
               fontSize: 14,
@@ -141,7 +158,9 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
               maxWidth: 280,
               margin: 0,
             }}>
-              Sign in to access prayer requests, giving history, and member-only resources.
+              {isCheckIn
+                ? `Use your ${ministryName} member account to mark yourself present for this service.`
+                : 'Sign in to access prayer requests, giving history, and member-only resources.'}
             </p>
           </div>
 
@@ -193,7 +212,7 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
             color: accent,
             margin: '0 0 12px',
           }}>
-            Sign In
+            {isCheckIn ? 'Member Check-in' : 'Sign In'}
           </p>
           <h3 style={{
             fontFamily: 'Georgia, "Times New Roman", serif',
@@ -203,8 +222,18 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
             lineHeight: 1.12,
             margin: '0 0 28px',
           }}>
-            Enter your account.
+            {contextTitle || (isCheckIn ? 'Enter your account to continue.' : 'Enter your account.')}
           </h3>
+          {contextDescription && (
+            <p style={{
+              color: 'rgba(255,255,255,0.68)',
+              fontSize: 14,
+              lineHeight: 1.6,
+              margin: '-16px 0 24px',
+            }}>
+              {contextDescription}
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <label style={labelStyle}>
@@ -284,7 +313,7 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
                 opacity: loading ? 0.72 : 1,
               }}
             >
-              {loading ? 'Signing in...' : <>Sign In <span aria-hidden="true">-&gt;</span></>}
+              {loading ? 'Signing in...' : <>{submitLabel || (isCheckIn ? 'Sign In & Check In' : 'Sign In')} <span aria-hidden="true">-&gt;</span></>}
             </button>
           </form>
         </div>
