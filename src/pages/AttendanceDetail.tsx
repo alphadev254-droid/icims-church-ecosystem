@@ -58,6 +58,7 @@ export default function AttendanceDetailPage() {
     let age = today.getFullYear() - dob.getFullYear();
     const monthDelta = today.getMonth() - dob.getMonth();
     if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < dob.getDate())) age -= 1;
+    if (age < 0 || age > 130) return null;
     return age;
   };
   const getAgeBracket = (age?: number | null, guestAgeBracket?: string | null) => {
@@ -69,14 +70,37 @@ export default function AttendanceDetailPage() {
     if (age <= 59) return '36-59';
     return '60+';
   };
+  const getMemberAgeMeta = (memberType?: string | null, dateOfBirth?: string | null) => {
+    const normalizedType = (memberType || '').toLowerCase();
+    const age = getAge(dateOfBirth);
+
+    if (age === null) {
+      return {
+        ageLabel: '',
+        ageBracket: normalizedType === 'child' ? '0-12' : normalizedType === 'adult' ? '36-59' : '',
+      };
+    }
+
+    if (normalizedType === 'adult' && age < 18) {
+      return { ageLabel: '', ageBracket: '36-59' };
+    }
+
+    if (normalizedType === 'child' && age >= 18) {
+      return { ageLabel: '', ageBracket: '0-12' };
+    }
+
+    return { ageLabel: String(age), ageBracket: getAgeBracket(age) };
+  };
   const getParticipantMeta = (participant: typeof participants[number]) => {
-    const age = participant.user ? getAge(participant.user.dateOfBirth) : null;
+    const memberAgeMeta = participant.user
+      ? getMemberAgeMeta(participant.user.memberType, participant.user.dateOfBirth)
+      : null;
     return {
       name: participant.user ? `${participant.user.firstName} ${participant.user.lastName}` : participant.guestName || 'Guest',
       contact: participant.user?.email || participant.user?.phone || participant.guestEmail || participant.guestPhone || '-',
       gender: participant.user?.gender || participant.guestGender || '',
-      ageLabel: participant.user ? (age === null ? '' : String(age)) : participant.guestAgeBracket || '',
-      ageBracket: getAgeBracket(age, participant.guestAgeBracket),
+      ageLabel: participant.user ? memberAgeMeta?.ageLabel || '' : participant.guestAgeBracket || '',
+      ageBracket: participant.user ? memberAgeMeta?.ageBracket || '' : getAgeBracket(null, participant.guestAgeBracket),
     };
   };
   const filteredParticipants = participants.filter(participant => {
