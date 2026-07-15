@@ -243,17 +243,17 @@ export default function PublicCampaignPage() {
             </div>
 
             {availableChurches.length > 1 && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label>Campaign</Label>
-                  <div className="flex h-10 items-center rounded-md border bg-muted px-3 text-sm font-medium">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <div className="min-w-0 space-y-1">
+                  <Label className="text-[11px] sm:text-xs">Campaign</Label>
+                  <div className="flex h-9 items-center rounded-md border bg-muted px-2 text-xs font-medium sm:h-10 sm:px-3 sm:text-sm">
                     <span className="truncate">{campaign.name}</span>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label>Church <span className="text-destructive">*</span></Label>
+                <div className="min-w-0 space-y-1">
+                  <Label className="text-[11px] sm:text-xs">Church <span className="text-destructive">*</span></Label>
                   <Select value={selectedChurchId} onValueChange={value => { setSelectedChurchId(value); setCellId(''); }}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 px-2 text-xs sm:h-10 sm:px-3 sm:text-sm">
                       <SelectValue placeholder="Select church" />
                     </SelectTrigger>
                     <SelectContent>
