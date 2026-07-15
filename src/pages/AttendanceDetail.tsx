@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowLeft, Camera, Calendar, QrCode, UserCheck, UserPlus, Users } from 'lucide-react';
 import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
 import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
+import { ExportImportButtons } from '@/components/ExportImportButtons';
 
 export default function AttendanceDetailPage() {
   const { id = '' } = useParams();
@@ -123,6 +124,51 @@ export default function AttendanceDetailPage() {
   const qrCount = record._count?.participants ?? participantsResponse?.pagination.total ?? 0;
   const maleCount = participants.filter(p => getParticipantMeta(p).gender === 'male').length;
   const femaleCount = participants.filter(p => getParticipantMeta(p).gender === 'female').length;
+  const participantExportData = filteredParticipants.map(participant => {
+    const meta = getParticipantMeta(participant);
+    return {
+      name: meta.name,
+      contact: meta.contact,
+      gender: meta.gender || '',
+      age: meta.ageLabel || '',
+      ageBracket: meta.ageBracket || '',
+      type: meta.participantType,
+      memberType: meta.memberTypeLabel || '',
+      homeChurch: meta.homeChurch || '',
+      method: participant.checkInMethod.replace(/_/g, ' '),
+      status: participant.status,
+      checkedInAt: new Date(participant.checkedInAt).toLocaleString(),
+      userId: participant.userId || '',
+      guestName: participant.guestName || '',
+      guestEmail: participant.guestEmail || '',
+      guestPhone: participant.guestPhone || '',
+      guestFirstTime: participant.guestFirstTime ? 'Yes' : 'No',
+      invitedBy: participant.invitedBy || '',
+      attendanceId: participant.attendanceId,
+      participantId: participant.id,
+    };
+  });
+  const participantExportHeaders = [
+    { label: 'Name', key: 'name' },
+    { label: 'Contact', key: 'contact' },
+    { label: 'Gender', key: 'gender' },
+    { label: 'Age', key: 'age' },
+    { label: 'Age Bracket', key: 'ageBracket' },
+    { label: 'Type', key: 'type' },
+    { label: 'Member Type', key: 'memberType' },
+    { label: 'Home Church', key: 'homeChurch' },
+    { label: 'Method', key: 'method' },
+    { label: 'Status', key: 'status' },
+    { label: 'Checked In', key: 'checkedInAt' },
+    { label: 'User ID', key: 'userId' },
+    { label: 'Guest Name', key: 'guestName' },
+    { label: 'Guest Email', key: 'guestEmail' },
+    { label: 'Guest Phone', key: 'guestPhone' },
+    { label: 'Guest First Time', key: 'guestFirstTime' },
+    { label: 'Invited By', key: 'invitedBy' },
+    { label: 'Attendance ID', key: 'attendanceId' },
+    { label: 'Participant ID', key: 'participantId' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -202,27 +248,35 @@ export default function AttendanceDetailPage() {
               </CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">{filteredParticipants.length} of {participants.length} shown</p>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:w-[340px]">
-              <Select value={genderFilter} onValueChange={setGenderFilter}>
-                <SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All gender</SelectItem>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={ageFilter} onValueChange={setAgeFilter}>
-                <SelectTrigger><SelectValue placeholder="Age" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All ages</SelectItem>
-                  <SelectItem value="0-12">0-12</SelectItem>
-                  <SelectItem value="13-17">13-17</SelectItem>
-                  <SelectItem value="18-35">18-35</SelectItem>
-                  <SelectItem value="36-59">36-59</SelectItem>
-                  <SelectItem value="60+">60+</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col gap-2 sm:items-end">
+              <ExportImportButtons
+                data={participantExportData}
+                filename={`attendance-participants-${record.id}`}
+                headers={participantExportHeaders}
+                pdfTitle={`${record.serviceType} Attendance Participants`}
+              />
+              <div className="grid grid-cols-2 gap-2 sm:w-[340px]">
+                <Select value={genderFilter} onValueChange={setGenderFilter}>
+                  <SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All gender</SelectItem>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={ageFilter} onValueChange={setAgeFilter}>
+                  <SelectTrigger><SelectValue placeholder="Age" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All ages</SelectItem>
+                    <SelectItem value="0-12">0-12</SelectItem>
+                    <SelectItem value="13-17">13-17</SelectItem>
+                    <SelectItem value="18-35">18-35</SelectItem>
+                    <SelectItem value="36-59">36-59</SelectItem>
+                    <SelectItem value="60+">60+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardHeader>
