@@ -286,7 +286,8 @@ export default function GivingPage() {
   const [deleteCampaign, setDeleteCampaign] = useState<GivingCampaign | null>(null);
   const [donateCampaign, setDonateCampaign] = useState<GivingCampaign | null>(null);
   const [pledgeCampaign, setPledgeCampaign] = useState<GivingCampaign | null>(null);
-  const [qrCampaign, setQrCampaign] = useState<GivingCampaign | null>(null);
+  const [shareCampaign, setShareCampaign] = useState<GivingCampaign | null>(null);
+  const [selectedShareChurchId, setSelectedShareChurchId] = useState('');
   const [donateAmount, setDonateAmount] = useState('');
   const [donateCellId, setDonateCellId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -409,39 +410,59 @@ export default function GivingPage() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to activate campaign'),
   });
 
-  const copyPublicLink = (campaignId: string) => {
-    const url = buildPublicGivingUrl(campaignId, user?.subdomain);
+  const getCampaignShareChurches = (campaign: GivingCampaign) => {
+    const seen = new Set<string>();
+    const options = [
+      ...(campaign.availableChurches || []),
+      ...(campaign.churchId ? [{ id: campaign.churchId, name: campaign.church?.name || 'Church' }] : []),
+    ].filter(church => {
+      if (!church?.id || seen.has(church.id)) return false;
+      seen.add(church.id);
+      return true;
+    });
+    return options.length > 0 ? options : churches.map((church: any) => ({ id: church.id, name: church.name }));
+  };
+
+  const openShareDialog = (campaign: GivingCampaign) => {
+    const options = getCampaignShareChurches(campaign);
+    setShareCampaign(campaign);
+    setSelectedShareChurchId(options[0]?.id || '');
+  };
+
+  const copyPublicLink = (campaign: GivingCampaign, churchId?: string) => {
+    const url = buildPublicGivingUrl(campaign.id, user?.subdomain, churchId);
     navigator.clipboard.writeText(url);
-    setCopiedCampaignId(campaignId);
+    setCopiedCampaignId(campaign.id);
     toast.success('Public link copied!');
     setTimeout(() => setCopiedCampaignId(null), 2000);
   };
 
   const shareWhatsApp = (campaign: GivingCampaign) => {
-    const url = buildPublicGivingUrl(campaign.id, user?.subdomain);
+    const url = buildPublicGivingUrl(campaign.id, user?.subdomain, selectedShareChurchId || undefined);
     const text = encodeURIComponent(`Support our campaign: ${campaign.name}\n${url}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
-  const shareFacebook = (campaignId: string) => {
-    const url = encodeURIComponent(buildPublicGivingUrl(campaignId, user?.subdomain));
+  const shareFacebook = (campaign: GivingCampaign) => {
+    const url = encodeURIComponent(buildPublicGivingUrl(campaign.id, user?.subdomain, selectedShareChurchId || undefined));
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
-  const qrGivingUrl = qrCampaign ? buildPublicGivingUrl(qrCampaign.id, user?.subdomain) : '';
+  const shareChurches = shareCampaign ? getCampaignShareChurches(shareCampaign) : [];
+  const qrGivingUrl = shareCampaign ? buildPublicGivingUrl(shareCampaign.id, user?.subdomain, selectedShareChurchId || undefined) : '';
   const qrImageUrl = qrGivingUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(qrGivingUrl)}`
     : '';
 
   const downloadGivingQrPng = async () => {
-    if (!qrCampaign || !qrImageUrl) return;
+    if (!shareCampaign || !qrImageUrl) return;
     try {
       const response = await fetch(qrImageUrl);
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
-      link.download = `${safeFileName(qrCampaign.name)}-giving-qr.png`;
+      link.download = `${safeFileName(shareCampaign.name)}-giving-qr.png`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -452,7 +473,7 @@ export default function GivingPage() {
   };
 
   const downloadGivingQrPdf = async () => {
-    if (!qrCampaign || !qrImageUrl) return;
+    if (!shareCampaign || !qrImageUrl) return;
     try {
       const response = await fetch(qrImageUrl);
       const blob = await response.blob();
@@ -465,7 +486,7 @@ export default function GivingPage() {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(22);
-      doc.text(qrCampaign.name || 'Giving Campaign', 105, 30, { align: 'center' });
+      doc.text(shareCampaign.name || 'Giving Campaign', 105, 30, { align: 'center' });
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(11);
       doc.text('Scan this QR code to give securely.', 105, 42, { align: 'center' });
@@ -473,7 +494,7 @@ export default function GivingPage() {
       const lines = doc.splitTextToSize(qrGivingUrl, 160);
       doc.setFontSize(9);
       doc.text(lines, 105, 172, { align: 'center' });
-      doc.save(`${safeFileName(qrCampaign.name)}-giving-qr.pdf`);
+      doc.save(`${safeFileName(shareCampaign.name)}-giving-qr.pdf`);
     } catch {
       toast.error('Failed to download PDF');
     }
@@ -551,7 +572,6 @@ export default function GivingPage() {
 
   const renderCampaignCard = (campaign: any) => {
     const progress = campaign.targetAmount ? (campaign.totalRaised! / campaign.targetAmount) * 100 : 0;
-    const publicUrl = buildPublicGivingUrl(campaign.id, user?.subdomain);
     const hasMemberActions = isMember && (campaign.status === 'active' || campaign.allowPledging || campaign.userHasDonated);
     const hasAdminActions = !isMember && (
       canViewDonations ||
@@ -633,19 +653,19 @@ export default function GivingPage() {
                       {campaign.allowPublicDonations && (
                         <>
                           {hasAdminPrimaryActions && <DropdownMenuSeparator />}
-                          <DropdownMenuItem className="gap-2" onClick={() => copyPublicLink(campaign.id)}>
+                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
                             {copiedCampaignId === campaign.id ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                             Copy Public Link
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2" onClick={() => setQrCampaign(campaign)}>
+                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
                             <QrCode className="h-4 w-4" />
                             Show QR Code
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2" onClick={() => shareWhatsApp(campaign)}>
+                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
                             <Share2 className="h-4 w-4" />
                             Share WhatsApp
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2" onClick={() => shareFacebook(campaign.id)}>
+                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
                             <Share2 className="h-4 w-4" />
                             Share Facebook
                           </DropdownMenuItem>
@@ -718,29 +738,6 @@ export default function GivingPage() {
           )}
 
           {/* Public link + share — shown to admins when allowPublicDonations is on */}
-          {campaign.allowPublicDonations && !isMember && (
-            <div className="rounded-md border bg-muted/40 p-2 space-y-1.5">
-              <p className="text-xs font-medium flex items-center gap-1">
-                <Share2 className="h-3 w-3 shrink-0" /> Public giving link
-              </p>
-              <div className="flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 min-w-0">
-                <span className="text-xs text-muted-foreground truncate flex-1 font-mono min-w-0">{publicUrl}</span>
-                <button onClick={() => copyPublicLink(campaign.id)} className="shrink-0 text-muted-foreground hover:text-foreground p-0.5" title="Copy link">
-                  {copiedCampaignId === campaign.id ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-                </button>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 w-full text-xs"
-                onClick={() => setQrCampaign(campaign)}
-              >
-                <QrCode className="mr-1.5 h-3.5 w-3.5" />
-                Generate QR Code
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
     );
@@ -962,22 +959,35 @@ export default function GivingPage() {
         </div>
       )}
 
-      <Dialog open={!!qrCampaign} onOpenChange={open => !open && setQrCampaign(null)}>
+      <Dialog open={!!shareCampaign} onOpenChange={open => !open && setShareCampaign(null)}>
         <DialogContent className="max-w-md max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Giving QR Code</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Public Giving Link</DialogTitle>
           </DialogHeader>
-          {qrCampaign && (
+          {shareCampaign && (
             <div className="space-y-4">
+              <div className="space-y-1">
+                <Label className="text-xs">Church</Label>
+                <Select value={selectedShareChurchId} onValueChange={setSelectedShareChurchId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select church" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {shareChurches.map(church => (
+                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="rounded-lg border bg-muted/30 p-4 text-center">
                 <img
                   src={qrImageUrl}
-                  alt={`${qrCampaign.name} giving QR code`}
+                  alt={`${shareCampaign.name} giving QR code`}
                   className="mx-auto h-64 w-64 rounded-md bg-white p-2"
                 />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-semibold leading-snug">{qrCampaign.name}</p>
+                <p className="text-sm font-semibold leading-snug">{shareCampaign.name}</p>
                 <p className="break-all rounded-md bg-muted p-3 text-xs text-muted-foreground">{qrGivingUrl}</p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -992,6 +1002,14 @@ export default function GivingPage() {
                 >
                   <Copy className="mr-2 h-4 w-4" />
                   Copy Link
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => shareWhatsApp(shareCampaign)}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  WhatsApp
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => shareFacebook(shareCampaign)}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Facebook
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

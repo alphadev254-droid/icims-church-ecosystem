@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,12 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { HandCoins, Share2, Copy, Check, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { givingService } from '@/services/giving';
 
 export default function PublicCampaignPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const churchIdParam = searchParams.get('churchId') || '';
   const [copied, setCopied] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -29,7 +31,15 @@ export default function PublicCampaignPage() {
   });
   const campaignUrl = window.location.href;
   const availableChurches = campaign?.availableChurches || (campaign?.churchId ? [{ id: campaign.churchId, name: campaign.church?.name || 'Church' }] : []);
+  const hasLockedChurch = !!churchIdParam && availableChurches.some(church => church.id === churchIdParam);
   const resolvedChurchId = availableChurches.length === 1 ? availableChurches[0].id : selectedChurchId;
+
+  useEffect(() => {
+    if (!churchIdParam || availableChurches.length <= 1) return;
+    if (hasLockedChurch) {
+      setSelectedChurchId(churchIdParam);
+    }
+  }, [availableChurches, churchIdParam, hasLockedChurch]);
 
   // Load cells for fellowship_offering campaigns
   const { data: cells = [] } = useQuery({
@@ -252,7 +262,7 @@ export default function PublicCampaignPage() {
                 </div>
                 <div className="min-w-0 space-y-1">
                   <Label className="text-[11px] sm:text-xs">Church <span className="text-destructive">*</span></Label>
-                  <Select value={selectedChurchId} onValueChange={value => { setSelectedChurchId(value); setCellId(''); }}>
+                  <Select value={selectedChurchId} onValueChange={value => { setSelectedChurchId(value); setCellId(''); }} disabled={hasLockedChurch}>
                     <SelectTrigger className="h-9 px-2 text-xs sm:h-10 sm:px-3 sm:text-sm">
                       <SelectValue placeholder="Select church" />
                     </SelectTrigger>

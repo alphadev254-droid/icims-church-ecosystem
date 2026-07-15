@@ -181,6 +181,13 @@ function PublicGivingDetail({ campaign, campaigns, accent, ministryName }: {
   ministryName: string;
 }) {
   const [giveOpen, setGiveOpen] = useState(false);
+  const churchIdParam = new URLSearchParams(window.location.search).get('churchId') || '';
+  const campaignChurches = campaign.availableChurches?.length
+    ? campaign.availableChurches
+    : campaign.churchId
+      ? [{ id: campaign.churchId }]
+      : [];
+  const initialChurchId = campaignChurches.some(church => church.id === churchIdParam) ? churchIdParam : undefined;
 
   return (
     <>
@@ -226,6 +233,9 @@ function PublicGivingDetail({ campaign, campaigns, accent, ministryName }: {
         onOpenChange={setGiveOpen}
         campaigns={campaigns}
         initialCampaignId={campaign.id}
+        initialChurchId={initialChurchId}
+        lockInitialCampaign={!!initialChurchId}
+        lockInitialChurch={!!initialChurchId}
         mode="guest"
       />
     </>

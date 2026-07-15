@@ -32,6 +32,9 @@ interface MultiGivingDialogProps {
   onOpenChange: (open: boolean) => void;
   campaigns: CampaignOption[];
   initialCampaignId?: string;
+  initialChurchId?: string;
+  lockInitialCampaign?: boolean;
+  lockInitialChurch?: boolean;
   mode: 'member' | 'guest';
   memberChurchId?: string | null;
   memberCells?: CellOption[];
@@ -46,6 +49,9 @@ export function MultiGivingDialog({
   onOpenChange,
   campaigns,
   initialCampaignId,
+  initialChurchId,
+  lockInitialCampaign = false,
+  lockInitialChurch = false,
   mode,
   memberChurchId,
   memberCells = [],
@@ -66,8 +72,8 @@ export function MultiGivingDialog({
   useEffect(() => {
     if (!open) return;
     setRows([emptyRow(initialCampaignId || activeCampaigns[0]?.id || '')]);
-    setSelectedChurchId('');
-  }, [activeCampaigns, initialCampaignId, open]);
+    setSelectedChurchId(initialChurchId || '');
+  }, [activeCampaigns, initialCampaignId, initialChurchId, open]);
 
   const selectedCampaigns = useMemo(
     () => rows.map(row => campaignMap.get(row.campaignId)).filter(Boolean) as CampaignOption[],
@@ -117,6 +123,7 @@ export function MultiGivingDialog({
   };
 
   const addRow = () => {
+    if (lockInitialCampaign) return;
     const nextCampaign = activeCampaigns.find(campaign => !selectedIds.includes(campaign.id));
     if (!nextCampaign) {
       toast.error('All available campaigns are already selected');
@@ -234,7 +241,7 @@ export function MultiGivingDialog({
                     <div className={showChurchSelector ? 'grid grid-cols-2 gap-2' : 'grid gap-2'}>
                       <div className="min-w-0 space-y-1">
                         <Label className="text-[11px] sm:text-xs">Campaign</Label>
-                      <Select value={row.campaignId} onValueChange={value => updateRow(index, { campaignId: value, cellId: '' })}>
+                      <Select value={row.campaignId} onValueChange={value => updateRow(index, { campaignId: value, cellId: '' })} disabled={lockInitialCampaign}>
                         <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm"><SelectValue placeholder="Select campaign" /></SelectTrigger>
                         <SelectContent>
                           {activeCampaigns.map(option => {
@@ -251,7 +258,7 @@ export function MultiGivingDialog({
                     {showChurchSelector && (
                       <div className="min-w-0 space-y-1">
                         <Label className="text-[11px] sm:text-xs">Church {rows.length > 1 ? '(all)' : ''} *</Label>
-                        <Select value={selectedChurchId} onValueChange={setSelectedChurchId}>
+                        <Select value={selectedChurchId} onValueChange={setSelectedChurchId} disabled={lockInitialChurch}>
                           <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm"><SelectValue placeholder="Select church" /></SelectTrigger>
                           <SelectContent>
                             {commonChurches.map(church => (
@@ -274,9 +281,11 @@ export function MultiGivingDialog({
                           placeholder="0"
                         />
                       </div>
-                      <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeRow(index)} disabled={rows.length === 1}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {!lockInitialCampaign && (
+                        <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeRow(index)} disabled={rows.length === 1}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -300,9 +309,11 @@ export function MultiGivingDialog({
             })}
           </div>
 
-          <Button type="button" variant="outline" className="w-full" onClick={addRow}>
-            <Plus className="mr-2 h-4 w-4" /> Add another giving
-          </Button>
+          {!lockInitialCampaign && (
+            <Button type="button" variant="outline" className="w-full" onClick={addRow}>
+              <Plus className="mr-2 h-4 w-4" /> Add another giving
+            </Button>
+          )}
 
           <div className="rounded-md bg-muted p-3">
             <div className="flex items-center justify-between text-sm">
