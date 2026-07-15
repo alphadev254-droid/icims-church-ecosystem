@@ -398,8 +398,13 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
   const [signInOpen, setSignInOpen] = useState(false);
   const [activeHref, setActiveHref] = useState('#home');
   const detailRoute = getPublicDetailRoute();
+  const isCheckInRoute = detailRoute?.type === 'check-in';
 
   useEffect(() => {
+    if (isCheckInRoute) {
+      setLoading(false);
+      return;
+    }
     fetch(`${API_BASE}/p/${slug}`)
       .then(r => {
         if (!r.ok) {
@@ -417,7 +422,7 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
         setNotFound(true);
         setLoading(false);
       });
-  }, [slug]);
+  }, [slug, isCheckInRoute]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -445,6 +450,38 @@ export default function ChurchPublicPage({ slug }: { slug: string }) {
         fontSize: 15,
       }}>
         Loading...
+      </div>
+    );
+  }
+
+  if (isCheckInRoute) {
+    const fallbackName = slug
+      .split('-')
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ') || 'Church';
+
+    return (
+      <div className="cp-page" style={{
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: '#101a30',
+        background: '#fff',
+        overflowX: 'hidden',
+      }}>
+        <ResponsiveStyles />
+        <PublicQrCheckIn
+          token={detailRoute.id}
+          accent={defaultGold}
+          ministryName={data?.ministryName || fallbackName}
+          onRequireSignIn={() => setSignInOpen(true)}
+        />
+        <SignInDialog
+          open={signInOpen}
+          onClose={() => setSignInOpen(false)}
+          accent={defaultGold}
+          ministryName={data?.ministryName || fallbackName}
+          logoInitial={(data?.ministryName || fallbackName).charAt(0).toUpperCase()}
+        />
       </div>
     );
   }

@@ -29,6 +29,11 @@ export function SignInDialog({ open, onClose, accent, ministryName, logoInitial 
     setLoading(false);
 
     if (result.success) {
+      if (window.location.pathname.startsWith('/check-in/')) {
+        window.location.reload();
+        return;
+      }
+
       const isSubdomain = window.location.hostname !== 'churchcentral.church' && window.location.hostname !== 'localhost';
       const redirectPath = result.redirectTo ?? '/dashboard';
       window.location.href = isSubdomain ? `https://churchcentral.church${redirectPath}` : redirectPath;
