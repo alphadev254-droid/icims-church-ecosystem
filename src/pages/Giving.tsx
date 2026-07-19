@@ -384,11 +384,11 @@ export default function GivingPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => givingService.deleteCampaign(id),
     onSuccess: () => {
-      toast.success('Campaign deleted');
+      toast.success('Campaign cancelled');
       qc.invalidateQueries({ queryKey: ['campaigns'] });
       setDeleteCampaign(null);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete campaign'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to cancel campaign'),
   });
 
   const endCampaignMutation = useMutation({
@@ -1198,9 +1198,9 @@ export default function GivingPage() {
       <AlertDialog open={!!deleteCampaign} onOpenChange={open => !open && setDeleteCampaign(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+            <AlertDialogTitle>Cancel Campaign</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteCampaign?.name}</strong>? This will permanently remove the campaign and all its giving records. This cannot be undone.
+              Are you sure you want to cancel <strong>{deleteCampaign?.name}</strong>? Existing giving records will be kept, but the campaign will no longer be active.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1209,7 +1209,7 @@ export default function GivingPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteCampaign && deleteMutation.mutate(deleteCampaign.id)}
             >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteMutation.isPending ? 'Cancelling...' : 'Cancel Campaign'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -200,8 +200,8 @@ export const givingService = {
     return data.data;
   },
 
-  async getCampaign(id: string): Promise<GivingCampaign> {
-    const { data } = await apiClient.get(`/giving/campaigns/${id}`);
+  async getCampaign(id: string, params?: { churchId?: string }): Promise<GivingCampaign> {
+    const { data } = await apiClient.get(`/giving/campaigns/${id}`, { params });
     return data.data;
   },
 

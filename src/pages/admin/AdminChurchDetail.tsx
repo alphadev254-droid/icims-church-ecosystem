@@ -180,8 +180,8 @@ export default function AdminChurchDetail() {
 
   const deleteChurchMutation = useMutation({
     mutationFn: () => adminApi.deleteChurch(id!),
-    onSuccess: () => { toast.success('Church deleted'); navigate(-1); },
-    onError: () => toast.error('Delete failed'),
+    onSuccess: () => { toast.success('Church cancelled'); navigate(-1); },
+    onError: () => toast.error('Cancel failed'),
   });
 
   const updateUserMutation = useMutation({
@@ -192,8 +192,8 @@ export default function AdminChurchDetail() {
 
   const deleteUserMutation = useMutation({
     mutationFn: (uid: string) => adminApi.deleteUser(uid),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-church', id] }); toast.success('User deleted'); setDeleteUserTarget(null); },
-    onError: () => toast.error('Delete failed'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-church', id] }); toast.success('User cancelled'); setDeleteUserTarget(null); },
+    onError: () => toast.error('Cancel failed'),
   });
 
   const resetUserMutation = useMutation({
@@ -255,9 +255,11 @@ export default function AdminChurchDetail() {
             onClick={() => { setEditChurchData({ name: data.name, pastorName: data.pastorName ?? '', phone: data.phone ?? '', email: data.email ?? '', address: data.address ?? '' }); setEditChurchOpen(true); }}>
             <Edit2 className="h-3.5 w-3.5" /> Edit
           </Button>
-          <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setDeleteChurchOpen(true)}>
-            <Trash2 className="h-3.5 w-3.5" /> Delete Church
-          </Button>
+          {data.status !== 'cancelled' && (
+            <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setDeleteChurchOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> Cancel Church
+            </Button>
+          )}
         </div>
       </div>
 
@@ -465,10 +467,14 @@ export default function AdminChurchDetail() {
                         <DropdownMenuItem className="text-xs gap-2" onClick={() => { setResetUserTarget(user); setNewPassword(''); }}>
                           <KeyRound className="h-3.5 w-3.5" /> Reset password
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-xs gap-2 text-destructive" onClick={() => setDeleteUserTarget(user)}>
-                          <Trash2 className="h-3.5 w-3.5" /> Delete
-                        </DropdownMenuItem>
+                        {user.status !== 'cancelled' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-xs gap-2 text-destructive" onClick={() => setDeleteUserTarget(user)}>
+                              <Trash2 className="h-3.5 w-3.5" /> Cancel user
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </td>
@@ -514,29 +520,35 @@ export default function AdminChurchDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete church dialog */}
+      {/* Cancel church dialog */}
       <Dialog open={deleteChurchOpen} onOpenChange={setDeleteChurchOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="text-base">Delete Church</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Delete <strong>{data.name}</strong>? All related data will be removed. This cannot be undone.</p>
+          <DialogHeader><DialogTitle className="text-base">Cancel Church</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Cancel <strong>{data.name}</strong>? This hides the branch from normal workflows, disables its invite link,
+            and cancels its events and single-church giving campaigns. Financial records, attendance history, members,
+            transactions, resources, and other historical data are kept.
+          </p>
           <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" onClick={() => setDeleteChurchOpen(false)}>Cancel</Button>
             <Button variant="destructive" size="sm" disabled={deleteChurchMutation.isPending} onClick={() => deleteChurchMutation.mutate()}>
-              {deleteChurchMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteChurchMutation.isPending ? 'Cancelling...' : 'Cancel Church'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete user dialog */}
+      {/* Cancel user dialog */}
       <Dialog open={!!deleteUserTarget} onOpenChange={open => { if (!open) setDeleteUserTarget(null); }}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="text-base">Delete User</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Delete <strong>{deleteUserTarget?.firstName} {deleteUserTarget?.lastName}</strong>? This cannot be undone.</p>
+          <DialogHeader><DialogTitle className="text-base">Cancel User</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Cancel <strong>{deleteUserTarget?.firstName} {deleteUserTarget?.lastName}</strong>? This disables login and notifications while keeping their records.
+          </p>
           <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" onClick={() => setDeleteUserTarget(null)}>Cancel</Button>
             <Button variant="destructive" size="sm" disabled={deleteUserMutation.isPending} onClick={() => deleteUserMutation.mutate(deleteUserTarget.id)}>
-              {deleteUserMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteUserMutation.isPending ? 'Cancelling...' : 'Cancel User'}
             </Button>
           </DialogFooter>
         </DialogContent>

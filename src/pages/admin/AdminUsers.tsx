@@ -16,7 +16,7 @@ import { ExportImportButtons } from '@/components/ExportImportButtons';
 
 const ROLES = ['ministry_admin', 'regional_admin', 'district_admin', 'branch_admin', 'member'];
 const COUNTRIES = ['Malawi', 'Kenya'];
-const STATUSES = ['active', 'suspended', 'inactive'];
+const STATUSES = ['active', 'suspended', 'inactive', 'cancelled'];
 
 function statusBadge(status: string) {
   if (status === 'active') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Active</Badge>;
@@ -70,8 +70,8 @@ export default function AdminUsers() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => adminApi.deleteUser(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-users'] }); toast.success('User deleted'); setDeleteTarget(null); },
-    onError: () => toast.error('Failed to delete user'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-users'] }); toast.success('User cancelled'); setDeleteTarget(null); },
+    onError: () => toast.error('Failed to cancel user'),
   });
 
   const resetMutation = useMutation({
@@ -252,9 +252,11 @@ export default function AdminUsers() {
                               <Mail className="h-3.5 w-3.5" /> Send email
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-xs gap-2 text-destructive" onClick={() => setDeleteTarget(user)}>
-                              <Trash2 className="h-3.5 w-3.5" /> Delete
-                            </DropdownMenuItem>
+                            {user.status !== 'cancelled' && (
+                              <DropdownMenuItem className="text-xs gap-2 text-destructive" onClick={() => setDeleteTarget(user)}>
+                                <Trash2 className="h-3.5 w-3.5" /> Cancel user
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -284,15 +286,15 @@ export default function AdminUsers() {
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-base">Delete User</DialogTitle>
+            <DialogTitle className="text-base">Cancel User</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete <strong>{deleteTarget?.firstName} {deleteTarget?.lastName}</strong>? This cannot be undone.
+            Cancel <strong>{deleteTarget?.firstName} {deleteTarget?.lastName}</strong>? This disables login and notifications while keeping their records.
           </p>
           <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" onClick={() => setDeleteTarget(null)}>Cancel</Button>
             <Button variant="destructive" size="sm" disabled={deleteMutation.isPending} onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}>
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteMutation.isPending ? 'Cancelling...' : 'Cancel User'}
             </Button>
           </DialogFooter>
         </DialogContent>

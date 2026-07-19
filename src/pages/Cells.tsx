@@ -426,7 +426,11 @@ export default function CellsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Cell</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to delete <strong>{deleteCell?.name}</strong>? This will remove all members and meeting records. This cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>
+              Delete <strong>{deleteCell?.name}</strong>? This will permanently remove the cell, its member links,
+              meetings, and cell attendance history. The actual user/member profiles and giving records will remain.
+              This cannot be undone.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

@@ -138,12 +138,16 @@ function CashDonationDialog({
   open,
   onOpenChange,
   campaignId,
+  churchId,
+  churchOptions = [],
   defaultCurrency,
   campaignCategory,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   campaignId: string;
+  churchId?: string;
+  churchOptions?: Array<{ id: string; name: string }>;
   defaultCurrency: string;
   campaignCategory?: string;
 }) {
@@ -159,14 +163,22 @@ function CashDonationDialog({
   const [reference, setReference] = useState('');
   const [notes, setNotes] = useState('');
   const [cellId, setCellId] = useState('');
+  const [selectedChurchId, setSelectedChurchId] = useState(churchId || '');
 
   const isFellowship = campaignCategory === 'fellowship_offering';
+  const requiresChurchSelection = churchOptions.length > 1;
+
+  useEffect(() => {
+    if (open) {
+      setSelectedChurchId(churchId || '');
+    }
+  }, [churchId, open]);
 
   // Load cells for fellowship_offering
   const { data: cells = [] } = useQuery({
-    queryKey: ['cash-donation-cells', campaignId],
-    queryFn: () => givingService.getPublicCampaignCells(campaignId),
-    enabled: open && isFellowship,
+    queryKey: ['cash-donation-cells', campaignId, selectedChurchId],
+    queryFn: () => givingService.getPublicCampaignCells(campaignId, selectedChurchId || undefined),
+    enabled: open && isFellowship && (!requiresChurchSelection || !!selectedChurchId),
     staleTime: 60_000,
   });
 
@@ -183,12 +195,14 @@ function CashDonationDialog({
     setDonorType('member'); setMember(null);
     setGuestName(''); setGuestEmail(''); setGuestPhone('');
     setAmount(''); setReference(''); setNotes(''); setCellId('');
+    setSelectedChurchId(churchId || '');
     setDate(new Date().toISOString().split('T')[0]);
   };
 
   const mutation = useMutation({
     mutationFn: () => givingService.recordCashDonation({
       campaignId,
+      churchId: selectedChurchId || churchId,
       donorType,
       memberId: donorType === 'member' ? member!.id : undefined,
       guestName: donorType === 'guest' ? guestName : undefined,
@@ -213,6 +227,7 @@ function CashDonationDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (donorType === 'member' && !member) { toast.error('Please select a member'); return; }
+    if (requiresChurchSelection && !selectedChurchId) { toast.error('Please select the church for this giving'); return; }
     if (donorType === 'guest' && !guestName.trim()) { toast.error('Guest name is required'); return; }
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter a valid amount'); return; }
     mutation.mutate();
@@ -231,6 +246,22 @@ function CashDonationDialog({
           <DialogTitle className="font-heading">Record Cash Giving</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-1 overflow-y-auto flex-1 pr-1">
+          {requiresChurchSelection && (
+            <div className="space-y-1.5">
+              <Label>Church <span className="text-destructive">*</span></Label>
+              <Select value={selectedChurchId} onValueChange={value => { setSelectedChurchId(value); setCellId(''); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select church for this giving" />
+                </SelectTrigger>
+                <SelectContent>
+                  {churchOptions.map(church => (
+                    <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">This campaign is linked to multiple churches, so choose where this record belongs.</p>
+            </div>
+          )}
 
           {/* Giver type toggle */}
           <div className="space-y-1.5">
@@ -377,21 +408,32 @@ export default function DonationsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const campaignId = searchParams.get('campaignId');
+  const [churchFilter, setChurchFilter] = useState('all');
   const [expandedDonation, setExpandedDonation] = useState<string | null>(null);
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const currentUser = useAuthStore(s => s.user);
   const { hasPermission } = useRole();
   const canCreate = hasPermission('donations:create') && currentUser?.roleName !== 'member';
+  const selectedChurchId = churchFilter !== 'all' ? churchFilter : undefined;
+
+  const { data: campaign } = useQuery({
+    queryKey: ['campaign-detail', campaignId, selectedChurchId],
+    queryFn: () => givingService.getCampaign(campaignId!, selectedChurchId ? { churchId: selectedChurchId } : undefined),
+    enabled: !!campaignId,
+    staleTime: STALE_TIME.DEFAULT,
+  });
+
+  const campaignChurches = (campaign?.availableChurches || []).filter(church => church.id);
 
   const { data: donations = [], isLoading } = useQuery({
-    queryKey: ['donations', campaignId],
-    queryFn: () => givingService.getDonations(campaignId || undefined),
+    queryKey: ['donations', campaignId, selectedChurchId],
+    queryFn: () => givingService.getDonations(campaignId || undefined, selectedChurchId),
     staleTime: STALE_TIME.DEFAULT,
   });
 
   // Grab campaign currency and category from first donation
-  const defaultCurrency = (donations[0] as any)?.currency ?? 'MWK';
-  const campaignCategory = (donations[0] as any)?.campaign?.category;
+  const defaultCurrency = campaign?.currency ?? (donations[0] as any)?.currency ?? 'MWK';
+  const campaignCategory = campaign?.category ?? (donations[0] as any)?.campaign?.category;
 
   const { data: transactionData, isLoading: isLoadingTransaction } = useQuery({
     queryKey: ['donation-transaction', expandedDonation],
@@ -430,6 +472,19 @@ export default function DonationsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto">
+          {campaignId && campaignChurches.length > 1 && (
+            <Select value={churchFilter} onValueChange={setChurchFilter}>
+              <SelectTrigger className="h-8 w-[170px] text-xs sm:w-[220px]">
+                <SelectValue placeholder="Filter church" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All churches</SelectItem>
+                {campaignChurches.map(church => (
+                  <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {canCreate && campaignId && (
             <Button
               size="sm"
@@ -634,6 +689,8 @@ export default function DonationsPage() {
           open={cashDialogOpen}
           onOpenChange={setCashDialogOpen}
           campaignId={campaignId}
+          churchId={selectedChurchId}
+          churchOptions={campaignChurches}
           defaultCurrency={defaultCurrency}
           campaignCategory={campaignCategory}
         />

@@ -179,8 +179,8 @@ export default function AdminUserDetail() {
 
   const deleteMutation = useMutation({
     mutationFn: () => adminApi.deleteUser(id!),
-    onSuccess: () => { toast.success('User deleted'); navigate('/admin/users'); },
-    onError: () => toast.error('Delete failed'),
+    onSuccess: () => { toast.success('User cancelled'); navigate('/admin/users'); },
+    onError: () => toast.error('Cancel failed'),
   });
 
   const resetMutation = useMutation({
@@ -363,9 +363,11 @@ export default function AdminUserDetail() {
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => { setEmailForm({ subject: '', message: '' }); setEmailOpen(true); }}>
             <Mail className="h-3.5 w-3.5" /> Send Email
           </Button>
-          <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setDeleteOpen(true)}>
-            <Trash2 className="h-3.5 w-3.5" /> Delete
-          </Button>
+          {data.status !== 'cancelled' && (
+            <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> Cancel User
+            </Button>
+          )}
           <ExportImportButtons
             filename={`user-${data.firstName}-${data.lastName}`}
             pdfTitle={`User: ${data.firstName} ${data.lastName}`}
@@ -925,15 +927,17 @@ export default function AdminUserDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete dialog */}
+      {/* Cancel dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="text-base">Delete User</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Delete <strong>{data.firstName} {data.lastName}</strong>? This cannot be undone.</p>
+          <DialogHeader><DialogTitle className="text-base">Cancel User</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Cancel <strong>{data.firstName} {data.lastName}</strong>? This disables login and notifications while keeping their records.
+          </p>
           <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" onClick={() => setDeleteOpen(false)}>Cancel</Button>
             <Button variant="destructive" size="sm" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate()}>
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteMutation.isPending ? 'Cancelling...' : 'Cancel User'}
             </Button>
           </DialogFooter>
         </DialogContent>

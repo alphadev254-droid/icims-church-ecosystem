@@ -433,9 +433,10 @@ export default function EventsPage() {
   const [paymentConfirm, setPaymentConfirm] = useState<{ event: ChurchEvent; details: any } | null>(null);
   const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
   const [churchFilter, setChurchFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('current');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [appliedFilters, setAppliedFilters] = useState({ church: 'all', startDate: '', endDate: '' });
+  const [appliedFilters, setAppliedFilters] = useState({ church: 'all', status: 'current', startDate: '', endDate: '' });
 
   const { hasPermission } = useRole();
   const hasEventsFeature = useHasFeature('events_management');
@@ -445,12 +446,13 @@ export default function EventsPage() {
   const isMember = user?.roleName === 'member';
 
   const { data: eventsResponse, isLoading } = useQuery({
-    queryKey: ['events', appliedFilters.church, appliedFilters.startDate, appliedFilters.endDate],
+    queryKey: ['events', appliedFilters.church, appliedFilters.status, appliedFilters.startDate, appliedFilters.endDate],
     queryFn: () => {
       const churchId = appliedFilters.church !== 'all' ? appliedFilters.church : undefined;
       const params: any = {};
       if (appliedFilters.startDate) params.startDate = appliedFilters.startDate;
       if (appliedFilters.endDate) params.endDate = appliedFilters.endDate;
+      params.status = appliedFilters.status;
       return eventsService.getAll(churchId, params);
     },
     staleTime: 5 * 60 * 1000,
@@ -506,11 +508,11 @@ export default function EventsPage() {
   const deleteMutation = useMutation({
     mutationFn: eventsService.delete,
     onSuccess: () => {
-      toast.success('Event deleted');
+      toast.success('Event cancelled');
       qc.invalidateQueries({ queryKey: ['events'] });
       setDeleteEvent(null);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to cancel event'),
   });
 
   // Permissions
@@ -647,8 +649,9 @@ export default function EventsPage() {
           <p className="text-xs sm:text-sm text-muted-foreground">{events.length} total events</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {!isMember && churches.length > 1 && (
+          {!isMember && (
             <div className="flex flex-wrap gap-2 items-end">
+              {churches.length > 1 && (
               <div>
                 <Label className="text-xs">Church</Label>
                 <Select value={churchFilter} onValueChange={setChurchFilter}>
@@ -663,6 +666,23 @@ export default function EventsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              )}
+              <div>
+                <Label className="text-xs">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-36 sm:w-40 h-8 text-xs sm:h-9 sm:text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="current">Current</SelectItem>
+                    <SelectItem value="upcoming">Upcoming</SelectItem>
+                    <SelectItem value="ongoing">Ongoing</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label className="text-xs">Start Date</Label>
                 <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-36 sm:w-40 h-8 text-xs sm:h-9 sm:text-sm" />
@@ -673,7 +693,7 @@ export default function EventsPage() {
               </div>
               <Button 
                 size="sm"
-                onClick={() => setAppliedFilters({ church: churchFilter, startDate, endDate })}
+                onClick={() => setAppliedFilters({ church: churchFilter, status: statusFilter, startDate, endDate })}
                 className="bg-accent text-accent-foreground hover:bg-accent/90 h-8 text-xs sm:h-9 sm:text-sm"
               >
                 Apply
@@ -684,9 +704,10 @@ export default function EventsPage() {
                 className="h-8 text-xs sm:h-9 sm:text-sm"
                 onClick={() => {
                   setChurchFilter('all');
+                  setStatusFilter('current');
                   setStartDate('');
                   setEndDate('');
-                  setAppliedFilters({ church: 'all', startDate: '', endDate: '' });
+                  setAppliedFilters({ church: 'all', status: 'current', startDate: '', endDate: '' });
                 }}
               >
                 Clear
@@ -789,11 +810,11 @@ export default function EventsPage() {
                         <Pencil className="h-3 w-3" />
                       </button>
                     )}
-                    {canDelete && (
+                    {canDelete && event.status !== 'cancelled' && (
                       <button
                         onClick={() => setDeleteEvent(event)}
                         className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                        title="Delete event"
+                        title="Cancel event"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -938,13 +959,13 @@ export default function EventsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
+      {/* Cancel Dialog */}
       <AlertDialog open={!!deleteEvent} onOpenChange={(open) => { if (!open) setDeleteEvent(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            <AlertDialogTitle>Cancel Event</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete <strong>{deleteEvent?.title}</strong>? This cannot be undone.
+              Cancel <strong>{deleteEvent?.title}</strong>? This keeps tickets, transactions, and history, but stops new bookings.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -953,7 +974,7 @@ export default function EventsPage() {
               onClick={() => deleteEvent && deleteMutation.mutate(deleteEvent.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Cancel Event
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -920,6 +920,7 @@ export default function UsersManagement() {
   const [churchFilter, setChurchFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [cellFilter, setCellFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('active');
   const [minAge, setMinAge] = useState<number | undefined>();
   const [maxAge, setMaxAge] = useState<number | undefined>();
   const [createOpen, setCreateOpen] = useState(false);
@@ -937,7 +938,7 @@ export default function UsersManagement() {
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', page, limit, search, churchFilter, roleFilter, cellFilter, minAge, maxAge],
+    queryKey: ['users', page, limit, search, churchFilter, roleFilter, cellFilter, statusFilter, minAge, maxAge],
     queryFn: () => usersService.getAll({ 
       page, 
       limit, 
@@ -945,6 +946,7 @@ export default function UsersManagement() {
       churchId: churchFilter !== 'all' ? churchFilter : undefined,
       roleId: roleFilter !== 'all' ? roleFilter : undefined,
       cellId: cellFilter !== 'all' ? cellFilter : undefined,
+      status: statusFilter,
       minAge,
       maxAge,
     }),
@@ -1013,11 +1015,11 @@ export default function UsersManagement() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => usersService.delete(id),
     onSuccess: () => {
-      toast.success('User deleted');
+      toast.success('User cancelled');
       qc.invalidateQueries({ queryKey: ['users'] });
       setDeleteUser(null);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete user'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to cancel user'),
   });
 
   const bulkUploadMutation = useMutation({
@@ -1475,6 +1477,17 @@ export default function UsersManagement() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-36 h-8 text-xs sm:h-10 sm:text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="all">All Statuses</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={String(limit)} onValueChange={(v) => { setLimit(Math.max(100, parseInt(v))); setPage(1); }}>
           <SelectTrigger className="w-full sm:w-28 h-8 text-xs sm:h-10 sm:text-sm">
             <SelectValue />
@@ -1536,6 +1549,7 @@ export default function UsersManagement() {
                         {userDisplayName(user)}
                         {isSelf && <span className="ml-1.5 text-xs text-muted-foreground font-normal">(you)</span>}
                         {user.status === 'inactive' && <Badge variant="destructive" className="ml-2 text-xs">Inactive</Badge>}
+                        {user.status === 'cancelled' && <Badge variant="secondary" className="ml-2 text-xs">Cancelled</Badge>}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{user.email}</TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">{user.phone ?? '—'}</TableCell>
@@ -1594,7 +1608,7 @@ export default function UsersManagement() {
                                 )}
                               </>
                             )}
-                            {canDelete && !isSelf && !isChildIdentity && (
+                            {canDelete && !isSelf && !isChildIdentity && user.status !== 'cancelled' && (
                               <button onClick={() => setDeleteUser(user)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -2113,9 +2127,10 @@ export default function UsersManagement() {
       <AlertDialog open={!!deleteUser} onOpenChange={open => !open && setDeleteUser(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle>Cancel User</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete <strong>{deleteUser?.firstName} {deleteUser?.lastName}</strong> ({deleteUser?.email})? This cannot be undone.
+              Cancel <strong>{deleteUser?.firstName} {deleteUser?.lastName}</strong> ({deleteUser?.email})?
+              This disables login and notifications, but keeps their giving, attendance, and other history.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2124,7 +2139,7 @@ export default function UsersManagement() {
               onClick={() => deleteUser && deleteMutation.mutate(deleteUser.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Cancel User
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

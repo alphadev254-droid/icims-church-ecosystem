@@ -22,6 +22,7 @@ export interface Church {
   parentId?: string | null;
   leaderId?: string | null;
   branchCode?: string | null;
+  status?: 'active' | 'cancelled';
   inviteToken?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -51,8 +52,8 @@ export interface CreateChurchDto {
 export type UpdateChurchDto = Partial<CreateChurchDto>;
 
 export const churchesService = {
-  getAll: async (): Promise<Church[]> => {
-    const { data } = await apiClient.get('/churches');
+  getAll: async (params?: { status?: 'active' | 'cancelled' | 'all' }): Promise<Church[]> => {
+    const { data } = await apiClient.get('/churches', { params });
     return data.data;
   },
   getSelectable: async (): Promise<Church[]> => {

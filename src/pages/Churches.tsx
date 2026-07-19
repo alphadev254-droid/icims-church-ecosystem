@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
@@ -218,6 +220,7 @@ export default function ChurchesPage() {
   const [deleteChurch, setDeleteChurch] = useState<Church | null>(null);
   const [inviteLinkChurch, setInviteLinkChurch] = useState<Church | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'active' | 'cancelled' | 'all'>('active');
   const { user } = useAuth();
   const { hasPermission } = useRole();
   const qc = useQueryClient();
@@ -231,13 +234,14 @@ export default function ChurchesPage() {
   const isKenyaAccount = user?.accountCountry === 'Kenya';
 
   const { data: churches = [], isLoading } = useQuery({
-    queryKey: ['churches'],
-    queryFn: churchesService.getAll,
+    queryKey: ['churches', statusFilter],
+    queryFn: () => churchesService.getAll({ status: statusFilter }),
     staleTime: STALE_TIME.DEFAULT,
     enabled: hasChurches,
   });
 
-  const churchLimit = useCheckLimit('max_churches', churches.length);
+  const activeChurchCount = churches.filter(church => church.status !== 'cancelled').length;
+  const churchLimit = useCheckLimit('max_churches', activeChurchCount);
 
   if (!hasChurches) {
     return (
@@ -285,12 +289,12 @@ export default function ChurchesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => churchesService.delete(id),
     onSuccess: () => {
-      toast.success('Branch deleted');
+      toast.success('Branch cancelled');
       qc.invalidateQueries({ queryKey: ['churches'] });
       setDeleteChurch(null);
     },
     onError: (err: { response?: { data?: { message?: string } } }) =>
-      toast.error(err.response?.data?.message || 'Failed to delete branch'),
+      toast.error(err.response?.data?.message || 'Failed to cancel branch'),
   });
 
   const generateInviteMutation = useMutation({
@@ -347,26 +351,38 @@ export default function ChurchesPage() {
             {user?.ministryName ? (
               <>{user.ministryName} &mdash; </>
             ) : null}
-            {churches.length} branch{churches.length !== 1 ? 'es' : ''} in your network
+            {churches.length} branch{churches.length !== 1 ? 'es' : ''} shown
           </p>
         </div>
-        {canCreate && (
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
-                <Plus className="h-4 w-4" /> Add Branch to {user?.ministryName || 'Ministry'}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle className="font-heading">Add Branch</DialogTitle></DialogHeader>
-              <ChurchForm
-                onSubmit={(v, logoFile, removeLogo) => createMutation.mutate(buildFormData(v, logoFile, removeLogo))}
-                isPending={createMutation.isPending}
-                submitLabel="Create Branch"
-              />
-            </DialogContent>
-          </Dialog>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={statusFilter} onValueChange={(value: 'active' | 'cancelled' | 'all') => setStatusFilter(value)}>
+            <SelectTrigger className="h-9 w-[150px] text-xs sm:text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="all">All branches</SelectItem>
+            </SelectContent>
+          </Select>
+          {canCreate && (
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
+                  <Plus className="h-4 w-4" /> Add Branch to {user?.ministryName || 'Ministry'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle className="font-heading">Add Branch</DialogTitle></DialogHeader>
+                <ChurchForm
+                  onSubmit={(v, logoFile, removeLogo) => createMutation.mutate(buildFormData(v, logoFile, removeLogo))}
+                  isPending={createMutation.isPending}
+                  submitLabel="Create Branch"
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -376,8 +392,8 @@ export default function ChurchesPage() {
       ) : churches.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Building2 className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">No branches yet</p>
-          {canCreate && (
+          <p className="font-medium">{statusFilter === 'cancelled' ? 'No cancelled branches' : 'No branches yet'}</p>
+          {canCreate && statusFilter === 'active' && (
             <p className="text-sm mt-1">
               Add branches to your {user?.ministryName ? <strong>{user.ministryName}</strong> : 'ministry'}.
             </p>
@@ -387,8 +403,9 @@ export default function ChurchesPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {churches.map(church => {
             const ChurchIcon = LEVEL_ICON[church.level] ?? Building2;
+            const isCancelled = church.status === 'cancelled';
             return (
-              <Card key={church.id} className="hover:shadow-md transition-shadow">
+              <Card key={church.id} className={`hover:shadow-md transition-shadow ${isCancelled ? 'opacity-75' : ''}`}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2 min-w-0">
@@ -405,21 +422,24 @@ export default function ChurchesPage() {
                       )}
                       <div className="min-w-0">
                         <CardTitle className="text-sm font-semibold leading-tight truncate">{church.name}</CardTitle>
-                        {church.branchCode && <p className="text-xs text-muted-foreground">{church.branchCode}</p>}
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          {church.branchCode && <p className="text-xs text-muted-foreground">{church.branchCode}</p>}
+                          {isCancelled && <Badge variant="secondary" className="text-[10px]">cancelled</Badge>}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                      {canInvite && (
+                      {canInvite && !isCancelled && (
                         <button onClick={() => setInviteLinkChurch(church)} className="p-1 text-muted-foreground hover:text-accent" title="Generate invite link">
                           <Link2 className="h-3.5 w-3.5" />
                         </button>
                       )}
-                      {canUpdate && (
+                      {canUpdate && !isCancelled && (
                         <button onClick={() => setEditChurch(church)} className="p-1 text-muted-foreground hover:text-foreground">
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                       )}
-                      {canDelete && (
+                      {canDelete && !isCancelled && (
                         <button onClick={() => setDeleteChurch(church)} className="p-1 text-muted-foreground hover:text-destructive">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -455,7 +475,7 @@ export default function ChurchesPage() {
                   )}
                   {church.email && <p className="text-xs text-muted-foreground truncate">{church.email}</p>}
                   {church.phone && <p className="text-xs text-muted-foreground">{church.phone}</p>}
-                  {hasPermission('subaccounts:view') && isKenyaAccount && (
+                  {hasPermission('subaccounts:view') && isKenyaAccount && !isCancelled && (
                     <Button 
                       size="sm" 
                       variant="outline" 
@@ -555,26 +575,23 @@ export default function ChurchesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation */}
+      {/* Cancel confirmation */}
       <AlertDialog open={!!deleteChurch} onOpenChange={open => !open && setDeleteChurch(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Branch - Data Loss Warning</AlertDialogTitle>
+            <AlertDialogTitle>Cancel Branch</AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
-              <p>You are about to permanently delete <strong>{deleteChurch?.name}</strong>.</p>
-              <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
-                <p className="font-medium text-destructive mb-2">⚠️ This will permanently delete ALL data associated with this branch:</p>
+              <p>You are about to cancel <strong>{deleteChurch?.name}</strong>.</p>
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
+                <p className="font-medium text-amber-700 dark:text-amber-300 mb-2">
+                  This hides the branch from normal workflows while keeping historical data:
+                </p>
                 <ul className="text-sm space-y-1 text-muted-foreground">
-                  <li>• All branch members and their records</li>
-                  <li>• All events and attendance records</li>
-                  <li>• All giving records</li>
-                  <li>• All announcements and communications</li>
-                  <li>• All resources and documents</li>
-                  <li>• All user accounts linked to this branch</li>
-                  <li>• All roles and permissions for this branch</li>
+                  <li>Members, attendance, giving, transactions, announcements, resources, and other records are retained.</li>
+                  <li>The invite link will be disabled and the branch will no longer appear in active branch lists.</li>
                 </ul>
               </div>
-              <p className="font-medium">This action cannot be undone. Are you absolutely sure?</p>
+              <p className="font-medium">You can review cancelled branches by changing the status filter.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -583,7 +600,7 @@ export default function ChurchesPage() {
               onClick={() => deleteChurch && deleteMutation.mutate(deleteChurch.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Yes, Delete Everything
+              Cancel Branch
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
