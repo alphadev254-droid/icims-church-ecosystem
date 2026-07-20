@@ -602,8 +602,8 @@ export default function CellAttendancePage() {
           </div>
           {flatOfferingCampaigns.length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              No active fellowship offering campaigns found for this cell's church.{' '}
-              Create one under <strong>Giving → Campaigns</strong> with category "Fellowship Offering".
+              No active Cells/fellowship offering campaigns found for this cell's church.{' '}
+              Create one under <strong>Giving → Campaigns</strong> with category "Cells/Fellowship Offering".
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">

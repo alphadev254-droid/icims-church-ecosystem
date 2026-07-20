@@ -204,7 +204,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditi
           <SelectContent>
             <SelectItem value="tithe">Tithe</SelectItem>
             <SelectItem value="offering">Offering</SelectItem>
-            <SelectItem value="fellowship_offering">Fellowship Offering</SelectItem>
+            <SelectItem value="fellowship_offering">Cells/Fellowship Offering</SelectItem>
             <SelectItem value="partnership">Partnership</SelectItem>
             <SelectItem value="welfare">Welfare</SelectItem>
             <SelectItem value="missions">Missions</SelectItem>
@@ -791,7 +791,7 @@ export default function GivingPage() {
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="tithe">Tithe</SelectItem>
                 <SelectItem value="offering">Offering</SelectItem>
-                <SelectItem value="fellowship_offering">Fellowship Offering</SelectItem>
+                <SelectItem value="fellowship_offering">Cells/Fellowship Offering</SelectItem>
                 <SelectItem value="partnership">Partnership</SelectItem>
                 <SelectItem value="welfare">Welfare</SelectItem>
                 <SelectItem value="missions">Missions</SelectItem>
