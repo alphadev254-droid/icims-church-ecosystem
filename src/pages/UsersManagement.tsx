@@ -600,7 +600,7 @@ function EditUserForm({ user, onSubmit, isPending }: {
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches-for-edit'],
-    queryFn: churchesService.getAll,
+    queryFn: churchesService.getSelectable,
   });
 
   function handleRoleChange(v: string) {
@@ -675,7 +675,7 @@ function EditUserForm({ user, onSubmit, isPending }: {
         <>
           <div>
             <Label>Assign to Church</Label>
-            <Select value={user.churchId ?? undefined} onValueChange={(value) => setValue('churchId', value)}>
+            <Select value={watch('churchId') ?? ''} onValueChange={(value) => setValue('churchId', value, { shouldDirty: true, shouldValidate: true })}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a church" />
               </SelectTrigger>
