@@ -407,7 +407,7 @@ export default function AdminChurchDetail() {
             <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="All roles" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All roles</SelectItem>
-              {['member', 'branch_admin', 'district_admin'].map(r => (
+              {['member'].map(r => (
                 <SelectItem key={r} value={r} className="text-xs">{r.replace('_', ' ')}</SelectItem>
               ))}
             </SelectContent>

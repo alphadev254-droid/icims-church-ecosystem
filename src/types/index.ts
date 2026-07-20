@@ -1,8 +1,5 @@
 export type UserRole =
   | 'ministry_admin'
-  | 'regional_admin'
-  | 'district_admin'
-  | 'branch_admin'
   | 'member';
 
 export interface User {

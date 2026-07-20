@@ -11,7 +11,7 @@ export function SubscriptionCheck() {
   const [showDialog, setShowDialog] = useState(false);
 
   useEffect(() => {
-    // Only check for non-members (ministry_admin, regional_admin, district_admin, branch_admin)
+    // Only check for non-members.
     if (!user || user.roleName === 'member') return;
 
     // Check if user has no package or subscription is expired

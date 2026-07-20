@@ -29,11 +29,11 @@ export function useRole() {
     hasAnyPermission: (...perms: string[]) => perms.some(p => permissions.includes(p)),
     /** Role name convenience checks */
     isNational:   roleName === 'ministry_admin',
-    isRegional:   roleName === 'regional_admin',
-    isDistrict:   roleName === 'district_admin',
-    isLocal:      roleName === 'branch_admin',
+    isRegional:   false,
+    isDistrict:   false,
+    isLocal:      false,
     isMember:     roleName === 'member',
-    isUpperLevel: roleName === 'ministry_admin' || roleName === 'regional_admin',
+    isUpperLevel: roleName === 'ministry_admin',
     isAdmin:      roleName !== 'member' && !!roleName,
     permissions,
   };

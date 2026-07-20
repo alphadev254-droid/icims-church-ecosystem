@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/hooks/useRole';
 import apiClient from '@/lib/api-client';
-import { Users, Building2, HandCoins, Calendar, TrendingUp, Globe, MapPin, Landmark, DollarSign, Ticket, Bell, BookOpen, ExternalLink, X, Baby, Network, UserRoundCheck } from 'lucide-react';
+import { Users, Building2, HandCoins, Calendar, TrendingUp, Globe, DollarSign, Ticket, Bell, BookOpen, ExternalLink, X, Baby, Network, UserRoundCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,9 +19,6 @@ async function fetchStats(churchId?: string | null) {
 
 const ROLE_LABELS: Record<string, { scope: string; icon: typeof Globe }> = {
   ministry_admin:    { scope: 'Entire Ministry', icon: Globe },
-  regional_admin:   { scope: 'Your Region',         icon: MapPin },
-  district_admin: { scope: 'Your District',       icon: Landmark },
-  branch_admin:       { scope: 'Your Branch',         icon: Building2 },
   member:            { scope: 'Your Church',         icon: Building2 },
 };
 

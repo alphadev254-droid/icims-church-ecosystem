@@ -9,7 +9,6 @@ import { rolesService } from '@/services/roles';
 import { churchesService } from '@/services/churches';
 import { locationsService } from '@/services/locations';
 import { cellsService } from '@/services/cells';
-import { AdminScopeSelector } from '@/components/AdminScopeSelector';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useAuthStore } from '@/stores/authStore';
@@ -39,17 +38,11 @@ import * as XLSX from 'xlsx';
 // ─── Role display helpers ─────────────────────────────────────────────────────
 const ROLE_DISPLAY: Record<string, string> = {
   ministry_admin: 'Ministry Administrator',
-  regional_admin: 'Regional Administrator',
-  district_admin: 'District Administrator',
-  branch_admin: 'Branch Administrator',
   member: 'Member',
 };
 
 const ROLE_BADGE_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = {
   ministry_admin: 'default',
-  regional_admin: 'default',
-  district_admin: 'secondary',
-  branch_admin: 'secondary',
   member: 'outline',
 };
 
@@ -100,8 +93,8 @@ const RELATIONSHIP_OPTIONS = [
 // ─── Role select ──────────────────────────────────────────────────────────────
 function RoleSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { data: roles = [] } = useQuery({ queryKey: ['roles'], queryFn: rolesService.getRoles });
-  // Filter out platform-only roles from user creation/editing
-  const filteredRoles = roles.filter(r => r.name !== 'ministry_admin' && r.name !== 'system_admin');
+  // User assignment supports members plus ministry-owned custom roles.
+  const filteredRoles = roles.filter(r => r.name === 'member' || !r.isSystemRole);
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -349,19 +342,12 @@ function CreateUserForm({ onSubmit, isPending }: {
   isPending: boolean;
 }) {
   const [role, setRole] = useState('member');
-  const [districts, setDistricts] = useState<string[]>([]);
-  const [tas, setTas] = useState<string[]>([]);
-  const [regions, setRegions] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
-  const currentUser = useAuthStore(s => s.user);
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<CreateValues>({
     resolver: zodResolver(createSchema),
     defaultValues: { roleName: 'member', phone: '', membershipType: 'member' },
   });
-
-  // Determine current user role (with fallback for backend compatibility)
-  const currentUserRole = currentUser?.roleName || currentUser?.role;
 
   // Get churches for all roles
   const { data: churches = [] } = useQuery({
@@ -372,9 +358,6 @@ function CreateUserForm({ onSubmit, isPending }: {
   function handleRoleChange(v: string) {
     setRole(v);
     setValue('roleName', v);
-    setDistricts([]);
-    setTas([]);
-    setRegions([]);
     
     // Clear churchId for non-member roles
     if (v !== 'member') {
@@ -382,13 +365,11 @@ function CreateUserForm({ onSubmit, isPending }: {
     }
   }
 
-  // Determine what fields are needed based on selected role
-  const showAdminScope = (role === 'district_admin' || role === 'branch_admin' || role === 'regional_admin') && currentUserRole === 'ministry_admin';
   const needsChurchSelection = role === 'member';
 
   return (
     <form onSubmit={handleSubmit((v) =>
-      { onSubmit(v, districts, tas, regions)
+      { onSubmit(v, [], [], [])
       }, (errors) => {
 
         console.log('=== CREATE FORM VALIDATION FAILED ===');
@@ -543,19 +524,6 @@ function CreateUserForm({ onSubmit, isPending }: {
         <Label htmlFor="baptized" className="cursor-pointer">Baptized by immersion</Label>
       </div>
       
-      {/* Admin scope for district_admin / branch_admin / regional_admin */}
-      {showAdminScope && (
-        <AdminScopeSelector
-          role={role as 'district_admin' | 'branch_admin' | 'regional_admin'}
-          districts={districts}
-          tas={tas}
-          regions={regions}
-          onDistrictsChange={setDistricts}
-          onTAsChange={setTas}
-          onRegionsChange={setRegions}
-        />
-      )}
-      
       <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
         {isPending ? 'Creating...' : 'Create User'}
       </Button>
@@ -570,9 +538,6 @@ function EditUserForm({ user, onSubmit, isPending }: {
   isPending: boolean;
 }) {
   const [role, setRole] = useState(user.roleName ?? 'member');
-  const [districts, setDistricts] = useState<string[]>(user.districts ?? []);
-  const [tas, setTas] = useState<string[]>(user.traditionalAuthorities ?? []);
-  const [regions, setRegions] = useState<string[]>(user.regions ?? []);
   const [showPassword, setShowPassword] = useState(false);
   const currentUser = useAuthStore(s => s.user);
 
@@ -607,19 +572,15 @@ function EditUserForm({ user, onSubmit, isPending }: {
   function handleRoleChange(v: string) {
     setRole(v);
     setValue('roleName', v);
-    if (v !== 'district_admin') setDistricts([]);
-    if (v !== 'branch_admin') setTas([]);
-    if (v !== 'regional_admin') setRegions([]);
   }
 
-  const showAdminScope = (role === 'district_admin' || role === 'branch_admin' || role === 'regional_admin') && currentUserRole === 'ministry_admin';
   const needsChurchSelection = role === 'member' && currentUserRole === 'ministry_admin';
 
   return (
     <form onSubmit={handleSubmit((v) => {
       console.log('=== EDIT FORM SUBMIT TRIGGERED ===');
       console.log('Form is valid, calling onSubmit');
-      onSubmit(v, districts, tas, regions);
+      onSubmit(v, [], [], []);
     }, (errors) => {
       console.log('=== EDIT FORM VALIDATION FAILED ===');
       console.log('Validation errors:', errors);
@@ -768,18 +729,6 @@ function EditUserForm({ user, onSubmit, isPending }: {
         />
         <Label htmlFor="baptized-edit" className="cursor-pointer">Baptized by immersion</Label>
       </div>
-      
-      {showAdminScope && (
-        <AdminScopeSelector
-          role={role as 'district_admin' | 'branch_admin' | 'regional_admin'}
-          districts={districts}
-          tas={tas}
-          regions={regions}
-          onDistrictsChange={setDistricts}
-          onTAsChange={setTas}
-          onRegionsChange={setRegions}
-        />
-      )}
       
       <Button type="submit" disabled={isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
         {isPending ? 'Saving...' : 'Save Changes'}
@@ -1069,27 +1018,13 @@ export default function UsersManagement() {
     console.log('=== CREATE USER SUBMISSION ===');
     console.log('Form values:', v);
     console.log('Role:', v.roleName);
-    console.log('Districts:', districts);
-    console.log('TAs:', tas);
-    console.log('Regions:', regions);
-    
-    const payload = {
-      ...v,
-      districts: (v.roleName === 'district_admin' || v.roleName === 'branch_admin') ? districts : undefined,
-      traditionalAuthorities: v.roleName === 'branch_admin' ? tas : undefined,
-      regions: v.roleName === 'regional_admin' ? regions : undefined,
-      // Pass location data for church assignment
-      region: v.region,
-      district: v.district,
-      traditionalAuthority: v.traditionalAuthority,
-      village: v.village,
-      churchId: v.churchId,
-    };
-    
-    console.log('Final payload:', payload);
+    console.log('Final payload:', v);
     console.log('==============================');
     
-    createMutation.mutate(payload);
+    createMutation.mutate({
+      ...v,
+      churchId: v.churchId,
+    });
   }
 
   function handleEdit(v: EditValues, districts: string[], tas: string[], regions: string[]) {
@@ -1117,9 +1052,6 @@ export default function UsersManagement() {
       serviceInterest: v.serviceInterest,
       baptizedByImmersion: v.baptizedByImmersion,
       roleName: v.roleName,
-      districts: (v.roleName === 'district_admin' || v.roleName === 'branch_admin') ? districts : [],
-      traditionalAuthorities: v.roleName === 'branch_admin' ? tas : [],
-      regions: v.roleName === 'regional_admin' ? regions : [],
     };
     
     console.log('Payload before church check:', payload);
@@ -1533,16 +1465,6 @@ export default function UsersManagement() {
                 {users.map(user => {
                   const isSelf = user.id === currentUser?.id;
                   const isChildIdentity = isChildUser(user);
-                  const scopeItems = user.roleName === 'district_admin'
-                    ? user.districts
-                    : user.roleName === 'branch_admin'
-                    ? user.traditionalAuthorities
-                    : null;
-                  const scopeText = !scopeItems || scopeItems.length === 0
-                    ? null
-                    : scopeItems.includes('__all__')
-                    ? 'All'
-                    : scopeItems.join(', ');
 
                   return (
                     <TableRow key={user.id} className="h-9 text-xs sm:text-sm">
@@ -1748,24 +1670,6 @@ export default function UsersManagement() {
                 <div>
                   <Label className="text-muted-foreground">Cell / Fellowship</Label>
                   <p className="font-medium">{(viewUser as any).cells.map((c: any) => c.name).join(', ')}</p>
-                </div>
-              )}
-              {viewUser.roleName === 'district_admin' && viewUser.districts && viewUser.districts.length > 0 && (
-                <div>
-                  <Label className="text-muted-foreground">Districts</Label>
-                  <p className="font-medium">{viewUser.districts.includes('__all__') ? 'All Districts' : viewUser.districts.join(', ')}</p>
-                </div>
-              )}
-              {viewUser.roleName === 'branch_admin' && viewUser.districts && viewUser.districts.length > 0 && (
-                <div>
-                  <Label className="text-muted-foreground">District</Label>
-                  <p className="font-medium">{viewUser.districts[0]}</p>
-                </div>
-              )}
-              {viewUser.roleName === 'branch_admin' && viewUser.traditionalAuthorities && viewUser.traditionalAuthorities.length > 0 && (
-                <div>
-                  <Label className="text-muted-foreground">Traditional Authorities</Label>
-                  <p className="font-medium">{viewUser.traditionalAuthorities.includes('__all__') ? 'All TAs' : viewUser.traditionalAuthorities.join(', ')}</p>
                 </div>
               )}
               <div>
