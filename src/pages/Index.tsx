@@ -8,6 +8,7 @@ import {
   Users, Church, Calendar, HandCoins, BarChart3, MessageSquare,
   BookOpen, ClipboardList, Building2, TrendingUp, Shield, Globe,
   ArrowRight, Baby, CheckCircle2, ChevronRight, Smartphone, Download, X,
+  Bell, QrCode, Receipt, ShieldCheck,
 } from 'lucide-react';
 const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
@@ -15,27 +16,31 @@ import { BookDemoDialog } from '@/components/BookDemoDialog';
 const modules = [
   { icon: Users,        title: 'Members Management',            desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
   { icon: Baby,         title: 'Children & Dependents',         desc: 'Record children, link them to parents or guardians, and keep family relationships clear inside the church register.' },
-  { icon: Calendar,     title: 'Events Management',             desc: 'This module allows you to create church events and share them with all your church members. It also issues tickets for all ticketed events.' },
-  { icon: HandCoins,    title: 'Giving',            desc: "Online giving is made easy! You can now manage your church's giving online." },
-  { icon: ClipboardList,title: 'Attendance Tracking',           desc: 'Report every church meeting and retrieve the data at any time in the future.' },
+  { icon: Calendar,     title: 'Events Management',             desc: 'Create church events, publish them to members, and manage free or ticketed gatherings.' },
+  { icon: HandCoins,    title: 'Giving & Campaigns',            desc: "Manage tithes, offerings, pledges, partnerships, and multi-church giving campaigns online." },
+  { icon: QrCode,       title: 'QR Code Attendance',            desc: 'Let members check in by scanning a service QR code, or let ushers scan member QR codes at the door.' },
   { icon: BookOpen,     title: 'Resources Library',             desc: 'This module gives you a platform to keep resource materials that can be accessed by all church members.' },
   { icon: Church,       title: 'Churches Management',           desc: 'Create your church and manage how data flows from the churches under you in this module.' },
-  { icon: BarChart3,    title: 'Transactions View',             desc: 'View all the giving transactions on your account as they happen.' },
+  { icon: Receipt,      title: 'Transactions View',             desc: 'View giving, ticketing, and payment records as they happen across your ministry.' },
   { icon: Building2,    title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
   { icon: Users,        title: 'Users Management',              desc: 'Manage the users using this module.' },
+  { icon: ShieldCheck,  title: 'Roles & Permissions',           desc: 'Create custom roles, assign permissions, and control which church data each user can access.' },
   { icon: MessageSquare,title: 'Communication & Announcements', desc: 'This module helps you manage your communication within the church. You communicate directly with your targeted audience in the church/ministry.' },
   { icon: Users,        title: 'Teams Management',              desc: "Assign your church members to teams to ensure they are engaged in the ministry's work." },
+  { icon: Bell,         title: 'Reminders Management',          desc: 'Schedule pledge, giving, birthday, anniversary, event, and ministry reminders.' },
   { icon: TrendingUp,   title: 'Performance Dashboard',         desc: 'Track all your Key Performance Indicators using this module.' },
   { icon: BarChart3,    title: 'Reports & Analytics',           desc: 'Access all your giving, attendance, and membership reports using this module.' },
   { icon: Calendar,     title: 'Event Ticketing',               desc: 'Issue tickets for your events using this module.' },
-  { icon: ClipboardList,title: 'Reminders Management',          desc: 'This module reminds you of special days, including anniversaries, birthdays, and ministry events, so that you do not miss any.' },
+  { icon: Globe,        title: 'Public Church Website',         desc: 'Publish a branded church website with sermons, ministries, events, giving, visit forms, and contact details.' },
+  { icon: HandCoins,    title: 'Wallets & Withdrawals',         desc: 'Track ministry wallets, withdrawal requests, fees, OTP checks, and payout history.' },
+  { icon: ClipboardList,title: 'Pledges & Follow-up',           desc: 'Record pledges, track balances, filter by campaign or church, and follow up with reminders.' },
 ];
 
 const stats = [
   { value: '500+',   label: 'Churches onboarded' },
   { value: '50k+',   label: 'Members managed' },
   { value: '99.9%',  label: 'Platform uptime' },
-  { value: '16+',    label: 'Integrated modules' },
+  { value: '20',    label: 'Integrated modules' },
 ];
 
 const whys = [
@@ -124,7 +129,7 @@ export default function LandingPage() {
               transition={{ duration: 0.55, delay: 0.25 }}
               className="text-white/70 text-lg md:text-xl mb-10 max-w-xl leading-relaxed"
             >
-              16+ integrated modules covering every aspect of ministry — from membership and children records to giving, events, attendance, and performance tracking.
+              20 integrated modules covering every aspect of ministry — from membership, children records, QR attendance, giving, events, public websites, reminders, reports, and performance tracking.
             </motion.p>
 
             <motion.div
@@ -245,7 +250,7 @@ export default function LandingPage() {
             <div>
               <p className="text-accent text-xs font-semibold tracking-widest uppercase mb-3">What's included</p>
               <h2 className="font-heading text-4xl md:text-5xl font-bold text-background dark:text-foreground leading-tight">
-                16+ modules.<br />One platform.
+                20 modules.<br />One platform.
               </h2>
             </div>
             {/* Right */}

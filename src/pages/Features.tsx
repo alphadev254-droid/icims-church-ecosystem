@@ -7,6 +7,7 @@ import {
   BookOpen, ClipboardList, Building2, TrendingUp, Shield, Globe,
   Zap, Lock, Smartphone, FileText, ArrowRight, Baby, CheckCircle2,
   Users2, UsersRound, Bell, Ticket, Receipt, ShieldCheck,
+  QrCode, Wallet, Globe2, Handshake,
 } from 'lucide-react';
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -21,28 +22,28 @@ const modules = [
   // Core
   { icon: Users,        cat: 'core',          num: '01', title: 'Members Management',           desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
   { icon: Baby,         cat: 'core',          num: '02', title: 'Children & Dependents',         desc: 'Record children, link them to parents or guardians, and keep family relationships clear inside the church register.' },
-  { icon: Calendar,     cat: 'core',          num: '03', title: 'Events Management',             desc: 'This module allows you to create church events and share them with all your church members. It also issues tickets for all ticketed events.' },
-  { icon: HandCoins,    cat: 'core',          num: '04', title: 'Giving',            desc: "Online giving is made easy! You can now manage your church's giving online." },
-  { icon: ClipboardList,cat: 'core',          num: '05', title: 'Attendance Tracking',           desc: 'Report every church meeting and retrieve the data at any time in the future.' },
+  { icon: Calendar,     cat: 'core',          num: '03', title: 'Events Management',             desc: 'Create church events, publish them to members, and manage free or ticketed gatherings.' },
+  { icon: HandCoins,    cat: 'core',          num: '04', title: 'Giving & Campaigns',            desc: "Manage tithes, offerings, pledges, partnerships, and multi-church giving campaigns online." },
+  { icon: QrCode,       cat: 'core',          num: '05', title: 'QR Code Attendance',            desc: 'Let members check in by scanning a service QR code, or let ushers scan member QR codes at the door.' },
   { icon: BookOpen,     cat: 'core',          num: '06', title: 'Resources Library',             desc: 'This module gives you a platform to keep resource materials that can be accessed by all church members.' },
   { icon: Church,       cat: 'core',          num: '07', title: 'Churches Management',           desc: 'Create your church and manage how data flows from the churches under you in this module.' },
-  { icon: Receipt,      cat: 'core',          num: '08', title: 'Transactions View',             desc: 'View all the giving transactions on your account as they happen.' },
+  { icon: Receipt,      cat: 'core',          num: '08', title: 'Transactions View',             desc: 'View giving, ticketing, and payment records as they happen across your ministry.' },
   { icon: Users2,       cat: 'core',          num: '09', title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
   // Management
   { icon: Users2,       cat: 'management',    num: '10', title: 'Users Management',              desc: 'Manage the users using this module.' },
   { icon: ShieldCheck,  cat: 'management',    num: '11', title: 'Roles & Permissions',           desc: 'Assign roles and permissions to the users using this module.' },
-  { icon: Users2,       cat: 'management',    num: '12', title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
+  { icon: Handshake,    cat: 'management',    num: '12', title: 'Pledges & Follow-up',           desc: 'Record pledges, track balances, filter by campaign or church, and follow up with reminders.' },
   // Communication
   { icon: MessageSquare,cat: 'communication', num: '13', title: 'Communication & Announcements', desc: 'This module helps you manage your communication within the church. You communicate directly with your targeted audience in the church/ministry.' },
   { icon: UsersRound,   cat: 'communication', num: '14', title: 'Teams Management',              desc: "Assign your church members to teams to ensure they are engaged in the ministry's work." },
-  { icon: Bell,         cat: 'communication', num: '15', title: 'Reminders Management',          desc: 'This module reminds you of special days, including anniversaries, birthdays, and ministry events, so that you do not miss any.' },
+  { icon: Bell,         cat: 'communication', num: '15', title: 'Reminders Management',          desc: 'Schedule pledge, giving, birthday, anniversary, event, and ministry reminders.' },
   // Reporting
   { icon: BarChart3,    cat: 'reporting',     num: '16', title: 'Reports & Analytics',           desc: 'Access all your giving, attendance, and membership reports using this module.' },
   { icon: TrendingUp,   cat: 'reporting',     num: '17', title: 'Performance Dashboard',         desc: 'Track all your Key Performance Indicators using this module.' },
-  { icon: FileText,     cat: 'reporting',     num: '18', title: 'Advanced Reports',              desc: 'Export and analyze your data using other analytical softwares.' },
+  { icon: Wallet,       cat: 'reporting',     num: '18', title: 'Wallets & Withdrawals',         desc: 'Track ministry wallets, withdrawal requests, fees, OTP checks, and payout history.' },
   // Events
   { icon: Ticket,       cat: 'events',        num: '19', title: 'Event Ticketing',               desc: 'Issue tickets for your events using this module.' },
-  { icon: ClipboardList,cat: 'events',        num: '20', title: 'Event Attendance Tracking',     desc: 'Report your service attendance using this module.' },
+  { icon: Globe2,       cat: 'events',        num: '20', title: 'Public Church Website',         desc: 'Publish a branded church website with sermons, ministries, events, giving, visit forms, and contact details.' },
 ];
 
 const techSpecs = [
@@ -65,7 +66,7 @@ const inView = {
 export default function FeaturesPage() {
   usePageMeta({
     title: '20 Integrated Modules & Features',
-    description: 'Explore all 20 ICIMS modules: membership, children and dependents, giving, attendance, events, communication, Bible study, revenue management, performance KPIs and more.',
+    description: 'Explore all 20 ICIMS modules: membership, children and dependents, QR code attendance, giving, pledges, events, communication, public church websites, revenue management, performance KPIs and more.',
     canonical: 'https://churchcentral.church/features',
     ogImage: 'https://media.aircnc.co.ke/media-images/20e847ba-fb2d-45f8-ad77-95b615ef85c8.webp',
   });

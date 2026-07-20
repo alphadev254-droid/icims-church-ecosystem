@@ -92,7 +92,7 @@ export default function AboutPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {[
               { value: '100+',   label: 'Churches served' },
-              { value: '19',     label: 'Integrated modules' },
+              { value: '20',     label: 'Integrated modules' },
               { value: '5,000+', label: 'Concurrent users' },
               { value: '99.5%',  label: 'Platform uptime' },
             ].map((s, i) => (
@@ -126,7 +126,7 @@ export default function AboutPage() {
                   — a movement equipping church leaders for effective ministry.
                 </p>
                 <p>
-                  We saw churches drowning in spreadsheets, disconnected tools, and manual processes. ICIMS brings 19 functional modules into one unified platform that supports the entire ministry hierarchy — from national headquarters to local branches.
+                  We saw churches drowning in spreadsheets, disconnected tools, and manual processes. ICIMS brings 20 functional modules into one unified platform that supports the entire ministry hierarchy — from national headquarters to local branches.
                 </p>
                 <p>
                   Whether you are a small local church or a national ministry with thousands of branches, ICIMS scales without extra configuration.
