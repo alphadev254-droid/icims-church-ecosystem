@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Baby, Info, Link2, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
+import { Baby, Info, Link2, MoreHorizontal, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
 import { childrenService, type Child } from '@/services/children';
 import { usersService, type AppUser } from '@/services/users';
 import { churchesService } from '@/services/churches';
@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -590,7 +591,7 @@ export default function ChildrenPage() {
                   <TableHead>Parent / Guardian</TableHead>
                   <TableHead className="hidden md:table-cell">Status</TableHead>
                   <TableHead className="hidden xl:table-cell">Created</TableHead>
-                  <TableHead className="w-28">Actions</TableHead>
+                  <TableHead className="w-20 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -648,29 +649,39 @@ export default function ChildrenPage() {
                       {new Date(child.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => setViewChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                          <Info className="h-3.5 w-3.5" />
-                        </button>
-                        {canLinkGuardians && (
-                          <>
-                            <button onClick={() => setLinkChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                              <Link2 className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        )}
-                        {canUpdate && (
-                          <>
-                            <button onClick={() => setEditChild(child)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        )}
-                        {canDelete && (
-                          <button onClick={() => setDeleteChild(child)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
+                      <div className="flex justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Open actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onSelect={() => setViewChild(child)}>
+                              <Info className="mr-2 h-4 w-4" />
+                              View
+                            </DropdownMenuItem>
+                            {canLinkGuardians && (
+                              <DropdownMenuItem onSelect={() => setLinkChild(child)}>
+                                <Link2 className="mr-2 h-4 w-4" />
+                                Link guardian
+                              </DropdownMenuItem>
+                            )}
+                            {canUpdate && (
+                              <DropdownMenuItem onSelect={() => setEditChild(child)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete && (
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => setDeleteChild(child)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>

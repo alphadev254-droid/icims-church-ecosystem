@@ -300,7 +300,7 @@ export default function ChurchesPage() {
   const generateInviteMutation = useMutation({
     mutationFn: (id: string) => churchesService.generateInviteLink(id),
     onSuccess: (data) => {
-      qc.setQueryData(['churches'], (old: Church[] | undefined) => 
+      qc.setQueryData(['churches', statusFilter], (old: Church[] | undefined) =>
         old?.map(c => c.id === data.id ? { ...c, inviteToken: data.inviteToken } : c)
       );
       setInviteLinkChurch(prev => prev ? { ...prev, inviteToken: data.inviteToken } : null);
@@ -312,7 +312,7 @@ export default function ChurchesPage() {
 
   const copyInviteLink = (token: string, churchId: string) => {
     const baseUrl = window.location.origin;
-    const inviteUrl = `${baseUrl}/register/member?invite=${token}`;
+    const inviteUrl = `${baseUrl}/register/member?invite=${token}&church=${churchId}`;
     navigator.clipboard.writeText(inviteUrl);
     setCopiedId(churchId);
     toast.success('Invite link copied to clipboard');
@@ -542,7 +542,7 @@ export default function ChurchesPage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
                   <code className="flex-1 text-xs break-all">
-                    {window.location.origin}/register/member?invite={inviteLinkChurch.inviteToken}
+                    {window.location.origin}/register/member?invite={inviteLinkChurch.inviteToken}&church={inviteLinkChurch.id}
                   </code>
                   <Button
                     size="sm"

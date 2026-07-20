@@ -24,11 +24,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, Users, Pencil, Trash2, Eye, EyeOff, Info, Lock } from 'lucide-react';
+import { MoreHorizontal, Plus, Search, Users, Pencil, Trash2, Eye, EyeOff, Info, Lock } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { AgeRangeFilter } from '@/components/AgeRangeFilter';
 import { toast } from 'sonner';
@@ -1525,7 +1526,7 @@ export default function UsersManagement() {
                   <TableHead className="hidden xl:table-cell">Teams</TableHead>
                   <TableHead className="hidden xl:table-cell">Cell</TableHead>
                   <TableHead className="hidden lg:table-cell">Joined</TableHead>
-                  {(canUpdate || canDelete) && <TableHead className="w-20">Actions</TableHead>}
+                  {(canUpdate || canDelete) && <TableHead className="w-20 text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1586,33 +1587,43 @@ export default function UsersManagement() {
                       </TableCell>
                       {(canUpdate || canDelete) && (
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => setViewUser(user)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                              <Info className="h-3.5 w-3.5" />
-                            </button>
-                            {canUpdate && (
-                              <>
-                                <button onClick={() => setEditUser(user)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
-                                {!isChildIdentity && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2 text-xs"
-                                    onClick={() => toggleStatusMutation.mutate({ id: user.id, status: user.status === 'active' ? 'inactive' : 'active' })}
-                                    disabled={isSelf}
-                                  >
-                                    {user.status === 'active' ? 'Deactivate' : 'Activate'}
-                                  </Button>
+                          <div className="flex justify-end">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Open actions</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuItem onSelect={() => setViewUser(user)}>
+                                  <Info className="mr-2 h-4 w-4" />
+                                  View
+                                </DropdownMenuItem>
+                                {canUpdate && (
+                                  <>
+                                    <DropdownMenuItem onSelect={() => setEditUser(user)}>
+                                      <Pencil className="mr-2 h-4 w-4" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    {!isChildIdentity && (
+                                      <DropdownMenuItem
+                                        disabled={isSelf}
+                                        onSelect={() => toggleStatusMutation.mutate({ id: user.id, status: user.status === 'active' ? 'inactive' : 'active' })}
+                                      >
+                                        {user.status === 'active' ? 'Deactivate' : 'Activate'}
+                                      </DropdownMenuItem>
+                                    )}
+                                  </>
                                 )}
-                              </>
-                            )}
-                            {canDelete && !isSelf && !isChildIdentity && user.status !== 'cancelled' && (
-                              <button onClick={() => setDeleteUser(user)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
+                                {canDelete && !isSelf && !isChildIdentity && user.status !== 'cancelled' && (
+                                  <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => setDeleteUser(user)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Cancel user
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       )}

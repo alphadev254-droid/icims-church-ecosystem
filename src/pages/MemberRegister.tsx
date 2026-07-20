@@ -49,10 +49,12 @@ export default function MemberRegisterPage() {
   const [membershipType, setMembershipType] = useState<'member' | 'pastor' | 'deacon' | 'other' | ''>('');
   const [serviceInterests, setServiceInterests] = useState<string[]>([]);
   const [baptized, setBaptized] = useState<boolean | undefined>(undefined);
+  const [churchId, setChurchId] = useState<string>('');
   const [churchName, setChurchName] = useState<string>('');
   const [churchLogoUrl, setChurchLogoUrl] = useState<string | null>(null);
   const [loadingChurch, setLoadingChurch] = useState(true);
   const inviteToken = searchParams.get('invite');
+  const linkChurchId = searchParams.get('church') || '';
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -69,6 +71,12 @@ export default function MemberRegisterPage() {
       try {
         const { data } = await apiClient.get(`/churches/by-invite/${inviteToken}`);
         if (data.success) {
+          if (linkChurchId && data.data.id !== linkChurchId) {
+            toast.error('This invite link does not match the church. Please ask for a fresh link.');
+            navigate('/login');
+            return;
+          }
+          setChurchId(data.data.id);
           setChurchName(data.data.name);
           setChurchLogoUrl(data.data.logoUrl ?? null);
         } else {
@@ -84,11 +92,15 @@ export default function MemberRegisterPage() {
     };
 
     fetchChurch();
-  }, [inviteToken, navigate]);
+  }, [inviteToken, linkChurchId, navigate]);
 
   const onSubmit = async (values: FormValues) => {
     if (!inviteToken) {
       toast.error('Invalid invite link');
+      return;
+    }
+    if (!churchId) {
+      toast.error('Church invite could not be verified. Please reopen the invite link.');
       return;
     }
 
@@ -107,6 +119,7 @@ export default function MemberRegisterPage() {
       baptizedByImmersion: baptized,
       password: values.password,
       inviteToken,
+      expectedChurchId: linkChurchId || churchId,
     });
 
     if (result.success) {

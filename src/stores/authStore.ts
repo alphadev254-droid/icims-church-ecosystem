@@ -91,6 +91,7 @@ export interface MemberRegisterData {
   serviceInterest?: string;
   baptizedByImmersion?: boolean;
   inviteToken: string;
+  expectedChurchId?: string;
 }
 
 function applyPermissions(permissions: string[], user: AuthUser) {
