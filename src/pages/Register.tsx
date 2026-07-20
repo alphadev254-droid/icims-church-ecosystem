@@ -74,6 +74,17 @@ export default function RegisterPage() {
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, trigger, getValues } = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: 'onTouched',
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      ministryName: '',
+      subdomain: '',
+      email: '',
+      phone: '',
+      anniversary: '',
+      password: '',
+      confirmPassword: '',
+    },
   });
 
   const nextStep = async () => {
@@ -203,7 +214,7 @@ export default function RegisterPage() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)}>
+          <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
 
             {/* â”€â”€ Step 1: Personal details â”€â”€ */}
             {step === 1 && (
@@ -222,12 +233,12 @@ export default function RegisterPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>First name</Label>
-                    <Input {...register('firstName')} placeholder="James" className={errors.firstName ? 'border-destructive' : ''} />
+                    <Input {...register('firstName')} placeholder="James" autoComplete="off" className={errors.firstName ? 'border-destructive' : ''} />
                     {errors.firstName && <p className="text-xs text-destructive">{errors.firstName.message}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Last name</Label>
-                    <Input {...register('lastName')} placeholder="Banda" className={errors.lastName ? 'border-destructive' : ''} />
+                    <Input {...register('lastName')} placeholder="Banda" autoComplete="off" className={errors.lastName ? 'border-destructive' : ''} />
                     {errors.lastName && <p className="text-xs text-destructive">{errors.lastName.message}</p>}
                   </div>
                 </div>
@@ -235,19 +246,19 @@ export default function RegisterPage() {
                 {title === 'Other' && (
                   <div className="space-y-1.5">
                     <Label>Specify title</Label>
-                    <Input {...register('titleOther')} placeholder="e.g. Apostle" />
+                    <Input {...register('titleOther')} placeholder="e.g. Apostle" autoComplete="off" />
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Email address</Label>
-                    <Input type="email" autoComplete="email" {...register('email')} placeholder="admin@church.org" className={errors.email ? 'border-destructive' : ''} />
+                    <Input type="email" autoComplete="off" {...register('email')} placeholder="admin@church.org" className={errors.email ? 'border-destructive' : ''} />
                     {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Phone number</Label>
-                    <Input {...register('phone')} placeholder={accountCountry === 'Kenya' ? '+254...' : '+265...'} className={errors.phone ? 'border-destructive' : ''} />
+                    <Input {...register('phone')} placeholder={accountCountry === 'Kenya' ? '+254...' : '+265...'} autoComplete="off" className={errors.phone ? 'border-destructive' : ''} />
                     {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
                   </div>
                 </div>
@@ -296,6 +307,7 @@ export default function RegisterPage() {
                   </Label>
                   <Input
                     {...register('ministryName')}
+                    autoComplete="off"
                     placeholder="e.g. Grace Community Church"
                     className={errors.ministryName ? 'border-destructive' : ''}
                     onChange={e => {
@@ -323,6 +335,7 @@ export default function RegisterPage() {
                     <input
                       className="flex-1 px-3 py-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
                       placeholder="grace-community-church"
+                      autoComplete="off"
                       value={subdomainSlug}
                       onChange={e => {
                         const slug = toSlug(e.target.value);
@@ -352,7 +365,7 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Current membership <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Input type="number" min={0} {...register('currentMembership')} placeholder="e.g. 250" />
+                    <Input type="number" min={0} {...register('currentMembership')} placeholder="e.g. 250" autoComplete="off" />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Number of branches</Label>
@@ -369,7 +382,7 @@ export default function RegisterPage() {
 
                 <div className="space-y-1.5">
                   <Label>Church founded date <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input type="date" {...register('anniversary')} />
+                  <Input type="date" {...register('anniversary')} autoComplete="off" />
                 </div>
 
                 <div className="flex gap-3">

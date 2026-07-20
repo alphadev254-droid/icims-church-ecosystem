@@ -20,6 +20,7 @@ export default function ForgotPasswordPage() {
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: { email: '' },
   });
 
   const onSubmit = async (values: FormValues) => {
@@ -66,13 +67,14 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
           <div className="space-y-1">
             <Label htmlFor="email">Email address</Label>
             <Input
               id="email"
               type="email"
               placeholder="you@church.org"
+              autoComplete="off"
               {...register('email')}
               className={errors.email ? 'border-destructive' : ''}
             />

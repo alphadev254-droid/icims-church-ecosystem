@@ -255,18 +255,18 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <form onSubmit={profileForm.handleSubmit(onSaveProfile)} className="space-y-4">
+          <form onSubmit={profileForm.handleSubmit(onSaveProfile)} className="space-y-4" autoComplete="off">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>First Name</Label>
-                <Input {...profileForm.register('firstName')} />
+                <Input {...profileForm.register('firstName')} autoComplete="off" />
                 {profileForm.formState.errors.firstName && (
                   <p className="text-xs text-destructive mt-1">{profileForm.formState.errors.firstName.message}</p>
                 )}
               </div>
               <div>
                 <Label>Last Name</Label>
-                <Input {...profileForm.register('lastName')} />
+                <Input {...profileForm.register('lastName')} autoComplete="off" />
                 {profileForm.formState.errors.lastName && (
                   <p className="text-xs text-destructive mt-1">{profileForm.formState.errors.lastName.message}</p>
                 )}
@@ -274,11 +274,11 @@ export default function SettingsPage() {
             </div>
             <div>
               <Label>Email <span className="text-muted-foreground text-xs">(cannot be changed)</span></Label>
-              <Input value={user?.email ?? ''} disabled className="opacity-60" />
+              <Input value={user?.email ?? ''} disabled className="opacity-60" autoComplete="off" />
             </div>
             <div>
               <Label>Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
-              <Input {...profileForm.register('phone')} placeholder="+265 ..." />
+              <Input {...profileForm.register('phone')} placeholder="+265 ..." autoComplete="off" />
             </div>
             <Button type="submit" disabled={profileLoading} className="bg-accent text-accent-foreground hover:bg-accent/90">
               {profileLoading ? 'Saving...' : 'Save Profile'}
@@ -381,13 +381,14 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={passwordForm.handleSubmit(onChangePassword)} className="space-y-4">
+          <form onSubmit={passwordForm.handleSubmit(onChangePassword)} className="space-y-4" autoComplete="off">
             <div>
               <Label>Current Password</Label>
               <div className="relative">
                 <Input 
                   type={showCurrentPassword ? 'text' : 'password'} 
                   {...passwordForm.register('currentPassword')} 
+                  autoComplete="current-password"
                   className="pr-10"
                 />
                 <button
@@ -408,6 +409,7 @@ export default function SettingsPage() {
                 <Input 
                   type={showNewPassword ? 'text' : 'password'} 
                   {...passwordForm.register('newPassword')} 
+                  autoComplete="new-password"
                   className="pr-10"
                 />
                 <button
@@ -428,6 +430,7 @@ export default function SettingsPage() {
                 <Input 
                   type={showConfirmPassword ? 'text' : 'password'} 
                   {...passwordForm.register('confirmPassword')} 
+                  autoComplete="new-password"
                   className="pr-10"
                 />
                 <button

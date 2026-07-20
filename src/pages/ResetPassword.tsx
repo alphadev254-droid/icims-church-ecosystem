@@ -28,6 +28,10 @@ export default function ResetPasswordPage() {
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      newPassword: '',
+      confirmPassword: '',
+    },
   });
 
   const onSubmit = async (values: FormValues) => {
@@ -77,7 +81,7 @@ export default function ResetPasswordPage() {
           <p className="text-sm text-muted-foreground mt-1">Enter your new password below</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
           <div className="space-y-1">
             <Label htmlFor="newPassword">New Password</Label>
             <div className="relative">
@@ -85,6 +89,7 @@ export default function ResetPasswordPage() {
                 id="newPassword"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
+                autoComplete="new-password"
                 {...register('newPassword')}
                 className={errors.newPassword ? 'border-destructive pr-10' : 'pr-10'}
               />
@@ -106,6 +111,7 @@ export default function ResetPasswordPage() {
                 id="confirmPassword"
                 type={showConfirm ? 'text' : 'password'}
                 placeholder="••••••••"
+                autoComplete="new-password"
                 {...register('confirmPassword')}
                 className={errors.confirmPassword ? 'border-destructive pr-10' : 'pr-10'}
               />

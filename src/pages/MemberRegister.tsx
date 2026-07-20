@@ -56,11 +56,39 @@ export default function MemberRegisterPage() {
   const inviteToken = searchParams.get('invite');
   const linkChurchId = searchParams.get('church') || '';
 
-  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue } = useForm<FormValues>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      dateOfBirth: '',
+      weddingDate: '',
+      residentialNeighbourhood: '',
+      password: '',
+      confirmPassword: '',
+    },
   });
 
   useEffect(() => {
+    reset({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      dateOfBirth: '',
+      weddingDate: '',
+      residentialNeighbourhood: '',
+      password: '',
+      confirmPassword: '',
+    });
+    setGender('');
+    setMaritalStatus('');
+    setMembershipType('');
+    setServiceInterests([]);
+    setBaptized(undefined);
+
     const fetchChurch = async () => {
       if (!inviteToken) {
         toast.error('Invalid invite link');
@@ -92,7 +120,7 @@ export default function MemberRegisterPage() {
     };
 
     fetchChurch();
-  }, [inviteToken, linkChurchId, navigate]);
+  }, [inviteToken, linkChurchId, navigate, reset]);
 
   const onSubmit = async (values: FormValues) => {
     if (!inviteToken) {
@@ -154,17 +182,22 @@ export default function MemberRegisterPage() {
           <p className="text-sm text-muted-foreground mt-1">Create your account to join the church</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form
+          key={`${inviteToken}-${linkChurchId}`}
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-4"
+          autoComplete="off"
+        >
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>First Name</Label>
-              <Input {...register('firstName')} placeholder="James"
+              <Input {...register('firstName')} placeholder="James" autoComplete="off"
                 className={errors.firstName ? 'border-destructive' : ''} />
               {errors.firstName && <p className="text-xs text-destructive">{errors.firstName.message}</p>}
             </div>
             <div className="space-y-1">
               <Label>Last Name</Label>
-              <Input {...register('lastName')} placeholder="Banda"
+              <Input {...register('lastName')} placeholder="Banda" autoComplete="off"
                 className={errors.lastName ? 'border-destructive' : ''} />
               {errors.lastName && <p className="text-xs text-destructive">{errors.lastName.message}</p>}
             </div>
@@ -172,14 +205,14 @@ export default function MemberRegisterPage() {
 
           <div className="space-y-1">
             <Label>Email Address</Label>
-            <Input type="email" {...register('email')} placeholder="member@example.com"
+            <Input type="email" {...register('email')} placeholder="member@example.com" autoComplete="off"
               className={errors.email ? 'border-destructive' : ''} />
             {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-1">
             <Label>Phone</Label>
-            <Input {...register('phone')} placeholder="+265 ..."
+            <Input {...register('phone')} placeholder="+265 ..." autoComplete="off"
               className={errors.phone ? 'border-destructive' : ''} />
             {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
           </div>
@@ -200,7 +233,7 @@ export default function MemberRegisterPage() {
 
           <div className="space-y-1">
             <Label>Date of Birth</Label>
-            <Input type="date" {...register('dateOfBirth')}
+            <Input type="date" {...register('dateOfBirth')} autoComplete="off"
               className={errors.dateOfBirth ? 'border-destructive' : ''} />
             {errors.dateOfBirth && <p className="text-xs text-destructive">{errors.dateOfBirth.message}</p>}
           </div>
@@ -224,14 +257,14 @@ export default function MemberRegisterPage() {
           {maritalStatus === 'married' && (
             <div className="space-y-1">
               <Label>Wedding Date (Optional)</Label>
-              <Input type="date" {...register('weddingDate')} />
+              <Input type="date" {...register('weddingDate')} autoComplete="off" />
               <p className="text-xs text-muted-foreground">Used for church anniversary celebrations</p>
             </div>
           )}
 
           <div className="space-y-1">
             <Label>Residential Neighbourhood <span className="text-xs text-muted-foreground">(optional)</span></Label>
-            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47"
+            <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" autoComplete="off"
               className={errors.residentialNeighbourhood ? 'border-destructive' : ''} />
             {errors.residentialNeighbourhood && <p className="text-xs text-destructive">{errors.residentialNeighbourhood.message}</p>}
           </div>
@@ -295,6 +328,7 @@ export default function MemberRegisterPage() {
                 type={showPassword ? 'text' : 'password'}
                 {...register('password')}
                 placeholder="Min 8 chars, 1 uppercase, 1 number"
+                autoComplete="new-password"
                 className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
               />
               <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -307,7 +341,7 @@ export default function MemberRegisterPage() {
 
           <div className="space-y-1">
             <Label>Confirm Password</Label>
-            <Input type="password" {...register('confirmPassword')} placeholder="Repeat password"
+            <Input type="password" {...register('confirmPassword')} placeholder="Repeat password" autoComplete="new-password"
               className={errors.confirmPassword ? 'border-destructive' : ''} />
             {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
           </div>
