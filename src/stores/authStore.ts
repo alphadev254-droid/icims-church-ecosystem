@@ -106,6 +106,24 @@ function getDefaultRedirect(user: AuthUser, navItems: NavItem[], allowedRoutes: 
   return navItems[0]?.to ?? allowedRoutes[0] ?? '/dashboard';
 }
 
+function clearClientStoredData() {
+  if (typeof window === 'undefined') return;
+
+  try {
+    localStorage.clear();
+  } catch {
+    // ignore storage access failures
+  }
+
+  try {
+    sessionStorage.clear();
+  } catch {
+    // ignore storage access failures
+  }
+
+  window.dispatchEvent(new Event('auth:clear-client-cache'));
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -178,6 +196,7 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         try { await apiClient.post('/auth/logout'); } catch { /* ignore */ }
         set({ user: null, allowedRoutes: ['/dashboard'], navItems: [], isLoading: false });
+        clearClientStoredData();
       },
 
       fetchMe: async () => {
@@ -197,6 +216,7 @@ export const useAuthStore = create<AuthState>()(
           // 403 = suspended/inactive — clear session
           if (err.response?.status === 403) {
             set({ user: null, allowedRoutes: ['/dashboard'], navItems: [], isLoading: false });
+            clearClientStoredData();
           } else {
             set({ user: null, isLoading: false });
           }
@@ -218,5 +238,6 @@ export const useAuthStore = create<AuthState>()(
 if (typeof window !== 'undefined') {
   window.addEventListener('auth:unauthorized', () => {
     useAuthStore.setState({ user: null, allowedRoutes: ['/dashboard'], navItems: [] });
+    clearClientStoredData();
   });
 }
