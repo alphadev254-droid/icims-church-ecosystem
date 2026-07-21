@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { givingService, type Pledge, type PledgeStatus } from '@/services/giving';
+import { churchesService } from '@/services/churches';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -332,13 +333,33 @@ export default function PledgesPage() {
 
   // All filter/sort/page state — changes trigger a new backend request
   const [statusFilter, setStatusFilter] = useState('all');
+  const [churchFilter, setChurchFilter] = useState('all');
+  const [dueStartDate, setDueStartDate] = useState('');
+  const [dueEndDate, setDueEndDate] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [page, setPage] = useState(1);
   const [editingPledge, setEditingPledge] = useState<Pledge | null>(null);
 
   // Reset to page 1 whenever filters change
   const handleStatusChange = (v: string) => { setStatusFilter(v); setPage(1); };
+  const handleChurchChange = (v: string) => { setChurchFilter(v); setPage(1); };
+  const handleDueStartChange = (v: string) => { setDueStartDate(v); setPage(1); };
+  const handleDueEndChange = (v: string) => { setDueEndDate(v); setPage(1); };
   const handleSortChange   = (v: string) => { setSortBy(v);       setPage(1); };
+  const clearAdminFilters = () => {
+    setChurchFilter('all');
+    setDueStartDate('');
+    setDueEndDate('');
+    setStatusFilter('all');
+    setPage(1);
+  };
+
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches-select'],
+    queryFn: churchesService.getSelectable,
+    enabled: !isMember,
+    staleTime: STALE_TIME.DEFAULT,
+  });
 
   // ── Member: my pledges ──
   const { data: myResponse, isLoading: loadingMy } = useQuery({
@@ -355,10 +376,13 @@ export default function PledgesPage() {
 
   // ── Admin: ministry pledges ──
   const { data: ministryResponse, isLoading: loadingMinistry } = useQuery({
-    queryKey: ['ministry-pledges', campaignIdFilter, statusFilter, sortBy, page],
+    queryKey: ['ministry-pledges', campaignIdFilter, statusFilter, churchFilter, dueStartDate, dueEndDate, sortBy, page],
     queryFn: () => givingService.getMinistryPledges({
       campaignId: campaignIdFilter,
       status:     statusFilter !== 'all' ? statusFilter : undefined,
+      churchId:   churchFilter !== 'all' ? churchFilter : undefined,
+      dueStartDate: dueStartDate || undefined,
+      dueEndDate: dueEndDate || undefined,
       sortBy,
       page,
       limit: PAGE_SIZE,
@@ -434,6 +458,60 @@ export default function PledgesPage() {
       </div>
 
       {/* ── Admin summary cards ── */}
+      {!isMember && (
+        <Card>
+          <CardContent className="p-3">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-[minmax(180px,1fr)_140px_140px_auto] md:items-end">
+              <div className="space-y-1.5 col-span-2 md:col-span-1">
+                <Label className="text-xs">Church</Label>
+                <Select value={churchFilter} onValueChange={handleChurchChange}>
+                  <SelectTrigger className="h-9 text-xs sm:text-sm">
+                    <SelectValue placeholder="All churches" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All churches</SelectItem>
+                    {churches.map(church => (
+                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Due from</Label>
+                <Input
+                  type="date"
+                  className="h-9 text-xs sm:text-sm"
+                  value={dueStartDate}
+                  onChange={e => handleDueStartChange(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Due to</Label>
+                <Input
+                  type="date"
+                  className="h-9 text-xs sm:text-sm"
+                  value={dueEndDate}
+                  min={dueStartDate || undefined}
+                  onChange={e => handleDueEndChange(e.target.value)}
+                />
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 text-xs sm:text-sm col-span-2 md:col-span-1"
+                onClick={clearAdminFilters}
+                disabled={churchFilter === 'all' && !dueStartDate && !dueEndDate && statusFilter === 'all'}
+              >
+                Clear filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {!isMember && summary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
