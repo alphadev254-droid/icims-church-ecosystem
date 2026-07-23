@@ -25,7 +25,7 @@ const schema = z.object({
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced'], { required_error: 'Marital status is required' }),
   weddingDate: z.string().optional(),
-  residentialNeighbourhood: z.string().optional(),
+  residentialNeighbourhood: z.string().min(1, 'Where you live is required'),
   membershipType: z.enum(['member', 'pastor', 'deacon', 'other'], { required_error: 'Membership type is required' }),
   baptizedByImmersion: z.boolean().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters')
@@ -141,7 +141,7 @@ export default function MemberRegisterPage() {
       dateOfBirth: values.dateOfBirth,
       maritalStatus: values.maritalStatus,
       weddingDate: values.weddingDate,
-      residentialNeighbourhood: values.residentialNeighbourhood?.trim() || undefined,
+      residentialNeighbourhood: values.residentialNeighbourhood.trim(),
       membershipType: values.membershipType,
       serviceInterest: serviceInterests.join(', '),
       baptizedByImmersion: baptized,
@@ -263,7 +263,7 @@ export default function MemberRegisterPage() {
           )}
 
           <div className="space-y-1">
-            <Label>Residential Neighbourhood <span className="text-xs text-muted-foreground">(optional)</span></Label>
+            <Label>Where do you live?</Label>
             <Input {...register('residentialNeighbourhood')} placeholder="e.g., Area 47" autoComplete="off"
               className={errors.residentialNeighbourhood ? 'border-destructive' : ''} />
             {errors.residentialNeighbourhood && <p className="text-xs text-destructive">{errors.residentialNeighbourhood.message}</p>}

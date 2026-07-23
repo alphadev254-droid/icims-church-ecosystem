@@ -39,6 +39,7 @@ export function PublicQrCheckIn({
   const [successName, setSuccessName] = useState<string | null>(null);
   const [signInOpen, setSignInOpen] = useState(false);
   const user = useAuthStore(state => state.user);
+  const [visitorType, setVisitorType] = useState<'guest' | 'ministry_member'>('guest');
   const [form, setForm] = useState({
     guestName: '',
     guestEmail: '',
@@ -113,8 +114,8 @@ export function PublicQrCheckIn({
         guestPhone: form.guestPhone.trim() || undefined,
         guestGender: form.guestGender || undefined,
         guestAgeBracket: form.guestAgeBracket || undefined,
-        guestFirstTime: form.guestFirstTime,
-        invitedBy: form.invitedBy.trim() || undefined,
+        guestFirstTime: visitorType === 'guest' ? form.guestFirstTime : false,
+        invitedBy: visitorType === 'guest' ? form.invitedBy.trim() || undefined : undefined,
       });
       setSuccessName(form.guestName.trim());
       toast.success('You are checked in');
@@ -205,6 +206,18 @@ export function PublicQrCheckIn({
 
               <form onSubmit={checkInGuest} className="space-y-4">
                 <div className="space-y-1.5">
+                  <Label>Check-in type</Label>
+                  <Select value={visitorType} onValueChange={(value: 'guest' | 'ministry_member') => setVisitorType(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select check-in type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="guest">Guest</SelectItem>
+                      <SelectItem value="ministry_member">Ministry member</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
                   <Label>Full name *</Label>
                   <Input value={form.guestName} onChange={e => setForm(f => ({ ...f, guestName: e.target.value }))} />
                 </div>
@@ -244,17 +257,21 @@ export function PublicQrCheckIn({
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Invited by</Label>
-                  <Input value={form.invitedBy} onChange={e => setForm(f => ({ ...f, invitedBy: e.target.value }))} />
-                </div>
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={form.guestFirstTime} onCheckedChange={checked => setForm(f => ({ ...f, guestFirstTime: checked === true }))} />
-                  First time visiting
-                </label>
+                {visitorType === 'guest' && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label>Invited by</Label>
+                      <Input value={form.invitedBy} onChange={e => setForm(f => ({ ...f, invitedBy: e.target.value }))} />
+                    </div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={form.guestFirstTime} onCheckedChange={checked => setForm(f => ({ ...f, guestFirstTime: checked === true }))} />
+                      First time visiting
+                    </label>
+                  </>
+                )}
                 <Button type="submit" className="w-full" disabled={guestLoading}>
                   {guestLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Check in as guest
+                  {visitorType === 'guest' ? 'Check in as guest' : 'Check in as ministry member'}
                 </Button>
               </form>
             </div>
