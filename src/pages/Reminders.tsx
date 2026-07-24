@@ -220,6 +220,20 @@ const Reminders = () => {
     return `In ${days} days`;
   };
 
+  const getReminderDateLabel = (reminder: Reminder) => {
+    if (reminder.type === 'event' || !reminder.originalDate) return '';
+    const labelByType: Record<string, string> = {
+      birthday: 'Birthday date',
+      wedding: 'Anniversary date',
+      member_anniversary: 'Member anniversary date',
+      church_founded: 'Founded date',
+    };
+    return `${labelByType[reminder.type] || 'Reminder date'}: ${new Date(reminder.originalDate).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    })}`;
+  };
+
   const filteredReminders = reminders.filter((r) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
@@ -581,16 +595,8 @@ const Reminders = () => {
                     <p className="text-sm text-muted-foreground mb-2">{reminder.event.location}</p>
                   )}
 
-                  {!isEvent && (reminder.age || reminder.years) && (
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {reminder.age && `Turning ${reminder.age}`}
-                      {reminder.years && `${reminder.years} ${reminder.years === 1 ? 'year' : 'years'}`}
-                      {reminder.type === 'birthday' && reminder.originalDate && (
-                        <span className="ml-1">
-                          ({new Date(reminder.originalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
-                        </span>
-                      )}
-                    </p>
+                  {!isEvent && getReminderDateLabel(reminder) && (
+                    <p className="text-xs text-muted-foreground mb-2">{getReminderDateLabel(reminder)}</p>
                   )}
 
                   <p className="text-xs text-muted-foreground mb-3">
