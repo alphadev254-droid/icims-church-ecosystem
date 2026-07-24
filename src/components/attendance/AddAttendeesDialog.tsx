@@ -227,6 +227,22 @@ export function AddAttendeesDialog({
                   toast.error('Guest name is required');
                   return;
                 }
+                if (!visitorForm.guestEmail.trim()) {
+                  toast.error('Guest email is required');
+                  return;
+                }
+                if (!visitorForm.guestPhone.trim()) {
+                  toast.error('Guest phone is required');
+                  return;
+                }
+                if (!visitorForm.guestGender) {
+                  toast.error('Guest gender is required');
+                  return;
+                }
+                if (!visitorForm.guestAgeBracket) {
+                  toast.error('Guest age is required');
+                  return;
+                }
                 addGuest.mutate();
               }}
             >
@@ -248,7 +264,7 @@ export function AddAttendeesDialog({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Gender</Label>
+                  <Label>Gender *</Label>
                   <Select value={visitorForm.guestGender || undefined} onValueChange={value => setVisitorForm(form => ({ ...form, guestGender: value }))}>
                     <SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger>
                     <SelectContent>
@@ -259,7 +275,7 @@ export function AddAttendeesDialog({
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Age</Label>
+                  <Label>Age *</Label>
                   <Select value={visitorForm.guestAgeBracket || undefined} onValueChange={value => setVisitorForm(form => ({ ...form, guestAgeBracket: value }))}>
                     <SelectTrigger><SelectValue placeholder="Age" /></SelectTrigger>
                     <SelectContent>
@@ -274,12 +290,12 @@ export function AddAttendeesDialog({
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label>Phone</Label>
-                  <Input value={visitorForm.guestPhone} onChange={event => setVisitorForm(form => ({ ...form, guestPhone: event.target.value }))} />
+                  <Label>Phone *</Label>
+                  <Input required value={visitorForm.guestPhone} onChange={event => setVisitorForm(form => ({ ...form, guestPhone: event.target.value }))} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Email</Label>
-                  <Input type="email" value={visitorForm.guestEmail} onChange={event => setVisitorForm(form => ({ ...form, guestEmail: event.target.value }))} />
+                  <Label>Email *</Label>
+                  <Input type="email" required value={visitorForm.guestEmail} onChange={event => setVisitorForm(form => ({ ...form, guestEmail: event.target.value }))} />
                 </div>
               </div>
               {visitorType === 'guest' && (

@@ -106,6 +106,22 @@ export function PublicQrCheckIn({
       toast.error('Enter your name');
       return;
     }
+    if (!form.guestEmail.trim()) {
+      toast.error('Enter your email');
+      return;
+    }
+    if (!form.guestPhone.trim()) {
+      toast.error('Enter your phone number');
+      return;
+    }
+    if (!form.guestGender) {
+      toast.error('Select gender');
+      return;
+    }
+    if (!form.guestAgeBracket) {
+      toast.error('Select age');
+      return;
+    }
     setGuestLoading(true);
     try {
       await attendanceService.checkInGuestByQr(token, {
@@ -223,17 +239,17 @@ export function PublicQrCheckIn({
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label>Email</Label>
-                    <Input type="email" value={form.guestEmail} onChange={e => setForm(f => ({ ...f, guestEmail: e.target.value }))} />
+                    <Label>Email *</Label>
+                    <Input type="email" required value={form.guestEmail} onChange={e => setForm(f => ({ ...f, guestEmail: e.target.value }))} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Phone</Label>
-                    <Input value={form.guestPhone} onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))} />
+                    <Label>Phone *</Label>
+                    <Input required value={form.guestPhone} onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Gender</Label>
+                    <Label>Gender *</Label>
                     <Select value={form.guestGender} onValueChange={value => setForm(f => ({ ...f, guestGender: value }))}>
                       <SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger>
                       <SelectContent>
@@ -244,7 +260,7 @@ export function PublicQrCheckIn({
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Age</Label>
+                    <Label>Age *</Label>
                     <Select value={form.guestAgeBracket} onValueChange={value => setForm(f => ({ ...f, guestAgeBracket: value }))}>
                       <SelectTrigger><SelectValue placeholder="Age" /></SelectTrigger>
                       <SelectContent>

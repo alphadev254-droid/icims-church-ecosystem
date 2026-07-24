@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Camera, CheckCircle2, Loader2, QrCode, Search, ShieldAlert, XCircle } from 'lucide-react';
+import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
+import { ArrowLeft, Camera, CheckCircle2, Loader2, QrCode, Search, ShieldAlert, UserPlus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 type ScannerStatus = 'idle' | 'starting' | 'scanning' | 'unsupported' | 'error';
@@ -30,6 +31,7 @@ export default function AttendanceScanner() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [recent, setRecent] = useState<AttendanceParticipant | null>(null);
   const [cameraError, setCameraError] = useState('');
+  const [addVisitorOpen, setAddVisitorOpen] = useState(false);
 
   const canUpdate = hasPermission('attendance:update');
 
@@ -243,7 +245,7 @@ export default function AttendanceScanner() {
           <CardTitle className="text-base">Search Member</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
             <div className="relative min-w-0">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -259,6 +261,10 @@ export default function AttendanceScanner() {
             </div>
             <Button className="min-w-24 px-3 text-xs sm:min-w-32 sm:text-sm" disabled={!selectedIds.size || addSelectedMembers.isPending || scanMemberQr.isPending} onClick={() => addSelectedMembers.mutate()}>
               {addSelectedMembers.isPending ? 'Checking...' : selectedIds.size ? `Check In ${selectedIds.size}` : 'Check In'}
+            </Button>
+            <Button type="button" variant="outline" className="px-3 text-xs sm:text-sm" onClick={() => setAddVisitorOpen(true)}>
+              <UserPlus className="mr-1.5 h-4 w-4" />
+              Visitor
             </Button>
           </div>
 
@@ -304,6 +310,15 @@ export default function AttendanceScanner() {
 
         </CardContent>
       </Card>
+
+      {record && (
+        <AddAttendeesDialog
+          record={record}
+          open={addVisitorOpen}
+          initialTab="guest"
+          onClose={() => setAddVisitorOpen(false)}
+        />
+      )}
     </div>
   );
 }
