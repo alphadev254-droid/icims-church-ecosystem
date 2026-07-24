@@ -52,6 +52,7 @@ export function AddAttendeesDialog({
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [visitorForm, setVisitorForm] = useState<VisitorForm>(emptyVisitorForm);
+  const [visitorType, setVisitorType] = useState<'guest' | 'ministry_member'>('guest');
 
   useEffect(() => {
     setTab(initialTab);
@@ -95,13 +96,14 @@ export function AddAttendeesDialog({
       guestPhone: visitorForm.guestPhone.trim() || undefined,
       guestGender: visitorForm.guestGender || undefined,
       guestAgeBracket: visitorForm.guestAgeBracket || undefined,
-      guestFirstTime: visitorForm.guestFirstTime,
-      invitedBy: visitorForm.invitedBy.trim() || undefined,
+      guestFirstTime: visitorType === 'guest' ? visitorForm.guestFirstTime : false,
+      invitedBy: visitorType === 'guest' ? visitorForm.invitedBy.trim() || undefined : undefined,
     }),
     onSuccess: () => {
       refreshAttendance();
       setVisitorForm(emptyVisitorForm);
-      toast.success('Guest marked present');
+      setVisitorType('guest');
+      toast.success(`${visitorType === 'guest' ? 'Guest' : 'Ministry member'} marked present`);
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to add guest'),
   });
@@ -229,6 +231,18 @@ export function AddAttendeesDialog({
               }}
             >
               <div className="space-y-1.5">
+                <Label>Check-in type</Label>
+                <Select value={visitorType} onValueChange={(value: 'guest' | 'ministry_member') => setVisitorType(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select check-in type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="guest">Guest</SelectItem>
+                    <SelectItem value="ministry_member">Ministry member</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
                 <Label>Name *</Label>
                 <Input value={visitorForm.guestName} onChange={event => setVisitorForm(form => ({ ...form, guestName: event.target.value }))} />
               </div>
@@ -268,19 +282,23 @@ export function AddAttendeesDialog({
                   <Input type="email" value={visitorForm.guestEmail} onChange={event => setVisitorForm(form => ({ ...form, guestEmail: event.target.value }))} />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Invited by</Label>
-                <Input value={visitorForm.invitedBy} onChange={event => setVisitorForm(form => ({ ...form, invitedBy: event.target.value }))} />
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={visitorForm.guestFirstTime} onCheckedChange={checked => setVisitorForm(form => ({ ...form, guestFirstTime: checked === true }))} />
-                First time visiting
-              </label>
+              {visitorType === 'guest' && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Invited by</Label>
+                    <Input value={visitorForm.invitedBy} onChange={event => setVisitorForm(form => ({ ...form, invitedBy: event.target.value }))} />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={visitorForm.guestFirstTime} onCheckedChange={checked => setVisitorForm(form => ({ ...form, guestFirstTime: checked === true }))} />
+                    First time visiting
+                  </label>
+                </>
+              )}
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
                 <Button type="submit" disabled={addGuest.isPending}>
                   {addGuest.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Add Guest
+                  {visitorType === 'guest' ? 'Add Guest' : 'Add Ministry Member'}
                 </Button>
               </div>
             </form>
