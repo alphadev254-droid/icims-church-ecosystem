@@ -16,6 +16,8 @@ type Church   = { id: string; name: string; ministryAdminId?: string; location?:
 type DatePreset = 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth';
 type JsonObject = Record<string, unknown>;
 type TransactionDetail = AdminSystemTransaction & {
+  gatewayPayloadParsed?: JsonObject | null;
+  gatewayPayload?: string | null;
   gatewayResponseParsed?: JsonObject | null;
   gatewayResponse?: string | null;
   channel?: string | null;
@@ -162,6 +164,28 @@ function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => v
             </div>
 
             {/* Gateway Response — interactive JSON tree */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium">Gateway Payload (sent to PayChangu / Paystack)</p>
+              {tx.gatewayPayloadParsed ? (
+                <div className="rounded-lg border bg-muted/30 p-3 text-xs font-mono overflow-x-auto">
+                  <JsonValue value={tx.gatewayPayloadParsed} depth={0} />
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No gateway payload stored</p>
+              )}
+            </div>
+
+            {tx.gatewayPayload && (
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
+                  Raw gateway payload string
+                </summary>
+                <pre className="mt-2 rounded-lg border bg-muted/30 p-3 overflow-x-auto text-xs whitespace-pre-wrap break-all">
+                  {tx.gatewayPayload}
+                </pre>
+              </details>
+            )}
+
             <div className="space-y-2">
               <p className="text-xs font-medium">Gateway Response (raw PayChangu / Paystack data)</p>
               {tx.gatewayResponseParsed ? (
