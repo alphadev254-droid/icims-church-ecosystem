@@ -157,6 +157,7 @@ export function MultiGivingDialog({
 
     const normalized = rows.map(row => ({
       campaignId: row.campaignId,
+      churchId: resolvedChurchId || undefined,
       amount: parseFloat(row.amount),
       cellId: row.cellId || undefined,
     }));

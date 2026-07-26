@@ -101,6 +101,7 @@ export interface CreateDonationDto {
 
 export interface GivingLineDto {
   campaignId: string;
+  churchId?: string;
   amount: number;
   cellId?: string;
   pledgeId?: string;

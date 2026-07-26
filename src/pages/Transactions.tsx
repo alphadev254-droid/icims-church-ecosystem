@@ -399,6 +399,7 @@ export default function TransactionsPage() {
                     <div key={`${line.campaignId || line.campaignName || 'line'}-${index}`} className="flex items-start justify-between gap-3 text-xs sm:text-sm">
                       <div className="min-w-0">
                         <p className="font-medium break-words">{line.campaignName || 'Giving'}</p>
+                        {line.churchName && <p className="text-muted-foreground">Church: {line.churchName}</p>}
                         {line.cellName && <p className="text-muted-foreground">Cell: {line.cellName}</p>}
                       </div>
                       <p className="font-medium whitespace-nowrap">{formatCurrency(line.amount, line.currency || viewTransaction.currency)}</p>

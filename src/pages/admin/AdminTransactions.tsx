@@ -171,6 +171,7 @@ function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => v
                     <div className="min-w-0">
                       <p className="font-medium break-words">{line.campaignName || 'Giving'}</p>
                       <p className="text-muted-foreground capitalize">{line.campaignCategory || 'giving'}</p>
+                      {line.churchName && <p className="text-muted-foreground">Church: {line.churchName}</p>}
                       {line.cellName && <p className="text-muted-foreground">Cell: {line.cellName}</p>}
                     </div>
                     <p className="font-mono font-medium whitespace-nowrap">{line.currency || tx.currency} {fmt(line.amount)}</p>

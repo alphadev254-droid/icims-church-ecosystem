@@ -4,6 +4,8 @@ export interface DonationLine {
   campaignId?: string | null;
   campaignName?: string | null;
   campaignCategory?: string | null;
+  churchId?: string | null;
+  churchName?: string | null;
   amount: number;
   currency?: string | null;
   cellName?: string | null;
