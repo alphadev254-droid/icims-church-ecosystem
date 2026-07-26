@@ -12,7 +12,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Receipt, Eye, Search, Lock, Calendar } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Receipt, Eye, Search, Lock, Calendar, ChevronDown } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
@@ -122,6 +123,50 @@ export default function TransactionsPage() {
 
   const formatCurrency = (amount: number, currency: string) => 
     `${currency} ${amount.toLocaleString()}`;
+
+  const CampaignCell = ({ transaction }: { transaction: Transaction }) => {
+    const lines = transaction.donationLines || [];
+    if (lines.length <= 1) {
+      const line = lines[0];
+      return (
+        <div className="max-w-[220px] text-muted-foreground">
+          <p className="truncate">{line?.campaignName || transaction.campaignName || '—'}</p>
+          {line?.churchName && <p className="truncate text-[11px]">{line.churchName}</p>}
+        </div>
+      );
+    }
+
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex max-w-[220px] items-center gap-1 rounded-md border px-2 py-1 text-left text-xs font-medium text-foreground hover:bg-muted"
+          >
+            <span className="truncate">{lines.length} campaigns</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-80 p-2">
+          <div className="space-y-2">
+            <p className="px-1 text-xs font-medium text-muted-foreground">Campaigns in this transaction</p>
+            {lines.map((line, index) => (
+              <div key={`${line.campaignId || line.campaignName || 'line'}-${index}`} className="rounded-md border p-2 text-xs">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium leading-snug">{line.campaignName || 'Giving'}</p>
+                    {line.churchName && <p className="mt-0.5 text-muted-foreground">Church: {line.churchName}</p>}
+                    {line.cellName && <p className="text-muted-foreground">Cell: {line.cellName}</p>}
+                  </div>
+                  <p className="shrink-0 font-medium">{formatCurrency(line.amount, line.currency || transaction.currency)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
   const givingLinesLabel = (transaction: Transaction) => {
     if (!transaction.donationLines?.length) return transaction.campaignName || '';
@@ -310,7 +355,7 @@ export default function TransactionsPage() {
                       {transaction.user?.email || (transaction.isGuest ? transaction.guestEmail : '-')}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">{transaction.church?.name || '-'}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{transaction.campaignName || '—'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap"><CampaignCell transaction={transaction} /></td>
                     <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{transaction.eventTitle || '—'}</td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <div className="capitalize">{transaction.paymentMethod.replace('_', ' ')}</div>
