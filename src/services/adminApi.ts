@@ -240,6 +240,15 @@ export interface Pagination {
   totalPages: number;
 }
 
+export interface AdminDonationLine {
+  campaignId?: string | null;
+  campaignName?: string | null;
+  campaignCategory?: string | null;
+  amount: number;
+  currency?: string | null;
+  cellName?: string | null;
+}
+
 export interface AdminSystemTransaction {
   id: string;
   type: string;
@@ -257,6 +266,8 @@ export interface AdminSystemTransaction {
   reference?: string;
   campaignName?: string | null;
   campaignCategory?: string | null;
+  donationLines?: AdminDonationLine[];
+  isMultiDonation?: boolean;
   eventTitle?: string | null;
   isGuest: boolean;
   isManual: boolean;

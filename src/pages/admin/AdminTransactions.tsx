@@ -163,6 +163,22 @@ function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => v
               ))}
             </div>
 
+            {tx.donationLines && tx.donationLines.length > 1 && (
+              <div className="rounded-lg border p-3 text-xs space-y-2">
+                <p className="font-medium">Giving Breakdown</p>
+                {tx.donationLines.map((line, index) => (
+                  <div key={`${line.campaignId || line.campaignName || 'line'}-${index}`} className="flex items-start justify-between gap-3 border-t first:border-t-0 pt-2 first:pt-0">
+                    <div className="min-w-0">
+                      <p className="font-medium break-words">{line.campaignName || 'Giving'}</p>
+                      <p className="text-muted-foreground capitalize">{line.campaignCategory || 'giving'}</p>
+                      {line.cellName && <p className="text-muted-foreground">Cell: {line.cellName}</p>}
+                    </div>
+                    <p className="font-mono font-medium whitespace-nowrap">{line.currency || tx.currency} {fmt(line.amount)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Gateway Response — interactive JSON tree */}
             <div className="space-y-2">
               <p className="text-xs font-medium">Gateway Payload (sent to PayChangu / Paystack)</p>
@@ -365,6 +381,14 @@ export default function AdminTransactions() {
 
   const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  const givingLinesLabel = (t: AdminSystemTransaction) => {
+    if (!t.donationLines?.length) return t.campaignName ?? '';
+    if (t.donationLines.length === 1) return t.donationLines[0].campaignName ?? t.campaignName ?? '';
+    return t.donationLines
+      .map(line => `${line.campaignName || 'Giving'}: ${line.currency || t.currency} ${fmt(line.amount)}`)
+      .join('; ');
+  };
+
   const applyDatePreset = (preset: DatePreset) => {
     const range = getDatePresetRange(preset);
     setDateFrom(range.from);
@@ -390,7 +414,7 @@ export default function AdminTransactions() {
             email:       donorEmail(t),
             type:        t.type.replace('_', ' '),
             church:      t.church?.name ?? '',
-            campaign:    t.campaignName ?? '',
+            campaign:    givingLinesLabel(t),
             event:       t.eventTitle ?? '',
             baseAmount:  t.baseAmount ?? t.amount,
             transactionCost: (t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0),

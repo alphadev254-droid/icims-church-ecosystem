@@ -123,6 +123,14 @@ export default function TransactionsPage() {
   const formatCurrency = (amount: number, currency: string) => 
     `${currency} ${amount.toLocaleString()}`;
 
+  const givingLinesLabel = (transaction: Transaction) => {
+    if (!transaction.donationLines?.length) return transaction.campaignName || '';
+    if (transaction.donationLines.length === 1) return transaction.donationLines[0].campaignName || transaction.campaignName || '';
+    return transaction.donationLines
+      .map(line => `${line.campaignName || 'Giving'}: ${formatCurrency(line.amount, line.currency || transaction.currency)}`)
+      .join('; ');
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -136,7 +144,7 @@ export default function TransactionsPage() {
             currency: t.currency,
             status: t.status,
             type: t.type,
-            campaign: t.campaignName || '',
+            campaign: givingLinesLabel(t),
             event: t.eventTitle || '',
             paymentMethod: t.paymentMethod,
             gateway: t.gateway || '',
@@ -382,6 +390,20 @@ export default function TransactionsPage() {
                   {viewTransaction.eventTitle && (
                     <div><p className="text-muted-foreground">Event</p><p>{viewTransaction.eventTitle}</p></div>
                   )}
+                </div>
+              )}
+              {viewTransaction.donationLines && viewTransaction.donationLines.length > 1 && (
+                <div className="col-span-2 rounded-md border p-2 space-y-2">
+                  <p className="text-muted-foreground">Giving breakdown</p>
+                  {viewTransaction.donationLines.map((line, index) => (
+                    <div key={`${line.campaignId || line.campaignName || 'line'}-${index}`} className="flex items-start justify-between gap-3 text-xs sm:text-sm">
+                      <div className="min-w-0">
+                        <p className="font-medium break-words">{line.campaignName || 'Giving'}</p>
+                        {line.cellName && <p className="text-muted-foreground">Cell: {line.cellName}</p>}
+                      </div>
+                      <p className="font-medium whitespace-nowrap">{formatCurrency(line.amount, line.currency || viewTransaction.currency)}</p>
+                    </div>
+                  ))}
                 </div>
               )}
               {viewTransaction.reference && (

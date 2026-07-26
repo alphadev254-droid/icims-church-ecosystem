@@ -1,5 +1,14 @@
 import apiClient from '@/lib/api-client';
 
+export interface DonationLine {
+  campaignId?: string | null;
+  campaignName?: string | null;
+  campaignCategory?: string | null;
+  amount: number;
+  currency?: string | null;
+  cellName?: string | null;
+}
+
 export interface Transaction {
   id: string;
   amount: number;
@@ -23,6 +32,8 @@ export interface Transaction {
   campaignCategory?: string | null;
   eventTitle?: string | null;
   cellName?: string | null;
+  donationLines?: DonationLine[];
+  isMultiDonation?: boolean;
   reference?: string | null;
   notes?: string | null;
   createdAt: string;
