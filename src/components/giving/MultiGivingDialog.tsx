@@ -23,6 +23,7 @@ type CellOption = { id: string; name: string; zone?: string | null };
 
 type GivingRow = {
   campaignId: string;
+  churchId: string;
   amount: string;
   cellId: string;
 };
@@ -41,8 +42,8 @@ interface MultiGivingDialogProps {
   memberCells?: CellOption[];
 }
 
-function emptyRow(campaignId = ''): GivingRow {
-  return { campaignId, amount: '', cellId: '' };
+function emptyRow(campaignId = '', churchId = ''): GivingRow {
+  return { campaignId, churchId, amount: '', cellId: '' };
 }
 
 export function MultiGivingDialog({
@@ -67,63 +68,59 @@ export function MultiGivingDialog({
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
-  const [selectedChurchId, setSelectedChurchId] = useState('');
   const [publicCellsByCampaign, setPublicCellsByCampaign] = useState<Record<string, CellOption[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setRows([emptyRow(initialCampaignId || activeCampaigns[0]?.id || '')]);
-    setSelectedChurchId(initialChurchId || '');
-  }, [activeCampaigns, initialCampaignId, initialChurchId, open]);
-
-  const selectedCampaigns = useMemo(
-    () => rows.map(row => campaignMap.get(row.campaignId)).filter(Boolean) as CampaignOption[],
-    [campaignMap, rows],
-  );
   const allowedChurchSet = useMemo(
     () => allowedChurchIds?.length ? new Set(allowedChurchIds) : null,
     [allowedChurchIds],
   );
-  const commonChurches = useMemo(() => {
-    if (selectedCampaigns.length === 0) return [];
-    const toChurches = (campaign: CampaignOption) => {
-      if (campaign.availableChurches?.length) return campaign.availableChurches;
-      if (campaign.churchId) return [{ id: campaign.churchId, name: campaign.church?.name || 'Church' }];
-      return [];
-    };
-    let common = toChurches(selectedCampaigns[0]);
-    for (const campaign of selectedCampaigns.slice(1)) {
-      const ids = new Set(toChurches(campaign).map(church => church.id));
-      common = common.filter(church => ids.has(church.id));
-    }
+
+  const getCampaignChurches = (campaignId: string) => {
+    const campaign = campaignMap.get(campaignId);
+    if (!campaign) return [];
+    let churches = campaign.availableChurches?.length
+      ? campaign.availableChurches
+      : campaign.churchId
+        ? [{ id: campaign.churchId, name: campaign.church?.name || 'Church' }]
+        : [];
     if (allowedChurchSet) {
-      common = common.filter(church => allowedChurchSet.has(church.id));
+      churches = churches.filter(church => allowedChurchSet.has(church.id));
     }
-    return common;
-  }, [allowedChurchSet, selectedCampaigns]);
-  const resolvedChurchId = mode === 'member'
-    ? (memberChurchId || '')
-    : (commonChurches.length === 1 ? commonChurches[0].id : selectedChurchId);
+    return churches;
+  };
+
+  const getDefaultChurchId = (campaignId: string) => {
+    if (mode === 'member') return memberChurchId || '';
+    const churches = getCampaignChurches(campaignId);
+    if (initialChurchId && churches.some(church => church.id === initialChurchId)) return initialChurchId;
+    return churches[0]?.id || '';
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const campaignId = initialCampaignId || activeCampaigns[0]?.id || '';
+    setRows([emptyRow(campaignId, getDefaultChurchId(campaignId))]);
+  }, [activeCampaigns, initialCampaignId, initialChurchId, memberChurchId, open]);
 
   useEffect(() => {
     if (mode === 'guest') setPublicCellsByCampaign({});
-  }, [mode, resolvedChurchId]);
+  }, [mode, rows.map(row => `${row.campaignId}:${row.churchId}`).join('|')]);
 
   useEffect(() => {
     if (!open || mode !== 'guest') return;
-    const fellowshipIds = rows
-      .map(row => row.campaignId)
-      .filter(id => campaignMap.get(id)?.category === 'fellowship_offering' && !!resolvedChurchId && !publicCellsByCampaign[id]);
-
-    [...new Set(fellowshipIds)].forEach(campaignId => {
-      givingService.getPublicCampaignCells(campaignId, resolvedChurchId || undefined)
-        .then(cells => setPublicCellsByCampaign(prev => ({ ...prev, [campaignId]: cells })))
-        .catch(() => setPublicCellsByCampaign(prev => ({ ...prev, [campaignId]: [] })));
+    const fellowshipRows = rows.filter(row => {
+      const key = `${row.campaignId}:${row.churchId}`;
+      return campaignMap.get(row.campaignId)?.category === 'fellowship_offering' && !!row.churchId && !publicCellsByCampaign[key];
     });
-  }, [campaignMap, mode, open, publicCellsByCampaign, resolvedChurchId, rows]);
 
-  const selectedIds = rows.map(row => row.campaignId).filter(Boolean);
+    [...new Map(fellowshipRows.map(row => [`${row.campaignId}:${row.churchId}`, row])).values()].forEach(row => {
+      const key = `${row.campaignId}:${row.churchId}`;
+      givingService.getPublicCampaignCells(row.campaignId, row.churchId || undefined)
+        .then(cells => setPublicCellsByCampaign(prev => ({ ...prev, [key]: cells })))
+        .catch(() => setPublicCellsByCampaign(prev => ({ ...prev, [key]: [] })));
+    });
+  }, [campaignMap, mode, open, publicCellsByCampaign, rows]);
+
   const total = rows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
   const currency = campaignMap.get(rows[0]?.campaignId)?.currency || activeCampaigns[0]?.currency || 'MWK';
 
@@ -131,22 +128,26 @@ export function MultiGivingDialog({
     setRows(prev => prev.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
   };
 
+  const updateRowCampaign = (index: number, campaignId: string) => {
+    updateRow(index, { campaignId, churchId: getDefaultChurchId(campaignId), cellId: '' });
+  };
+
   const addRow = () => {
     if (lockInitialCampaign) return;
-    const nextCampaign = activeCampaigns.find(campaign => !selectedIds.includes(campaign.id));
+    const nextCampaign = activeCampaigns[0];
     if (!nextCampaign) {
-      toast.error('All available campaigns are already selected');
+      toast.error('No active giving campaigns are available');
       return;
     }
-    setRows(prev => [...prev, emptyRow(nextCampaign.id)]);
+    setRows(prev => [...prev, emptyRow(nextCampaign.id, getDefaultChurchId(nextCampaign.id))]);
   };
 
   const removeRow = (index: number) => {
     setRows(prev => prev.length === 1 ? prev : prev.filter((_, rowIndex) => rowIndex !== index));
   };
 
-  const getCellsForRow = (campaignId: string) => mode === 'guest'
-    ? publicCellsByCampaign[campaignId] || []
+  const getCellsForRow = (row: GivingRow) => mode === 'guest'
+    ? publicCellsByCampaign[`${row.campaignId}:${row.churchId}`] || []
     : memberCells;
 
   const submit = async () => {
@@ -157,7 +158,7 @@ export function MultiGivingDialog({
 
     const normalized = rows.map(row => ({
       campaignId: row.campaignId,
-      churchId: resolvedChurchId || undefined,
+      churchId: mode === 'member' ? (memberChurchId || undefined) : (row.churchId || undefined),
       amount: parseFloat(row.amount),
       cellId: row.cellId || undefined,
     }));
@@ -167,19 +168,27 @@ export function MultiGivingDialog({
       return;
     }
 
-    if (new Set(normalized.map(row => row.campaignId)).size !== normalized.length) {
-      toast.error('Select each campaign only once');
+    if (new Set(normalized.map(row => `${row.campaignId}:${row.churchId || ''}`)).size !== normalized.length) {
+      toast.error('Each giving line must use a different campaign and church combination');
       return;
     }
 
     if (mode === 'member') {
-      if (!memberChurchId || !commonChurches.some(church => church.id === memberChurchId)) {
+      if (!memberChurchId) {
+        toast.error('Your account is not linked to a church');
+        return;
+      }
+      const unavailable = normalized.find(row => !getCampaignChurches(row.campaignId).some(church => church.id === memberChurchId));
+      if (unavailable) {
         toast.error('This campaign is not available for your church');
         return;
       }
-    } else if (!resolvedChurchId) {
-      toast.error('Select the church this giving should go to');
-      return;
+    } else {
+      const missingChurch = normalized.some(row => !row.churchId);
+      if (missingChurch) {
+        toast.error('Select the church for each giving line');
+        return;
+      }
     }
 
     for (const row of normalized) {
@@ -200,7 +209,7 @@ export function MultiGivingDialog({
             guestEmail: guestEmail.trim(),
             guestPhone: guestPhone.trim() || undefined,
           })
-        : await givingService.donateMultiple({ items: normalized, churchId: resolvedChurchId });
+        : await givingService.donateMultiple({ items: normalized, churchId: memberChurchId || undefined });
 
       if (result?.authorization_url) {
         window.location.href = result.authorization_url;
@@ -213,8 +222,6 @@ export function MultiGivingDialog({
       setIsSubmitting(false);
     }
   };
-
-  const showChurchSelector = mode === 'guest' && commonChurches.length > 1;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -244,34 +251,33 @@ export function MultiGivingDialog({
           <div className="space-y-3">
             {rows.map((row, index) => {
               const campaign = campaignMap.get(row.campaignId);
-              const cells = getCellsForRow(row.campaignId);
+              const campaignChurches = getCampaignChurches(row.campaignId);
+              const showChurchSelector = mode === 'guest' && campaignChurches.length > 1 && !lockInitialChurch;
+              const cells = getCellsForRow(row);
               return (
                 <div key={index} className="rounded-md border p-2.5 sm:p-3 space-y-3">
                   <div className="grid gap-2">
                     <div className={showChurchSelector ? 'grid grid-cols-2 gap-2' : 'grid gap-2'}>
                       <div className="min-w-0 space-y-1">
                         <Label className="text-[11px] sm:text-xs">Campaign</Label>
-                      <Select value={row.campaignId} onValueChange={value => updateRow(index, { campaignId: value, cellId: '' })} disabled={lockInitialCampaign}>
+                      <Select value={row.campaignId} onValueChange={value => updateRowCampaign(index, value)} disabled={lockInitialCampaign}>
                         <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm"><SelectValue placeholder="Select campaign" /></SelectTrigger>
                         <SelectContent>
-                          {activeCampaigns.map(option => {
-                            const alreadySelected = selectedIds.includes(option.id) && option.id !== row.campaignId;
-                            return (
-                              <SelectItem key={option.id} value={option.id} disabled={alreadySelected}>
-                                {option.name}
-                              </SelectItem>
-                            );
-                          })}
+                          {activeCampaigns.map(option => (
+                            <SelectItem key={option.id} value={option.id}>
+                              {option.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                     {showChurchSelector && (
                       <div className="min-w-0 space-y-1">
-                        <Label className="text-[11px] sm:text-xs">Church {rows.length > 1 ? '(all)' : ''} *</Label>
-                        <Select value={selectedChurchId} onValueChange={setSelectedChurchId} disabled={lockInitialChurch}>
+                        <Label className="text-[11px] sm:text-xs">Church *</Label>
+                        <Select value={row.churchId} onValueChange={value => updateRow(index, { churchId: value, cellId: '' })}>
                           <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm"><SelectValue placeholder="Select church" /></SelectTrigger>
                           <SelectContent>
-                            {commonChurches.map(church => (
+                            {campaignChurches.map(church => (
                               <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
                             ))}
                           </SelectContent>
