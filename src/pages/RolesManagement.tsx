@@ -163,7 +163,7 @@ function ChurchFilterDropdown({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" className="w-full justify-between sm:w-72">
+        <Button type="button" variant="outline" className="w-full justify-between">
           <span className="truncate">{summary}</span>
           <ChevronDown className="h-4 w-4 opacity-60" />
         </Button>
@@ -232,7 +232,7 @@ function ValueFilterDropdown({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" className="w-full justify-between sm:w-72">
+        <Button type="button" variant="outline" className="w-full justify-between">
           <span className="truncate">{summary}</span>
           <ChevronDown className="h-4 w-4 opacity-60" />
         </Button>
@@ -435,23 +435,26 @@ export default function RolesManagementPage() {
   const [districtFilter, setDistrictFilter] = useState<string[]>([]);
   const [traditionalAuthorityFilter, setTraditionalAuthorityFilter] = useState<string[]>([]);
   const debouncedRoleSearch = useDebounce(roleSearch, 350);
+  const normalizedRoleSearch = debouncedRoleSearch.trim();
+  const activeRoleSearch = normalizedRoleSearch.length >= 3 ? normalizedRoleSearch : undefined;
 
   const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: churchesService.getAll, enabled: hasRoles });
   const regions = useMemo(() => uniq(churches.map(church => church.region)), [churches]);
   const districts = useMemo(() => uniq(churches.map(church => church.district)), [churches]);
   const traditionalAuthorities = useMemo(() => uniq(churches.map(church => church.traditionalAuthority)), [churches]);
   const roleQueryFilters = useMemo(() => ({
-    search: debouncedRoleSearch.trim() || undefined,
+    search: activeRoleSearch,
     scopeType: scopeFilter !== 'all' ? scopeFilter : undefined,
     churchIds: (scopeFilter === 'all' || scopeFilter === 'specific_churches') ? churchFilterIds : undefined,
     regions: scopeFilter === 'regions' ? regionFilter : undefined,
     districts: scopeFilter === 'districts' ? districtFilter : undefined,
     traditionalAuthorities: scopeFilter === 'traditional_authorities' ? traditionalAuthorityFilter : undefined,
-  }), [churchFilterIds, debouncedRoleSearch, districtFilter, regionFilter, scopeFilter, traditionalAuthorityFilter]);
-  const { data: rolesResult, isLoading: rolesLoading } = useQuery({
+  }), [activeRoleSearch, churchFilterIds, districtFilter, regionFilter, scopeFilter, traditionalAuthorityFilter]);
+  const { data: rolesResult, isLoading: rolesLoading, isFetching: rolesFetching } = useQuery({
     queryKey: ['roles', roleQueryFilters],
     queryFn: () => rolesService.getRolesResult(roleQueryFilters),
     enabled: hasRoles,
+    placeholderData: previous => previous,
   });
   const roles = rolesResult?.roles ?? [];
   const roleTotal = rolesResult?.total ?? 0;
@@ -572,7 +575,7 @@ export default function RolesManagementPage() {
     setTraditionalAuthorityFilter([]);
   }
 
-  if (rolesLoading || permsLoading) {
+  if (permsLoading) {
     return <div className="flex items-center justify-center h-64"><div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" /></div>;
   }
 
@@ -602,55 +605,89 @@ export default function RolesManagementPage() {
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-3">
-          <div className="space-y-3">
-            <div>
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Roles</h2>
-              <p className="text-xs text-muted-foreground">Search roles and filter by how their data scope is configured.</p>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Search roles</Label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={roleSearch}
+                  onChange={event => setRoleSearch(event.target.value)}
+                  placeholder="Type at least 3 letters"
+                  className="pl-9"
+                />
+              </div>
+              {roleSearch.trim().length > 0 && roleSearch.trim().length < 3 && (
+                <p className="text-xs text-muted-foreground">Search starts after 3 letters.</p>
+              )}
             </div>
-            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-              <span className="font-medium">{roleTotal}</span>{' '}
-              <span className="text-muted-foreground">role{roleTotal === 1 ? '' : 's'} found</span>
+
+            <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Scope type</Label>
+              <Select value={scopeFilter} onValueChange={value => handleScopeFilterChange(value as 'all' | RoleScope['scopeType'])}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All scope types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All scope types</SelectItem>
+                  <SelectItem value="all_ministry">All ministry churches</SelectItem>
+                  <SelectItem value="specific_churches">Specific churches</SelectItem>
+                  <SelectItem value="regions">Regions</SelectItem>
+                  <SelectItem value="districts">Districts</SelectItem>
+                  <SelectItem value="traditional_authorities">Traditional authorities</SelectItem>
+                  <SelectItem value="own_church">Own church only</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={roleSearch}
-                onChange={event => setRoleSearch(event.target.value)}
-                placeholder="Search role name"
-                className="pl-9"
-              />
-            </div>
-            <Select value={scopeFilter} onValueChange={value => handleScopeFilterChange(value as 'all' | RoleScope['scopeType'])}>
-              <SelectTrigger>
-                <SelectValue placeholder="All scope types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All scope types</SelectItem>
-                <SelectItem value="all_ministry">All ministry churches</SelectItem>
-                <SelectItem value="specific_churches">Specific churches</SelectItem>
-                <SelectItem value="regions">Regions</SelectItem>
-                <SelectItem value="districts">Districts</SelectItem>
-                <SelectItem value="traditional_authorities">Traditional authorities</SelectItem>
-                <SelectItem value="own_church">Own church only</SelectItem>
-              </SelectContent>
-            </Select>
+
             {(scopeFilter === 'all' || scopeFilter === 'specific_churches') && (
-              <ChurchFilterDropdown churches={churches} selected={churchFilterIds} onChange={setChurchFilterIds} />
+              <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Church</Label>
+                <ChurchFilterDropdown churches={churches} selected={churchFilterIds} onChange={setChurchFilterIds} />
+              </div>
             )}
             {scopeFilter === 'regions' && (
-              <ValueFilterDropdown label="regions" values={regions} selected={regionFilter} onChange={setRegionFilter} />
+              <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Region</Label>
+                <ValueFilterDropdown label="regions" values={regions} selected={regionFilter} onChange={setRegionFilter} />
+              </div>
             )}
             {scopeFilter === 'districts' && (
-              <ValueFilterDropdown label="districts" values={districts} selected={districtFilter} onChange={setDistrictFilter} />
+              <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">District</Label>
+                <ValueFilterDropdown label="districts" values={districts} selected={districtFilter} onChange={setDistrictFilter} />
+              </div>
             )}
             {scopeFilter === 'traditional_authorities' && (
-              <ValueFilterDropdown label="traditional authorities" values={traditionalAuthorities} selected={traditionalAuthorityFilter} onChange={setTraditionalAuthorityFilter} />
+              <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Traditional authority</Label>
+                <ValueFilterDropdown label="traditional authorities" values={traditionalAuthorities} selected={traditionalAuthorityFilter} onChange={setTraditionalAuthorityFilter} />
+              </div>
             )}
+
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm xl:min-w-36">
+              <span className="font-medium">{roleTotal}</span>{' '}
+              <span className="text-muted-foreground">role{roleTotal === 1 ? '' : 's'} found</span>
+              {rolesFetching && <span className="block text-xs text-muted-foreground">Updating...</span>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Roles</h2>
+            <p className="text-xs text-muted-foreground">Select a role to manage permissions and scope.</p>
           </div>
 
-          {visibleRoles.length === 0 && (
+          {rolesLoading ? (
+            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              Loading roles...
+            </div>
+          ) : visibleRoles.length === 0 && (
             <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
               No roles match these filters.
             </div>
