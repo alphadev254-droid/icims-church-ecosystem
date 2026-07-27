@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Shield, Users, CheckSquare, Square, Save, Lock, Plus, Pencil, Trash2, Search, ChevronDown, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { useDebounce } from '@/hooks/use-debounce';
 
 function groupPermissions(perms: Permission[]) {
   const groups: Record<string, Permission[]> = {};
@@ -136,30 +137,6 @@ function describeScope(scope: RoleScope | null | undefined, churches: Church[]) 
   return scopeLabel(scope.scopeType);
 }
 
-function roleMatchesChurchFilter(role: Role, selectedChurchIds: string[], churches: Church[]) {
-  if (selectedChurchIds.length === 0) return true;
-  const scope = role.scope;
-  if (!scope || scope.scopeType === 'all_ministry' || scope.scopeType === 'own_church') return true;
-  const selectedChurches = churches.filter(church => selectedChurchIds.includes(church.id));
-  if (scope.scopeType === 'specific_churches') {
-    const scopedChurchIds = new Set(scope.churchIds ?? []);
-    return selectedChurchIds.some(id => scopedChurchIds.has(id));
-  }
-  if (scope.scopeType === 'regions') {
-    const scoped = new Set(scope.regions ?? []);
-    return selectedChurches.some(church => church.region && scoped.has(church.region));
-  }
-  if (scope.scopeType === 'districts') {
-    const scoped = new Set(scope.districts ?? []);
-    return selectedChurches.some(church => church.district && scoped.has(church.district));
-  }
-  if (scope.scopeType === 'traditional_authorities') {
-    const scoped = new Set(scope.traditionalAuthorities ?? []);
-    return selectedChurches.some(church => church.traditionalAuthority && scoped.has(church.traditionalAuthority));
-  }
-  return true;
-}
-
 function ChurchFilterDropdown({
   churches,
   selected,
@@ -215,10 +192,76 @@ function ChurchFilterDropdown({
               <span className="min-w-0">
                 <span className="block truncate">{church.name}</span>
                 <span className="block truncate text-xs text-muted-foreground">
-                  {[church.region, church.district].filter(Boolean).join(' · ') || church.location || 'Church'}
+                  {[church.region, church.district].filter(Boolean).join(' - ') || church.location || 'Church'}
                 </span>
               </span>
               {selectedSet.has(church.id) && <Check className="h-4 w-4 shrink-0 text-accent" />}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ValueFilterDropdown({
+  label,
+  values,
+  selected,
+  onChange,
+}: {
+  label: string;
+  values: string[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedSet = new Set(selected);
+  const summary = selected.length === 0
+    ? `All ${label}`
+    : selected.length === 1
+      ? selected[0]
+      : `${selected.length} selected`;
+
+  const toggle = (value: string) => {
+    onChange(selectedSet.has(value)
+      ? selected.filter(item => item !== value)
+      : [...selected, value]);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" className="w-full justify-between sm:w-72">
+          <span className="truncate">{summary}</span>
+          <ChevronDown className="h-4 w-4 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[calc(100vw-32px)] max-w-80 p-2" align="start">
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="flex w-full items-center justify-between rounded px-2 py-2 text-sm hover:bg-muted"
+        >
+          <span>
+            <span className="block font-medium">All {label}</span>
+            <span className="block text-xs text-muted-foreground">Default when nothing is checked</span>
+          </span>
+          {selected.length === 0 && <Check className="h-4 w-4 text-accent" />}
+        </button>
+        <div className="my-2 h-px bg-border" />
+        <div className="max-h-72 overflow-y-auto">
+          {values.length === 0 ? (
+            <p className="px-2 py-3 text-sm text-muted-foreground">No values available.</p>
+          ) : values.map(value => (
+            <button
+              type="button"
+              key={value}
+              onClick={() => toggle(value)}
+              className="flex w-full items-center justify-between gap-3 rounded px-2 py-2 text-left text-sm hover:bg-muted"
+            >
+              <span className="min-w-0 truncate">{value}</span>
+              {selectedSet.has(value) && <Check className="h-4 w-4 shrink-0 text-accent" />}
             </button>
           ))}
         </div>
@@ -386,11 +429,33 @@ export default function RolesManagementPage() {
   const [editRole, setEditRole] = useState<Role | null>(null);
   const [deleteRole, setDeleteRole] = useState<Role | null>(null);
   const [roleSearch, setRoleSearch] = useState('');
+  const [scopeFilter, setScopeFilter] = useState<'all' | RoleScope['scopeType']>('all');
   const [churchFilterIds, setChurchFilterIds] = useState<string[]>([]);
+  const [regionFilter, setRegionFilter] = useState<string[]>([]);
+  const [districtFilter, setDistrictFilter] = useState<string[]>([]);
+  const [traditionalAuthorityFilter, setTraditionalAuthorityFilter] = useState<string[]>([]);
+  const debouncedRoleSearch = useDebounce(roleSearch, 350);
 
-  const { data: roles = [], isLoading: rolesLoading } = useQuery({ queryKey: ['roles'], queryFn: rolesService.getRoles, enabled: hasRoles });
-  const { data: allPermissions = [], isLoading: permsLoading } = useQuery({ queryKey: ['all-permissions'], queryFn: rolesService.getAllPermissions, enabled: hasRoles });
   const { data: churches = [] } = useQuery({ queryKey: ['churches'], queryFn: churchesService.getAll, enabled: hasRoles });
+  const regions = useMemo(() => uniq(churches.map(church => church.region)), [churches]);
+  const districts = useMemo(() => uniq(churches.map(church => church.district)), [churches]);
+  const traditionalAuthorities = useMemo(() => uniq(churches.map(church => church.traditionalAuthority)), [churches]);
+  const roleQueryFilters = useMemo(() => ({
+    search: debouncedRoleSearch.trim() || undefined,
+    scopeType: scopeFilter !== 'all' ? scopeFilter : undefined,
+    churchIds: (scopeFilter === 'all' || scopeFilter === 'specific_churches') ? churchFilterIds : undefined,
+    regions: scopeFilter === 'regions' ? regionFilter : undefined,
+    districts: scopeFilter === 'districts' ? districtFilter : undefined,
+    traditionalAuthorities: scopeFilter === 'traditional_authorities' ? traditionalAuthorityFilter : undefined,
+  }), [churchFilterIds, debouncedRoleSearch, districtFilter, regionFilter, scopeFilter, traditionalAuthorityFilter]);
+  const { data: rolesResult, isLoading: rolesLoading } = useQuery({
+    queryKey: ['roles', roleQueryFilters],
+    queryFn: () => rolesService.getRolesResult(roleQueryFilters),
+    enabled: hasRoles,
+  });
+  const roles = rolesResult?.roles ?? [];
+  const roleTotal = rolesResult?.total ?? 0;
+  const { data: allPermissions = [], isLoading: permsLoading } = useQuery({ queryKey: ['all-permissions'], queryFn: rolesService.getAllPermissions, enabled: hasRoles });
 
   const updatePermissionsMutation = useMutation({
     mutationFn: ({ id, permissions }: { id: string; permissions: string[] }) => rolesService.updateRolePermissions(id, permissions),
@@ -435,15 +500,8 @@ export default function RolesManagementPage() {
 
   const canManage = hasPermission('roles:manage');
   const visibleRoles = useMemo(() => {
-    const q = roleSearch.trim().toLowerCase();
-    return roles
-      .filter(role => role.name !== 'ministry_admin' && role.name !== 'system_admin')
-      .filter(role => !q
-        || role.displayName.toLowerCase().includes(q)
-        || role.name.toLowerCase().includes(q)
-        || (role.description ?? '').toLowerCase().includes(q))
-      .filter(role => roleMatchesChurchFilter(role, churchFilterIds, churches));
-  }, [churchFilterIds, churches, roleSearch, roles]);
+    return roles.filter(role => role.name !== 'ministry_admin' && role.name !== 'system_admin');
+  }, [roles]);
   const currentRole = roles.find(role => role.id === selectedRole);
   const grouped = groupPermissions(allPermissions);
 
@@ -506,6 +564,14 @@ export default function RolesManagementPage() {
     updatePermissionsMutation.mutate({ id: selectedRole, permissions: Array.from(pendingPerms) });
   }
 
+  function handleScopeFilterChange(value: 'all' | RoleScope['scopeType']) {
+    setScopeFilter(value);
+    setChurchFilterIds([]);
+    setRegionFilter([]);
+    setDistrictFilter([]);
+    setTraditionalAuthorityFilter([]);
+  }
+
   if (rolesLoading || permsLoading) {
     return <div className="flex items-center justify-center h-64"><div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" /></div>;
   }
@@ -541,7 +607,11 @@ export default function RolesManagementPage() {
           <div className="space-y-3">
             <div>
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Roles</h2>
-              <p className="text-xs text-muted-foreground">Search roles and filter by the churches their scope can access.</p>
+              <p className="text-xs text-muted-foreground">Search roles and filter by how their data scope is configured.</p>
+            </div>
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              <span className="font-medium">{roleTotal}</span>{' '}
+              <span className="text-muted-foreground">role{roleTotal === 1 ? '' : 's'} found</span>
             </div>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -552,7 +622,32 @@ export default function RolesManagementPage() {
                 className="pl-9"
               />
             </div>
-            <ChurchFilterDropdown churches={churches} selected={churchFilterIds} onChange={setChurchFilterIds} />
+            <Select value={scopeFilter} onValueChange={value => handleScopeFilterChange(value as 'all' | RoleScope['scopeType'])}>
+              <SelectTrigger>
+                <SelectValue placeholder="All scope types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All scope types</SelectItem>
+                <SelectItem value="all_ministry">All ministry churches</SelectItem>
+                <SelectItem value="specific_churches">Specific churches</SelectItem>
+                <SelectItem value="regions">Regions</SelectItem>
+                <SelectItem value="districts">Districts</SelectItem>
+                <SelectItem value="traditional_authorities">Traditional authorities</SelectItem>
+                <SelectItem value="own_church">Own church only</SelectItem>
+              </SelectContent>
+            </Select>
+            {(scopeFilter === 'all' || scopeFilter === 'specific_churches') && (
+              <ChurchFilterDropdown churches={churches} selected={churchFilterIds} onChange={setChurchFilterIds} />
+            )}
+            {scopeFilter === 'regions' && (
+              <ValueFilterDropdown label="regions" values={regions} selected={regionFilter} onChange={setRegionFilter} />
+            )}
+            {scopeFilter === 'districts' && (
+              <ValueFilterDropdown label="districts" values={districts} selected={districtFilter} onChange={setDistrictFilter} />
+            )}
+            {scopeFilter === 'traditional_authorities' && (
+              <ValueFilterDropdown label="traditional authorities" values={traditionalAuthorities} selected={traditionalAuthorityFilter} onChange={setTraditionalAuthorityFilter} />
+            )}
           </div>
 
           {visibleRoles.length === 0 && (

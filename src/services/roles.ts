@@ -37,10 +37,35 @@ export interface RolePayload {
   scope: RoleScope;
 }
 
+export interface RoleFilters {
+  search?: string;
+  scopeType?: RoleScope['scopeType'];
+  churchIds?: string[];
+  regions?: string[];
+  districts?: string[];
+  traditionalAuthorities?: string[];
+}
+
+export interface RolesResponse {
+  roles: Role[];
+  total: number;
+}
+
 export const rolesService = {
-  getRoles: async (): Promise<Role[]> => {
-    const { data } = await apiClient.get('/roles');
-    return data.data;
+  getRolesResult: async (filters?: RoleFilters): Promise<RolesResponse> => {
+    const params: Record<string, string> = {};
+    if (filters?.search) params.search = filters.search;
+    if (filters?.scopeType) params.scopeType = filters.scopeType;
+    if (filters?.churchIds?.length) params.churchIds = filters.churchIds.join(',');
+    if (filters?.regions?.length) params.regions = filters.regions.join(',');
+    if (filters?.districts?.length) params.districts = filters.districts.join(',');
+    if (filters?.traditionalAuthorities?.length) params.traditionalAuthorities = filters.traditionalAuthorities.join(',');
+    const { data } = await apiClient.get('/roles', { params });
+    return { roles: data.data, total: data.total ?? data.data.length };
+  },
+  getRoles: async (filters?: RoleFilters): Promise<Role[]> => {
+    const result = await rolesService.getRolesResult(filters);
+    return result.roles;
   },
   getAllPermissions: async (): Promise<Permission[]> => {
     const { data } = await apiClient.get('/roles/permissions');
