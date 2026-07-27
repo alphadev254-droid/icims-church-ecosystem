@@ -163,7 +163,7 @@ function ChurchFilterDropdown({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" className="w-full justify-between">
+        <Button type="button" variant="outline" className="h-10 w-full justify-between px-3 text-sm">
           <span className="truncate">{summary}</span>
           <ChevronDown className="h-4 w-4 opacity-60" />
         </Button>
@@ -232,7 +232,7 @@ function ValueFilterDropdown({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" className="w-full justify-between">
+        <Button type="button" variant="outline" className="h-10 w-full justify-between px-3 text-sm">
           <span className="truncate">{summary}</span>
           <ChevronDown className="h-4 w-4 opacity-60" />
         </Button>
@@ -606,17 +606,17 @@ export default function RolesManagementPage() {
       </div>
 
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
             <div className="min-w-0 flex-1 space-y-1.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Search roles</Label>
+              <Label className="text-xs font-medium text-muted-foreground sm:text-sm">Search roles</Label>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={roleSearch}
                   onChange={event => setRoleSearch(event.target.value)}
                   placeholder="Type at least 3 letters"
-                  className="pl-9"
+                  className="h-10 pl-9 text-sm"
                 />
               </div>
               {roleSearch.trim().length > 0 && roleSearch.trim().length < 3 && (
@@ -625,9 +625,9 @@ export default function RolesManagementPage() {
             </div>
 
             <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Scope type</Label>
+              <Label className="text-xs font-medium text-muted-foreground sm:text-sm">Scope type</Label>
               <Select value={scopeFilter} onValueChange={value => handleScopeFilterChange(value as 'all' | RoleScope['scopeType'])}>
-                <SelectTrigger>
+                <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder="All scope types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -644,30 +644,30 @@ export default function RolesManagementPage() {
 
             {(scopeFilter === 'all' || scopeFilter === 'specific_churches') && (
               <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Church</Label>
+                <Label className="text-xs font-medium text-muted-foreground sm:text-sm">Church</Label>
                 <ChurchFilterDropdown churches={churches} selected={churchFilterIds} onChange={setChurchFilterIds} />
               </div>
             )}
             {scopeFilter === 'regions' && (
               <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Region</Label>
+                <Label className="text-xs font-medium text-muted-foreground sm:text-sm">Region</Label>
                 <ValueFilterDropdown label="regions" values={regions} selected={regionFilter} onChange={setRegionFilter} />
               </div>
             )}
             {scopeFilter === 'districts' && (
               <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">District</Label>
+                <Label className="text-xs font-medium text-muted-foreground sm:text-sm">District</Label>
                 <ValueFilterDropdown label="districts" values={districts} selected={districtFilter} onChange={setDistrictFilter} />
               </div>
             )}
             {scopeFilter === 'traditional_authorities' && (
               <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Traditional authority</Label>
+                <Label className="text-xs font-medium text-muted-foreground sm:text-sm">Traditional authority</Label>
                 <ValueFilterDropdown label="traditional authorities" values={traditionalAuthorities} selected={traditionalAuthorityFilter} onChange={setTraditionalAuthorityFilter} />
               </div>
             )}
 
-            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm xl:min-w-36">
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs sm:text-sm xl:min-w-36">
               <span className="font-medium">{roleTotal}</span>{' '}
               <span className="text-muted-foreground">role{roleTotal === 1 ? '' : 's'} found</span>
               {rolesFetching && <span className="block text-xs text-muted-foreground">Updating...</span>}
