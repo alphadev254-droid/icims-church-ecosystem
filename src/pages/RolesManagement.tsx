@@ -168,7 +168,7 @@ function ChurchFilterDropdown({
           <ChevronDown className="h-4 w-4 opacity-60" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[calc(100vw-32px)] max-w-80 p-2" align="start">
+      <PopoverContent className="w-[calc(100vw-2rem)] max-w-80 p-2" align="start">
         <button
           type="button"
           onClick={() => onChange([])}
@@ -237,7 +237,7 @@ function ValueFilterDropdown({
           <ChevronDown className="h-4 w-4 opacity-60" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[calc(100vw-32px)] max-w-80 p-2" align="start">
+      <PopoverContent className="w-[calc(100vw-2rem)] max-w-80 p-2" align="start">
         <button
           type="button"
           onClick={() => onChange([])}
@@ -285,7 +285,7 @@ function PermissionPicker({ permissions, selected, onChange }: { permissions: Pe
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
             {RESOURCE_LABEL[resource] ?? resource}
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {perms.map(permission => {
               const granted = selectedSet.has(permission.name);
               return (
@@ -354,7 +354,7 @@ function RoleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{role ? 'Edit Custom Role' : 'Create Custom Role'}</DialogTitle></DialogHeader>
         <div className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -406,7 +406,7 @@ function RoleDialog({
             </div>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="button" disabled={!displayName || isPending} onClick={submit} className="bg-accent text-accent-foreground hover:bg-accent/90 gap-1.5">
               <Save className="h-4 w-4" /> {isPending ? 'Saving...' : 'Save Role'}
@@ -580,16 +580,16 @@ export default function RolesManagementPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Roles & Permissions</h1>
+    <div className="max-w-full space-y-6 overflow-x-hidden">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-heading text-xl font-bold sm:text-2xl">Roles & Permissions</h1>
           <p className="text-sm text-muted-foreground">Create roles, assign permissions, and control data scope</p>
         </div>
         {canManage && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-1.5">
+              <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90 gap-1.5 sm:w-auto">
                 <Plus className="h-4 w-4" /> Create Role
               </Button>
             </DialogTrigger>
@@ -605,10 +605,10 @@ export default function RolesManagementPage() {
         )}
       </div>
 
-      <Card>
+      <Card className="max-w-full overflow-hidden">
         <CardContent className="p-3 sm:p-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
-            <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="w-full min-w-0 flex-1 space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground sm:text-sm">Search roles</Label>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -624,7 +624,7 @@ export default function RolesManagementPage() {
               )}
             </div>
 
-            <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
+            <div className="w-full min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
               <Label className="text-xs font-medium text-muted-foreground sm:text-sm">Scope type</Label>
               <Select value={scopeFilter} onValueChange={value => handleScopeFilterChange(value as 'all' | RoleScope['scopeType'])}>
                 <SelectTrigger className="h-10 text-sm">
@@ -643,31 +643,31 @@ export default function RolesManagementPage() {
             </div>
 
             {(scopeFilter === 'all' || scopeFilter === 'specific_churches') && (
-              <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
+              <div className="w-full min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
                 <Label className="text-xs font-medium text-muted-foreground sm:text-sm">Church</Label>
                 <ChurchFilterDropdown churches={churches} selected={churchFilterIds} onChange={setChurchFilterIds} />
               </div>
             )}
             {scopeFilter === 'regions' && (
-              <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
+              <div className="w-full min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
                 <Label className="text-xs font-medium text-muted-foreground sm:text-sm">Region</Label>
                 <ValueFilterDropdown label="regions" values={regions} selected={regionFilter} onChange={setRegionFilter} />
               </div>
             )}
             {scopeFilter === 'districts' && (
-              <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
+              <div className="w-full min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
                 <Label className="text-xs font-medium text-muted-foreground sm:text-sm">District</Label>
                 <ValueFilterDropdown label="districts" values={districts} selected={districtFilter} onChange={setDistrictFilter} />
               </div>
             )}
             {scopeFilter === 'traditional_authorities' && (
-              <div className="min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
+              <div className="w-full min-w-0 flex-1 space-y-1.5 xl:max-w-xs">
                 <Label className="text-xs font-medium text-muted-foreground sm:text-sm">Traditional authority</Label>
                 <ValueFilterDropdown label="traditional authorities" values={traditionalAuthorities} selected={traditionalAuthorityFilter} onChange={setTraditionalAuthorityFilter} />
               </div>
             )}
 
-            <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs sm:text-sm xl:min-w-36">
+            <div className="w-full rounded-md border bg-muted/30 px-3 py-2 text-xs sm:text-sm xl:w-auto xl:min-w-36">
               <span className="font-medium">{roleTotal}</span>{' '}
               <span className="text-muted-foreground">role{roleTotal === 1 ? '' : 's'} found</span>
               {rolesFetching && <span className="block text-xs text-muted-foreground">Updating...</span>}
@@ -676,8 +676,8 @@ export default function RolesManagementPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-3">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-3">
+        <div className="min-w-0 space-y-3">
           <div>
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Roles</h2>
             <p className="text-xs text-muted-foreground">Select a role to manage permissions and scope.</p>
@@ -697,19 +697,19 @@ export default function RolesManagementPage() {
             <button
               key={role.id}
               onClick={() => handleSelectRole(role.id)}
-              className={`w-full text-left rounded-lg border p-4 transition-all ${selectedRole === role.id ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50 hover:bg-muted/50'}`}
+              className={`w-full min-w-0 text-left rounded-lg border p-3 transition-all sm:p-4 ${selectedRole === role.id ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50 hover:bg-muted/50'}`}
             >
-              <div className="flex items-center justify-between mb-1 gap-2">
-                <div className="flex items-center gap-2 min-w-0">
+              <div className="mb-1 flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-2">
                   <Shield className="h-4 w-4 text-accent shrink-0" />
-                  <span className="font-medium text-sm truncate">{role.displayName}</span>
+                  <span className="min-w-0 break-words text-sm font-medium">{role.displayName}</span>
                 </div>
-                <Badge variant={role.isSystemRole ? 'secondary' : 'outline'} className="text-xs shrink-0">{role.userCount} users</Badge>
+                <Badge variant={role.isSystemRole ? 'secondary' : 'outline'} className="w-fit shrink-0 text-xs">{role.userCount} users</Badge>
               </div>
               <p className="text-xs text-muted-foreground">
                 {role.permissions?.length ?? 0} permission{role.permissions?.length !== 1 ? 's' : ''} assigned
               </p>
-              <p className="text-xs text-muted-foreground mt-1 truncate">
+              <p className="mt-1 break-words text-xs text-muted-foreground">
                 Scope: {describeScope(role.scope, churches)}
               </p>
               {!role.isSystemRole && <p className="text-xs text-accent mt-1">Custom role</p>}
@@ -717,45 +717,45 @@ export default function RolesManagementPage() {
           ))}
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           {!selectedRole ? (
-            <div className="flex items-center justify-center h-64 text-muted-foreground border rounded-lg">
-              <div className="text-center">
+            <div className="flex h-64 min-w-0 items-center justify-center rounded-lg border px-4 text-muted-foreground">
+              <div className="min-w-0 text-center">
                 <Shield className="h-10 w-10 mx-auto mb-2 opacity-40" />
                 <p className="text-sm">Select a role to manage permissions and scope</p>
               </div>
             </div>
           ) : (
-            <Card>
+            <Card className="max-w-full overflow-hidden">
               <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-base flex flex-wrap items-center gap-2">
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-sm sm:text-base">
                       <Shield className="h-4 w-4 text-accent" />
-                      {currentRole?.displayName}
+                      <span className="min-w-0 flex-1 break-words">{currentRole?.displayName}</span>
                       <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />{currentRole?.userCount} users</Badge>
                       {!currentRole?.isSystemRole && <Badge variant="outline">Custom</Badge>}
                     </CardTitle>
                     {currentRole?.scope && (
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="mt-1 break-words text-xs text-muted-foreground">
                         Scope: {currentRole.scope.scopeType.replace(/_/g, ' ')}
                       </p>
                     )}
                   </div>
                   {canManage && (
-                    <div className="flex gap-1.5">
+                    <div className="flex w-full flex-wrap gap-1.5 sm:w-auto sm:justify-end">
                       {!currentRole?.isSystemRole && (
                         <>
-                          <Button size="sm" variant="outline" className="gap-1" onClick={() => currentRole && setEditRole(currentRole)}>
+                          <Button size="sm" variant="outline" className="flex-1 gap-1 sm:flex-none" onClick={() => currentRole && setEditRole(currentRole)}>
                             <Pencil className="h-3.5 w-3.5" /> Edit
                           </Button>
-                          <Button size="sm" variant="outline" className="gap-1 text-destructive" onClick={() => currentRole && setDeleteRole(currentRole)}>
+                          <Button size="sm" variant="outline" className="flex-1 gap-1 text-destructive sm:flex-none" onClick={() => currentRole && setDeleteRole(currentRole)}>
                             <Trash2 className="h-3.5 w-3.5" /> Delete
                           </Button>
                         </>
                       )}
                       {currentRole?.isEditable !== false && (
-                        <Button size="sm" onClick={savePermissions} disabled={!dirty || updatePermissionsMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90 gap-1">
+                        <Button size="sm" onClick={savePermissions} disabled={!dirty || updatePermissionsMutation.isPending} className="flex-1 gap-1 bg-accent text-accent-foreground hover:bg-accent/90 sm:flex-none">
                           <Save className="h-3.5 w-3.5" /> {updatePermissionsMutation.isPending ? 'Saving...' : 'Save'}
                         </Button>
                       )}
@@ -763,11 +763,11 @@ export default function RolesManagementPage() {
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-3 sm:p-6">
                 {Object.entries(grouped).map(([resource, perms]) => (
-                  <div key={resource}>
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{RESOURCE_LABEL[resource] ?? resource}</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div key={resource} className="min-w-0">
+                    <h3 className="mb-2 break-words text-xs font-semibold uppercase tracking-wide text-muted-foreground">{RESOURCE_LABEL[resource] ?? resource}</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {perms.map(permission => {
                         const granted = pendingPerms.has(permission.name);
                         const blockedForCustomRole = currentRole?.isSystemRole === false && !isAllowedForCustomRole(permission);
@@ -776,12 +776,12 @@ export default function RolesManagementPage() {
                             key={permission.id}
                             onClick={() => togglePerm(permission.name)}
                             disabled={!canManage || currentRole?.isEditable === false || blockedForCustomRole}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium border transition-all text-left ${
+                            className={`flex min-w-0 items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-medium transition-all ${
                               granted ? 'border-accent bg-accent/10 text-accent' : 'border-border text-muted-foreground hover:border-muted-foreground'
                             } ${!canManage || currentRole?.isEditable === false || blockedForCustomRole ? 'cursor-default opacity-70' : 'cursor-pointer'}`}
                           >
                             {granted ? <CheckSquare className="h-3.5 w-3.5 shrink-0" /> : <Square className="h-3.5 w-3.5 shrink-0" />}
-                            <span className="capitalize">{permission.action}</span>
+                            <span className="min-w-0 truncate capitalize">{permission.action}</span>
                           </button>
                         );
                       })}
