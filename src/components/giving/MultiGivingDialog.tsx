@@ -199,17 +199,19 @@ export function MultiGivingDialog({
       }
     }
 
+    const checkoutChurchId = normalized[0]?.churchId;
+
     setIsSubmitting(true);
     try {
       const result = mode === 'guest'
         ? await givingService.guestDonateMultiple({
             items: normalized,
-            churchId: resolvedChurchId,
+            churchId: checkoutChurchId,
             guestName: guestName.trim(),
             guestEmail: guestEmail.trim(),
             guestPhone: guestPhone.trim() || undefined,
           })
-        : await givingService.donateMultiple({ items: normalized, churchId: memberChurchId || undefined });
+        : await givingService.donateMultiple({ items: normalized, churchId: memberChurchId || checkoutChurchId || undefined });
 
       if (result?.authorization_url) {
         window.location.href = result.authorization_url;
