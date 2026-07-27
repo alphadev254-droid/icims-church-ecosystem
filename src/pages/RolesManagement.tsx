@@ -15,7 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, Users, CheckSquare, Square, Save, Lock, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Shield, Users, CheckSquare, Square, Save, Lock, Plus, Pencil, Trash2, Search, ChevronDown, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
@@ -103,6 +104,126 @@ function ToggleList({ values, selected, onChange }: { values: string[]; selected
         </label>
       ))}
     </div>
+  );
+}
+
+function scopeLabel(scopeType?: RoleScope['scopeType']) {
+  if (scopeType === 'all_ministry') return 'All ministry churches';
+  if (scopeType === 'specific_churches') return 'Specific churches';
+  if (scopeType === 'regions') return 'Regions';
+  if (scopeType === 'districts') return 'Districts';
+  if (scopeType === 'traditional_authorities') return 'Traditional authorities';
+  if (scopeType === 'own_church') return 'Own church only';
+  return 'All ministry churches';
+}
+
+function describeScope(scope: RoleScope | null | undefined, churches: Church[]) {
+  if (!scope) return 'Available across ministry scope';
+  if (scope.scopeType === 'all_ministry') return 'All ministry churches';
+  if (scope.scopeType === 'own_church') return 'Each assigned user only sees their own church';
+  if (scope.scopeType === 'specific_churches') {
+    const names = (scope.churchIds ?? [])
+      .map(id => churches.find(church => church.id === id)?.name)
+      .filter(Boolean) as string[];
+    if (names.length === 0) return 'No churches selected';
+    return names.length <= 2 ? names.join(', ') : `${names.slice(0, 2).join(', ')} +${names.length - 2} more`;
+  }
+  if (scope.scopeType === 'regions') return (scope.regions ?? []).length ? `Regions: ${(scope.regions ?? []).join(', ')}` : 'No regions selected';
+  if (scope.scopeType === 'districts') return (scope.districts ?? []).length ? `Districts: ${(scope.districts ?? []).join(', ')}` : 'No districts selected';
+  if (scope.scopeType === 'traditional_authorities') {
+    return (scope.traditionalAuthorities ?? []).length ? `Traditional authorities: ${(scope.traditionalAuthorities ?? []).join(', ')}` : 'No traditional authorities selected';
+  }
+  return scopeLabel(scope.scopeType);
+}
+
+function roleMatchesChurchFilter(role: Role, selectedChurchIds: string[], churches: Church[]) {
+  if (selectedChurchIds.length === 0) return true;
+  const scope = role.scope;
+  if (!scope || scope.scopeType === 'all_ministry' || scope.scopeType === 'own_church') return true;
+  const selectedChurches = churches.filter(church => selectedChurchIds.includes(church.id));
+  if (scope.scopeType === 'specific_churches') {
+    const scopedChurchIds = new Set(scope.churchIds ?? []);
+    return selectedChurchIds.some(id => scopedChurchIds.has(id));
+  }
+  if (scope.scopeType === 'regions') {
+    const scoped = new Set(scope.regions ?? []);
+    return selectedChurches.some(church => church.region && scoped.has(church.region));
+  }
+  if (scope.scopeType === 'districts') {
+    const scoped = new Set(scope.districts ?? []);
+    return selectedChurches.some(church => church.district && scoped.has(church.district));
+  }
+  if (scope.scopeType === 'traditional_authorities') {
+    const scoped = new Set(scope.traditionalAuthorities ?? []);
+    return selectedChurches.some(church => church.traditionalAuthority && scoped.has(church.traditionalAuthority));
+  }
+  return true;
+}
+
+function ChurchFilterDropdown({
+  churches,
+  selected,
+  onChange,
+}: {
+  churches: Church[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedSet = new Set(selected);
+  const summary = selected.length === 0
+    ? 'All churches'
+    : selected.length === 1
+      ? churches.find(church => church.id === selected[0])?.name || '1 church'
+      : `${selected.length} churches`;
+
+  const toggle = (churchId: string) => {
+    onChange(selectedSet.has(churchId)
+      ? selected.filter(id => id !== churchId)
+      : [...selected, churchId]);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" className="w-full justify-between sm:w-72">
+          <span className="truncate">{summary}</span>
+          <ChevronDown className="h-4 w-4 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[calc(100vw-32px)] max-w-80 p-2" align="start">
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="flex w-full items-center justify-between rounded px-2 py-2 text-sm hover:bg-muted"
+        >
+          <span>
+            <span className="block font-medium">All churches</span>
+            <span className="block text-xs text-muted-foreground">Default when no church is checked</span>
+          </span>
+          {selected.length === 0 && <Check className="h-4 w-4 text-accent" />}
+        </button>
+        <div className="my-2 h-px bg-border" />
+        <div className="max-h-72 overflow-y-auto">
+          {churches.map(church => (
+            <button
+              type="button"
+              key={church.id}
+              onClick={() => toggle(church.id)}
+              className="flex w-full items-center justify-between gap-3 rounded px-2 py-2 text-left text-sm hover:bg-muted"
+            >
+              <span className="min-w-0">
+                <span className="block truncate">{church.name}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {[church.region, church.district].filter(Boolean).join(' · ') || church.location || 'Church'}
+                </span>
+              </span>
+              {selectedSet.has(church.id) && <Check className="h-4 w-4 shrink-0 text-accent" />}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -264,6 +385,8 @@ export default function RolesManagementPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editRole, setEditRole] = useState<Role | null>(null);
   const [deleteRole, setDeleteRole] = useState<Role | null>(null);
+  const [roleSearch, setRoleSearch] = useState('');
+  const [churchFilterIds, setChurchFilterIds] = useState<string[]>([]);
 
   const { data: roles = [], isLoading: rolesLoading } = useQuery({ queryKey: ['roles'], queryFn: rolesService.getRoles, enabled: hasRoles });
   const { data: allPermissions = [], isLoading: permsLoading } = useQuery({ queryKey: ['all-permissions'], queryFn: rolesService.getAllPermissions, enabled: hasRoles });
@@ -311,8 +434,25 @@ export default function RolesManagementPage() {
   });
 
   const canManage = hasPermission('roles:manage');
+  const visibleRoles = useMemo(() => {
+    const q = roleSearch.trim().toLowerCase();
+    return roles
+      .filter(role => role.name !== 'ministry_admin' && role.name !== 'system_admin')
+      .filter(role => !q
+        || role.displayName.toLowerCase().includes(q)
+        || role.name.toLowerCase().includes(q)
+        || (role.description ?? '').toLowerCase().includes(q))
+      .filter(role => roleMatchesChurchFilter(role, churchFilterIds, churches));
+  }, [churchFilterIds, churches, roleSearch, roles]);
   const currentRole = roles.find(role => role.id === selectedRole);
   const grouped = groupPermissions(allPermissions);
+
+  useEffect(() => {
+    if (selectedRole && !visibleRoles.some(role => role.id === selectedRole)) {
+      setSelectedRole(null);
+      setDirty(false);
+    }
+  }, [selectedRole, visibleRoles]);
 
   if (!hasRoles) {
     return (
@@ -398,8 +538,30 @@ export default function RolesManagementPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Roles</h2>
-          {roles.filter(role => role.name !== 'ministry_admin' && role.name !== 'system_admin').map(role => (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Roles</h2>
+              <p className="text-xs text-muted-foreground">Search roles and filter by the churches their scope can access.</p>
+            </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={roleSearch}
+                onChange={event => setRoleSearch(event.target.value)}
+                placeholder="Search role name"
+                className="pl-9"
+              />
+            </div>
+            <ChurchFilterDropdown churches={churches} selected={churchFilterIds} onChange={setChurchFilterIds} />
+          </div>
+
+          {visibleRoles.length === 0 && (
+            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              No roles match these filters.
+            </div>
+          )}
+
+          {visibleRoles.map(role => (
             <button
               key={role.id}
               onClick={() => handleSelectRole(role.id)}
@@ -414,6 +576,9 @@ export default function RolesManagementPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {role.permissions?.length ?? 0} permission{role.permissions?.length !== 1 ? 's' : ''} assigned
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 truncate">
+                Scope: {describeScope(role.scope, churches)}
               </p>
               {!role.isSystemRole && <p className="text-xs text-accent mt-1">Custom role</p>}
             </button>
@@ -526,3 +691,4 @@ export default function RolesManagementPage() {
     </div>
   );
 }
+
