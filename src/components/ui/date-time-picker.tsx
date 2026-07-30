@@ -55,7 +55,7 @@ export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick 
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="max-h-[calc(100svh-2rem)] w-auto overflow-y-auto p-0" align="start" collisionPadding={16}>
         <Calendar
           mode="single"
           selected={selected}
