@@ -200,7 +200,9 @@ export default function AttendancePage() {
 
   const totalServices = records.length;
   const totalAttendees = records.reduce((s, r) => s + r.totalAttendees, 0);
-  const totalVisitors = records.reduce((s, r) => s + (r.newVisitors ?? 0), 0);
+  const getVisitorCount = (record: any) => record.trueVisitors ?? record.newVisitors ?? 0;
+  const getMinistryMemberGuestCount = (record: any) => record.ministryMemberGuests ?? 0;
+  const totalVisitors = records.reduce((s, r) => s + getVisitorCount(r), 0);
   const avgAttendance = totalServices ? Math.round(totalAttendees / totalServices) : 0;
   const attendanceLinks = myLinks.filter((link: any) => link.type === 'attendance' || link.type === 'attendance_scanner');
   const filteredAttendanceLinks = attendanceLinks.filter((link: any) => {
@@ -516,22 +518,23 @@ export default function AttendancePage() {
             </div>
           ) : (
             <div className="w-full overflow-x-auto">
-            <Table>
+            <Table className="min-w-[1180px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Church</TableHead>
-                  <TableHead>Service Type</TableHead>
+                  <TableHead className="whitespace-nowrap">Date</TableHead>
+                  <TableHead className="min-w-[170px] whitespace-nowrap">Church</TableHead>
+                  <TableHead className="min-w-[150px] whitespace-nowrap">Service Type</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">Male</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">Female</TableHead>
-                  <TableHead className="text-right hidden md:table-cell">Children</TableHead>
-                  <TableHead className="text-right hidden md:table-cell">Youth</TableHead>
-                  <TableHead className="text-right hidden lg:table-cell">Young Adults</TableHead>
-                  <TableHead className="text-right hidden lg:table-cell">Adults</TableHead>
-                  <TableHead className="text-right hidden lg:table-cell">Seniors</TableHead>
-                  <TableHead className="text-right hidden xl:table-cell">Visitors</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
+                  <TableHead className="text-right">Male</TableHead>
+                  <TableHead className="text-right">Female</TableHead>
+                  <TableHead className="text-right">Children</TableHead>
+                  <TableHead className="text-right">Youth</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Young Adults</TableHead>
+                  <TableHead className="text-right">Adults</TableHead>
+                  <TableHead className="text-right">Seniors</TableHead>
+                  <TableHead className="text-right">Visitors</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Ministry Member Guests</TableHead>
+                  <TableHead className="w-28 whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -539,22 +542,19 @@ export default function AttendancePage() {
                   const isQrAttendance = !!(r as any).qrToken || !!(r as any).digitalCheckInEnabled || ((r as any).qrStatus && (r as any).qrStatus !== 'draft');
                   return (
                   <TableRow key={r.id}>
-                    <TableCell className="font-medium">{new Date(r.date).toLocaleDateString()}</TableCell>
+                    <TableCell className="whitespace-nowrap font-medium">{new Date(r.date).toLocaleDateString()}</TableCell>
                     <TableCell className="text-sm">{(r as any).church?.name || '—'}</TableCell>
-                    <TableCell>{r.serviceType}</TableCell>
+                    <TableCell className="whitespace-nowrap">{r.serviceType}</TableCell>
                     <TableCell className="text-right font-semibold">{r.totalAttendees}</TableCell>
-                    <TableCell className="text-right hidden sm:table-cell text-muted-foreground">{(r as any).maleCount ?? 0}</TableCell>
-                    <TableCell className="text-right hidden sm:table-cell text-muted-foreground">{(r as any).femaleCount ?? 0}</TableCell>
-                    <TableCell className="text-right hidden md:table-cell text-muted-foreground">{(r as any).children ?? 0}</TableCell>
-                    <TableCell className="text-right hidden md:table-cell text-muted-foreground">{(r as any).youth ?? 0}</TableCell>
-                    <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).youngAdults ?? 0}</TableCell>
-                    <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).adults ?? 0}</TableCell>
-                    <TableCell className="text-right hidden lg:table-cell text-muted-foreground">{(r as any).seniors ?? 0}</TableCell>
-                    <TableCell className="text-right hidden xl:table-cell text-muted-foreground">
-                      {(r as any)._count?.visitors > 0
-                        ? `${(r as any)._count.visitors} (detailed)`
-                        : r.newVisitors ?? 0}
-                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">{(r as any).maleCount ?? 0}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{(r as any).femaleCount ?? 0}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{(r as any).children ?? 0}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{(r as any).youth ?? 0}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{(r as any).youngAdults ?? 0}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{(r as any).adults ?? 0}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{(r as any).seniors ?? 0}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{getVisitorCount(r)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{getMinistryMemberGuestCount(r)}</TableCell>
                     <TableCell>
                       <div>
                         <DropdownMenu>
@@ -655,7 +655,7 @@ export default function AttendancePage() {
                 );})}
                 {records.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={14} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={15} className="text-center py-10 text-muted-foreground">
                       <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       {canCreate ? 'No records yet. Start manual attendance or QR attendance.' : 'No attendance records.'}
                     </TableCell>
