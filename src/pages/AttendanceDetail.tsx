@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { attendanceService } from '@/services/attendance';
+import { churchesService } from '@/services/churches';
 import { useAuthStore } from '@/stores/authStore';
 import { useRole } from '@/hooks/useRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,7 @@ export default function AttendanceDetailPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [genderFilter, setGenderFilter] = useState('all');
   const [ageFilter, setAgeFilter] = useState('all');
+  const [churchFilter, setChurchFilter] = useState('all');
   const canUpdate = hasPermission('attendance:update');
 
   const { data: record, isLoading } = useQuery({
@@ -33,8 +35,13 @@ export default function AttendanceDetailPage() {
 
   const { data: participantsResponse, isLoading: participantsLoading } = useQuery({
     queryKey: ['attendance-participants', id],
-    queryFn: () => attendanceService.getParticipants(id, { limit: 200 }),
+    queryFn: () => attendanceService.getParticipants(id, { limit: 1000 }),
     enabled: !!id,
+  });
+
+  const { data: selectableChurches = [] } = useQuery({
+    queryKey: ['churches-select'],
+    queryFn: churchesService.getSelectable,
   });
 
   if (isLoading) {
@@ -104,11 +111,21 @@ export default function AttendanceDetailPage() {
     const memberAgeMeta = participant.user
       ? getMemberAgeMeta(participant.user.memberType, participant.user.dateOfBirth)
       : null;
+    const userHomeChurchId = participant.user?.church?.id || '';
+    const ministryMemberHomeChurchId = participant.ministryMember?.church?.id || '';
+    const homeChurchId = userHomeChurchId || ministryMemberHomeChurchId || '';
+    const homeChurchName = participant.user
+      ? participant.user.church?.name || record.church?.name || ''
+      : participant.ministryMember?.church?.name || '';
+    const isMinistryMemberGuest = Boolean(
+      participant.ministryMember ||
+      (participant.user && userHomeChurchId && userHomeChurchId !== record.churchId)
+    );
     const memberTypeLabel = participant.user?.memberType
       ? participant.user.memberType
       : participant.ministryMember?.memberType || '';
     const participantType = participant.user
-      ? 'Member'
+      ? isMinistryMemberGuest ? 'Ministry member guest' : 'Member'
       : participant.ministryMember
         ? 'Ministry member guest'
         : 'Guest';
@@ -121,18 +138,41 @@ export default function AttendanceDetailPage() {
       ageGroupLabel: getAgeGroupLabel(participant.user ? memberAgeMeta?.ageBracket || '' : getAgeBracket(null, participant.guestAgeBracket)),
       memberTypeLabel,
       participantType,
-      homeChurch: participant.user ? participant.user.church?.name || record.church?.name || '' : participant.ministryMember?.church?.name || '',
+      isMinistryMemberGuest,
+      isTrueVisitor: !participant.user && !participant.ministryMember,
+      homeChurchId,
+      homeChurch: homeChurchName,
     };
   };
+  const churchOptions = Array.from(
+    participants.reduce((map, participant) => {
+      const meta = getParticipantMeta(participant);
+      if (meta.homeChurchId && meta.homeChurch) map.set(meta.homeChurchId, meta.homeChurch);
+      return map;
+    }, new Map<string, string>(selectableChurches.map(church => [church.id, church.name])))
+  ).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   const filteredParticipants = participants.filter(participant => {
     const meta = getParticipantMeta(participant);
     const genderMatches = genderFilter === 'all' || meta.gender === genderFilter;
     const ageMatches = ageFilter === 'all' || meta.ageBracket === ageFilter;
-    return genderMatches && ageMatches;
+    const churchMatches = churchFilter === 'all' || meta.homeChurchId === churchFilter;
+    return genderMatches && ageMatches && churchMatches;
   });
   const qrCount = record._count?.participants ?? participantsResponse?.pagination.total ?? 0;
   const maleCount = participants.filter(p => getParticipantMeta(p).gender === 'male').length;
   const femaleCount = participants.filter(p => getParticipantMeta(p).gender === 'female').length;
+  const ministryMemberGuestCount = participants.filter(p => getParticipantMeta(p).isMinistryMemberGuest).length;
+  const trueVisitorCount = participants.filter(p => getParticipantMeta(p).isTrueVisitor).length;
+  const filteredMinistryMemberGuestCount = filteredParticipants.filter(p => getParticipantMeta(p).isMinistryMemberGuest).length;
+  const filteredTrueVisitorCount = filteredParticipants.filter(p => getParticipantMeta(p).isTrueVisitor).length;
+  const participantExportSummary = [
+    { label: 'Total participants', value: filteredParticipants.length },
+    { label: 'Total participants in attendance', value: participants.length },
+    { label: 'Visitors', value: filteredTrueVisitorCount },
+    { label: 'Ministry member guests', value: filteredMinistryMemberGuestCount },
+    { label: 'All visitors in attendance', value: trueVisitorCount },
+    { label: 'All ministry member guests in attendance', value: ministryMemberGuestCount },
+  ];
   const participantExportData = filteredParticipants.map(participant => {
     const meta = getParticipantMeta(participant);
     return {
@@ -145,6 +185,7 @@ export default function AttendanceDetailPage() {
       type: meta.participantType,
       memberType: meta.memberTypeLabel || '',
       homeChurch: meta.homeChurch || '',
+      homeChurchId: meta.homeChurchId || '',
       method: participant.checkInMethod.replace(/_/g, ' '),
       status: participant.status,
       checkedInAt: new Date(participant.checkedInAt).toLocaleString(),
@@ -168,6 +209,7 @@ export default function AttendanceDetailPage() {
     { label: 'Type', key: 'type' },
     { label: 'Member Type', key: 'memberType' },
     { label: 'Home Church', key: 'homeChurch' },
+    { label: 'Home Church ID', key: 'homeChurchId' },
     { label: 'Method', key: 'method' },
     { label: 'Status', key: 'status' },
     { label: 'Checked In', key: 'checkedInAt' },
@@ -212,7 +254,7 @@ export default function AttendanceDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total</CardTitle></CardHeader>
           <CardContent className="flex items-center justify-between">
@@ -229,7 +271,11 @@ export default function AttendanceDetailPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Visitors</CardTitle></CardHeader>
-          <CardContent className="font-heading text-2xl font-bold">{record.newVisitors ?? 0}</CardContent>
+          <CardContent className="font-heading text-2xl font-bold">{trueVisitorCount}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Ministry Member Guests</CardTitle></CardHeader>
+          <CardContent className="font-heading text-2xl font-bold">{ministryMemberGuestCount}</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">QR Status</CardTitle></CardHeader>
@@ -265,8 +311,18 @@ export default function AttendanceDetailPage() {
                 filename={`attendance-participants-${record.id}`}
                 headers={participantExportHeaders}
                 pdfTitle={`${record.serviceType} Attendance Participants`}
+                summary={participantExportSummary}
               />
-              <div className="grid grid-cols-2 gap-2 sm:w-[340px]">
+              <div className="grid grid-cols-2 gap-2 sm:w-[520px] sm:grid-cols-3">
+                <Select value={churchFilter} onValueChange={setChurchFilter}>
+                  <SelectTrigger><SelectValue placeholder="Church" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All churches</SelectItem>
+                    {churchOptions.map(church => (
+                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Select value={genderFilter} onValueChange={setGenderFilter}>
                   <SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger>
                   <SelectContent>

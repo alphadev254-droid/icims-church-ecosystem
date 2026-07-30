@@ -25,6 +25,9 @@ export interface AttendanceRecord {
   adults?: number;
   seniors?: number;
   newVisitors?: number;
+  checkedInParticipants?: number;
+  trueVisitors?: number;
+  ministryMemberGuests?: number;
   serviceType: string;
   notes?: string;
   eventId?: string;

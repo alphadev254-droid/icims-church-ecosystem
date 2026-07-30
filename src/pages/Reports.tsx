@@ -421,22 +421,30 @@ export default function ReportsPage() {
     const attendance: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
     downloadCSV(
       'attendance-report.csv',
-      attendance.map(a => [
-        new Date(a.date).toLocaleDateString(),
-        (a as any).church?.name || '',
-        a.serviceType,
-        a.totalAttendees.toString(),
-        ((a as any).maleCount ?? 0).toString(),
-        ((a as any).femaleCount ?? 0).toString(),
-        ((a as any).children ?? 0).toString(),
-        ((a as any).youth ?? 0).toString(),
-        ((a as any).youngAdults ?? 0).toString(),
-        ((a as any).adults ?? 0).toString(),
-        ((a as any).seniors ?? 0).toString(),
-        ((a as any).newVisitors ?? 0).toString(),
-        (a as any).notes ?? ''
-      ]),
-      ['Date', 'Church', 'Service Type', 'Total', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'New Visitors', 'Notes'],
+      attendance.map(a => {
+        const checkedInParticipants = (a as any).checkedInParticipants ?? (a as any)._count?.participants ?? 0;
+        const visitors = (a as any).trueVisitors ?? (a as any).newVisitors ?? 0;
+        const ministryMemberGuests = (a as any).ministryMemberGuests ?? 0;
+        return [
+          new Date(a.date).toLocaleDateString(),
+          (a as any).church?.name || '',
+          a.serviceType,
+          a.totalAttendees.toString(),
+          checkedInParticipants.toString(),
+          ((a as any).maleCount ?? 0).toString(),
+          ((a as any).femaleCount ?? 0).toString(),
+          ((a as any).children ?? 0).toString(),
+          ((a as any).youth ?? 0).toString(),
+          ((a as any).youngAdults ?? 0).toString(),
+          ((a as any).adults ?? 0).toString(),
+          ((a as any).seniors ?? 0).toString(),
+          visitors.toString(),
+          ministryMemberGuests.toString(),
+          ((a as any)._count?.visitors ?? 0).toString(),
+          (a as any).notes ?? ''
+        ];
+      }),
+      ['Date', 'Church', 'Service Type', 'Total', 'Checked-in Participants', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'Visitors', 'Ministry Member Guests', 'Legacy Visitor Rows', 'Notes'],
     );
   };
 
@@ -891,7 +899,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Attendance Report',
-      description: 'Service attendance records with visitor counts and notes.',
+      description: 'Service attendance records with visitor and ministry member guest counts.',
       icon: ClipboardList,
       onExport: handleExportAttendance,
       filterComponent: (
