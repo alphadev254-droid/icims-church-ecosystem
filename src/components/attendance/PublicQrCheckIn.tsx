@@ -223,15 +223,24 @@ export function PublicQrCheckIn({
               <form onSubmit={checkInGuest} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label>Check-in type</Label>
-                  <Select value={visitorType} onValueChange={(value: 'guest' | 'ministry_member') => setVisitorType(value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select check-in type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="guest">Guest</SelectItem>
-                      <SelectItem value="ministry_member">Ministry member</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                        visitorType === 'guest' ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:bg-muted/40'
+                      }`}
+                    >
+                      <Checkbox checked={visitorType === 'guest'} onCheckedChange={() => setVisitorType('guest')} />
+                      <span className="min-w-0 truncate">Guest</span>
+                    </label>
+                    <label
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                        visitorType === 'ministry_member' ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:bg-muted/40'
+                      }`}
+                    >
+                      <Checkbox checked={visitorType === 'ministry_member'} onCheckedChange={() => setVisitorType('ministry_member')} />
+                      <span className="min-w-0 truncate">Ministry member</span>
+                    </label>
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Full name *</Label>
