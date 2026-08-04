@@ -522,6 +522,7 @@ export default function ChildrenPage() {
 
   const children = data?.data ?? [];
   const pagination = data?.pagination;
+  const totalChildren = pagination?.total ?? children.length;
 
   return (
     <div className="space-y-4">
@@ -549,6 +550,19 @@ export default function ChildrenPage() {
           </Dialog>
         )}
       </div>
+
+      <Card>
+        <CardContent className="flex items-center justify-between gap-3 p-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total children</p>
+            <p className="font-heading text-2xl font-bold">{totalChildren}</p>
+            <p className="text-xs text-muted-foreground">Within your current access and filters</p>
+          </div>
+          <div className="rounded-md bg-accent/10 p-3 text-accent">
+            <Baby className="h-5 w-5" />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
