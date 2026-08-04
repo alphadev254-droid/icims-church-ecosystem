@@ -163,10 +163,14 @@ export default function AttendanceDetailPage() {
   const femaleCount = participants.filter(p => getParticipantMeta(p).gender === 'female').length;
   const ministryMemberGuestCount = participants.filter(p => getParticipantMeta(p).isMinistryMemberGuest).length;
   const trueVisitorCount = participants.filter(p => getParticipantMeta(p).isTrueVisitor).length;
+  const filteredMaleCount = filteredParticipants.filter(p => getParticipantMeta(p).gender === 'male').length;
+  const filteredFemaleCount = filteredParticipants.filter(p => getParticipantMeta(p).gender === 'female').length;
   const filteredMinistryMemberGuestCount = filteredParticipants.filter(p => getParticipantMeta(p).isMinistryMemberGuest).length;
   const filteredTrueVisitorCount = filteredParticipants.filter(p => getParticipantMeta(p).isTrueVisitor).length;
   const participantExportSummary = [
     { label: 'Total participants', value: filteredParticipants.length },
+    { label: 'Male', value: filteredMaleCount },
+    { label: 'Female', value: filteredFemaleCount },
     { label: 'Visitors', value: filteredTrueVisitorCount },
     { label: 'Ministry member guests', value: filteredMinistryMemberGuestCount },
   ];
