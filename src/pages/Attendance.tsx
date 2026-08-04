@@ -235,7 +235,8 @@ export default function AttendancePage() {
               youngAdults: (r as any).youngAdults ?? 0,
               adults: (r as any).adults ?? 0,
               seniors: (r as any).seniors ?? 0,
-              newVisitors: r.newVisitors ?? 0,
+              visitors: (r as any).trueVisitors ?? r.newVisitors ?? 0,
+              ministryMemberGuests: (r as any).ministryMemberGuests ?? 0,
               notes: r.notes || '',
             }))}
             filename="attendance"
@@ -251,7 +252,8 @@ export default function AttendancePage() {
               { label: 'Young Adults (18-35)', key: 'youngAdults' },
               { label: 'Adults (36-59)', key: 'adults' },
               { label: 'Seniors (60+)', key: 'seniors' },
-              { label: 'New Visitors', key: 'newVisitors' },
+              { label: 'Visitors', key: 'visitors' },
+              { label: 'Ministry Member Guests', key: 'ministryMemberGuests' },
               { label: 'Notes', key: 'notes' },
             ]}
             pdfTitle="Attendance Report"

@@ -440,11 +440,10 @@ export default function ReportsPage() {
           ((a as any).seniors ?? 0).toString(),
           visitors.toString(),
           ministryMemberGuests.toString(),
-          ((a as any)._count?.visitors ?? 0).toString(),
           (a as any).notes ?? ''
         ];
       }),
-      ['Date', 'Church', 'Service Type', 'Total', 'Checked-in Participants', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'Visitors', 'Ministry Member Guests', 'Legacy Visitor Rows', 'Notes'],
+      ['Date', 'Church', 'Service Type', 'Total', 'Checked-in Participants', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'Visitors', 'Ministry Member Guests', 'Notes'],
     );
   };
 

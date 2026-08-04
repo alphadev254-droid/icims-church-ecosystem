@@ -167,11 +167,8 @@ export default function AttendanceDetailPage() {
   const filteredTrueVisitorCount = filteredParticipants.filter(p => getParticipantMeta(p).isTrueVisitor).length;
   const participantExportSummary = [
     { label: 'Total participants', value: filteredParticipants.length },
-    { label: 'Total participants in attendance', value: participants.length },
     { label: 'Visitors', value: filteredTrueVisitorCount },
     { label: 'Ministry member guests', value: filteredMinistryMemberGuestCount },
-    { label: 'All visitors in attendance', value: trueVisitorCount },
-    { label: 'All ministry member guests in attendance', value: ministryMemberGuestCount },
   ];
   const participantExportData = filteredParticipants.map(participant => {
     const meta = getParticipantMeta(participant);
