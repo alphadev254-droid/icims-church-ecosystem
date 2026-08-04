@@ -1013,6 +1013,9 @@ export default function UsersManagement() {
 
   const users = data?.data || [];
   const pagination = data?.pagination;
+  const totalUsers = data?.summary?.total ?? pagination?.total ?? 0;
+  const maleUsers = data?.summary?.gender?.male ?? 0;
+  const femaleUsers = data?.summary?.gender?.female ?? 0;
 
   function handleCreate(v: CreateValues, districts: string[], tas: string[], regions: string[]) {
     console.log('=== CREATE USER SUBMISSION ===');
@@ -1085,7 +1088,7 @@ export default function UsersManagement() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-xl sm:text-2xl font-bold">Users</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">{pagination?.total || 0} total users</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">{totalUsers} total users</p>
         </div>
         <div className="flex flex-wrap gap-2 self-end sm:self-auto">
           <ExportImportButtons
@@ -1352,6 +1355,45 @@ export default function UsersManagement() {
           </>
         )}
         </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total users</p>
+              <p className="font-heading text-2xl font-bold">{totalUsers}</p>
+              <p className="text-xs text-muted-foreground">Within current filters</p>
+            </div>
+            <div className="rounded-md bg-accent/10 p-3 text-accent">
+              <Users className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Male</p>
+              <p className="font-heading text-2xl font-bold">{maleUsers}</p>
+              <p className="text-xs text-muted-foreground">Within current filters</p>
+            </div>
+            <div className="rounded-md bg-blue-500/10 p-3 text-blue-500">
+              <Users className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Female</p>
+              <p className="font-heading text-2xl font-bold">{femaleUsers}</p>
+              <p className="text-xs text-muted-foreground">Within current filters</p>
+            </div>
+            <div className="rounded-md bg-rose-500/10 p-3 text-rose-500">
+              <Users className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filters */}

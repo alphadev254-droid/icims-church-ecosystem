@@ -556,10 +556,11 @@ export default function EventsPage() {
     const id = toast.loading('Generating ticket…');
     try {
       const ticket = await eventsService.bookTicket({ eventId: event.id });
-      toast.loading('Downloading ticket…', { id });
-      await eventsService.downloadTicket(ticket.id, ticket.ticketNumber);
-      toast.success('Ticket generated and downloaded', { id });
+      toast.success('Ticket generated. Downloading PDF...', { id });
       qc.invalidateQueries({ queryKey: ['events'] });
+      eventsService.downloadTicket(ticket.id, ticket.ticketNumber).catch((err: any) => {
+        toast.error(err.response?.data?.message || 'Ticket created, but PDF download failed');
+      });
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to generate ticket', { id });
     }

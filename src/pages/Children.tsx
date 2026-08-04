@@ -522,7 +522,9 @@ export default function ChildrenPage() {
 
   const children = data?.data ?? [];
   const pagination = data?.pagination;
-  const totalChildren = pagination?.total ?? children.length;
+  const totalChildren = data?.summary?.total ?? pagination?.total ?? children.length;
+  const maleChildren = data?.summary?.gender?.male ?? 0;
+  const femaleChildren = data?.summary?.gender?.female ?? 0;
 
   return (
     <div className="space-y-4">
@@ -551,18 +553,44 @@ export default function ChildrenPage() {
         )}
       </div>
 
-      <Card>
-        <CardContent className="flex items-center justify-between gap-3 p-4">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total children</p>
-            <p className="font-heading text-2xl font-bold">{totalChildren}</p>
-            <p className="text-xs text-muted-foreground">Within your current access and filters</p>
-          </div>
-          <div className="rounded-md bg-accent/10 p-3 text-accent">
-            <Baby className="h-5 w-5" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total children</p>
+              <p className="font-heading text-2xl font-bold">{totalChildren}</p>
+              <p className="text-xs text-muted-foreground">Within current filters</p>
+            </div>
+            <div className="rounded-md bg-accent/10 p-3 text-accent">
+              <Baby className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Male</p>
+              <p className="font-heading text-2xl font-bold">{maleChildren}</p>
+              <p className="text-xs text-muted-foreground">Within current filters</p>
+            </div>
+            <div className="rounded-md bg-blue-500/10 p-3 text-blue-500">
+              <Users className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Female</p>
+              <p className="font-heading text-2xl font-bold">{femaleChildren}</p>
+              <p className="text-xs text-muted-foreground">Within current filters</p>
+            </div>
+            <div className="rounded-md bg-rose-500/10 p-3 text-rose-500">
+              <Users className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">

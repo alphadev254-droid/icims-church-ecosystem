@@ -89,6 +89,15 @@ interface PaginationResponse {
     total: number;
     totalPages: number;
   };
+  summary?: {
+    total: number;
+    gender: {
+      male: number;
+      female: number;
+      other?: number;
+      unknown?: number;
+    };
+  };
 }
 
 export const usersService = {

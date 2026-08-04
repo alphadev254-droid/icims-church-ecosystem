@@ -54,6 +54,16 @@ export interface ChildPayload {
   emergencyContact?: boolean;
 }
 
+export interface GenderSummary {
+  total: number;
+  gender: {
+    male: number;
+    female: number;
+    other?: number;
+    unknown?: number;
+  };
+}
+
 export interface GuardianPayload {
   guardianId: string;
   relationship?: string;
@@ -88,6 +98,7 @@ export const childrenService = {
   async list(params?: { churchId?: string; guardianId?: string; search?: string; unlinked?: boolean; page?: number; limit?: number }): Promise<{
     data: Child[];
     pagination: { page: number; limit: number; total: number; totalPages: number };
+    summary?: GenderSummary;
   }> {
     const { data } = await apiClient.get('/children', { params });
     return { ...data, data: (data.data || []).map(normalizeChild) };
