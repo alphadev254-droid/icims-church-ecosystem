@@ -107,7 +107,23 @@ export const eventsService = {
     const { data } = await apiClient.get(`/events/tickets/${ticketId}/transaction`);
     return data.data;
   },
-  createManualTicket: async (eventId: string, dto: { memberId: string; paymentMethod: string; reference?: string; amount: number; currency: string; transactionStatus: string; ticketStatus: string; notes?: string }) => {
+  createManualTicket: async (eventId: string, dto: {
+    attendeeType?: 'member' | 'guest';
+    memberId?: string;
+    churchId?: string;
+    guestName?: string;
+    guestEmail?: string;
+    guestPhone?: string;
+    paymentMethod?: string;
+    reference?: string;
+    amount?: number;
+    currency?: string;
+    transactionStatus?: string;
+    ticketStatus: string;
+    notes?: string;
+    useExistingTransaction?: boolean;
+    existingTransactionId?: string;
+  }) => {
     const { data } = await apiClient.post(`/events/${eventId}/manual-ticket`, dto);
     return data.data;
   },

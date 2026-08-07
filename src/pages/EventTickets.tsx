@@ -12,13 +12,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Plus, ChevronDown, ChevronRight } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 
 const ticketSchema = z.object({
-  memberId: z.string().min(1, 'Member is required'),
+  attendeeType: z.enum(['member', 'guest']).default('member'),
+  memberId: z.string().optional(),
+  churchId: z.string().optional(),
+  guestName: z.string().optional(),
+  guestEmail: z.string().email('Valid guest email required').optional().or(z.literal('')),
+  guestPhone: z.string().optional(),
   ticketStatus: z.enum(['confirmed', 'pending', 'cancelled', 'used']),
   useExistingTransaction: z.boolean().optional(),
   existingTransactionId: z.string().optional(),
@@ -28,6 +34,18 @@ const ticketSchema = z.object({
   paymentMethod: z.enum(['cash', 'mobile_money', 'card', 'bank_transfer']).optional(),
   reference: z.string().optional(),
   notes: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.attendeeType === 'member' && !data.memberId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['memberId'], message: 'Member is required' });
+  }
+  if (data.attendeeType === 'guest') {
+    if (!data.guestName?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['guestName'], message: 'Guest name is required' });
+    }
+    if (!data.guestEmail?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['guestEmail'], message: 'Guest email is required' });
+    }
+  }
 });
 
 export default function EventTicketsPage() {
@@ -54,6 +72,7 @@ export default function EventTicketsPage() {
     resolver: zodResolver(ticketSchema),
     defaultValues: { 
       ticketStatus: 'confirmed' as const,
+      attendeeType: 'member' as const,
       useExistingTransaction: false,
       amount: 0,
       currency: 'MWK' as const,
@@ -63,6 +82,8 @@ export default function EventTicketsPage() {
   });
 
   const useExistingTransaction = watch('useExistingTransaction');
+  const attendeeType = watch('attendeeType');
+  const selectedChurchId = watch('churchId');
 
   const { data: members = [] } = useQuery({
     queryKey: ['members'],
@@ -90,11 +111,20 @@ export default function EventTicketsPage() {
     enabled: !!id,
   });
 
+  const eventChurches = event?.availableChurches?.length
+    ? event.availableChurches
+    : event?.churchId
+      ? [{ id: event.churchId, name: event.church?.name || event.churchName || 'Event church' }]
+      : [];
+  const eventChurchIds = new Set(eventChurches.map((church: any) => church.id));
+  const eventMembers = members.filter((member: any) => !eventChurchIds.size || eventChurchIds.has(member.churchId));
+
   const createMutation = useMutation({
     mutationFn: (data: any) => {
       const payload = data.useExistingTransaction
         ? { 
             eventId: id!,
+            attendeeType: data.attendeeType,
             memberId: data.memberId, 
             ticketStatus: data.ticketStatus, 
             useExistingTransaction: true,
@@ -102,7 +132,12 @@ export default function EventTicketsPage() {
           }
         : { 
             eventId: id!,
+            attendeeType: data.attendeeType,
             memberId: data.memberId, 
+            churchId: data.churchId,
+            guestName: data.guestName,
+            guestEmail: data.guestEmail,
+            guestPhone: data.guestPhone,
             ticketStatus: data.ticketStatus, 
             amount: data.amount || 0, 
             currency: data.currency || 'MWK', 
@@ -188,21 +223,66 @@ export default function EventTicketsPage() {
             <DialogContent className="max-w-sm sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle className="text-sm sm:text-base">Create Manual Ticket</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit(data => createMutation.mutate(data))} className="space-y-3">
+                <Tabs
+                  value={attendeeType}
+                  onValueChange={(value) => {
+                    const next = value as 'member' | 'guest';
+                    setValue('attendeeType', next);
+                    setValue('useExistingTransaction', false);
+                    if (next === 'guest' && eventChurches.length === 1) {
+                      setValue('churchId', eventChurches[0].id);
+                    }
+                  }}
+                >
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="member">Member</TabsTrigger>
+                    <TabsTrigger value="guest">Guest</TabsTrigger>
+                  </TabsList>
+                </Tabs>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <Label className="text-xs sm:text-sm">Member *</Label>
-                    <Select onValueChange={v => { setValue('memberId', v); }}>
-                      <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="Select member" /></SelectTrigger>
-                      <SelectContent>
-                        {members.map(m => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.firstName} {m.lastName} {m.memberId ? `(${m.memberId})` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {attendeeType === 'member' ? (
+                    <div className="col-span-2">
+                      <Label className="text-xs sm:text-sm">Member *</Label>
+                      <Select onValueChange={v => { setValue('memberId', v); }}>
+                        <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="Select member" /></SelectTrigger>
+                        <SelectContent>
+                          {eventMembers.map((m: any) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.firstName} {m.lastName} {m.memberId ? `(${m.memberId})` : ''}{m.church?.name ? ` - ${m.church.name}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="col-span-2">
+                        <Label className="text-xs sm:text-sm">Church *</Label>
+                        <Select value={selectedChurchId || (eventChurches.length === 1 ? eventChurches[0].id : undefined)} onValueChange={v => setValue('churchId', v)}>
+                          <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="Select church" /></SelectTrigger>
+                          <SelectContent>
+                            {eventChurches.map((church: any) => (
+                              <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <Label className="text-xs sm:text-sm">Guest Name *</Label>
+                        <Input {...register('guestName')} className="h-8 text-xs sm:h-10 sm:text-sm" />
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <Label className="text-xs sm:text-sm">Guest Email *</Label>
+                        <Input type="email" {...register('guestEmail')} className="h-8 text-xs sm:h-10 sm:text-sm" />
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs sm:text-sm">Guest Phone</Label>
+                        <Input {...register('guestPhone')} className="h-8 text-xs sm:h-10 sm:text-sm" />
+                      </div>
+                    </>
+                  )}
                   
+                  {attendeeType === 'member' && (
                   <div className="col-span-2">
                     <div className="flex items-center gap-2 mb-2">
                       <input 
@@ -214,6 +294,7 @@ export default function EventTicketsPage() {
                       <Label htmlFor="useExisting" className="cursor-pointer text-xs sm:text-sm">Use Existing Transaction</Label>
                     </div>
                   </div>
+                  )}
 
                   {useExistingTransaction ? (
                     <div className="col-span-2">
