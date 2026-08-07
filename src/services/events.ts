@@ -99,8 +99,8 @@ export const eventsService = {
     const { data } = await apiClient.get('/events/my-tickets');
     return data.data;
   },
-  getEventTickets: async (eventId: string) => {
-    const { data } = await apiClient.get(`/events/${eventId}/tickets`);
+  getEventTickets: async (eventId: string, filters?: { churchId?: string; type?: 'all' | 'member' | 'guest' }) => {
+    const { data } = await apiClient.get(`/events/${eventId}/tickets`, { params: filters });
     return data.data;
   },
   getTicketTransaction: async (ticketId: string) => {

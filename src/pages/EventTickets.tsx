@@ -37,6 +37,8 @@ export default function EventTicketsPage() {
   const { hasPermission } = useRole();
   const [createOpen, setCreateOpen] = useState(false);
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
+  const [churchFilter, setChurchFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'member' | 'guest'>('all');
 
   const { data: transactionData, isLoading: isLoadingTransaction } = useQuery({
     queryKey: ['ticket-transaction', expandedTicket],
@@ -74,8 +76,11 @@ export default function EventTicketsPage() {
   });
 
   const { data: tickets = [], isLoading } = useQuery({
-    queryKey: ['event-tickets', id],
-    queryFn: () => eventsService.getEventTickets(id!),
+    queryKey: ['event-tickets', id, churchFilter, typeFilter],
+    queryFn: () => eventsService.getEventTickets(id!, {
+      churchId: churchFilter === 'all' ? undefined : churchFilter,
+      type: typeFilter,
+    }),
     enabled: !!id,
   });
 
@@ -119,7 +124,7 @@ export default function EventTicketsPage() {
           paymentMethod: newTicket.transaction.paymentMethod
         } : null
       };
-      qc.setQueryData(['event-tickets', id], (old: any) => old ? [ticketForList, ...old] : [ticketForList]);
+      qc.invalidateQueries({ queryKey: ['event-tickets', id] });
       qc.invalidateQueries({ queryKey: ['event', id] });
       setCreateOpen(false);
       reset();
@@ -150,6 +155,7 @@ export default function EventTicketsPage() {
               ticketNumber: t.ticketNumber,
               attendee: t.isGuest ? (t.guestName || 'Guest') : `${t.user?.firstName} ${t.user?.lastName}`,
               email: t.isGuest ? (t.guestEmail || '') : '',
+              church: t.church?.name || '',
               type: t.isGuest ? 'Guest' : 'Member',
               status: t.status,
               amount: t.transaction?.amount || 0,
@@ -162,6 +168,7 @@ export default function EventTicketsPage() {
               { label: 'Ticket Number', key: 'ticketNumber' },
               { label: 'Attendee', key: 'attendee' },
               { label: 'Email', key: 'email' },
+              { label: 'Church', key: 'church' },
               { label: 'Type', key: 'type' },
               { label: 'Status', key: 'status' },
               { label: 'Amount', key: 'amount' },
@@ -306,12 +313,46 @@ export default function EventTicketsPage() {
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
       ) : (
-        <div className="overflow-x-auto border rounded-lg">
-          <table className="w-full min-w-[700px]">
+        <div className="space-y-3">
+          <div className="rounded-lg border bg-card p-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-2xl">
+              <div className="space-y-1">
+                <Label className="text-xs sm:text-sm">Church</Label>
+                <Select value={churchFilter} onValueChange={setChurchFilter}>
+                  <SelectTrigger className="h-9 text-xs sm:text-sm">
+                    <SelectValue placeholder="All churches" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All churches</SelectItem>
+                    {(event?.availableChurches ?? []).map((church: any) => (
+                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs sm:text-sm">Type</Label>
+                <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as typeof typeFilter)}>
+                  <SelectTrigger className="h-9 text-xs sm:text-sm">
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    <SelectItem value="member">Members</SelectItem>
+                    <SelectItem value="guest">Guests</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto border rounded-lg">
+            <table className="w-full min-w-[780px]">
             <thead className="bg-muted">
               <tr>
                 <th className="text-left p-3 text-xs sm:text-sm font-medium">Ticket #</th>
                 <th className="text-left p-3 text-xs sm:text-sm font-medium">Attendee</th>
+                <th className="text-left p-3 text-xs sm:text-sm font-medium">Church</th>
                 <th className="text-left p-3 text-xs sm:text-sm font-medium">Type</th>
                 <th className="text-left p-3 text-xs sm:text-sm font-medium">Status</th>
                 <th className="text-left p-3 text-xs sm:text-sm font-medium">Amount</th>
@@ -332,6 +373,7 @@ export default function EventTicketsPage() {
                     <td className="p-3 text-xs sm:text-sm whitespace-nowrap">
                       {ticket.isGuest ? (ticket.guestName || 'Guest') : `${ticket.user?.firstName} ${ticket.user?.lastName}`}
                     </td>
+                    <td className="p-3 text-xs sm:text-sm whitespace-nowrap">{ticket.church?.name || '-'}</td>
                     <td className="p-3 text-xs sm:text-sm">
                       {ticket.isGuest
                         ? <span className="px-2 py-1 rounded text-xs bg-purple-100 text-purple-800">Guest</span>
@@ -356,7 +398,7 @@ export default function EventTicketsPage() {
                   </tr>
                   {expandedTicket === ticket.id && (
                     <tr key={`${ticket.id}-details`} className="border-t bg-muted/30">
-                      <td colSpan={6} className="p-4">
+                      <td colSpan={8} className="p-4">
                         {isLoadingTransaction ? (
                           <div className="flex items-center justify-center py-4">
                             <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
@@ -397,6 +439,7 @@ export default function EventTicketsPage() {
               No tickets found for this event.
             </div>
           )}
+          </div>
         </div>
       )}
     </div>

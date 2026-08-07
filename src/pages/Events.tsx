@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
 import imageCompression from 'browser-image-compression';
 import { eventsService, type ChurchEvent } from '@/services/events';
 import { paymentService } from '@/services/payments';
@@ -23,14 +24,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChurchSelect } from '@/components/ChurchSelect';
 import {
   Plus, Calendar, MapPin, Clock, Pencil, Trash2, Ticket,
-  Upload, X, Eye, Wallet, Lock, Copy, Check,
+  Upload, X, Eye, Wallet, Lock, Copy, Check, MoreHorizontal,
+  Share2, QrCode, Download, ImageIcon, FileText,
 } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
@@ -86,6 +90,10 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+
+function safeFileName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'event';
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -517,6 +525,8 @@ export default function EventsPage() {
   const [deleteEvent, setDeleteEvent] = useState<ChurchEvent | null>(null);
   const [expandImage, setExpandImage] = useState<string | null>(null);
   const [viewEvent, setViewEvent] = useState<ChurchEvent | null>(null);
+  const [shareEvent, setShareEvent] = useState<ChurchEvent | null>(null);
+  const [selectedShareChurchIds, setSelectedShareChurchIds] = useState<string[]>([]);
   const [paymentConfirm, setPaymentConfirm] = useState<{ event: ChurchEvent; details: any } | null>(null);
   const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
   const [churchFilter, setChurchFilter] = useState<string>('all');
@@ -685,22 +695,103 @@ export default function EventsPage() {
   };
 
   // Share helpers
-  const copyEventLink = (event: ChurchEvent) => {
-    navigator.clipboard.writeText(buildPublicEventUrl(event.id, user?.subdomain, event.availableChurchIds));
-    setCopiedEventId(event.id);
-    toast.success('Event link copied!');
+  const getEventShareChurches = (event: ChurchEvent): Array<{ id: string; name: string }> => {
+    const eventChurches = event.availableChurches?.map(church => ({ id: church.id, name: church.name })) ?? [];
+    if (eventChurches.length > 0) return eventChurches;
+    if (event.churchId && event.churchName) return [{ id: event.churchId, name: event.churchName }];
+    return churches.map((church: any) => ({ id: church.id, name: church.name }));
+  };
+
+  const openShareDialog = (event: ChurchEvent) => {
+    const options = getEventShareChurches(event);
+    setShareEvent(event);
+    setSelectedShareChurchIds(options.map(church => church.id));
+  };
+
+  const toggleShareChurch = (churchId: string, checked: boolean) => {
+    setSelectedShareChurchIds(prev => checked
+      ? [...prev, churchId].filter((id, index, arr) => arr.indexOf(id) === index)
+      : prev.filter(id => id !== churchId));
+  };
+
+  const shareChurches = shareEvent ? getEventShareChurches(shareEvent) : [];
+  const qrEventUrl = shareEvent && selectedShareChurchIds.length > 0
+    ? buildPublicEventUrl(shareEvent.id, user?.subdomain, selectedShareChurchIds)
+    : '';
+  const qrImageUrl = qrEventUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(qrEventUrl)}`
+    : '';
+
+  const copyEventLink = async () => {
+    if (!qrEventUrl || !shareEvent) return;
+    await navigator.clipboard.writeText(qrEventUrl);
+    setCopiedEventId(shareEvent.id);
+    toast.success('Event link copied');
     setTimeout(() => setCopiedEventId(null), 2000);
   };
 
   const shareWhatsApp = (event: ChurchEvent) => {
-    const url = buildPublicEventUrl(event.id, user?.subdomain, event.availableChurchIds);
-    const text = encodeURIComponent(`Join our church event: ${event.title}\n${url}`);
+    if (!qrEventUrl) {
+      toast.error('Select at least one church');
+      return;
+    }
+    const text = encodeURIComponent(`Join our church event: ${event.title}\n${qrEventUrl}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
-  const shareFacebook = (event: ChurchEvent) => {
-    const url = encodeURIComponent(buildPublicEventUrl(event.id, user?.subdomain, event.availableChurchIds));
+  const shareFacebook = () => {
+    if (!qrEventUrl) {
+      toast.error('Select at least one church');
+      return;
+    }
+    const url = encodeURIComponent(qrEventUrl);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+  };
+
+  const downloadEventQrPng = async () => {
+    if (!shareEvent || !qrImageUrl) return;
+    try {
+      const response = await fetch(qrImageUrl);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `${safeFileName(shareEvent.title)}-event-qr.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error('Failed to download PNG');
+    }
+  };
+
+  const downloadEventQrPdf = async () => {
+    if (!shareEvent || !qrImageUrl) return;
+    try {
+      const response = await fetch(qrImageUrl);
+      const blob = await response.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text(shareEvent.title || 'Church Event', 105, 30, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text('Scan this QR code to open the event page.', 105, 42, { align: 'center' });
+      doc.addImage(dataUrl, 'PNG', 55, 55, 100, 100);
+      const lines = doc.splitTextToSize(qrEventUrl, 160);
+      doc.setFontSize(9);
+      doc.text(lines, 105, 172, { align: 'center' });
+      doc.save(`${safeFileName(shareEvent.title)}-event-qr.pdf`);
+    } catch {
+      toast.error('Failed to download PDF');
+    }
   };
 
   // Edit default values helper — ensures consistent date formatting
@@ -886,33 +977,56 @@ export default function EventsPage() {
                     <Badge variant={statusVariant(event.status)} className="text-xs">{event.status}</Badge>
                     <Badge variant="outline" className="text-xs capitalize">{event.type}</Badge>
                   </div>
-                  <div className="flex items-center gap-0.5">
-                    <button
-                      onClick={() => setViewEvent(event)}
-                      className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                      title="View details"
-                    >
-                      <Eye className="h-3 w-3" />
-                    </button>
-                    {canUpdate && (
-                      <button
-                        onClick={() => setEditEvent(event)}
-                        className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                        title="Edit event"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </button>
-                    )}
-                    {canDelete && event.status !== 'cancelled' && (
-                      <button
-                        onClick={() => setDeleteEvent(event)}
-                        className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                        title="Cancel event"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Event actions</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem className="gap-2" onClick={() => setViewEvent(event)}>
+                        <Eye className="h-4 w-4" />
+                        View Details
+                      </DropdownMenuItem>
+                      {event.requiresTicket && canViewAllTickets && (
+                        <DropdownMenuItem className="gap-2" onClick={() => navigate(`/dashboard/events/${event.id}/tickets`)}>
+                          <Ticket className="h-4 w-4" />
+                          Tickets
+                        </DropdownMenuItem>
+                      )}
+                      {event.allowPublicTicketing && event.status !== 'cancelled' && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(event)}>
+                            <Copy className="h-4 w-4" />
+                            Public Link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(event)}>
+                            <QrCode className="h-4 w-4" />
+                            QR Code
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(event)}>
+                            <Share2 className="h-4 w-4" />
+                            Share Event
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      {(canUpdate || (canDelete && event.status !== 'cancelled')) && <DropdownMenuSeparator />}
+                      {canUpdate && (
+                        <DropdownMenuItem className="gap-2" onClick={() => setEditEvent(event)}>
+                          <Pencil className="h-4 w-4" />
+                          Edit Event
+                        </DropdownMenuItem>
+                      )}
+                      {canDelete && event.status !== 'cancelled' && (
+                        <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => setDeleteEvent(event)}>
+                          <Trash2 className="h-4 w-4" />
+                          Cancel Event
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 {/* Title */}
@@ -934,17 +1048,6 @@ export default function EventsPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Admin: view all tickets */}
-                {event.requiresTicket && canViewAllTickets && (
-                  <Button
-                    size="sm" variant="outline"
-                    className="w-full mt-2 h-7 text-xs"
-                    onClick={() => navigate(`/dashboard/events/${event.id}/tickets`)}
-                  >
-                    <Ticket className="h-3 w-3 mr-1" /> Tickets
-                  </Button>
-                )}
 
                 {/* Member: download existing free ticket */}
                 {event.requiresTicket && event.isFree && isMember && event.userHasTicket && (
@@ -990,38 +1093,6 @@ export default function EventsPage() {
                   </Button>
                 )}
 
-                {/* Share row */}
-                <div className="flex gap-1 mt-2 items-center">
-                  <span className='text-xs'>Share event link:</span>
-                  <Button
-                    size="sm" variant="ghost"
-                    className="flex-1 h-7 px-2"
-                    onClick={() => copyEventLink(event)}
-                    title="Copy event link"
-                  >
-                    {copiedEventId === event.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  </Button>
-                  <Button
-                    size="sm" variant="ghost"
-                    className="flex-1 h-7 px-2"
-                    onClick={() => shareWhatsApp(event)}
-                    title="Share via WhatsApp"
-                  >
-                    <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-                    </svg>
-                  </Button>
-                  <Button
-                    size="sm" variant="ghost"
-                    className="flex-1 h-7 px-2"
-                    onClick={() => shareFacebook(event)}
-                    title="Share via Facebook"
-                  >
-                    <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                    </svg>
-                  </Button>
-                </div>
               </CardContent>
             </Card>
               ))}
@@ -1036,6 +1107,104 @@ export default function EventsPage() {
       )}
 
       {/* Edit Dialog — key prop forces full remount so useEffect fires fresh */}
+      <Dialog open={!!shareEvent} onOpenChange={open => !open && setShareEvent(null)}>
+        <DialogContent className="max-w-md max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base sm:text-lg">Public Event Link</DialogTitle>
+          </DialogHeader>
+          {shareEvent && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-xs">Churches for this link</Label>
+                  <span className="text-[11px] text-muted-foreground">
+                    {selectedShareChurchIds.length} selected
+                  </span>
+                </div>
+                <div className="max-h-44 overflow-y-auto rounded-md border">
+                  {shareChurches.map(church => {
+                    const checked = selectedShareChurchIds.includes(church.id);
+                    return (
+                      <label
+                        key={church.id}
+                        className="flex cursor-pointer items-center gap-2 border-b px-3 py-2 text-sm last:border-b-0 hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={value => toggleShareChurch(church.id, value === true)}
+                        />
+                        <span className="min-w-0 flex-1 truncate">{church.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  The public event page will only show the churches checked here.
+                </p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4 text-center">
+                {qrImageUrl ? (
+                  <img
+                    src={qrImageUrl}
+                    alt={`${shareEvent.title} event QR code`}
+                    className="mx-auto h-64 w-64 rounded-md bg-white p-2"
+                  />
+                ) : (
+                  <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                    Select at least one church to generate the QR code.
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold leading-snug">{shareEvent.title}</p>
+                <p className="break-all rounded-md bg-muted p-3 text-xs text-muted-foreground">
+                  {qrEventUrl || 'No link generated yet.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!qrEventUrl}
+                  onClick={copyEventLink}
+                >
+                  {copiedEventId === shareEvent.id ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                  Copy Link
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => shareWhatsApp(shareEvent)}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  WhatsApp
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={shareFacebook}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Facebook
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" disabled={!qrEventUrl}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download QR
+                      <ChevronDown className="ml-2 h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={downloadEventQrPng}>
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Download PNG
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={downloadEventQrPdf}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Download PDF
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!editEvent} onOpenChange={(open) => { if (!open) setEditEvent(null); }}>
         <DialogContent className="max-w-sm sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
