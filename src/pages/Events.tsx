@@ -34,7 +34,7 @@ import { ChurchSelect } from '@/components/ChurchSelect';
 import {
   Plus, Calendar, MapPin, Clock, Pencil, Trash2, Ticket,
   Upload, X, Eye, Wallet, Lock, Copy, Check, MoreHorizontal,
-  Share2, QrCode, Download, ImageIcon, FileText,
+  Share2, QrCode, Download, ImageIcon, FileText, ChevronDown,
 } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
