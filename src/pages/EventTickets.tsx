@@ -13,10 +13,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
+import { useDebounce } from '@/hooks/use-debounce';
 
 const ticketSchema = z.object({
   attendeeType: z.enum(['member', 'guest']).default('member'),
@@ -57,6 +58,8 @@ export default function EventTicketsPage() {
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
   const [churchFilter, setChurchFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'member' | 'guest'>('all');
+  const [memberSearch, setMemberSearch] = useState('');
+  const debouncedMemberSearch = useDebounce(memberSearch.trim(), 300);
 
   const { data: transactionData, isLoading: isLoadingTransaction } = useQuery({
     queryKey: ['ticket-transaction', expandedTicket],
@@ -85,11 +88,6 @@ export default function EventTicketsPage() {
   const attendeeType = watch('attendeeType');
   const selectedChurchId = watch('churchId');
 
-  const { data: members = [] } = useQuery({
-    queryKey: ['members'],
-    queryFn: usersService.getMembers,
-  });
-
   const { data: unallocatedTransactions = [] } = useQuery({
     queryKey: ['unallocated-transactions', id],
     queryFn: () => eventsService.getUnallocatedTransactions(id!),
@@ -117,7 +115,22 @@ export default function EventTicketsPage() {
       ? [{ id: event.churchId, name: event.church?.name || event.churchName || 'Event church' }]
       : [];
   const eventChurchIds = new Set(eventChurches.map((church: any) => church.id));
-  const eventMembers = members.filter((member: any) => !eventChurchIds.size || eventChurchIds.has(member.churchId));
+  const searchEnabled = debouncedMemberSearch.length >= 3;
+  const memberChurchFilter = eventChurches.length === 1 ? eventChurches[0].id : undefined;
+
+  const { data: memberResponse, isFetching: isFetchingMembers } = useQuery({
+    queryKey: ['event-ticket-members', id, memberChurchFilter, eventChurches.map((church: any) => church.id).join(','), searchEnabled ? debouncedMemberSearch : 'initial'],
+    queryFn: () => usersService.getAll({
+      role: 'member',
+      status: 'active',
+      churchId: memberChurchFilter,
+      search: searchEnabled ? debouncedMemberSearch : undefined,
+      limit: 50,
+    }),
+    enabled: attendeeType === 'member' && !!id && !!event,
+  });
+
+  const eventMembers = (memberResponse?.data ?? []).filter((member: any) => !eventChurchIds.size || eventChurchIds.has(member.churchId));
 
   const createMutation = useMutation({
     mutationFn: (data: any) => {
@@ -243,9 +256,27 @@ export default function EventTicketsPage() {
                   {attendeeType === 'member' ? (
                     <div className="col-span-2">
                       <Label className="text-xs sm:text-sm">Member *</Label>
+                      <div className="relative mb-2">
+                        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={memberSearch}
+                          onChange={(event) => setMemberSearch(event.target.value)}
+                          placeholder="Search name, email, or phone"
+                          className="h-8 pl-8 text-xs sm:h-9 sm:text-sm"
+                          autoComplete="off"
+                        />
+                      </div>
                       <Select onValueChange={v => { setValue('memberId', v); }}>
                         <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="Select member" /></SelectTrigger>
                         <SelectContent>
+                          {isFetchingMembers && (
+                            <div className="px-3 py-2 text-xs text-muted-foreground">Loading members...</div>
+                          )}
+                          {!isFetchingMembers && eventMembers.length === 0 && (
+                            <div className="px-3 py-2 text-xs text-muted-foreground">
+                              {searchEnabled ? 'No matching members found.' : 'No members found for the linked event churches.'}
+                            </div>
+                          )}
                           {eventMembers.map((m: any) => (
                             <SelectItem key={m.id} value={m.id}>
                               {m.firstName} {m.lastName} {m.memberId ? `(${m.memberId})` : ''}{m.church?.name ? ` - ${m.church.name}` : ''}
@@ -253,6 +284,9 @@ export default function EventTicketsPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Showing up to 50 members from this event's linked churches. Search starts from 3 letters.
+                      </p>
                     </div>
                   ) : (
                     <>
