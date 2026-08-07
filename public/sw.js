@@ -1,4 +1,4 @@
-const CACHE_NAME = 'icims-cache-v6';
+const CACHE_NAME = 'icims-cache-v7';
 const STATIC_SHELL = ['/', '/index.html'];
 
 // Install: pre-cache the app shell
@@ -51,6 +51,14 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         }
         return response;
+      }).catch(() => {
+        if (request.destination === 'document') {
+          return caches.match('/index.html');
+        }
+        return new Response('', {
+          status: 503,
+          statusText: 'Service unavailable',
+        });
       });
     })
   );
