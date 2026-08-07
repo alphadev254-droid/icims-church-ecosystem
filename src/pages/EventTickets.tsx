@@ -59,6 +59,7 @@ export default function EventTicketsPage() {
   const [churchFilter, setChurchFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'member' | 'guest'>('all');
   const [memberSearch, setMemberSearch] = useState('');
+  const [memberSelectOpen, setMemberSelectOpen] = useState(false);
   const debouncedMemberSearch = useDebounce(memberSearch.trim(), 300);
 
   const { data: transactionData, isLoading: isLoadingTransaction } = useQuery({
@@ -260,13 +261,24 @@ export default function EventTicketsPage() {
                         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                           value={memberSearch}
-                          onChange={(event) => setMemberSearch(event.target.value)}
+                          onFocus={() => setMemberSelectOpen(true)}
+                          onChange={(event) => {
+                            setMemberSearch(event.target.value);
+                            setMemberSelectOpen(true);
+                          }}
                           placeholder="Search name, email, or phone"
                           className="h-8 pl-8 text-xs sm:h-9 sm:text-sm"
                           autoComplete="off"
                         />
                       </div>
-                      <Select onValueChange={v => { setValue('memberId', v); }}>
+                      <Select
+                        open={memberSelectOpen}
+                        onOpenChange={setMemberSelectOpen}
+                        onValueChange={v => {
+                          setValue('memberId', v);
+                          setMemberSelectOpen(false);
+                        }}
+                      >
                         <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue placeholder="Select member" /></SelectTrigger>
                         <SelectContent>
                           {isFetchingMembers && (
