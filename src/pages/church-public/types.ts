@@ -38,7 +38,9 @@ export interface PublicEvent {
   ticketPrice?: number;
   currency?: string;
   requiresTicket: boolean;
-  church: { name: string };
+  church: { id?: string; name: string };
+  scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
+  availableChurches?: Array<{ id: string; name: string }>;
 }
 
 export interface PublicCampaign {

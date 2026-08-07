@@ -53,6 +53,15 @@ export interface AttendanceParticipant {
   guestAgeBracket?: string | null;
   guestFirstTime?: boolean;
   invitedBy?: string | null;
+  sourceChurch?: { id: string; name: string } | null;
+  eventTicket?: {
+    id: string;
+    ticketNumber: string;
+    status?: string;
+    attended?: boolean;
+    attendedAt?: string | null;
+    church?: { id: string; name: string } | null;
+  } | null;
   checkInMethod: string;
   status: string;
   checkedInAt: string;
@@ -117,7 +126,7 @@ export interface CreateAttendanceDto {
   serviceType?: string;
   notes?: string;
   eventId?: string;
-  churchId: string;
+  churchId?: string;
   visitors?: AttendanceVisitor[];
 }
 
@@ -132,7 +141,7 @@ export const attendanceService = {
     const { data } = await apiClient.post('/attendance', dto);
     return data.data;
   },
-  startQr: async (dto: { churchId: string; date: string; serviceType: string; eventId?: string; notes?: string; qrActiveFrom?: string | null; qrActiveUntil?: string | null }): Promise<AttendanceRecord> => {
+  startQr: async (dto: { churchId?: string; date: string; serviceType: string; eventId?: string; notes?: string; qrActiveFrom?: string | null; qrActiveUntil?: string | null }): Promise<AttendanceRecord> => {
     const { data } = await apiClient.post('/attendance/start-qr', dto);
     return data.data;
   },
@@ -180,6 +189,10 @@ export const attendanceService = {
   },
   scanMemberQr: async (id: string, token: string): Promise<AttendanceParticipant> => {
     const { data } = await apiClient.post(`/attendance/${id}/scan-member`, { token });
+    return data.data;
+  },
+  scanTicket: async (id: string, ticket: string): Promise<AttendanceParticipant> => {
+    const { data } = await apiClient.post(`/attendance/${id}/scan-ticket`, { ticket });
     return data.data;
   },
   scanVisitor: async (id: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestGender?: string; guestAgeBracket?: string; guestFirstTime?: boolean; invitedBy?: string }): Promise<AttendanceParticipant> => {

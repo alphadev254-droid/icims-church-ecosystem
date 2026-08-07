@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Check, Clock, Loader2, MapPin } from 'lucide-react';
 import { eventsService } from '@/services/events';
 import { toast } from 'sonner';
@@ -258,16 +259,43 @@ function PublicEventDetail({ event, accent }: {
   const [feesLoading, setFeesLoading] = useState(false);
   const [fees, setFees] = useState<any>(null);
   const [freeSuccess, setFreeSuccess] = useState<{ ticketNumbers: string[]; guestEmail: string } | null>(null);
+  const [selectedChurchId, setSelectedChurchId] = useState('');
   const [form, setForm] = useState({ guestName: '', guestEmail: '', guestPhone: '' });
   const eventDate = new Date(event.date);
   const eventImage = resolveImg(event.imageUrl);
+  const params = new URLSearchParams(window.location.search);
+  const linkChurchIds = params.get('churchId')
+    ? [params.get('churchId')!]
+    : (params.get('churchIds') || '').split(',').map(value => value.trim()).filter(Boolean);
+  const availableChurches = (() => {
+    const churches = event.availableChurches?.length
+      ? event.availableChurches
+      : event.church?.id
+        ? [{ id: event.church.id, name: event.church.name }]
+        : [];
+    if (linkChurchIds.length === 0) return churches;
+    return churches.filter(church => linkChurchIds.includes(church.id));
+  })();
+
+  useEffect(() => {
+    const preferred = linkChurchIds.find(id => availableChurches.some(church => church.id === id));
+    if (preferred) {
+      setSelectedChurchId(preferred);
+      return;
+    }
+    if (availableChurches.length === 1) setSelectedChurchId(availableChurches[0].id);
+  }, [event.id]);
 
   const openTicketDialog = async () => {
+    if (availableChurches.length > 1 && !selectedChurchId) {
+      toast.error('Please select a church for this ticket');
+      return;
+    }
     setDialogOpen(true);
     if (event.isFree) return;
     setFeesLoading(true);
     try {
-      setFees(await eventsService.calculateGuestTicketFees(event.id));
+      setFees(await eventsService.calculateGuestTicketFees(event.id, selectedChurchId || undefined));
     } catch {
       setFees(null);
     } finally {
@@ -285,6 +313,7 @@ function PublicEventDetail({ event, accent }: {
     try {
       const result = await eventsService.purchaseGuestTicket({
         eventId: event.id,
+        churchId: selectedChurchId || undefined,
         guestName: form.guestName.trim(),
         guestEmail: form.guestEmail.trim(),
         guestPhone: form.guestPhone.trim() || undefined,
@@ -381,6 +410,22 @@ function PublicEventDetail({ event, accent }: {
             </div>
           ) : (
             <form onSubmit={submitTicket} className="space-y-4">
+              {availableChurches.length > 1 && (
+                <div className="space-y-1">
+                  <Label>Church *</Label>
+                  <Select value={selectedChurchId} onValueChange={value => {
+                    setSelectedChurchId(value);
+                    setFees(null);
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+                    <SelectContent>
+                      {availableChurches.map(church => (
+                        <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-1"><Label>Full Name *</Label><Input value={form.guestName} onChange={e => setForm(f => ({ ...f, guestName: e.target.value }))} /></div>
               <div className="space-y-1"><Label>Email *</Label><Input type="email" value={form.guestEmail} onChange={e => setForm(f => ({ ...f, guestEmail: e.target.value }))} /></div>
               <div className="space-y-1"><Label>Phone (optional)</Label><Input value={form.guestPhone} onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))} /></div>

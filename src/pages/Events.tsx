@@ -67,9 +67,22 @@ const schema = z.object({
   ticketSalesCutoff: z.string().optional(),
   allowPublicTicketing: z.boolean().default(false),
   imageUrl: z.string().nullable().optional(),
-}).refine((data) => new Date(data.endDate) >= new Date(data.date), {
-  message: 'End date must be on or after start date',
-  path: ['endDate'],
+  scopeType: z.enum(['one_church', 'selected_churches', 'all_churches']).default('one_church'),
+  churchIds: z.array(z.string()).default([]),
+}).superRefine((data, ctx) => {
+  if (new Date(data.endDate) < new Date(data.date)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['endDate'],
+      message: 'End date must be on or after start date',
+    });
+  }
+  if (data.scopeType === 'one_church' && !data.churchId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['churchId'], message: 'Select a church' });
+  }
+  if (data.scopeType === 'selected_churches' && data.churchIds.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['churchIds'], message: 'Select at least one church' });
+  }
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -91,6 +104,13 @@ const statusVariant = (s: string): 'default' | 'secondary' | 'destructive' | 'ou
   return 'outline';
 };
 
+const eventAvailabilityLabel = (event: ChurchEvent): string => {
+  if (event.scopeType === 'all_churches') return 'All churches';
+  const names = event.availableChurches?.map(church => church.name).filter(Boolean) ?? [];
+  if (names.length > 1) return `${names.length} churches`;
+  return names[0] || event.churchName || 'Church';
+};
+
 // ---------------------------------------------------------------------------
 // EventForm
 // ---------------------------------------------------------------------------
@@ -99,9 +119,10 @@ interface EventFormProps {
   onSubmit: (v: FormValues) => void;
   isPending: boolean;
   submitLabel: string;
+  churches?: Array<{ id: string; name: string }>;
 }
 
-function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFormProps) {
+function EventForm({ defaultValues, onSubmit, isPending, submitLabel, churches = [] }: EventFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const imageFileRef = useRef<File | null>(null);
 
@@ -121,6 +142,8 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
       isFree: true,
       allowPublicTicketing: false,
       currency: 'MWK',
+      scopeType: 'one_church',
+      churchIds: [],
       ...defaultValues,
     },
   });
@@ -131,6 +154,8 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
     if (defaultValues?.type) setValue('type', defaultValues.type);
     if (defaultValues?.status) setValue('status', defaultValues.status);
     if (defaultValues?.currency) setValue('currency', defaultValues.currency);
+    if (defaultValues?.scopeType) setValue('scopeType', defaultValues.scopeType);
+    if (defaultValues?.churchIds) setValue('churchIds', defaultValues.churchIds);
     if (defaultValues?.requiresTicket !== undefined) setValue('requiresTicket', defaultValues.requiresTicket);
     if (defaultValues?.isFree !== undefined) setValue('isFree', defaultValues.isFree);
     if (defaultValues?.allowPublicTicketing !== undefined) setValue('allowPublicTicketing', defaultValues.allowPublicTicketing);
@@ -138,6 +163,8 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
   }, []); // run once on mount — defaultValues won't change between mounts
 
   const churchId = watch('churchId');
+  const scopeType = watch('scopeType');
+  const selectedChurchIds = watch('churchIds') || [];
   const requiresTicket = watch('requiresTicket');
   const isFree = watch('isFree');
   const imageUrl = watch('imageUrl');
@@ -199,11 +226,71 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel }: EventFor
       })}
       className="space-y-3"
     >
-      {/* Church */}
-      <div>
-        <ChurchSelect value={churchId} onValueChange={(v) => setValue('churchId', v, { shouldValidate: true })} />
-        {errors.churchId && <p className="text-xs text-destructive mt-1">{errors.churchId.message}</p>}
+      {/* Availability */}
+      <div className="space-y-2 rounded-md border border-border p-3">
+        <div>
+          <Label className="text-xs sm:text-sm">Event availability</Label>
+          <Select value={scopeType} onValueChange={value => {
+            setValue('scopeType', value as FormValues['scopeType'], { shouldValidate: true, shouldDirty: true });
+            if (value === 'one_church') setValue('churchIds', [], { shouldValidate: true, shouldDirty: true });
+          }}>
+            <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="one_church">One church</SelectItem>
+              <SelectItem value="selected_churches">Selected churches</SelectItem>
+              <SelectItem value="all_churches">All my accessible churches</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {scopeType === 'one_church' && (
+          <div>
+            <ChurchSelect value={churchId} onValueChange={(v) => setValue('churchId', v, { shouldValidate: true })} />
+            {errors.churchId && <p className="text-xs text-destructive mt-1">{errors.churchId.message}</p>}
+          </div>
+        )}
+
+        {scopeType === 'selected_churches' && (
+          <div className="space-y-2">
+            <Label className="text-xs sm:text-sm">Churches</Label>
+            <div className="max-h-40 overflow-y-auto rounded-md border border-border divide-y divide-border">
+              {churches.map(church => {
+                const checked = selectedChurchIds.includes(church.id);
+                return (
+                  <label key={church.id} className="flex items-center gap-2 px-3 py-2 text-xs sm:text-sm cursor-pointer hover:bg-muted/40">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        const next = checked
+                          ? selectedChurchIds.filter(id => id !== church.id)
+                          : [...selectedChurchIds, church.id];
+                        setValue('churchIds', next, { shouldDirty: true, shouldValidate: true });
+                        if (!churchId && next[0]) setValue('churchId', next[0], { shouldDirty: true, shouldValidate: true });
+                      }}
+                      className="h-4 w-4"
+                    />
+                    <span className="min-w-0 flex-1 truncate">{church.name}</span>
+                  </label>
+                );
+              })}
+              {churches.length === 0 && (
+                <div className="px-3 py-3 text-xs text-muted-foreground">No churches available.</div>
+              )}
+            </div>
+            {errors.churchIds && <p className="text-xs text-destructive">{errors.churchIds.message}</p>}
+          </div>
+        )}
+
+        {scopeType === 'all_churches' && (
+          <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            This event will be available to every church you are allowed to manage.
+          </p>
+        )}
       </div>
+
+      <input type="hidden" {...register('churchId')} />
+      <input type="hidden" {...register('scopeType')} />
 
       {/* Title */}
       <div>
@@ -598,21 +685,21 @@ export default function EventsPage() {
   };
 
   // Share helpers
-  const copyEventLink = (eventId: string) => {
-    navigator.clipboard.writeText(buildPublicEventUrl(eventId, user?.subdomain));
-    setCopiedEventId(eventId);
+  const copyEventLink = (event: ChurchEvent) => {
+    navigator.clipboard.writeText(buildPublicEventUrl(event.id, user?.subdomain, event.availableChurchIds));
+    setCopiedEventId(event.id);
     toast.success('Event link copied!');
     setTimeout(() => setCopiedEventId(null), 2000);
   };
 
   const shareWhatsApp = (event: ChurchEvent) => {
-    const url = buildPublicEventUrl(event.id, user?.subdomain);
+    const url = buildPublicEventUrl(event.id, user?.subdomain, event.availableChurchIds);
     const text = encodeURIComponent(`Join our church event: ${event.title}\n${url}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
-  const shareFacebook = (eventId: string) => {
-    const url = encodeURIComponent(buildPublicEventUrl(eventId, user?.subdomain));
+  const shareFacebook = (event: ChurchEvent) => {
+    const url = encodeURIComponent(buildPublicEventUrl(event.id, user?.subdomain, event.availableChurchIds));
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
@@ -639,6 +726,8 @@ export default function EventsPage() {
       ? new Date(e.ticketSalesCutoff).toISOString().slice(0, 16)
       : undefined,
     imageUrl: e.imageUrl ?? undefined,
+    scopeType: e.scopeType || 'one_church',
+    churchIds: e.availableChurchIds || e.linkedChurches?.map(link => link.churchId) || [],
   });
 
   return (
@@ -723,6 +812,7 @@ export default function EventsPage() {
               location: e.location,
               type: e.type,
               status: e.status,
+              church: eventAvailabilityLabel(e),
               requiresTicket: e.requiresTicket ? 'Yes' : 'No',
               ticketPrice: e.ticketPrice || 0,
               ticketsSold: e.ticketsSold || 0,
@@ -735,6 +825,7 @@ export default function EventsPage() {
               { label: 'Location', key: 'location' },
               { label: 'Type', key: 'type' },
               { label: 'Status', key: 'status' },
+              { label: 'Churches', key: 'church' },
               { label: 'Requires Ticket', key: 'requiresTicket' },
               { label: 'Ticket Price', key: 'ticketPrice' },
               { label: 'Tickets Sold', key: 'ticketsSold' },
@@ -753,6 +844,7 @@ export default function EventsPage() {
                   <DialogTitle className="font-heading text-sm sm:text-base">Create Event</DialogTitle>
                 </DialogHeader>
                 <EventForm
+                  churches={churches}
                   onSubmit={(v) => {
                     console.log('Event form values:', v);
                     createMutation.mutate(v);
@@ -825,6 +917,7 @@ export default function EventsPage() {
 
                 {/* Title */}
                 <h3 className="font-heading font-semibold text-sm mb-1.5">{event.title}</h3>
+                <p className="mb-2 truncate text-xs text-muted-foreground">{eventAvailabilityLabel(event)}</p>
 
                 {/* Meta */}
                 <div className="space-y-1 text-xs text-muted-foreground">
@@ -903,7 +996,7 @@ export default function EventsPage() {
                   <Button
                     size="sm" variant="ghost"
                     className="flex-1 h-7 px-2"
-                    onClick={() => copyEventLink(event.id)}
+                    onClick={() => copyEventLink(event)}
                     title="Copy event link"
                   >
                     {copiedEventId === event.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
@@ -921,7 +1014,7 @@ export default function EventsPage() {
                   <Button
                     size="sm" variant="ghost"
                     className="flex-1 h-7 px-2"
-                    onClick={() => shareFacebook(event.id)}
+                    onClick={() => shareFacebook(event)}
                     title="Share via Facebook"
                   >
                     <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
@@ -951,6 +1044,7 @@ export default function EventsPage() {
           {editEvent && (
             <EventForm
               key={editEvent.id}
+              churches={churches}
               defaultValues={buildEditDefaults(editEvent)}
               onSubmit={(v) => updateMutation.mutate({ id: editEvent.id, dto: v })}
               isPending={updateMutation.isPending}
@@ -1012,6 +1106,9 @@ export default function EventsPage() {
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   <span className="font-medium">Location:</span> {viewEvent.location}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Churches:</span> {eventAvailabilityLabel(viewEvent)}
                 </div>
                 {viewEvent.requiresTicket && (
                   <div className="flex items-center gap-2">

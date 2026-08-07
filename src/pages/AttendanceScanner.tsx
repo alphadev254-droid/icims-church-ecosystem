@@ -32,6 +32,7 @@ export default function AttendanceScanner() {
   const [recent, setRecent] = useState<AttendanceParticipant | null>(null);
   const [cameraError, setCameraError] = useState('');
   const [addVisitorOpen, setAddVisitorOpen] = useState(false);
+  const [scanMode, setScanMode] = useState<'member' | 'ticket'>('member');
 
   const canUpdate = hasPermission('attendance:update');
 
@@ -40,6 +41,10 @@ export default function AttendanceScanner() {
     queryFn: () => attendanceService.getById(id),
     enabled: !!id,
   });
+
+  useEffect(() => {
+    if (record?.eventId) setScanMode('ticket');
+  }, [record?.eventId]);
 
   const stopCamera = () => {
     scanningRef.current = false;
@@ -54,14 +59,14 @@ export default function AttendanceScanner() {
   };
 
   const scanMemberQr = useMutation({
-    mutationFn: (value: string) => attendanceService.scanMemberQr(id, value),
+    mutationFn: (value: string) => scanMode === 'ticket' ? attendanceService.scanTicket(id, value) : attendanceService.scanMemberQr(id, value),
     onMutate: () => {
       scanBusyRef.current = true;
     },
     onSuccess: (participant: any) => {
       setRecent(participant);
       const user = participant.user;
-      toast.success(user ? `${user.firstName} ${user.lastName} checked in` : 'Member checked in');
+      toast.success(user ? `${user.firstName} ${user.lastName} checked in` : `${participant.guestName || 'Attendee'} checked in`);
       qc.invalidateQueries({ queryKey: ['attendance'] });
       qc.invalidateQueries({ queryKey: ['attendance-detail', id] });
       qc.invalidateQueries({ queryKey: ['attendance-participants', id] });
@@ -203,6 +208,17 @@ export default function AttendanceScanner() {
         )}
       </div>
 
+      {record?.eventId && (
+        <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-1">
+          <Button type="button" variant={scanMode === 'ticket' ? 'default' : 'ghost'} onClick={() => setScanMode('ticket')}>
+            Ticket QR
+          </Button>
+          <Button type="button" variant={scanMode === 'member' ? 'default' : 'ghost'} onClick={() => setScanMode('member')}>
+            Member QR
+          </Button>
+        </div>
+      )}
+
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div className="relative aspect-[3/4] bg-slate-950 sm:aspect-video">
@@ -215,7 +231,7 @@ export default function AttendanceScanner() {
                     ? 'Camera QR scanning is not supported in this browser. Use manual paste below.'
                     : status === 'error'
                       ? cameraError
-                      : 'Open the camera and point it at a member attendance QR.'}
+                      : `Open the camera and point it at a ${scanMode === 'ticket' ? 'ticket' : 'member attendance'} QR.`}
                 </p>
               </div>
             )}

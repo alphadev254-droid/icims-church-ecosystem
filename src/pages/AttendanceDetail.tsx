@@ -111,12 +111,16 @@ export default function AttendanceDetailPage() {
     const memberAgeMeta = participant.user
       ? getMemberAgeMeta(participant.user.memberType, participant.user.dateOfBirth)
       : null;
+    const ticketChurchId = participant.eventTicket?.church?.id || '';
+    const sourceChurchId = participant.sourceChurch?.id || '';
     const userHomeChurchId = participant.user?.church?.id || '';
     const ministryMemberHomeChurchId = participant.ministryMember?.church?.id || '';
     const homeChurchId = userHomeChurchId || ministryMemberHomeChurchId || '';
+    const attendanceChurchId = sourceChurchId || ticketChurchId || homeChurchId;
     const homeChurchName = participant.user
       ? participant.user.church?.name || record.church?.name || ''
       : participant.ministryMember?.church?.name || '';
+    const attendanceChurchName = participant.sourceChurch?.name || participant.eventTicket?.church?.name || homeChurchName || '';
     const isMinistryMemberGuest = Boolean(
       participant.ministryMember ||
       (participant.user && userHomeChurchId && userHomeChurchId !== record.churchId)
@@ -142,12 +146,15 @@ export default function AttendanceDetailPage() {
       isTrueVisitor: !participant.user && !participant.ministryMember,
       homeChurchId,
       homeChurch: homeChurchName,
+      attendanceChurchId,
+      attendanceChurch: attendanceChurchName,
+      ticketNumber: participant.eventTicket?.ticketNumber || '',
     };
   };
   const churchOptions = Array.from(
     participants.reduce((map, participant) => {
       const meta = getParticipantMeta(participant);
-      if (meta.homeChurchId && meta.homeChurch) map.set(meta.homeChurchId, meta.homeChurch);
+      if (meta.attendanceChurchId && meta.attendanceChurch) map.set(meta.attendanceChurchId, meta.attendanceChurch);
       return map;
     }, new Map<string, string>(selectableChurches.map(church => [church.id, church.name])))
   ).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
@@ -155,7 +162,7 @@ export default function AttendanceDetailPage() {
     const meta = getParticipantMeta(participant);
     const genderMatches = genderFilter === 'all' || meta.gender === genderFilter;
     const ageMatches = ageFilter === 'all' || meta.ageBracket === ageFilter;
-    const churchMatches = churchFilter === 'all' || meta.homeChurchId === churchFilter;
+    const churchMatches = churchFilter === 'all' || meta.attendanceChurchId === churchFilter;
     return genderMatches && ageMatches && churchMatches;
   });
   const qrCount = record._count?.participants ?? participantsResponse?.pagination.total ?? 0;
@@ -187,6 +194,8 @@ export default function AttendanceDetailPage() {
       memberType: meta.memberTypeLabel || '',
       homeChurch: meta.homeChurch || '',
       homeChurchId: meta.homeChurchId || '',
+      ticketChurch: meta.attendanceChurch || '',
+      ticketNumber: meta.ticketNumber || '',
       method: participant.checkInMethod.replace(/_/g, ' '),
       status: participant.status,
       checkedInAt: new Date(participant.checkedInAt).toLocaleString(),
@@ -211,6 +220,8 @@ export default function AttendanceDetailPage() {
     { label: 'Member Type', key: 'memberType' },
     { label: 'Home Church', key: 'homeChurch' },
     { label: 'Home Church ID', key: 'homeChurchId' },
+    { label: 'Ticket / Attendance Church', key: 'ticketChurch' },
+    { label: 'Ticket Number', key: 'ticketNumber' },
     { label: 'Method', key: 'method' },
     { label: 'Status', key: 'status' },
     { label: 'Checked In', key: 'checkedInAt' },
@@ -369,6 +380,8 @@ export default function AttendanceDetailPage() {
                     <span>Age group: <strong className="text-foreground">{meta.ageGroupLabel || '-'}</strong></span>
                     <span>Member type: <strong className="text-foreground capitalize">{meta.memberTypeLabel || '-'}</strong></span>
                     <span className="col-span-2">Home church: <strong className="text-foreground">{meta.homeChurch || '-'}</strong></span>
+                    <span className="col-span-2">Ticket church: <strong className="text-foreground">{meta.attendanceChurch || '-'}</strong></span>
+                    {meta.ticketNumber && <span className="col-span-2">Ticket: <strong className="text-foreground">{meta.ticketNumber}</strong></span>}
                     <span className="col-span-2">Checked in: {new Date(participant.checkedInAt).toLocaleString()}</span>
                   </div>
                 </div>
@@ -389,13 +402,15 @@ export default function AttendanceDetailPage() {
                   <TableHead>Type</TableHead>
                   <TableHead>Member Type</TableHead>
                   <TableHead>Home Church</TableHead>
+                  <TableHead>Ticket Church</TableHead>
+                  <TableHead>Ticket</TableHead>
                   <TableHead>Method</TableHead>
                   <TableHead className="text-right">Checked In</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {participantsLoading ? (
-                  <TableRow><TableCell colSpan={10} className="py-10 text-center text-muted-foreground">Loading participants...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="py-10 text-center text-muted-foreground">Loading participants...</TableCell></TableRow>
                 ) : filteredParticipants.length ? filteredParticipants.map(participant => {
                   const meta = getParticipantMeta(participant);
                   return (
@@ -410,12 +425,14 @@ export default function AttendanceDetailPage() {
                       </TableCell>
                       <TableCell className="text-sm capitalize text-muted-foreground">{meta.memberTypeLabel || '-'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{meta.homeChurch || '-'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{meta.attendanceChurch || '-'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{meta.ticketNumber || '-'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{participant.checkInMethod.replace(/_/g, ' ')}</TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">{new Date(participant.checkedInAt).toLocaleString()}</TableCell>
                     </TableRow>
                   );
                 }) : (
-                  <TableRow><TableCell colSpan={10} className="py-10 text-center text-muted-foreground">No participants match the filters.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="py-10 text-center text-muted-foreground">No participants match the filters.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>

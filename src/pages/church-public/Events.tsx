@@ -1,4 +1,5 @@
 import type { PublicEvent } from './types';
+import { buildPublicEventUrl } from '@/lib/public-links';
 
 const DARK = '#121D39';
 
@@ -15,6 +16,7 @@ function EventCard({ event, accent }: { event: PublicEvent; accent: string }) {
   const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
   const time = event.time || date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   const actionLabel = event.requiresTicket ? (event.isFree ? 'RSVP Free' : 'Get Tickets') : 'Open Event';
+  const eventUrl = buildPublicEventUrl(event.id, null, event.availableChurches?.map(church => church.id));
 
   return (
     <article style={{
@@ -99,7 +101,7 @@ function EventCard({ event, accent }: { event: PublicEvent; accent: string }) {
           {event.requiresTicket ? (
             <a
               className="cp-event-card-action"
-              href={`/events/${event.id}`}
+              href={eventUrl}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',

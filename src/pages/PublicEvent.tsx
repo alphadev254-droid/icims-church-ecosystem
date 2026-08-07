@@ -1,31 +1,65 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, MapPin, Clock, Users, Share2, Copy, Check, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { eventsService } from '@/services/events';
 
 export default function PublicEventPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const [copied, setCopied] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedChurchId, setSelectedChurchId] = useState('');
   const [form, setForm] = useState({ guestName: '', guestEmail: '', guestPhone: '' });
   const [fees, setFees] = useState<{ currency: string; baseAmount: number; convenienceFee: number; transactionCost: number; totalAmount: number } | null>(null);
   const [feesLoading, setFeesLoading] = useState(false);
   const [freeSuccess, setFreeSuccess] = useState<{ ticketNumbers: string[]; guestEmail: string } | null>(null);
 
+  const linkedChurchIds = (searchParams.get('churchIds') || '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean);
+  const singleChurchId = searchParams.get('churchId') || '';
+  const linkChurchIds = singleChurchId ? [singleChurchId] : linkedChurchIds;
+
+  const availableChurches = (() => {
+    const churches = event?.availableChurches?.length
+      ? event.availableChurches
+      : event?.church?.id
+        ? [{ id: event.church.id, name: event.church.name }]
+        : [];
+    if (linkChurchIds.length === 0) return churches;
+    return churches.filter(church => linkChurchIds.includes(church.id));
+  })();
+
+  useEffect(() => {
+    if (!event) return;
+    const preferred = linkChurchIds.find(id => availableChurches.some(church => church.id === id));
+    if (preferred) {
+      setSelectedChurchId(preferred);
+      return;
+    }
+    if (availableChurches.length === 1) setSelectedChurchId(availableChurches[0].id);
+  }, [event?.id, searchParams.toString()]);
+
   const openDialog = async () => {
+    if (availableChurches.length > 1 && !selectedChurchId) {
+      toast.error('Please select a church for this ticket');
+      return;
+    }
     setDialogOpen(true);
     if (event?.isFree) return; // no fee fetch needed for free events
     setFeesLoading(true);
     try {
-      const result = await eventsService.calculateGuestTicketFees(id!);
+      const result = await eventsService.calculateGuestTicketFees(id!, selectedChurchId || undefined);
       setFees(result);
     } catch {
       // fallback — show base price only
@@ -69,6 +103,7 @@ export default function PublicEventPage() {
     try {
       const result = await eventsService.purchaseGuestTicket({
         eventId: id!,
+        churchId: selectedChurchId || undefined,
         guestName: form.guestName.trim(),
         guestEmail: form.guestEmail.trim(),
         guestPhone: form.guestPhone.trim() || undefined,
@@ -110,7 +145,9 @@ export default function PublicEventPage() {
       <div className="bg-primary text-primary-foreground py-4 sm:py-6">
         <div className="container max-w-4xl px-4">
           <h1 className="text-2xl sm:text-3xl font-heading font-bold">{event.title}</h1>
-          <p className="text-sm text-primary-foreground/80 mt-1">{event.church?.name}</p>
+          <p className="text-sm text-primary-foreground/80 mt-1">
+            {availableChurches.length === 1 ? availableChurches[0].name : event.church?.name}
+          </p>
         </div>
       </div>
 
@@ -270,6 +307,24 @@ export default function PublicEventPage() {
             </div>
           ) : (
           <form onSubmit={handlePurchase} className="space-y-4 pt-2">
+            {availableChurches.length > 1 && (
+              <div className="space-y-1">
+                <Label>Church *</Label>
+                <Select value={selectedChurchId} onValueChange={value => {
+                  setSelectedChurchId(value);
+                  setFees(null);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select church" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableChurches.map(church => (
+                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1">
               <Label htmlFor="guestName">Full Name *</Label>
               <Input

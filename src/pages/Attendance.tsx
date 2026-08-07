@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, Link } from 'react-router-dom';
 import { attendanceService } from '@/services/attendance';
+import { eventsService } from '@/services/events';
 import { sharedAccessService } from '@/services/sharedAccess';
 import { churchesService } from '@/services/churches';
 import { useRole } from '@/hooks/useRole';
@@ -34,6 +35,7 @@ export default function AttendancePage() {
   const [startQrOpen, setStartQrOpen] = useState(false);
   const [startQrChurchId, setStartQrChurchId] = useState('');
   const [startQrServiceType, setStartQrServiceType] = useState('Sunday Service');
+  const [startQrEventId, setStartQrEventId] = useState('');
   const [startQrDate, setStartQrDate] = useState(() => toDateTimeLocalInputValue(new Date()));
   const [startQrUntil, setStartQrUntil] = useState('');
   const [editRecord, setEditRecord] = useState<any | null>(null);
@@ -80,6 +82,11 @@ export default function AttendancePage() {
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
     queryFn: churchesService.getAll,
+  });
+
+  const { data: events = [] } = useQuery({
+    queryKey: ['events-select'],
+    queryFn: eventsService.getSimple,
   });
 
   const records = allRecords;
@@ -387,7 +394,7 @@ export default function AttendancePage() {
                               <div className="font-medium">{link.serviceType || 'Attendance'}</div>
                               <div className="text-xs text-muted-foreground sm:hidden">{typeLabel}</div>
                             </TableCell>
-                            <TableCell className="text-sm">{link.church?.name || '�'}</TableCell>
+                            <TableCell className="text-sm">{link.church?.name || '—'}</TableCell>
                             <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">{typeLabel}</TableCell>
                             <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
                               {link.expiresAt ? new Date(link.expiresAt).toLocaleDateString() : 'No expiry'}
@@ -545,7 +552,7 @@ export default function AttendancePage() {
                   return (
                   <TableRow key={r.id}>
                     <TableCell className="whitespace-nowrap font-medium">{new Date(r.date).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-sm">{(r as any).church?.name || '—'}</TableCell>
+                    <TableCell className="text-sm">{(r as any).church?.name || 'â€”'}</TableCell>
                     <TableCell className="whitespace-nowrap">{r.serviceType}</TableCell>
                     <TableCell className="text-right font-semibold">{r.totalAttendees}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{(r as any).maleCount ?? 0}</TableCell>
@@ -685,17 +692,31 @@ export default function AttendancePage() {
             <p className="text-sm text-muted-foreground">
               Create an empty attendance record. You can add attendees or generate the attendance link from the row actions.
             </p>
-            <div className="space-y-1.5">
-              <Label>Church</Label>
-              <Select value={startQrChurchId} onValueChange={setStartQrChurchId} disabled={createAttendanceMutation.isPending}>
-                <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
-                <SelectContent>
-                  {churches.map((church: any) => (
-                    <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {startQrServiceType === 'Event' ? (
+              <div className="space-y-1.5">
+                <Label>Event</Label>
+                <Select value={startQrEventId} onValueChange={setStartQrEventId} disabled={createAttendanceMutation.isPending}>
+                  <SelectTrigger><SelectValue placeholder="Select event" /></SelectTrigger>
+                  <SelectContent>
+                    {events.map((event: any) => (
+                      <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>Church</Label>
+                <Select value={startQrChurchId} onValueChange={setStartQrChurchId} disabled={createAttendanceMutation.isPending}>
+                  <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+                  <SelectContent>
+                    {churches.map((church: any) => (
+                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>Service Type</Label>
               <Select value={startQrServiceType} onValueChange={setStartQrServiceType} disabled={createAttendanceMutation.isPending}>
@@ -717,12 +738,12 @@ export default function AttendancePage() {
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={createAttendanceMutation.isPending}>Cancel</Button>
               <Button
-                disabled={createAttendanceMutation.isPending || !startQrChurchId || !startQrDate}
+                disabled={createAttendanceMutation.isPending || !(startQrServiceType === 'Event' ? startQrEventId : startQrChurchId) || !startQrDate}
                 onClick={() => {
                   const date = dateTimeLocalToIso(startQrDate);
                   if (!date) { toast.error('Please enter a valid attendance date and time'); return; }
                   createAttendanceMutation.mutate({
-                    churchId: startQrChurchId,
+                    ...(startQrServiceType === 'Event' ? { eventId: startQrEventId } : { churchId: startQrChurchId }),
                     date,
                     serviceType: startQrServiceType,
                     totalAttendees: 0,
@@ -751,17 +772,31 @@ export default function AttendancePage() {
             <p className="text-sm text-muted-foreground">
               Create an attendance record starting at 0 and activate QR check-in immediately.
             </p>
-            <div className="space-y-1.5">
-              <Label>Church</Label>
-              <Select value={startQrChurchId} onValueChange={setStartQrChurchId} disabled={startQrMutation.isPending}>
-                <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
-                <SelectContent>
-                  {churches.map((church: any) => (
-                    <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {startQrServiceType === 'Event' ? (
+              <div className="space-y-1.5">
+                <Label>Event</Label>
+                <Select value={startQrEventId} onValueChange={setStartQrEventId} disabled={startQrMutation.isPending}>
+                  <SelectTrigger><SelectValue placeholder="Select event" /></SelectTrigger>
+                  <SelectContent>
+                    {events.map((event: any) => (
+                      <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>Church</Label>
+                <Select value={startQrChurchId} onValueChange={setStartQrChurchId} disabled={startQrMutation.isPending}>
+                  <SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger>
+                  <SelectContent>
+                    {churches.map((church: any) => (
+                      <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>Service Type</Label>
               <Select value={startQrServiceType} onValueChange={setStartQrServiceType} disabled={startQrMutation.isPending}>
@@ -789,7 +824,7 @@ export default function AttendancePage() {
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setStartQrOpen(false)} disabled={startQrMutation.isPending}>Cancel</Button>
               <Button
-                disabled={startQrMutation.isPending || !startQrChurchId || !startQrDate}
+                disabled={startQrMutation.isPending || !(startQrServiceType === 'Event' ? startQrEventId : startQrChurchId) || !startQrDate}
                 onClick={() => {
                   const date = dateTimeLocalToIso(startQrDate);
                   const qrActiveUntil = dateTimeLocalToIso(startQrUntil);
@@ -800,7 +835,7 @@ export default function AttendancePage() {
                     return;
                   }
                   startQrMutation.mutate({
-                    churchId: startQrChurchId,
+                    ...(startQrServiceType === 'Event' ? { eventId: startQrEventId } : { churchId: startQrChurchId }),
                     date,
                     serviceType: startQrServiceType,
                     qrActiveFrom: date,

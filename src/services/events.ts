@@ -23,7 +23,12 @@ export interface ChurchEvent {
   contactPhone?: string;
   imageUrl?: string;
   churchId: string;
+  church?: { id?: string; name: string };
   churchName?: string;
+  scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
+  linkedChurches?: Array<{ churchId: string; church?: { id: string; name: string } }>;
+  availableChurchIds?: string[];
+  availableChurches?: Array<{ id: string; name: string }>;
   maxAttendees?: number;
   createdById: string;
   createdAt: string;
@@ -50,6 +55,8 @@ export interface CreateEventDto {
   totalTickets?: number;
   imageUrl?: string;
   churchId: string;
+  scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
+  churchIds?: string[];
 }
 
 export type UpdateEventDto = Partial<CreateEventDto>;
@@ -136,6 +143,7 @@ export const eventsService = {
   },
   purchaseGuestTicket: async (dto: {
     eventId: string;
+    churchId?: string;
     guestName: string;
     guestEmail: string;
     guestPhone?: string;
@@ -155,7 +163,7 @@ export const eventsService = {
     const { data } = await apiClient.post('/payments/guest-ticket', dto);
     return data.data;
   },
-  calculateGuestTicketFees: async (eventId: string): Promise<{
+  calculateGuestTicketFees: async (eventId: string, churchId?: string): Promise<{
     currency: string;
     baseAmount: number;
     convenienceFee: number;
@@ -163,7 +171,7 @@ export const eventsService = {
     transactionCost: number;
     totalAmount: number;
   }> => {
-    const { data } = await apiClient.get('/payments/guest-ticket/fees', { params: { eventId } });
+    const { data } = await apiClient.get('/payments/guest-ticket/fees', { params: { eventId, churchId } });
     return data.data;
   },
   getTransactionByReference: async (reference: string): Promise<{
