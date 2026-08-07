@@ -13,7 +13,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Plus, ChevronDown, ChevronRight, Search } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ArrowLeft, Plus, ChevronDown, ChevronRight, Search, Trash2 } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
@@ -60,6 +70,7 @@ export default function EventTicketsPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'member' | 'guest'>('all');
   const [memberSearch, setMemberSearch] = useState('');
   const [memberSelectOpen, setMemberSelectOpen] = useState(false);
+  const [cancelTicket, setCancelTicket] = useState<any | null>(null);
   const debouncedMemberSearch = useDebounce(memberSearch.trim(), 300);
 
   const { data: transactionData, isLoading: isLoadingTransaction } = useQuery({
@@ -181,6 +192,19 @@ export default function EventTicketsPage() {
     onError: (err: any) => {
       console.error('Error creating ticket:', err.response?.data);
       toast.error(err.response?.data?.message || 'Failed to create ticket');
+    },
+  });
+
+  const cancelTicketMutation = useMutation({
+    mutationFn: (ticketId: string) => eventsService.cancelTicket(ticketId),
+    onSuccess: () => {
+      toast.success('Ticket cancelled');
+      qc.invalidateQueries({ queryKey: ['event-tickets', id] });
+      qc.invalidateQueries({ queryKey: ['event', id] });
+      setCancelTicket(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to cancel ticket');
     },
   });
 
@@ -474,7 +498,7 @@ export default function EventTicketsPage() {
           </div>
 
           <div className="overflow-x-auto border rounded-lg">
-            <table className="w-full min-w-[780px]">
+            <table className="w-full min-w-[880px]">
             <thead className="bg-muted">
               <tr>
                 <th className="text-left p-3 text-xs sm:text-sm font-medium">Ticket #</th>
@@ -485,6 +509,7 @@ export default function EventTicketsPage() {
                 <th className="text-left p-3 text-xs sm:text-sm font-medium">Amount</th>
                 <th className="text-left p-3 text-xs sm:text-sm font-medium">Payment</th>
                 <th className="text-left p-3 text-xs sm:text-sm font-medium">Date</th>
+                <th className="text-right p-3 text-xs sm:text-sm font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -522,10 +547,25 @@ export default function EventTicketsPage() {
                     </td>
                     <td className="p-3 text-xs sm:text-sm capitalize whitespace-nowrap">{ticket.transaction?.paymentMethod?.replace('_', ' ') || '-'}</td>
                     <td className="p-3 text-xs sm:text-sm whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString()}</td>
+                    <td className="p-3 text-right">
+                      {canCreate && ticket.status !== 'cancelled' && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          title={ticket.attended || ticket.status === 'used' ? 'Checked-in tickets cannot be cancelled here' : 'Cancel ticket'}
+                          disabled={ticket.attended || ticket.status === 'used'}
+                          onClick={() => setCancelTicket(ticket)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                   {expandedTicket === ticket.id && (
                     <tr key={`${ticket.id}-details`} className="border-t bg-muted/30">
-                      <td colSpan={8} className="p-4">
+                      <td colSpan={9} className="p-4">
                         {isLoadingTransaction ? (
                           <div className="flex items-center justify-center py-4">
                             <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
@@ -569,6 +609,26 @@ export default function EventTicketsPage() {
           </div>
         </div>
       )}
+      <AlertDialog open={!!cancelTicket} onOpenChange={open => !open && setCancelTicket(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Ticket</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cancel ticket <strong>{cancelTicket?.ticketNumber}</strong>? The ticket will no longer be usable, but the payment and transaction record will be kept for audit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Ticket</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cancelTicketMutation.isPending}
+              onClick={() => cancelTicket && cancelTicketMutation.mutate(cancelTicket.id)}
+            >
+              {cancelTicketMutation.isPending ? 'Cancelling...' : 'Cancel Ticket'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
