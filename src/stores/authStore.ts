@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import apiClient from '@/lib/api-client';
 import { getNavForPermissions, getAllowedRoutesFromPermissions, type NavItem } from './permissions';
+import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
 
 export interface AuthUser {
   id: string;
@@ -28,6 +29,10 @@ export interface AuthUser {
     location: string;
   } | null;
   createdAt: string;
+  acceptedTerms?: boolean;
+  termsAcceptedAt?: string | null;
+  termsVersion?: string | null;
+  privacyVersion?: string | null;
   permissions: string[];
   package?: {
     id: string;
@@ -54,6 +59,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; redirectTo?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; message?: string; isNewRegistration?: boolean; subdomain?: string | null }>;
   registerMember: (data: MemberRegisterData) => Promise<{ success: boolean; message?: string }>;
+  acceptTerms: () => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   fetchMe: () => Promise<void>;
   setLoading: (v: boolean) => void;
@@ -74,6 +80,9 @@ export interface RegisterData {
   accountCountry?: string;
   anniversary?: string;
   inviteToken?: string;
+  acceptedTerms: boolean;
+  termsVersion?: string;
+  privacyVersion?: string;
 }
 
 export interface MemberRegisterData {
@@ -92,6 +101,9 @@ export interface MemberRegisterData {
   baptizedByImmersion?: boolean;
   inviteToken: string;
   expectedChurchId?: string;
+  acceptedTerms: boolean;
+  termsVersion?: string;
+  privacyVersion?: string;
 }
 
 function applyPermissions(permissions: string[], user: AuthUser) {
@@ -191,6 +203,27 @@ export const useAuthStore = create<AuthState>()(
           return { success: false, message: data.message };
         } catch (err: any) {
           return { success: false, message: err.response?.data?.message || 'Registration failed' };
+        }
+      },
+      acceptTerms: async () => {
+        try {
+          const { data } = await apiClient.post('/auth/accept-terms', {
+            acceptedTerms: true,
+            termsVersion: TERMS_VERSION,
+            privacyVersion: PRIVACY_VERSION,
+          });
+          if (data.success) {
+            const permissions: string[] = data.user.permissions ?? [];
+            set({
+              user: data.user,
+              ...applyPermissions(permissions, data.user),
+              isLoading: false,
+            });
+            return { success: true };
+          }
+          return { success: false, message: data.message };
+        } catch (err: any) {
+          return { success: false, message: err.response?.data?.message || 'Failed to accept terms' };
         }
       },
       logout: async () => {

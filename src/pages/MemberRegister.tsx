@@ -15,6 +15,7 @@ import { Church, Eye, EyeOff } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import apiClient from '@/lib/api-client';
+import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
 
 const schema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -32,6 +33,7 @@ const schema = z.object({
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
     .regex(/[0-9]/, 'Must contain at least one number'),
   confirmPassword: z.string(),
+  acceptedTerms: z.boolean().refine(Boolean, 'You must accept the Terms and Conditions and Privacy Policy to create an account'),
 }).refine(d => d.password === d.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
@@ -56,7 +58,7 @@ export default function MemberRegisterPage() {
   const inviteToken = searchParams.get('invite');
   const linkChurchId = searchParams.get('church') || '';
 
-  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, reset } = useForm<FormValues>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, reset, watch } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       firstName: '',
@@ -68,6 +70,7 @@ export default function MemberRegisterPage() {
       residentialNeighbourhood: '',
       password: '',
       confirmPassword: '',
+      acceptedTerms: false,
     },
   });
 
@@ -82,6 +85,7 @@ export default function MemberRegisterPage() {
       residentialNeighbourhood: '',
       password: '',
       confirmPassword: '',
+      acceptedTerms: false,
     });
     setGender('');
     setMaritalStatus('');
@@ -148,6 +152,9 @@ export default function MemberRegisterPage() {
       password: values.password,
       inviteToken,
       expectedChurchId: linkChurchId || churchId,
+      acceptedTerms: values.acceptedTerms,
+      termsVersion: TERMS_VERSION,
+      privacyVersion: PRIVACY_VERSION,
     });
 
     if (result.success) {
@@ -346,7 +353,29 @@ export default function MemberRegisterPage() {
             {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
           </div>
 
-          <Button type="submit" disabled={isSubmitting} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+          <div className="rounded-lg border border-border bg-muted/30 p-3">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="acceptedTerms"
+                checked={watch('acceptedTerms')}
+                onCheckedChange={(checked) => setValue('acceptedTerms', checked === true, { shouldValidate: true })}
+              />
+              <Label htmlFor="acceptedTerms" className="text-xs leading-5 text-muted-foreground">
+                I agree to the{' '}
+                <Link to="/terms" target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
+                  Terms and Conditions
+                </Link>{' '}
+                and{' '}
+                <Link to="/privacy" target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
+                  Privacy Policy
+                </Link>
+                , including church membership data processing by ICIMS and this ministry.
+              </Label>
+            </div>
+            {errors.acceptedTerms && <p className="mt-2 text-xs text-destructive">{errors.acceptedTerms.message}</p>}
+          </div>
+
+          <Button type="submit" disabled={isSubmitting || !watch('acceptedTerms')} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
             {isSubmitting ? 'Creating account...' : 'Create Account'}
           </Button>
         </form>

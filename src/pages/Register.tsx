@@ -5,11 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Church, Eye, EyeOff, CheckCircle2, ArrowRight, ArrowLeft, Globe } from 'lucide-react';
 import { toast } from 'sonner';
+import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
 const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 
 const TITLES = ['Rev', 'Dr', 'Prof', 'Pastor', 'Prophet', 'Seer', 'Sister', 'Brother', 'Father', 'Other'] as const;
@@ -45,6 +47,7 @@ const schema = z.object({
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
     .regex(/[0-9]/, 'Must contain at least one number'),
   confirmPassword: z.string(),
+  acceptedTerms: z.boolean().refine(Boolean, 'You must accept the Terms and Conditions and Privacy Policy to create an account'),
 }).refine(d => d.password === d.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
@@ -71,7 +74,7 @@ export default function RegisterPage() {
   const [subdomainSlug, setSubdomainSlug] = useState('');
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, trigger, getValues } = useForm<FormValues>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, trigger, getValues, watch } = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: 'onTouched',
     defaultValues: {
@@ -84,6 +87,7 @@ export default function RegisterPage() {
       anniversary: '',
       password: '',
       confirmPassword: '',
+      acceptedTerms: false,
     },
   });
 
@@ -111,6 +115,9 @@ export default function RegisterPage() {
       accountCountry: values.accountCountry,
       anniversary: values.anniversary,
       password: values.password,
+      acceptedTerms: values.acceptedTerms,
+      termsVersion: TERMS_VERSION,
+      privacyVersion: PRIVACY_VERSION,
     });
     if (result.success) {
       if (result.isNewRegistration && result.subdomain) {
@@ -455,11 +462,33 @@ export default function RegisterPage() {
                   })}
                 </div>
 
+                <div className="rounded-lg border border-border bg-muted/30 p-3">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="acceptedTerms"
+                      checked={watch('acceptedTerms')}
+                      onCheckedChange={(checked) => setValue('acceptedTerms', checked === true, { shouldValidate: true })}
+                    />
+                    <Label htmlFor="acceptedTerms" className="text-xs leading-5 text-muted-foreground">
+                      I agree to the{' '}
+                      <Link to="/terms" target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
+                        Terms and Conditions
+                      </Link>{' '}
+                      and{' '}
+                      <Link to="/privacy" target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
+                        Privacy Policy
+                      </Link>
+                      , including the processing of ministry and account data needed to operate ICIMS.
+                    </Label>
+                  </div>
+                  {errors.acceptedTerms && <p className="mt-2 text-xs text-destructive">{errors.acceptedTerms.message}</p>}
+                </div>
+
                 <div className="flex gap-3">
                   <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1 h-11">
                     Back
                   </Button>
-                  <Button type="submit" disabled={isSubmitting} className="flex-1 h-11 bg-accent text-accent-foreground hover:bg-accent/90">
+                  <Button type="submit" disabled={isSubmitting || !watch('acceptedTerms')} className="flex-1 h-11 bg-accent text-accent-foreground hover:bg-accent/90">
                     {isSubmitting ? 'Creating account...' : 'Create account'}
                   </Button>
                 </div>

@@ -11,6 +11,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import AdminLayout from "@/components/admin/AdminLayout";
+import TermsAcceptanceGate from "@/components/TermsAcceptanceGate";
 
 // ── Lazy-loaded page components ──────────────────────────────────────
 const Index = lazy(() => import("./pages/Index"));
@@ -18,6 +19,8 @@ const Features = lazy(() => import("./pages/Features"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const MemberRegister = lazy(() => import("./pages/MemberRegister"));
@@ -102,6 +105,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <TermsAcceptanceGate />
             <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes */}
@@ -111,6 +115,8 @@ const App = () => {
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
                 <Route path="/events/:id" element={<PublicEvent />} />
                 <Route path="/giving/:id" element={<PublicCampaign />} />
               </Route>
