@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
 const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 
-const TITLES = ['Rev', 'Dr', 'Prof', 'Pastor', 'Prophet', 'Seer', 'Sister', 'Brother', 'Father', 'Other'] as const;
+const TITLES = ['Rev', 'Dr', 'Prof', 'Pastor', 'Prophet', 'Seer', 'Sister', 'Brother', 'Father', 'Deacon', 'Apostle', 'Evangelist', 'Other'] as const;
 
 /** Convert a string to a DNS-safe slug */
 function toSlug(input: string): string {

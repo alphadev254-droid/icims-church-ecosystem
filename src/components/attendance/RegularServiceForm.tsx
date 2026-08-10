@@ -110,6 +110,7 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
             <SelectContent>
               <SelectItem value="Sunday Service">Sunday Service</SelectItem>
               <SelectItem value="Midweek Service">Midweek Service</SelectItem>
+              <SelectItem value="Communion Service">Communion Service</SelectItem>
               <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
               <SelectItem value="Youth Service">Youth Service</SelectItem>
               <SelectItem value="Special Service">Special Service</SelectItem>
