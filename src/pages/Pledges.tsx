@@ -4,6 +4,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { givingService, type Pledge, type PledgeStatus } from '@/services/giving';
 import { churchesService } from '@/services/churches';
 import { useAuthStore } from '@/stores/authStore';
+import { RecordPledgePaymentDialog } from '@/components/pledges/RecordPledgePaymentDialog';
+import { useRole } from '@/hooks/useRole';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +26,11 @@ import { toast } from 'sonner';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 20;
+const PLEDGE_QUERY_OPTIONS = {
+  staleTime: STALE_TIME.DEFAULT,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+} as const;
 
 const SORT_OPTIONS = [
   { value: 'newest',       label: 'Newest first' },
@@ -285,7 +292,12 @@ function MemberPledgeCard({ pledge, onView, onEdit, onPayNow }: {
 
 // ─── Admin pledge row ─────────────────────────────────────────────────────────
 
-function AdminPledgeRow({ pledge, onView }: { pledge: Pledge; onView: () => void }) {
+function AdminPledgeRow({ pledge, canRecordPayment, onView, onRecordPayment }: {
+  pledge: Pledge;
+  canRecordPayment: boolean;
+  onView: () => void;
+  onRecordPayment: () => void;
+}) {
   const balance = pledge.pledgedAmount - pledge.amountPaid;
   const p = pct(pledge);
   const pledgerName = pledge.user
@@ -313,9 +325,16 @@ function AdminPledgeRow({ pledge, onView }: { pledge: Pledge; onView: () => void
         {pledge.fulfillmentDeadline ? new Date(pledge.fulfillmentDeadline).toLocaleDateString() : '—'}
       </td>
       <td className="px-3 py-2.5">
-        <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={onView}>
-          <Eye className="h-3 w-3 mr-1" /> View
-        </Button>
+        <div className="flex flex-wrap gap-1.5">
+          <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={onView}>
+            <Eye className="h-3 w-3 mr-1" /> View
+          </Button>
+          {canRecordPayment && pledge.status !== 'fulfilled' && (
+            <Button size="sm" className="h-6 text-xs px-2 bg-accent text-accent-foreground hover:bg-accent/90" onClick={onRecordPayment}>
+              <Wallet className="h-3 w-3 mr-1" /> Record Payment
+            </Button>
+          )}
+        </div>
       </td>
     </tr>
   );
@@ -327,7 +346,9 @@ export default function PledgesPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
+  const { hasPermission } = useRole();
   const isMember = user?.roleName === 'member';
+  const canRecordPledgePayment = !isMember && hasPermission('donations:create');
 
   const campaignIdFilter = searchParams.get('campaignId') ?? undefined;
 
@@ -339,6 +360,7 @@ export default function PledgesPage() {
   const [sortBy, setSortBy] = useState('newest');
   const [page, setPage] = useState(1);
   const [editingPledge, setEditingPledge] = useState<Pledge | null>(null);
+  const [recordingPaymentPledge, setRecordingPaymentPledge] = useState<Pledge | null>(null);
 
   // Reset to page 1 whenever filters change
   const handleStatusChange = (v: string) => { setStatusFilter(v); setPage(1); };
@@ -357,8 +379,8 @@ export default function PledgesPage() {
   const { data: churches = [] } = useQuery({
     queryKey: ['churches-select'],
     queryFn: churchesService.getSelectable,
-    enabled: !isMember,
-    staleTime: STALE_TIME.DEFAULT,
+    enabled: !!user && !isMember,
+    ...PLEDGE_QUERY_OPTIONS,
   });
 
   // ── Member: my pledges ──
@@ -370,8 +392,8 @@ export default function PledgesPage() {
       page,
       limit: PAGE_SIZE,
     }),
-    enabled: isMember,
-    staleTime: STALE_TIME.DEFAULT,
+    enabled: !!user && isMember,
+    ...PLEDGE_QUERY_OPTIONS,
   });
 
   // ── Admin: ministry pledges ──
@@ -387,8 +409,8 @@ export default function PledgesPage() {
       page,
       limit: PAGE_SIZE,
     }),
-    enabled: !isMember,
-    staleTime: STALE_TIME.DEFAULT,
+    enabled: !!user && !isMember,
+    ...PLEDGE_QUERY_OPTIONS,
   });
 
   const myPledges: Pledge[]       = myResponse?.data ?? [];
@@ -408,6 +430,11 @@ export default function PledgesPage() {
         pledge={editingPledge}
         open={!!editingPledge}
         onOpenChange={open => { if (!open) setEditingPledge(null); }}
+      />
+      <RecordPledgePaymentDialog
+        pledge={recordingPaymentPledge}
+        open={!!recordingPaymentPledge}
+        onOpenChange={open => { if (!open) setRecordingPaymentPledge(null); }}
       />
 
       {/* ── Header ── */}
@@ -607,7 +634,9 @@ export default function PledgesPage() {
                   <AdminPledgeRow
                     key={pledge.id}
                     pledge={pledge}
+                    canRecordPayment={canRecordPledgePayment}
                     onView={() => navigate(`/dashboard/pledges/${pledge.id}`)}
+                    onRecordPayment={() => setRecordingPaymentPledge(pledge)}
                   />
                 ))}
               </tbody>

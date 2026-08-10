@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Receipt, CreditCard, LogOut, Menu, X, Shield, ChevronRight, Package2, Smartphone, DatabaseZap, Wallet, Landmark } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
@@ -16,6 +16,14 @@ const NAV = [
   { to: '/admin/packages', label: 'Packages', icon: Package2, end: false },
   { to: '/admin/payment-metadata', label: 'Payment Metadata', icon: DatabaseZap, end: false },
 ];
+
+function AdminPageLoader() {
+  return (
+    <div className="flex min-h-[320px] items-center justify-center text-sm text-muted-foreground">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+    </div>
+  );
+}
 
 export default function AdminLayout() {
   const { user, logout } = useAuthStore();
@@ -141,7 +149,9 @@ export default function AdminLayout() {
         </div>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <Outlet />
+          <Suspense fallback={<AdminPageLoader />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

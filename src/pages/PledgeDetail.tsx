@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { givingService, type Pledge, type PledgeStatus } from '@/services/giving';
 import { useAuthStore } from '@/stores/authStore';
+import { useRole } from '@/hooks/useRole';
+import { RecordPledgePaymentDialog } from '@/components/pledges/RecordPledgePaymentDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -128,8 +130,10 @@ export default function PledgeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
+  const { hasPermission } = useRole();
   const isMember = user?.roleName === 'member';
   const [payOpen, setPayOpen] = useState(false);
+  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
 
   const { data: pledge, isLoading, error } = useQuery({
     queryKey: ['pledge', id],
@@ -163,6 +167,7 @@ export default function PledgeDetailPage() {
     ? `${pledge.user.firstName} ${pledge.user.lastName}`
     : (pledge.pledgerName ?? 'Walk-in Pledger');
   const canPay = isMember && pledge.status !== 'fulfilled' && pledge.campaign?.status === 'active';
+  const canRecordPayment = !isMember && hasPermission('donations:create') && pledge.status !== 'fulfilled';
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -190,6 +195,15 @@ export default function PledgeDetailPage() {
               onClick={() => setPayOpen(true)}
             >
               <Wallet className="h-3.5 w-3.5" /> Pay Now
+            </Button>
+          )}
+          {canRecordPayment && (
+            <Button
+              size="sm"
+              className="h-8 text-xs sm:h-9 sm:text-sm bg-accent text-accent-foreground hover:bg-accent/90 gap-1.5"
+              onClick={() => setRecordPaymentOpen(true)}
+            >
+              <Wallet className="h-3.5 w-3.5" /> Record Payment
             </Button>
           )}
         </div>
@@ -316,6 +330,17 @@ export default function PledgeDetailPage() {
                 </Button>
               </div>
             )}
+            {canRecordPayment && (
+              <div className="pt-3">
+                <Button
+                  size="sm"
+                  className="w-full h-8 text-xs sm:h-9 sm:text-sm bg-accent text-accent-foreground hover:bg-accent/90 gap-1.5"
+                  onClick={() => setRecordPaymentOpen(true)}
+                >
+                  <Wallet className="h-3.5 w-3.5" /> Record Payment
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -400,6 +425,11 @@ export default function PledgeDetailPage() {
       {payOpen && (
         <PayPledgeDialog pledge={pledge} open={payOpen} onClose={() => setPayOpen(false)} />
       )}
+      <RecordPledgePaymentDialog
+        pledge={pledge}
+        open={recordPaymentOpen}
+        onOpenChange={setRecordPaymentOpen}
+      />
     </div>
   );
 }

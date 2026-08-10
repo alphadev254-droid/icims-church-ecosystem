@@ -6,9 +6,17 @@ import { SubscriptionCheck } from '@/components/SubscriptionCheck';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Church, LogOut, Sun, Moon, Menu, User, Settings, Smartphone, X } from 'lucide-react';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { PWAInstallBanner } from '@/components/PWAInstallBanner';
+
+function DashboardPageLoader() {
+  return (
+    <div className="flex min-h-[320px] items-center justify-center text-sm text-muted-foreground">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+    </div>
+  );
+}
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
@@ -185,7 +193,9 @@ export default function DashboardLayout() {
 
         <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <SubscriptionCheck />
-          <Outlet />
+          <Suspense fallback={<DashboardPageLoader />}>
+            <Outlet />
+          </Suspense>
         </main>
         <PWAInstallBanner />
       </div>

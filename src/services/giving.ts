@@ -160,6 +160,14 @@ export interface UpdatePledgeDto {
   notes?: string | null;
 }
 
+export interface RecordPledgePaymentDto {
+  amount: number;
+  paymentMethod?: 'cash' | 'bank_transfer' | 'mobile_money' | 'other';
+  reference?: string;
+  notes?: string;
+  paidAt?: string;
+}
+
 export const givingService = {
   async getPublicCampaign(id: string): Promise<GivingCampaign> {
     const { data } = await apiClient.get(`/giving/campaigns/${id}/public`);
@@ -303,6 +311,11 @@ export const givingService = {
 
   async updatePledge(id: string, dto: UpdatePledgeDto): Promise<Pledge> {
     const { data } = await apiClient.put(`/giving/pledges/${id}`, dto);
+    return data.data;
+  },
+
+  async recordPledgePayment(id: string, dto: RecordPledgePaymentDto): Promise<Pledge> {
+    const { data } = await apiClient.post(`/giving/pledges/${id}/payments`, dto);
     return data.data;
   },
 };
