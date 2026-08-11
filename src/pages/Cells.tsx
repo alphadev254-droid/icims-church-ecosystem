@@ -24,6 +24,13 @@ import { useDebounce } from '@/hooks/use-debounce';
 
 const MEETING_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
+const formatMetaDate = (value?: string | null) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 // ─── Cell Form ────────────────────────────────────────────────────────────────
 
 function CellForm({ defaultValues, onSubmit, isPending, submitLabel }: {
@@ -314,6 +321,11 @@ export default function CellsPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <CardTitle className="text-base">{cell.name}</CardTitle>
+                    {cell.church?.name && (
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {cell.church.name}
+                      </p>
+                    )}
                     {cell.zone && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                         <MapPin className="h-3 w-3" /> {cell.zone}
@@ -365,6 +377,10 @@ export default function CellsPage() {
                       <Calendar className="h-3 w-3" /> {cell.meetingDay}{cell.meetingTime ? ` · ${cell.meetingTime}` : ''}
                     </p>
                   )}
+                  <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-[11px] text-muted-foreground">
+                    <span className="truncate">Created: {formatMetaDate(cell.createdAt)}</span>
+                    <span className="truncate text-right">Updated: {formatMetaDate(cell.updatedAt)}</span>
+                  </div>
                 </div>
 
                 <div className="flex gap-1.5 pt-1">

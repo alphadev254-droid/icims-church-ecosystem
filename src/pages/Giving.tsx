@@ -33,6 +33,13 @@ import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 import { buildPublicGivingUrl } from '@/lib/public-links';
 
+const formatMetaDate = (value?: string | null) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 const campaignSchema = z.object({
   churchId: z.string().optional().default(''),
   scopeType: z.enum(['one_church', 'selected_churches', 'all_churches']).default('one_church'),
@@ -726,6 +733,13 @@ export default function GivingPage() {
             <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{campaign.description}</p>
           )}
 
+          {!isMember && (
+            <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-[11px] text-muted-foreground">
+              <span className="truncate">Created: {formatMetaDate(campaign.createdAt)}</span>
+              <span className="truncate text-right">Updated: {formatMetaDate(campaign.updatedAt)}</span>
+            </div>
+          )}
+
           {isMember ? (
             <div className="text-xs">
               <span className="text-muted-foreground">Your Total: </span>
@@ -810,6 +824,8 @@ export default function GivingPage() {
               donorCount: c.donorCount || 0,
               currency: c.currency,
               endDate: c.endDate ? new Date(c.endDate).toLocaleDateString() : '',
+              createdAt: formatMetaDate(c.createdAt),
+              updatedAt: formatMetaDate(c.updatedAt),
             }))}
             filename="giving-campaigns"
             headers={[
@@ -822,6 +838,8 @@ export default function GivingPage() {
               { label: 'Giver Count', key: 'donorCount' },
               { label: 'Currency', key: 'currency' },
               { label: 'End Date', key: 'endDate' },
+              { label: 'Created', key: 'createdAt' },
+              { label: 'Updated', key: 'updatedAt' },
             ]}
             pdfTitle="Giving Campaigns Report"
           />

@@ -365,6 +365,10 @@ export default function CellAttendancePage() {
 
   const mutation = useMutation({
     mutationFn: (currentRows: typeof rows) => {
+      const incompleteGuest = currentRows.find(row => row.isGuest && !row.visitorPhone?.trim());
+      if (incompleteGuest) {
+        throw new Error('Guest phone is required');
+      }
       const records = currentRows.map(row => row.isGuest
         ? { isVisitor: true, status: row.status, visitorName: row.visitorName, visitorPhone: row.visitorPhone, visitorEmail: row.visitorEmail || undefined, isFirstTime: row.isFirstTime ?? true, notes: row.notes || undefined }
         : { userId: row.userId, status: row.status, isVisitor: false, notes: row.notes || undefined }
@@ -377,7 +381,7 @@ export default function CellAttendancePage() {
       qc.invalidateQueries({ queryKey: ['cell-meetings', cellId] });
       qc.invalidateQueries({ queryKey: ['meeting-attendance', meetingId] });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to save'),
+    onError: (err: any) => toast.error(err.response?.data?.message || err.message || 'Failed to save'),
   });
 
   const autoSave = (currentRows: typeof rows) => mutation.mutate(currentRows);
@@ -528,7 +532,7 @@ export default function CellAttendancePage() {
                 {/* Phone */}
                 <td className="px-3 py-1.5 whitespace-nowrap">
                   {row.isGuest && canManage ? (
-                    <Input value={row.visitorPhone ?? ''} onChange={e => updateGuest(row.key, 'visitorPhone', e.target.value)} placeholder="Phone" className="h-7 text-xs w-28" />
+                    <Input required value={row.visitorPhone ?? ''} onChange={e => updateGuest(row.key, 'visitorPhone', e.target.value)} placeholder="Phone *" className="h-7 text-xs w-28" />
                   ) : (
                     <span className="text-muted-foreground">
                       {row.isGuest ? (row.visitorPhone || '—') : (row.phone ? <a href={`tel:${row.phone}`} className="hover:text-accent">{row.phone}</a> : '—')}
