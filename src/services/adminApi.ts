@@ -466,7 +466,7 @@ export const adminApi = {
     apiClient.put<{ success: boolean; data: AdminUser }>(`/admin/church-users/${id}`, data),
 
   getPackages: () =>
-    apiClient.get<{ success: boolean; data: Array<{ id: string; name: string; displayName: string; isActive: boolean }> }>('/packages'),
+    apiClient.get<{ success: boolean; data: Array<{ id: string; name: string; displayName: string; isActive: boolean; isPrivate?: boolean }> }>('/admin/packages'),
 
   manageSubscription: (userId: string, data: { packageId: string; startsAt: string; expiresAt: string; status: string }) =>
     apiClient.post<{ success: boolean; data: AdminSubscription }>(`/admin/users/${userId}/subscription`, data),
