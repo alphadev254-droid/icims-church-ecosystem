@@ -31,6 +31,19 @@ export interface CellMember {
   isLeader: boolean;
   isAssistant: boolean;
   user?: { id: string; firstName: string; lastName: string; email?: string; phone?: string; avatar?: string | null; memberType?: string | null; loginEnabled?: boolean };
+  attendanceStats?: {
+    expectedMeetings: number;
+    attendedMeetings: number;
+    missedMeetings: number;
+    excusedMeetings: number;
+    attendanceRate: number | null;
+    lastAttendedAt?: string | null;
+  };
+  givingStats?: {
+    total: number;
+    count: number;
+    totalsByCurrency?: Array<{ currency: string; total: number; count: number }>;
+  };
 }
 
 export interface CellMeeting {

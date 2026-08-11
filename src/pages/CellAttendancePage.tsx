@@ -175,6 +175,82 @@ function OfferingMemberPicker({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+function OfferingGuestPicker({
+  guests,
+  guestName,
+  onSelect,
+  onNameChange,
+}: {
+  guests: AttendanceRow[];
+  guestName: string;
+  onSelect: (guest: AttendanceRow) => void;
+  onNameChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const search = guestName.trim().toLowerCase();
+  const filteredGuests = guests.filter(guest => {
+    if (!search) return true;
+    return [
+      guest.visitorName,
+      guest.visitorPhone,
+      guest.visitorEmail,
+    ].some(value => value?.toLowerCase().includes(search));
+  });
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm">Guest <span className="text-destructive">*</span></Label>
+      <div ref={containerRef} className="relative">
+        <Input
+          placeholder="Search or type guest name..."
+          value={guestName}
+          onChange={e => { onNameChange(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+        />
+        {open && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+            {guests.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-center text-muted-foreground">
+                No guests recorded on this attendance yet. You can type the guest details manually.
+              </div>
+            ) : filteredGuests.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-center text-muted-foreground">
+                No matching guests. Continue typing to record manually.
+              </div>
+            ) : (
+              filteredGuests.map((guest, index) => (
+                <button
+                  key={`${guest.key}-${index}`}
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
+                  onClick={() => {
+                    onSelect(guest);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="font-medium">{guest.visitorName || 'Guest'}</span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    {[guest.visitorPhone, guest.visitorEmail].filter(Boolean).join(' · ') || 'No contact saved'}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CellAttendancePage() {
   const { id: cellId, meetingId } = useParams<{ id: string; meetingId: string }>();
   const navigate = useNavigate();
@@ -251,11 +327,23 @@ export default function CellAttendancePage() {
   const flatOfferingCampaigns: any[] = Array.isArray(offeringCampaigns) && (offeringCampaigns as any[])[0]?.label
     ? (offeringCampaigns as any[]).flatMap((g: any) => g.posts || [])
     : (offeringCampaigns as any[]);
+  const attendanceGuestRows = rows.filter(row => row.isGuest);
 
   const resetOffering = () => {
     setOfferingAmount(''); setOfferingNotes(''); setOfferingCampaignId('');
     setOfferingDonorType('member'); setOfferingMemberId(null); setOfferingMemberLabel('');
     setOfferingGuestName(''); setOfferingGuestEmail(''); setOfferingGuestPhone('');
+  };
+
+  const setOfferingType = (type: 'member' | 'guest' | 'anonymous') => {
+    setOfferingDonorType(type);
+    setOfferingMemberId(null);
+    setOfferingMemberLabel('');
+    if (type !== 'guest') {
+      setOfferingGuestName('');
+      setOfferingGuestEmail('');
+      setOfferingGuestPhone('');
+    }
   };
 
   const offeringMutation = useMutation({
@@ -671,7 +759,7 @@ export default function CellAttendancePage() {
                   <button
                     key={t.value}
                     type="button"
-                    onClick={() => { setOfferingDonorType(t.value); setOfferingMemberId(null); setOfferingMemberLabel(''); }}
+                    onClick={() => setOfferingType(t.value)}
                     className={`rounded-md border px-2 py-2 text-left text-xs transition-colors ${offeringDonorType === t.value ? 'border-accent bg-accent/10 text-accent font-medium' : 'border-border hover:bg-muted'}`}
                   >
                     <div className="font-medium">{t.label}</div>
@@ -695,10 +783,16 @@ export default function CellAttendancePage() {
             {/* Guest fields */}
             {offeringDonorType === 'guest' && (
               <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Full Name <span className="text-destructive">*</span></Label>
-                  <Input placeholder="e.g. John Banda" value={offeringGuestName} onChange={e => setOfferingGuestName(e.target.value)} />
-                </div>
+                <OfferingGuestPicker
+                  guests={attendanceGuestRows}
+                  guestName={offeringGuestName}
+                  onNameChange={setOfferingGuestName}
+                  onSelect={guest => {
+                    setOfferingGuestName(guest.visitorName || '');
+                    setOfferingGuestPhone(guest.visitorPhone || '');
+                    setOfferingGuestEmail(guest.visitorEmail || '');
+                  }}
+                />
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-sm">Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>

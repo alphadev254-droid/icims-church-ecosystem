@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Users, Calendar, MapPin, UserPlus, Plus, Trash2, ClipboardList, ChevronLeft, ChevronRight, Search, AlertTriangle, TrendingUp, TrendingDown, Minus, Pencil } from 'lucide-react';
+import { ArrowLeft, Users, Calendar, MapPin, UserPlus, Plus, Trash2, ClipboardList, ChevronLeft, ChevronRight, Search, AlertTriangle, TrendingUp, TrendingDown, Minus, Pencil, Eye } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -35,6 +35,7 @@ export default function CellDetailPage() {
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [newMeetingOpen, setNewMeetingOpen] = useState(false);
   const [editMember, setEditMember] = useState<CellMember | null>(null);
+  const [viewMember, setViewMember] = useState<CellMember | null>(null);
   const [addMemberQuery, setAddMemberQuery] = useState('');
   const [addMemberPage, setAddMemberPage] = useState(1);
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -203,6 +204,11 @@ export default function CellDetailPage() {
     role: m.isLeader ? 'Leader' : m.isAssistant ? 'Assistant' : 'Member',
     status: m.status,
     joined: new Date(m.joinedAt).toLocaleDateString(),
+    attendedMeetings: m.attendanceStats?.attendedMeetings ?? 0,
+    missedMeetings: m.attendanceStats?.missedMeetings ?? 0,
+    attendanceRate: m.attendanceStats?.attendanceRate ?? '',
+    cellGivingTotal: m.givingStats?.total ?? 0,
+    cellGivingCount: m.givingStats?.count ?? 0,
   }));
 
   const memberExportHeaders = [
@@ -213,7 +219,23 @@ export default function CellDetailPage() {
     { label: 'Role', key: 'role' },
     { label: 'Status', key: 'status' },
     { label: 'Date Joined', key: 'joined' },
+    { label: 'Meetings Attended', key: 'attendedMeetings' },
+    { label: 'Meetings Missed', key: 'missedMeetings' },
+    { label: 'Attendance Rate %', key: 'attendanceRate' },
+    { label: 'Cell Giving Total', key: 'cellGivingTotal' },
+    { label: 'Cell Giving Count', key: 'cellGivingCount' },
   ];
+
+  const formatMemberDate = (value?: string | null) => value
+    ? new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '-';
+
+  const formatCellGiving = (member: CellMember) => {
+    const totals = member.givingStats?.totalsByCurrency ?? [];
+    if (totals.length === 0) return '-';
+    if (totals.length === 1) return `${totals[0].currency} ${totals[0].total.toLocaleString()}`;
+    return `${totals.length} currencies`;
+  };
 
   if (isLoading) {
     return (
@@ -353,7 +375,7 @@ export default function CellDetailPage() {
             <p className="text-sm text-muted-foreground py-8 text-center">No members found.</p>
           ) : (
             <div className="border rounded-lg overflow-x-auto">
-              <table className="w-full text-xs sm:text-sm min-w-[640px]">
+              <table className="w-full text-xs sm:text-sm min-w-[920px]">
                 <thead className="bg-muted">
                   <tr>
                     <th className="text-left px-3 py-2 font-medium">Name</th>
@@ -362,7 +384,11 @@ export default function CellDetailPage() {
                     <th className="text-left px-3 py-2 font-medium">Role</th>
                     <th className="text-left px-3 py-2 font-medium">Status</th>
                     <th className="text-left px-3 py-2 font-medium">Joined</th>
-                    {effectiveCanManage && <th className="w-16"></th>}
+                    <th className="text-right px-3 py-2 font-medium">Attended</th>
+                    <th className="text-right px-3 py-2 font-medium">Missed</th>
+                    <th className="text-right px-3 py-2 font-medium">Rate</th>
+                    <th className="text-right px-3 py-2 font-medium">Giving</th>
+                    <th className="w-20"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -384,18 +410,29 @@ export default function CellDetailPage() {
                       <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
                         {new Date(m.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
-                      {effectiveCanManage && (
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
+                      <td className="px-3 py-2 text-right">{m.attendanceStats?.attendedMeetings ?? 0}</td>
+                      <td className="px-3 py-2 text-right">{m.attendanceStats?.missedMeetings ?? 0}</td>
+                      <td className="px-3 py-2 text-right font-medium">
+                        {m.attendanceStats?.attendanceRate == null ? '-' : `${m.attendanceStats.attendanceRate}%`}
+                      </td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">{formatCellGiving(m)}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => setViewMember(m)} className="p-1 text-muted-foreground hover:text-foreground" title="View member details">
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                          {effectiveCanManage && (
+                            <>
                             <button onClick={() => setEditMember(m)} className="p-1 text-muted-foreground hover:text-foreground" title="Edit role">
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button onClick={() => removeMemberMutation.mutate(m.id)} className="p-1 text-muted-foreground hover:text-destructive" title="Remove">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
-                          </div>
-                        </td>
-                      )}
+                            </>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -958,6 +995,87 @@ export default function CellDetailPage() {
           )}
         </div>
       )}
+
+      {/* View Member Dialog */}
+      <Dialog open={!!viewMember} onOpenChange={open => !open && setViewMember(null)}>
+        <DialogContent className="w-full max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cell Member Details</DialogTitle>
+            {viewMember && (
+              <p className="text-sm text-muted-foreground">
+                {viewMember.user?.firstName} {viewMember.user?.lastName}{viewMember.user?.memberType === 'child' ? ' (Child)' : ''}
+              </p>
+            )}
+          </DialogHeader>
+          {viewMember && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="font-medium break-all">{viewMember.user?.email || '-'}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Phone</p>
+                  <p className="font-medium">{viewMember.user?.phone || '-'}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Role</p>
+                  <p className="font-medium">{viewMember.isLeader ? 'Cell Leader' : viewMember.isAssistant ? 'Assistant Leader' : 'Member'}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Joined</p>
+                  <p className="font-medium">{formatMemberDate(viewMember.joinedAt)}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Attendance</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Expected</p>
+                    <p className="text-lg font-bold">{viewMember.attendanceStats?.expectedMeetings ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Attended</p>
+                    <p className="text-lg font-bold text-green-600">{viewMember.attendanceStats?.attendedMeetings ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Missed</p>
+                    <p className="text-lg font-bold text-red-500">{viewMember.attendanceStats?.missedMeetings ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Rate</p>
+                    <p className="text-lg font-bold">{viewMember.attendanceStats?.attendanceRate == null ? '-' : `${viewMember.attendanceStats.attendanceRate}%`}</p>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Last attended: {formatMemberDate(viewMember.attendanceStats?.lastAttendedAt)}
+                  {viewMember.attendanceStats?.excusedMeetings ? ` · ${viewMember.attendanceStats.excusedMeetings} excused` : ''}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Cell / Fellowship Giving</p>
+                <div className="rounded-lg border p-3">
+                  {(viewMember.givingStats?.totalsByCurrency?.length ?? 0) === 0 ? (
+                    <p className="text-sm text-muted-foreground">No completed cell giving records for this member yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {viewMember.givingStats!.totalsByCurrency!.map(total => (
+                        <div key={total.currency} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="text-muted-foreground">{total.currency}</span>
+                          <span className="font-semibold">{total.total.toLocaleString()}</span>
+                          <span className="text-xs text-muted-foreground">{total.count} record{total.count === 1 ? '' : 's'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Member Dialog */}
       <Dialog open={!!editMember} onOpenChange={open => !open && setEditMember(null)}>

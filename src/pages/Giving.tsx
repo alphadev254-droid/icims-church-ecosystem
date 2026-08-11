@@ -40,6 +40,16 @@ const formatMetaDate = (value?: string | null) => {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+const getGivingCategoryLabel = (category?: string | null) => {
+  if (category === 'fellowship_offering') return 'Cells/Fellowship Offering';
+  if (!category) return 'Offering';
+  return category
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
+
 const campaignSchema = z.object({
   churchId: z.string().optional().default(''),
   scopeType: z.enum(['one_church', 'selected_churches', 'all_churches']).default('one_church'),
@@ -618,7 +628,7 @@ export default function GivingPage() {
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">{getCampaignChurchLabel(campaign)}</p>
               )}
               <div className="flex flex-wrap items-center gap-1 mt-1">
-                <Badge variant="outline" className="text-xs capitalize px-1.5 py-0">{campaign.category}</Badge>
+                <Badge variant="outline" className="text-xs px-1.5 py-0">{getGivingCategoryLabel(campaign.category)}</Badge>
                 {campaign.status !== 'active' && <Badge variant="secondary" className="text-xs px-1.5 py-0">{campaign.status}</Badge>}
                 {campaign.allowPublicDonations && campaign.status === 'active' && (
                   <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50 px-1.5 py-0">Public</Badge>

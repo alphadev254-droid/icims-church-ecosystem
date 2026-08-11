@@ -96,11 +96,21 @@ export function MultiGivingDialog({
     return churches[0]?.id || '';
   };
 
+  const getDefaultCellId = (campaignId: string, churchId?: string) => {
+    const campaign = campaignMap.get(campaignId);
+    if (campaign?.category !== 'fellowship_offering') return '';
+    if (mode !== 'member') return '';
+    const availableInChurch = getCampaignChurches(campaignId).some(church => church.id === churchId);
+    if (!availableInChurch) return '';
+    return memberCells[0]?.id || '';
+  };
+
   useEffect(() => {
     if (!open) return;
     const campaignId = initialCampaignId || activeCampaigns[0]?.id || '';
-    setRows([emptyRow(campaignId, getDefaultChurchId(campaignId))]);
-  }, [activeCampaigns, initialCampaignId, initialChurchId, memberChurchId, open]);
+    const churchId = getDefaultChurchId(campaignId);
+    setRows([{ ...emptyRow(campaignId, churchId), cellId: getDefaultCellId(campaignId, churchId) }]);
+  }, [activeCampaigns, initialCampaignId, initialChurchId, memberCells, memberChurchId, open]);
 
   useEffect(() => {
     if (mode === 'guest') setPublicCellsByCampaign({});
@@ -129,7 +139,8 @@ export function MultiGivingDialog({
   };
 
   const updateRowCampaign = (index: number, campaignId: string) => {
-    updateRow(index, { campaignId, churchId: getDefaultChurchId(campaignId), cellId: '' });
+    const churchId = getDefaultChurchId(campaignId);
+    updateRow(index, { campaignId, churchId, cellId: getDefaultCellId(campaignId, churchId) });
   };
 
   const addRow = () => {
@@ -139,7 +150,8 @@ export function MultiGivingDialog({
       toast.error('No active giving campaigns are available');
       return;
     }
-    setRows(prev => [...prev, emptyRow(nextCampaign.id, getDefaultChurchId(nextCampaign.id))]);
+    const churchId = getDefaultChurchId(nextCampaign.id);
+    setRows(prev => [...prev, { ...emptyRow(nextCampaign.id, churchId), cellId: getDefaultCellId(nextCampaign.id, churchId) }]);
   };
 
   const removeRow = (index: number) => {
