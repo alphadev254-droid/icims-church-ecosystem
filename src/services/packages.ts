@@ -37,12 +37,20 @@ export interface Payment {
   gateway?: string;
   packageName: string;
   paidAt?: string;
+  invoiceId?: string | null;
   reference?: string | null;
   notes?: string | null;
   createdById: string;
   createdAt: string;
   updatedAt: string;
   package?: { name: string; displayName: string } | null;
+  invoice?: {
+    id: string;
+    invoiceNumber: string;
+    status: string;
+    balanceDue: number;
+    amountPaid: number;
+  } | null;
 }
 
 export interface PackageInvoice {
@@ -121,6 +129,10 @@ export const packagesService = {
   },
   getInvoices: async (): Promise<PackageInvoice[]> => {
     const { data } = await apiClient.get('/packages/invoices');
+    return data.data;
+  },
+  getInvoice: async (id: string): Promise<PackageInvoice> => {
+    const { data } = await apiClient.get(`/packages/invoices/${id}`);
     return data.data;
   },
   getPublicInvoice: async (token: string): Promise<PackageInvoice> => {

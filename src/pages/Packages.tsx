@@ -175,7 +175,7 @@ export default function PackagesPage() {
   const qc = useQueryClient();
 
   const [upgradeDialog, setUpgradeDialog] = useState<{ open: boolean; packageId: string; packageName: string } | null>(null);
-  const [viewInvoice, setViewInvoice] = useState<PackageInvoice | null>(null);
+  const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   const { data: fees, isFetching: loadingFees } = useQuery({
@@ -208,6 +208,12 @@ export default function PackagesPage() {
   const { data: invoices = [], isLoading: loadingInvoices } = useQuery({
     queryKey: ['package-invoices'],
     queryFn: packagesService.getInvoices,
+  });
+
+  const { data: viewInvoice, isFetching: loadingInvoiceDetail } = useQuery({
+    queryKey: ['package-invoice', viewInvoiceId],
+    queryFn: () => packagesService.getInvoice(viewInvoiceId!),
+    enabled: !!viewInvoiceId,
   });
 
   const subscribePaymentMutation = useMutation({
@@ -244,6 +250,23 @@ export default function PackagesPage() {
     }
     navigator.clipboard.writeText(url);
     toast.success('Invoice payment link copied');
+  }
+
+  async function fetchFullInvoice(invoice: PackageInvoice) {
+    return qc.fetchQuery({
+      queryKey: ['package-invoice', invoice.id],
+      queryFn: () => packagesService.getInvoice(invoice.id),
+      staleTime: 30_000,
+    });
+  }
+
+  async function handleDownloadInvoice(invoice: PackageInvoice) {
+    try {
+      const fullInvoice = await fetchFullInvoice(invoice);
+      downloadPackageInvoicePdf(fullInvoice, 'Your ministry');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to load invoice payments for PDF');
+    }
   }
 
   const currentPkg = currentData?.package?.name;
@@ -301,7 +324,7 @@ export default function PackagesPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table className="min-w-[850px]">
+                  <Table className="min-w-[920px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-xs sm:text-sm">Invoice</TableHead>
@@ -309,6 +332,7 @@ export default function PackagesPage() {
                         <TableHead className="text-xs sm:text-sm">Period</TableHead>
                         <TableHead className="text-xs sm:text-sm">Due</TableHead>
                         <TableHead className="text-xs sm:text-sm">Amount</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Paid</TableHead>
                         <TableHead className="text-xs sm:text-sm">Balance</TableHead>
                         <TableHead className="text-xs sm:text-sm">Status</TableHead>
                         <TableHead className="text-right text-xs sm:text-sm">Actions</TableHead>
@@ -322,6 +346,7 @@ export default function PackagesPage() {
                           <TableCell className="text-xs sm:text-sm whitespace-nowrap">{fmtDate(invoice.servicePeriodStart)} - {fmtDate(invoice.servicePeriodEnd)}</TableCell>
                           <TableCell className="text-xs sm:text-sm whitespace-nowrap">{fmtDate(invoice.dueDate)}</TableCell>
                           <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{fmt(invoice.amount, invoice.currency)}</TableCell>
+                          <TableCell className="text-xs sm:text-sm whitespace-nowrap">{fmt(invoice.amountPaid, invoice.currency)}</TableCell>
                           <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmt(invoice.balanceDue, invoice.currency)}</TableCell>
                           <TableCell>
                             <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${INVOICE_STATUS_BADGE[invoice.status] ?? ''}`}>
@@ -330,10 +355,10 @@ export default function PackagesPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end gap-2">
-                              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setViewInvoice(invoice)}>
+                              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setViewInvoiceId(invoice.id)}>
                                 View
                               </Button>
-                              <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => downloadPackageInvoicePdf(invoice, 'Your ministry')}>
+                              <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => handleDownloadInvoice(invoice)}>
                                 <Download className="h-3.5 w-3.5" /> PDF
                               </Button>
                               <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => copyInvoicePaymentLink(invoice)}>
@@ -350,7 +375,7 @@ export default function PackagesPage() {
                       ))}
                       {invoices.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                             <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
                             No invoices yet
                           </TableCell>
@@ -374,11 +399,12 @@ export default function PackagesPage() {
                 </div>
               ) : (
         <div className="overflow-x-auto">
-              <Table className="min-w-[700px]">
+              <Table className="min-w-[800px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-xs sm:text-sm">Date</TableHead>
                       <TableHead className="text-xs sm:text-sm">Package</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Invoice</TableHead>
                       <TableHead className="text-xs sm:text-sm">Base Amount</TableHead>
                       <TableHead className="text-xs sm:text-sm">Transaction Cost</TableHead>
                       <TableHead className="text-xs sm:text-sm">Tax</TableHead>
@@ -398,6 +424,26 @@ export default function PackagesPage() {
                             {p.package?.displayName ?? p.packageName}
                           </span>
                         </TableCell>
+                        <TableCell className="text-xs sm:text-sm">
+                          {p.invoice ? (
+                            <div className="space-y-1">
+                              <button
+                                type="button"
+                                className="font-medium text-accent hover:underline"
+                                onClick={() => setViewInvoiceId(p.invoice!.id)}
+                              >
+                                {p.invoice.invoiceNumber}
+                              </button>
+                              <div>
+                                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full capitalize ${INVOICE_STATUS_BADGE[p.invoice.status] ?? ''}`}>
+                                  {p.invoice.status.replace('_', ' ')}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{fmt(p.baseAmount || p.amount, p.currency)}</TableCell>
                         <TableCell className="text-xs sm:text-sm whitespace-nowrap">{p.convenienceFee ? fmt(p.convenienceFee, p.currency) : '—'}</TableCell>
                         <TableCell className="text-xs sm:text-sm whitespace-nowrap">{p.systemFeeAmount ? fmt(p.systemFeeAmount, p.currency) : '—'}</TableCell>
@@ -414,7 +460,7 @@ export default function PackagesPage() {
                     ))}
                     {payments.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                           <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-40" />
                           No payment records yet
                         </TableCell>
@@ -430,10 +476,15 @@ export default function PackagesPage() {
         )}
       </Tabs>
 
-      <Dialog open={!!viewInvoice} onOpenChange={open => !open && setViewInvoice(null)}>
+      <Dialog open={!!viewInvoiceId} onOpenChange={open => !open && setViewInvoiceId(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{viewInvoice?.invoiceNumber}</DialogTitle></DialogHeader>
-          {viewInvoice && (
+          {loadingInvoiceDetail && (
+            <div className="flex items-center justify-center py-10">
+              <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+            </div>
+          )}
+          {!loadingInvoiceDetail && viewInvoice && (
             <div className="space-y-4 text-sm">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div><p className="text-muted-foreground">Package</p><p className="font-medium">{viewInvoice.package?.displayName || viewInvoice.packageName}</p></div>
