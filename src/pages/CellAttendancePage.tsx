@@ -212,6 +212,24 @@ export default function CellAttendancePage() {
     staleTime: 0,
   });
 
+  const { data: attendanceMembers = [], isLoading: membersLoading } = useQuery({
+    queryKey: ['cell-attendance-members', cellId],
+    queryFn: async () => {
+      const firstPage = await cellsService.getMembers(cellId!, { status: 'active', page: 1, limit: 200 });
+      const allMembers = [...firstPage.data];
+      const totalPages = firstPage.pagination?.pages ?? 1;
+
+      for (let page = 2; page <= totalPages; page += 1) {
+        const nextPage = await cellsService.getMembers(cellId!, { status: 'active', page, limit: 200 });
+        allMembers.push(...nextPage.data);
+      }
+
+      return allMembers;
+    },
+    enabled: !!cellId,
+    staleTime: STALE_TIME.DEFAULT,
+  });
+
   // Fix: getMeetings now returns { data, pagination } — extract data array
   const { data: meetingsResponse } = useQuery({
     queryKey: ['cell-meetings', cellId],
@@ -222,7 +240,7 @@ export default function CellAttendancePage() {
   const meetingsList = meetingsResponse?.data ?? [];
   const meeting = meetingsList.find((m: any) => m.id === meetingId);
 
-  const members: CellMember[] = cell?.members ?? [];
+  const members: CellMember[] = attendanceMembers;
 
   const { data: offeringCampaigns = [] } = useQuery({
     queryKey: ['fellowship-campaigns', (cell as any)?.churchId],
@@ -265,7 +283,7 @@ export default function CellAttendancePage() {
 
   // Seed rows once both cell + attendance loaded
   useEffect(() => {
-    if (seeded || cellLoading || attLoading || members.length === 0) return;
+    if (seeded || membersLoading || attLoading) return;
 
     const savedMap = new Map<string, any>();
     const savedGuests: any[] = [];
@@ -305,7 +323,7 @@ export default function CellAttendancePage() {
 
     setRows([...memberRows, ...guestRows]);
     setSeeded(true);
-  }, [cellLoading, attLoading, members.length, existingAttendance, seeded]);
+  }, [membersLoading, attLoading, members.length, existingAttendance, seeded]);
 
   const setStatus = (key: string, status: AttendanceStatus) => {
     if (status === 'excused') {
@@ -398,7 +416,7 @@ export default function CellAttendancePage() {
   const excuseRow = excuseKey ? rows.find(r => r.key === excuseKey) : null;
   const excuseRowWasAlreadyExcused = excuseRow?.status === 'excused' && !!excuseRow?.notes;
 
-  if (cellLoading || attLoading) {
+  if (cellLoading || membersLoading || attLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
