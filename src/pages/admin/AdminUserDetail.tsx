@@ -142,6 +142,9 @@ function inputToList(value: string) {
   return value.split(',').map(v => v.trim()).filter(Boolean);
 }
 
+const DEFAULT_INVOICE_NOTES = 'This invoice covers ICIMS package access for the selected service period. Please review the package, amount, service period, and due date before payment. Online payments through the invoice link will update this invoice automatically.';
+const DEFAULT_INVOICE_TERMS = 'Payment is due by the due date shown on this invoice.';
+
 export default function AdminUserDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -168,8 +171,8 @@ export default function AdminUserDetail() {
     dueDate: today(),
     servicePeriodStart: today(),
     servicePeriodEnd: addMonths(new Date(), 1),
-    notes: '',
-    terms: 'Payment is due by the due date shown on this invoice.',
+    notes: DEFAULT_INVOICE_NOTES,
+    terms: DEFAULT_INVOICE_TERMS,
     status: 'draft',
   });
 
@@ -381,8 +384,8 @@ export default function AdminUserDetail() {
       dueDate: current?.expiresAt ? toDateInput(current.expiresAt) : today(),
       servicePeriodStart: start,
       servicePeriodEnd: addMonthsMinusDay(startDate, 1),
-      notes: '',
-      terms: 'Payment is due by the due date shown on this invoice.',
+      notes: DEFAULT_INVOICE_NOTES,
+      terms: DEFAULT_INVOICE_TERMS,
       status: 'draft',
     });
     setInvoiceOpen(true);
