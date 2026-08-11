@@ -228,7 +228,7 @@ export default function CellsPage() {
           </div>
 
           {/* Ranking lists */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-4">
             {/* Top by members */}
             {overviewStats.topByMembers?.length > 0 && (
               <Card>
@@ -277,6 +277,24 @@ export default function CellsPage() {
                         <button onClick={() => navigate(`/dashboard/cells/${c.id}`)} className="text-sm font-medium truncate hover:text-accent text-left">{c.name}</button>
                       </div>
                       <Badge variant="outline" className="text-xs shrink-0 text-green-600 border-green-300">{c.attendanceRate}%</Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Top by visitors */}
+            {overviewStats.topByVisitors?.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Most Visitors / Guests</CardTitle></CardHeader>
+                <CardContent className="space-y-1.5">
+                  {overviewStats.topByVisitors.map((c: any, i: number) => (
+                    <div key={c.id} className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}.</span>
+                        <button onClick={() => navigate(`/dashboard/cells/${c.id}`)} className="text-sm font-medium truncate hover:text-accent text-left">{c.name}</button>
+                      </div>
+                      <Badge variant="outline" className="text-xs shrink-0">{c.count}</Badge>
                     </div>
                   ))}
                 </CardContent>
