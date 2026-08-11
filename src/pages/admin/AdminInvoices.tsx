@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, Search, Send, Ban, Wallet, Eye, Link as LinkIcon } from 'lucide-react';
+import { Download, Search, Send, Ban, Wallet, Eye, Link as LinkIcon, MoreHorizontal } from 'lucide-react';
 import { adminApi, type AdminPackageInvoice } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { downloadPackageInvoicePdf } from '@/lib/invoice-pdf';
@@ -162,6 +163,7 @@ export default function AdminInvoices() {
 
   const invoices = data?.data ?? [];
   const summary = data?.summary;
+  const canSendInvoice = (invoice: AdminPackageInvoice) => !['paid', 'cancelled'].includes(invoice.status);
 
   return (
     <div className="space-y-5">
@@ -231,13 +233,41 @@ export default function AdminInvoices() {
                   <td className="px-4 py-3">{money(invoice.currency, invoice.balanceDue)}</td>
                   <td className="px-4 py-3">{statusBadge(invoice.status)}</td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setSelected(invoice)}><Eye className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => downloadPackageInvoicePdf(invoice)}><Download className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyInvoicePaymentLink(invoice)}><LinkIcon className="h-4 w-4" /></Button>
-                      {invoice.status === 'draft' && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => sendMutation.mutate(invoice.id)}><Send className="h-4 w-4" /></Button>}
-                      {invoice.status !== 'paid' && invoice.status !== 'cancelled' && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setPaying(invoice); setPaymentForm(f => ({ ...f, amount: String(invoice.balanceDue || invoice.amount) })); }}><Wallet className="h-4 w-4" /></Button>}
-                      {invoice.status !== 'paid' && invoice.status !== 'cancelled' && <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => cancelMutation.mutate(invoice.id)}><Ban className="h-4 w-4" /></Button>}
+                    <div className="flex justify-end">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
+                            <MoreHorizontal className="h-4 w-4" /> Actions
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 text-xs">
+                          <DropdownMenuItem className="gap-2 text-xs" onClick={() => setSelected(invoice)}>
+                            <Eye className="h-4 w-4" /> View details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2 text-xs" onClick={() => downloadPackageInvoicePdf(invoice)}>
+                            <Download className="h-4 w-4" /> Download PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2 text-xs" onClick={() => copyInvoicePaymentLink(invoice)}>
+                            <LinkIcon className="h-4 w-4" /> Copy payment link
+                          </DropdownMenuItem>
+                          {canSendInvoice(invoice) && (
+                            <DropdownMenuItem className="gap-2 text-xs" onClick={() => sendMutation.mutate(invoice.id)}>
+                              <Send className="h-4 w-4" /> {invoice.status === 'draft' ? 'Send invoice' : 'Resend invoice'}
+                            </DropdownMenuItem>
+                          )}
+                          {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="gap-2 text-xs" onClick={() => { setPaying(invoice); setPaymentForm(f => ({ ...f, amount: String(invoice.balanceDue || invoice.amount) })); }}>
+                                <Wallet className="h-4 w-4" /> Record payment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="gap-2 text-xs text-destructive" onClick={() => cancelMutation.mutate(invoice.id)}>
+                                <Ban className="h-4 w-4" /> Cancel invoice
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </td>
                 </tr>
