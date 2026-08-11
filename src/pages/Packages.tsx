@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { packagesService, type PackageTier, type PackageFeature } from '@/services/packages';
+import { packagesService, type PackageTier, type PackageFeature, type PackageInvoice } from '@/services/packages';
 import { paymentService } from '@/services/payments';
 import { useRole } from '@/hooks/useRole';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Check, CreditCard, Package2, Zap, Building2, Users, Calendar, HandCoins, Users2 } from 'lucide-react';
+import { Check, CreditCard, Package2, Zap, Building2, Users, Calendar, HandCoins, Users2, FileText, Wallet, Download, Link as LinkIcon } from 'lucide-react';
+import { downloadPackageInvoicePdf } from '@/lib/invoice-pdf';
 import { toast } from 'sonner';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -31,6 +32,14 @@ const STATUS_BADGE: Record<string, string> = {
   pending:   'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
   failed:    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
 };
+const INVOICE_STATUS_BADGE: Record<string, string> = {
+  paid: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  sent: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  draft: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300',
+  partially_paid: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
+  overdue: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  cancelled: 'bg-muted text-muted-foreground',
+};
 
 function fmt(n: number, currency: string = 'KES') {
   return new Intl.NumberFormat('en-US', { 
@@ -40,7 +49,15 @@ function fmt(n: number, currency: string = 'KES') {
   }).format(n);
 }
 
+function fmtDate(value?: string | null) {
+  return value ? new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+}
+
 // ─── Package Comparison Card ──────────────────────────────────────────────────
+function invoicePayUrl(token?: string | null) {
+  return token ? `${window.location.origin}/invoice/pay/${token}` : '';
+}
+
 function PackageCard({ pkg, isCurrent, allFeatures, onUpgrade }: {
   pkg: PackageTier;
   isCurrent: boolean;
@@ -158,6 +175,7 @@ export default function PackagesPage() {
   const qc = useQueryClient();
 
   const [upgradeDialog, setUpgradeDialog] = useState<{ open: boolean; packageId: string; packageName: string } | null>(null);
+  const [viewInvoice, setViewInvoice] = useState<PackageInvoice | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   const { data: fees, isFetching: loadingFees } = useQuery({
@@ -187,6 +205,11 @@ export default function PackagesPage() {
     enabled: canViewPayments,
   });
 
+  const { data: invoices = [], isLoading: loadingInvoices } = useQuery({
+    queryKey: ['package-invoices'],
+    queryFn: packagesService.getInvoices,
+  });
+
   const subscribePaymentMutation = useMutation({
     mutationFn: ({ packageId, billingCycle }: { packageId: string; billingCycle: 'monthly' | 'yearly' }) =>
       paymentService.initiateSubscription({ packageId, billingCycle }),
@@ -196,6 +219,14 @@ export default function PackagesPage() {
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to initiate payment'),
   });
 
+  const payInvoiceMutation = useMutation({
+    mutationFn: (invoiceId: string) => paymentService.initiateSubscription({ invoiceId }),
+    onSuccess: (data) => {
+      window.location.href = data.authorization_url;
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to initiate invoice payment'),
+  });
+
   function handleUpgrade(pkgId: string, pkgName: string) {
     setUpgradeDialog({ open: true, packageId: pkgId, packageName: pkgName });
   }
@@ -203,6 +234,16 @@ export default function PackagesPage() {
   function handleConfirmUpgrade() {
     if (!upgradeDialog) return;
     subscribePaymentMutation.mutate({ packageId: upgradeDialog.packageId, billingCycle });
+  }
+
+  function copyInvoicePaymentLink(invoice: PackageInvoice) {
+    const url = invoicePayUrl(invoice.publicToken);
+    if (!url) {
+      toast.error('Payment link is not available for this invoice yet');
+      return;
+    }
+    navigator.clipboard.writeText(url);
+    toast.success('Invoice payment link copied');
   }
 
   const currentPkg = currentData?.package?.name;
@@ -225,6 +266,7 @@ export default function PackagesPage() {
       <Tabs defaultValue="plans">
         <TabsList>
           <TabsTrigger value="plans" className="gap-1.5"><Package2 className="h-3.5 w-3.5" /> Plans</TabsTrigger>
+          <TabsTrigger value="invoices" className="gap-1.5"><FileText className="h-3.5 w-3.5" /> Invoices</TabsTrigger>
           {canViewPayments && <TabsTrigger value="payments" className="gap-1.5"><CreditCard className="h-3.5 w-3.5" /> Payments</TabsTrigger>}
         </TabsList>
 
@@ -250,6 +292,78 @@ export default function PackagesPage() {
         </TabsContent>
 
         {/* ─── Payments Tab ───────────────────────────────────────────── */}
+        <TabsContent value="invoices" className="mt-6">
+          <Card>
+            <CardContent className="p-0">
+              {loadingInvoices ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[850px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs sm:text-sm">Invoice</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Package</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Period</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Due</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Amount</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Balance</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {invoices.map(invoice => (
+                        <TableRow key={invoice.id}>
+                          <TableCell className="text-xs sm:text-sm font-medium">{invoice.invoiceNumber}</TableCell>
+                          <TableCell className="text-xs sm:text-sm">{invoice.package?.displayName || invoice.packageName}</TableCell>
+                          <TableCell className="text-xs sm:text-sm whitespace-nowrap">{fmtDate(invoice.servicePeriodStart)} - {fmtDate(invoice.servicePeriodEnd)}</TableCell>
+                          <TableCell className="text-xs sm:text-sm whitespace-nowrap">{fmtDate(invoice.dueDate)}</TableCell>
+                          <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{fmt(invoice.amount, invoice.currency)}</TableCell>
+                          <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmt(invoice.balanceDue, invoice.currency)}</TableCell>
+                          <TableCell>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${INVOICE_STATUS_BADGE[invoice.status] ?? ''}`}>
+                              {invoice.status.replace('_', ' ')}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-2">
+                              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setViewInvoice(invoice)}>
+                                View
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => downloadPackageInvoicePdf(invoice, 'Your ministry')}>
+                                <Download className="h-3.5 w-3.5" /> PDF
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => copyInvoicePaymentLink(invoice)}>
+                                <LinkIcon className="h-3.5 w-3.5" /> Link
+                              </Button>
+                              {!['paid', 'cancelled'].includes(invoice.status) && (
+                                <Button size="sm" className="h-8 text-xs gap-1" onClick={() => payInvoiceMutation.mutate(invoice.id)} disabled={payInvoiceMutation.isPending}>
+                                  <Wallet className="h-3.5 w-3.5" /> Pay Now
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {invoices.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                            <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                            No invoices yet
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {canViewPayments && (
         <TabsContent value="payments" className="mt-6">
           <Card>
@@ -315,6 +429,61 @@ export default function PackagesPage() {
         </TabsContent>
         )}
       </Tabs>
+
+      <Dialog open={!!viewInvoice} onOpenChange={open => !open && setViewInvoice(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{viewInvoice?.invoiceNumber}</DialogTitle></DialogHeader>
+          {viewInvoice && (
+            <div className="space-y-4 text-sm">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div><p className="text-muted-foreground">Package</p><p className="font-medium">{viewInvoice.package?.displayName || viewInvoice.packageName}</p></div>
+                <div><p className="text-muted-foreground">Status</p><p className="capitalize">{viewInvoice.status.replace('_', ' ')}</p></div>
+                <div><p className="text-muted-foreground">Invoice date</p><p>{fmtDate(viewInvoice.invoiceDate)}</p></div>
+                <div><p className="text-muted-foreground">Due date</p><p>{fmtDate(viewInvoice.dueDate)}</p></div>
+                <div><p className="text-muted-foreground">Service period</p><p>{fmtDate(viewInvoice.servicePeriodStart)} - {fmtDate(viewInvoice.servicePeriodEnd)}</p></div>
+                <div><p className="text-muted-foreground">Billing</p><p className="capitalize">{viewInvoice.billingCycle}</p></div>
+                <div><p className="text-muted-foreground">Amount</p><p>{fmt(viewInvoice.amount, viewInvoice.currency)}</p></div>
+                <div><p className="text-muted-foreground">Balance</p><p className="font-semibold">{fmt(viewInvoice.balanceDue, viewInvoice.currency)}</p></div>
+              </div>
+              {(viewInvoice.notes || viewInvoice.terms) && (
+                <div className="rounded-md border p-3 text-xs">
+                  {viewInvoice.notes && <p><span className="font-medium">Notes:</span> {viewInvoice.notes}</p>}
+                  {viewInvoice.terms && <p><span className="font-medium">Terms:</span> {viewInvoice.terms}</p>}
+                </div>
+              )}
+              <div className="rounded-md border">
+                <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">Payments</div>
+                {(viewInvoice.payments ?? []).length === 0 ? (
+                  <p className="px-3 py-4 text-xs text-muted-foreground">No payments recorded.</p>
+                ) : viewInvoice.payments!.map(payment => (
+                  <div key={payment.id} className="flex items-center justify-between border-b px-3 py-2 text-xs last:border-0">
+                    <span>{fmtDate(payment.paidAt || payment.createdAt)} · {payment.paymentMethod || payment.gateway || 'payment'}</span>
+                    <span className="font-medium">{fmt(payment.baseAmount ?? payment.amount, payment.currency)}</span>
+                  </div>
+                ))}
+              </div>
+              {!['paid', 'cancelled'].includes(viewInvoice.status) && (
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Button variant="outline" className="gap-2" onClick={() => downloadPackageInvoicePdf(viewInvoice, 'Your ministry')}>
+                    <Download className="h-4 w-4" /> Download PDF
+                  </Button>
+                  <Button variant="outline" className="gap-2" onClick={() => copyInvoicePaymentLink(viewInvoice)}>
+                    <LinkIcon className="h-4 w-4" /> Copy Link
+                  </Button>
+                  <Button className="gap-2" onClick={() => payInvoiceMutation.mutate(viewInvoice.id)} disabled={payInvoiceMutation.isPending}>
+                    <Wallet className="h-4 w-4" /> Pay Invoice
+                  </Button>
+                </div>
+              )}
+              {['paid', 'cancelled'].includes(viewInvoice.status) && (
+                <Button variant="outline" className="w-full gap-2" onClick={() => downloadPackageInvoicePdf(viewInvoice, 'Your ministry')}>
+                  <Download className="h-4 w-4" /> Download PDF
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Upgrade/Subscribe dialog */}
       <Dialog open={upgradeDialog?.open ?? false} onOpenChange={open => !open && setUpgradeDialog(null)}>

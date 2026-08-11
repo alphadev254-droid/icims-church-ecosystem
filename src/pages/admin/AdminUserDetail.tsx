@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Building2, ShieldOff, ShieldCheck, Trash2, KeyRound, Edit2, Package, Plus, RefreshCw, Mail } from 'lucide-react';
+import { ArrowLeft, Building2, ShieldOff, ShieldCheck, Trash2, KeyRound, Edit2, Package, Plus, RefreshCw, Mail, FileText } from 'lucide-react';
 import { adminApi, type AdminSubscription } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 
@@ -35,6 +36,13 @@ function addMonths(date: Date, months: number) {
   return d.toISOString().split('T')[0];
 }
 
+function addMonthsMinusDay(date: Date, months: number) {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + months);
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split('T')[0];
+}
+
 function toDateInput(iso: string) {
   return iso ? new Date(iso).toISOString().split('T')[0] : '';
 }
@@ -46,6 +54,18 @@ interface SubForm {
   startsAt: string;
   expiresAt: string;
   status: string;
+}
+
+interface InvoiceForm {
+  packageId: string;
+  billingCycle: string;
+  amount: string;
+  dueDate: string;
+  servicePeriodStart: string;
+  servicePeriodEnd: string;
+  notes: string;
+  terms: string;
+  status: 'draft' | 'sent';
 }
 
 type EditUserData = {
@@ -140,6 +160,18 @@ export default function AdminUserDetail() {
   const [subOpen, setSubOpen] = useState(false);
   const [editingSub, setEditingSub] = useState<AdminSubscription | null>(null);
   const [subForm, setSubForm] = useState<SubForm>({ packageId: '', startsAt: today(), expiresAt: addMonths(new Date(), 1), status: 'active' });
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState<InvoiceForm>({
+    packageId: '',
+    billingCycle: 'monthly',
+    amount: '',
+    dueDate: today(),
+    servicePeriodStart: today(),
+    servicePeriodEnd: addMonths(new Date(), 1),
+    notes: '',
+    terms: 'Payment is due by the due date shown on this invoice.',
+    status: 'draft',
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-user', id],
@@ -205,6 +237,27 @@ export default function AdminUserDetail() {
     mutationFn: (d: SubForm) => adminApi.updateSubscription(id!, editingSub!.id, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-user', id] }); toast.success('Subscription updated'); setSubOpen(false); },
     onError: () => toast.error('Failed to update subscription'),
+  });
+
+  const createInvoiceMutation = useMutation({
+    mutationFn: () => adminApi.createInvoice({
+      ministryAdminId: id!,
+      packageId: invoiceForm.packageId,
+      billingCycle: invoiceForm.billingCycle,
+      amount: invoiceForm.amount ? Number(invoiceForm.amount) : undefined,
+      dueDate: invoiceForm.dueDate,
+      servicePeriodStart: invoiceForm.servicePeriodStart,
+      servicePeriodEnd: invoiceForm.servicePeriodEnd,
+      notes: invoiceForm.notes || undefined,
+      terms: invoiceForm.terms || undefined,
+      status: invoiceForm.status,
+    }),
+    onSuccess: () => {
+      toast.success('Invoice created');
+      setInvoiceOpen(false);
+      qc.invalidateQueries({ queryKey: ['admin-invoices'] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create invoice'),
   });
 
   const openEditUser = () => {
@@ -312,6 +365,27 @@ export default function AdminUserDetail() {
 
   const setQuickExpiry = (months: number) => {
     setSubForm(f => ({ ...f, expiresAt: addMonths(new Date(f.startsAt || today()), months) }));
+  };
+
+  const openCreateInvoice = () => {
+    const current = data?.subscription || data?.subscriptions?.find(sub => sub.status === 'active') || data?.subscriptions?.[0];
+    const periodStart = current?.expiresAt ? addMonths(new Date(current.expiresAt), 0) : today();
+    const startDate = new Date(periodStart);
+    startDate.setDate(startDate.getDate() + (current?.expiresAt ? 1 : 0));
+    const start = startDate.toISOString().split('T')[0];
+    const billingCycle = 'monthly';
+    setInvoiceForm({
+      packageId: current?.packageId || packages[0]?.id || '',
+      billingCycle,
+      amount: '',
+      dueDate: current?.expiresAt ? toDateInput(current.expiresAt) : today(),
+      servicePeriodStart: start,
+      servicePeriodEnd: addMonthsMinusDay(startDate, 1),
+      notes: '',
+      terms: 'Payment is due by the due date shown on this invoice.',
+      status: 'draft',
+    });
+    setInvoiceOpen(true);
   };
 
   if (isLoading) {
@@ -451,9 +525,14 @@ export default function AdminUserDetail() {
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2"><Package className="h-4 w-4" /> Active Subscription</CardTitle>
             {isMinistryAdmin && (
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openCreateSub}>
-                <Plus className="h-3 w-3" /> {data.subscription ? 'New' : 'Activate'}
-              </Button>
+              <div className="flex flex-wrap justify-end gap-1">
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openCreateInvoice}>
+                  <FileText className="h-3 w-3" /> Invoice
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openCreateSub}>
+                  <Plus className="h-3 w-3" /> {data.subscription ? 'New' : 'Activate'}
+                </Button>
+              </div>
             )}
           </CardHeader>
           <CardContent className="px-4 pb-4">
@@ -554,7 +633,12 @@ export default function AdminUserDetail() {
       {isMinistryAdmin && data.subscriptions && data.subscriptions.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Subscription History ({data.subscriptions.length})</CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-sm">Subscription History ({data.subscriptions.length})</CardTitle>
+              <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={openCreateInvoice}>
+                <FileText className="h-3.5 w-3.5" /> Generate Invoice
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -644,6 +728,93 @@ export default function AdminUserDetail() {
               disabled={!subForm.packageId || !subForm.startsAt || !subForm.expiresAt || createSubMutation.isPending || updateSubMutation.isPending}
               onClick={handleSubSave}>
               {(createSubMutation.isPending || updateSubMutation.isPending) ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate Invoice Dialog */}
+      <Dialog open={invoiceOpen} onOpenChange={setInvoiceOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Generate Package Invoice</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Package</Label>
+              <Select value={invoiceForm.packageId} onValueChange={v => setInvoiceForm(f => ({ ...f, packageId: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select package" /></SelectTrigger>
+                <SelectContent>
+                  {packages.map((p: any) => (
+                    <SelectItem key={p.id} value={p.id} className="text-xs">{p.displayName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Billing</Label>
+                <Select value={invoiceForm.billingCycle} onValueChange={v => setInvoiceForm(f => ({ ...f, billingCycle: v }))}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly" className="text-xs">Monthly</SelectItem>
+                    <SelectItem value="yearly" className="text-xs">Yearly</SelectItem>
+                    <SelectItem value="custom" className="text-xs">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Amount</Label>
+                <Input className="h-8 text-xs" type="number" value={invoiceForm.amount}
+                  onChange={e => setInvoiceForm(f => ({ ...f, amount: e.target.value }))} placeholder="Auto" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Due Date</Label>
+                <Input className="h-8 text-xs" type="date" value={invoiceForm.dueDate}
+                  onChange={e => setInvoiceForm(f => ({ ...f, dueDate: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Status</Label>
+                <Select value={invoiceForm.status} onValueChange={v => setInvoiceForm(f => ({ ...f, status: v as 'draft' | 'sent' }))}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft" className="text-xs">Draft</SelectItem>
+                    <SelectItem value="sent" className="text-xs">Sent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Period Start</Label>
+                <Input className="h-8 text-xs" type="date" value={invoiceForm.servicePeriodStart}
+                  onChange={e => setInvoiceForm(f => ({ ...f, servicePeriodStart: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Period End</Label>
+                <Input className="h-8 text-xs" type="date" value={invoiceForm.servicePeriodEnd}
+                  onChange={e => setInvoiceForm(f => ({ ...f, servicePeriodEnd: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Notes</Label>
+              <Textarea className="text-xs" value={invoiceForm.notes}
+                onChange={e => setInvoiceForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Terms</Label>
+              <Textarea className="text-xs" value={invoiceForm.terms}
+                onChange={e => setInvoiceForm(f => ({ ...f, terms: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => setInvoiceOpen(false)}>Cancel</Button>
+            <Button size="sm"
+              disabled={!invoiceForm.packageId || !invoiceForm.dueDate || !invoiceForm.servicePeriodStart || !invoiceForm.servicePeriodEnd || createInvoiceMutation.isPending}
+              onClick={() => createInvoiceMutation.mutate()}>
+              {createInvoiceMutation.isPending ? 'Creating...' : 'Create Invoice'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -185,6 +185,52 @@ export interface AdminPayment {
   } | null;
 }
 
+export interface AdminPackageInvoice {
+  id: string;
+  invoiceNumber: string;
+  ministryAdminId: string;
+  packageId: string;
+  packageName: string;
+  billingCycle: string;
+  currency: string;
+  amount: number;
+  amountPaid: number;
+  balanceDue: number;
+  status: string;
+  publicToken?: string | null;
+  invoiceDate: string;
+  dueDate: string;
+  servicePeriodStart: string;
+  servicePeriodEnd: string;
+  notes?: string | null;
+  terms?: string | null;
+  sentAt?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
+  package?: { id: string; name: string; displayName: string } | null;
+  ministryAdmin?: { id: string; firstName: string; lastName: string; email: string; ministryName?: string | null; accountCountry?: string | null } | null;
+  payments?: Array<{
+    id: string;
+    amount: number;
+    baseAmount?: number | null;
+    currency: string;
+    status: string;
+    paymentMethod?: string | null;
+    reference?: string | null;
+    notes?: string | null;
+    paidAt?: string | null;
+    createdAt: string;
+    gateway?: string | null;
+  }>;
+}
+
+export interface AdminInvoiceSummary {
+  totalAmount: number;
+  amountPaid: number;
+  balanceDue: number;
+  byStatus: Record<string, number>;
+}
+
 export interface AdminChurch {
   id: string;
   name: string;
@@ -488,6 +534,39 @@ export const adminApi = {
     dateTo?: string;
   }) => apiClient.get<{ success: boolean; data: AdminPayment[]; pagination: Pagination; summary: AdminPaymentSummary }>('/admin/transactions', { params }),
 
+  getInvoices: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    ministry?: string;
+    package?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) => apiClient.get<{ success: boolean; data: AdminPackageInvoice[]; pagination: Pagination; summary: AdminInvoiceSummary }>('/admin/invoices', { params }),
+
+  createInvoice: (data: Partial<AdminPackageInvoice> & {
+    ministryAdminId: string;
+    packageId: string;
+    amount?: number;
+    billingCycle: string;
+    dueDate: string;
+    servicePeriodStart: string;
+    servicePeriodEnd?: string;
+  }) => apiClient.post<{ success: boolean; data: AdminPackageInvoice }>('/admin/invoices', data),
+
+  updateInvoice: (id: string, data: Partial<AdminPackageInvoice>) =>
+    apiClient.put<{ success: boolean; data: AdminPackageInvoice }>(`/admin/invoices/${id}`, data),
+
+  sendInvoice: (id: string) =>
+    apiClient.post<{ success: boolean; data: AdminPackageInvoice; message: string }>(`/admin/invoices/${id}/send`),
+
+  cancelInvoice: (id: string) =>
+    apiClient.post<{ success: boolean; data: AdminPackageInvoice }>(`/admin/invoices/${id}/cancel`),
+
+  recordInvoicePayment: (id: string, data: { amount: number; paymentMethod: string; reference?: string; notes?: string; paidAt?: string }) =>
+    apiClient.post<{ success: boolean; data: AdminPackageInvoice }>(`/admin/invoices/${id}/payments`, data),
+
   getTransactions: (params: {
     page?: number;
     limit?: number;
@@ -586,6 +665,9 @@ export const adminApi = {
     data: unknown[];
     pagination: Pagination;
   }>('/admin/pending-transactions', { params }),
+
+  reconcilePendingTransaction: (id: string) =>
+    apiClient.post<{ success: boolean; message: string }>(`/admin/pending-transactions/${id}/reconcile`),
 
   // Returns all churches (for filter dropdowns)
   getAllChurches: (params?: { ministryId?: string; q?: string; page?: number; limit?: number }) =>

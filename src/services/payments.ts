@@ -1,8 +1,9 @@
 import apiClient from '@/lib/api-client';
 
 export interface SubscriptionPayload {
-  packageId: string;
-  billingCycle: 'monthly' | 'yearly';
+  packageId?: string;
+  billingCycle?: 'monthly' | 'yearly';
+  invoiceId?: string;
 }
 
 export interface PaymentInitResponse {

@@ -60,6 +60,7 @@ const EventTickets = lazy(() => import("./pages/EventTickets"));
 const PublicEvent = lazy(() => import("./pages/PublicEvent"));
 const PublicCampaign = lazy(() => import("./pages/PublicCampaign"));
 const PaymentCallback = lazy(() => import("./pages/PaymentCallback"));
+const PublicInvoicePayment = lazy(() => import("./pages/PublicInvoicePayment"));
 const MyTickets = lazy(() => import("./pages/MyTickets"));
 const Subaccount = lazy(() => import("./pages/Subaccount"));
 const PublicAttendanceEntry = lazy(() => import("./pages/PublicAttendanceEntry"));
@@ -71,6 +72,7 @@ const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminUserDetail = lazy(() => import("./pages/admin/AdminUserDetail"));
 const AdminChurchDetail = lazy(() => import("./pages/admin/AdminChurchDetail"));
 const AdminPayments = lazy(() => import("./pages/admin/AdminPayments"));
+const AdminInvoices = lazy(() => import("./pages/admin/AdminInvoices"));
 const AdminTransactions = lazy(() => import("./pages/admin/AdminTransactions"));
 const AdminWithdrawals = lazy(() => import("./pages/admin/AdminWithdrawals"));
 const AdminTreasury = lazy(() => import("./pages/admin/AdminTreasury"));
@@ -119,6 +121,7 @@ const App = () => {
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/events/:id" element={<PublicEvent />} />
                 <Route path="/giving/:id" element={<PublicCampaign />} />
+                <Route path="/invoice/pay/:token" element={<PublicInvoicePayment />} />
               </Route>
 
               {/* Public attendance link (no auth) */}
@@ -178,6 +181,7 @@ const App = () => {
                 <Route path="users/:id" element={<AdminUserDetail />} />
                 <Route path="churches/:id" element={<AdminChurchDetail />} />
                 <Route path="payments" element={<AdminPayments />} />
+                <Route path="invoices" element={<AdminInvoices />} />
                 <Route path="transactions" element={<AdminTransactions />} />
                 <Route path="withdrawals" element={<AdminWithdrawals />} />
                 <Route path="treasury" element={<AdminTreasury />} />

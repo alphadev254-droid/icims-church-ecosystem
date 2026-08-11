@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Search, Eye, Clock, XCircle, AlertTriangle } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Search, Eye, Clock, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { adminApi } from '@/services/adminApi';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useDebounce } from '@/hooks/use-debounce';
+import { toast } from 'sonner';
 
 type Ministry = { id: string; label: string; country: string | null };
 type Church   = { id: string; name: string; ministryAdminId?: string };
@@ -117,7 +118,17 @@ function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
 
 // ─── Detail dialog ────────────────────────────────────────────────────────────
 
-function DetailDialog({ tx, onClose }: { tx: PendingTx; onClose: () => void }) {
+function DetailDialog({
+  tx,
+  onClose,
+  onReconcile,
+  isReconciling,
+}: {
+  tx: PendingTx;
+  onClose: () => void;
+  onReconcile: (tx: PendingTx) => void;
+  isReconciling: boolean;
+}) {
   const expired = isExpired(tx.expiresAt);
 
   const fields: [string, unknown][] = [
@@ -140,15 +151,27 @@ function DetailDialog({ tx, onClose }: { tx: PendingTx; onClose: () => void }) {
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-sm">
-            Pending Transaction
-            {statusBadge(tx.status)}
-            {expired && tx.status === 'pending' && (
-              <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs gap-1">
-                <AlertTriangle className="h-3 w-3" />Expired
-              </Badge>
-            )}
-          </DialogTitle>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              Pending Transaction
+              {statusBadge(tx.status)}
+              {expired && tx.status === 'pending' && (
+                <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs gap-1">
+                  <AlertTriangle className="h-3 w-3" />Expired
+                </Badge>
+              )}
+            </DialogTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-2 text-xs"
+              disabled={isReconciling || !tx.reference}
+              onClick={() => onReconcile(tx)}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isReconciling ? 'animate-spin' : ''}`} />
+              Reconcile
+            </Button>
+          </div>
         </DialogHeader>
 
         {/* Core fields */}
@@ -200,6 +223,7 @@ const STATUSES = ['pending', 'failed', 'abandoned'];
 const TYPES    = ['donation', 'event_ticket', 'package_subscription'];
 
 export default function AdminPendingTransactions() {
+  const queryClient = useQueryClient();
   const [search, setSearch]     = useState('');
   const [status, setStatus]     = useState('');
   const [type, setType]         = useState('');
@@ -247,6 +271,27 @@ export default function AdminPendingTransactions() {
 
   const rows: PendingTx[]  = data?.data ?? [];
   const pagination         = data?.pagination;
+
+  const reconcileMutation = useMutation({
+    mutationFn: (id: string) => adminApi.reconcilePendingTransaction(id),
+    onSuccess: res => {
+      toast.success(res.data.message || 'Pending transaction reconciled');
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-transactions'] });
+      setSelected(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to reconcile pending transaction');
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-transactions'] });
+    },
+  });
+
+  function reconcile(tx: PendingTx) {
+    if (!tx.reference) {
+      toast.error('This pending transaction has no gateway reference yet');
+      return;
+    }
+    reconcileMutation.mutate(tx.id);
+  }
 
   return (
     <div className="space-y-4">
@@ -391,10 +436,22 @@ export default function AdminPendingTransactions() {
                           <span className="text-xs text-muted-foreground">{new Date(tx.createdAt).toLocaleString()}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <Button variant="ghost" size="icon" className="h-7 w-7"
-                            onClick={e => { e.stopPropagation(); setSelected(tx); }}>
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={reconcileMutation.isPending || !tx.reference}
+                              onClick={e => { e.stopPropagation(); reconcile(tx); }}
+                              title="Reconcile"
+                            >
+                              <RefreshCw className={`h-3.5 w-3.5 ${reconcileMutation.isPending ? 'animate-spin' : ''}`} />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7"
+                              onClick={e => { e.stopPropagation(); setSelected(tx); }}>
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -419,7 +476,14 @@ export default function AdminPendingTransactions() {
       )}
 
       {/* Detail dialog */}
-      {selected && <DetailDialog tx={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <DetailDialog
+          tx={selected}
+          onClose={() => setSelected(null)}
+          onReconcile={reconcile}
+          isReconciling={reconcileMutation.isPending}
+        />
+      )}
     </div>
   );
 }

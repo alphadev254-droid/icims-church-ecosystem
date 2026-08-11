@@ -45,6 +45,45 @@ export interface Payment {
   package?: { name: string; displayName: string } | null;
 }
 
+export interface PackageInvoice {
+  id: string;
+  invoiceNumber: string;
+  ministryAdminId: string;
+  packageId: string;
+  packageName: string;
+  billingCycle: string;
+  currency: string;
+  amount: number;
+  amountPaid: number;
+  balanceDue: number;
+  status: string;
+  publicToken?: string | null;
+  invoiceDate: string;
+  dueDate: string;
+  servicePeriodStart: string;
+  servicePeriodEnd: string;
+  notes?: string | null;
+  terms?: string | null;
+  sentAt?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
+  package?: { id: string; name: string; displayName: string } | null;
+  ministryAdmin?: { id: string; firstName: string; lastName: string; email: string; ministryName?: string | null } | null;
+  payments?: Array<{
+    id: string;
+    amount: number;
+    baseAmount?: number | null;
+    currency: string;
+    status: string;
+    paymentMethod?: string | null;
+    reference?: string | null;
+    notes?: string | null;
+    paidAt?: string | null;
+    createdAt: string;
+    gateway?: string | null;
+  }>;
+}
+
 export const packagesService = {
   // Package tiers
   getAll: async (): Promise<PackageTier[]> => {
@@ -78,6 +117,18 @@ export const packagesService = {
   // Payments
   getPayments: async (): Promise<Payment[]> => {
     const { data } = await apiClient.get('/packages/payments');
+    return data.data;
+  },
+  getInvoices: async (): Promise<PackageInvoice[]> => {
+    const { data } = await apiClient.get('/packages/invoices');
+    return data.data;
+  },
+  getPublicInvoice: async (token: string): Promise<PackageInvoice> => {
+    const { data } = await apiClient.get(`/packages/invoices/public/${token}`);
+    return data.data;
+  },
+  payPublicInvoice: async (token: string): Promise<{ authorization_url: string; reference: string; access_code?: string }> => {
+    const { data } = await apiClient.post(`/payments/invoice/${token}/pay`);
     return data.data;
   },
   calculateFees: async (packageId: string, billingCycle: string): Promise<{
