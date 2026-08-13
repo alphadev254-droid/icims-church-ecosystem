@@ -293,7 +293,7 @@ export function MultiGivingDialog({
                     </div>
                     {showChurchSelector && (
                       <div className="min-w-0 space-y-1">
-                        <Label className="text-[11px] sm:text-xs">Church giving through *</Label>
+                        <Label className="text-[11px] sm:text-xs">Select your church if available *</Label>
                         <Select value={row.churchId} onValueChange={value => updateRow(index, { churchId: value, cellId: '' })} disabled={lockInitialChurch || campaignChurches.length === 1}>
                           <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm">
                             <SelectValue placeholder="Select church" />
