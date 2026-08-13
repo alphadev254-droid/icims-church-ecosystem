@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Building2, ShieldOff, ShieldCheck, Trash2, KeyRound, Edit2, Package, Plus, RefreshCw, Mail, FileText } from 'lucide-react';
@@ -145,6 +145,24 @@ function inputToList(value: string) {
 const DEFAULT_INVOICE_NOTES = 'This invoice covers ICIMS package access for the selected service period. Please review the package, amount, service period, and due date before payment. Online payments through the invoice link will update this invoice automatically.';
 const DEFAULT_INVOICE_TERMS = 'Payment is due by the due date shown on this invoice.';
 
+function invoiceCurrency(country?: string | null) {
+  return country === 'Malawi' ? 'MWK' : 'KES';
+}
+
+function calculateInvoicePackageAmount(
+  pkg: { priceMonthly?: number; priceYearly?: number } | undefined,
+  billingCycle: string,
+  country: string | null | undefined,
+  rates?: { mwkRate: number; kesRate: number; malawiDiscount: number; kenyaDiscount: number },
+) {
+  if (!pkg || !rates) return '';
+  const usdAmount = billingCycle === 'yearly' ? Number(pkg.priceYearly ?? 0) : Number(pkg.priceMonthly ?? 0);
+  const isMalawi = country === 'Malawi';
+  const rate = isMalawi ? rates.mwkRate : rates.kesRate;
+  const discount = isMalawi ? rates.malawiDiscount : rates.kenyaDiscount;
+  return String(Math.round(usdAmount * rate * discount));
+}
+
 export default function AdminUserDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -187,6 +205,24 @@ export default function AdminUserDetail() {
     queryFn: () => adminApi.getPackages().then(r => r.data.data),
   });
   const packages = packagesData ?? [];
+
+  const { data: packageRates } = useQuery({
+    queryKey: ['admin-package-rates'],
+    queryFn: () => adminApi.getPackageRates().then(r => r.data.data),
+  });
+
+  const invoiceCountry = data?.resolvedCountry ?? data?.accountCountry;
+  const selectedInvoicePackage = packages.find((pkg: any) => pkg.id === invoiceForm.packageId)
+    || data?.subscriptions?.find((sub: AdminSubscription) => sub.packageId === invoiceForm.packageId)?.package
+    || (data?.subscription?.packageId === invoiceForm.packageId ? data.subscription.package : undefined);
+
+  useEffect(() => {
+    if (!invoiceOpen || !invoiceForm.packageId) return;
+    const amount = calculateInvoicePackageAmount(selectedInvoicePackage, invoiceForm.billingCycle, invoiceCountry, packageRates);
+    if (amount && amount !== invoiceForm.amount) {
+      setInvoiceForm(f => ({ ...f, amount }));
+    }
+  }, [invoiceOpen, invoiceForm.packageId, invoiceForm.billingCycle, invoiceForm.amount, selectedInvoicePackage, invoiceCountry, packageRates]);
 
   const { data: churchesData } = useQuery({
     queryKey: ['admin-all-churches', churchSearch],
@@ -377,10 +413,12 @@ export default function AdminUserDetail() {
     startDate.setDate(startDate.getDate() + (current?.expiresAt ? 1 : 0));
     const start = startDate.toISOString().split('T')[0];
     const billingCycle = 'monthly';
+    const packageId = current?.packageId || packages[0]?.id || '';
+    const initialPackage = packages.find((pkg: any) => pkg.id === packageId) || current?.package;
     setInvoiceForm({
-      packageId: current?.packageId || packages[0]?.id || '',
+      packageId,
       billingCycle,
-      amount: '',
+      amount: calculateInvoicePackageAmount(initialPackage, billingCycle, invoiceCountry, packageRates),
       dueDate: current?.expiresAt ? toDateInput(current.expiresAt) : today(),
       servicePeriodStart: start,
       servicePeriodEnd: addMonthsMinusDay(startDate, 1),
@@ -738,14 +776,21 @@ export default function AdminUserDetail() {
 
       {/* Generate Invoice Dialog */}
       <Dialog open={invoiceOpen} onOpenChange={setInvoiceOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-base">Generate Package Invoice</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-y-auto pr-1">
             <div className="space-y-1">
               <Label className="text-xs">Package</Label>
-              <Select value={invoiceForm.packageId} onValueChange={v => setInvoiceForm(f => ({ ...f, packageId: v }))}>
+              <Select value={invoiceForm.packageId} onValueChange={v => {
+                const pkg = packages.find((p: any) => p.id === v);
+                setInvoiceForm(f => ({
+                  ...f,
+                  packageId: v,
+                  amount: calculateInvoicePackageAmount(pkg, f.billingCycle, invoiceCountry, packageRates),
+                }));
+              }}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select package" /></SelectTrigger>
                 <SelectContent>
                   {packages.map((p: any) => (
@@ -757,7 +802,11 @@ export default function AdminUserDetail() {
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">Billing</Label>
-                <Select value={invoiceForm.billingCycle} onValueChange={v => setInvoiceForm(f => ({ ...f, billingCycle: v }))}>
+                <Select value={invoiceForm.billingCycle} onValueChange={v => setInvoiceForm(f => ({
+                  ...f,
+                  billingCycle: v,
+                  amount: calculateInvoicePackageAmount(selectedInvoicePackage, v, invoiceCountry, packageRates),
+                }))}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="monthly" className="text-xs">Monthly</SelectItem>
@@ -767,9 +816,12 @@ export default function AdminUserDetail() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Amount</Label>
+                <Label className="text-xs">Amount ({invoiceCurrency(invoiceCountry)})</Label>
                 <Input className="h-8 text-xs" type="number" value={invoiceForm.amount}
-                  onChange={e => setInvoiceForm(f => ({ ...f, amount: e.target.value }))} placeholder="Auto" />
+                  readOnly
+                  aria-readonly="true"
+                  title="Amount is calculated from the selected package and billing cycle"
+                  placeholder={packageRates ? 'Auto' : 'Loading rates...'} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -812,7 +864,7 @@ export default function AdminUserDetail() {
                 onChange={e => setInvoiceForm(f => ({ ...f, terms: e.target.value }))} />
             </div>
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 pt-2 border-t">
             <Button variant="outline" size="sm" onClick={() => setInvoiceOpen(false)}>Cancel</Button>
             <Button size="sm"
               disabled={!invoiceForm.packageId || !invoiceForm.dueDate || !invoiceForm.servicePeriodStart || !invoiceForm.servicePeriodEnd || createInvoiceMutation.isPending}
