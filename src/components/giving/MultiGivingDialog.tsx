@@ -20,6 +20,7 @@ type CampaignOption = {
 };
 
 type CellOption = { id: string; name: string; zone?: string | null };
+const EMPTY_CELLS: CellOption[] = [];
 
 type GivingRow = {
   campaignId: string;
@@ -57,7 +58,7 @@ export function MultiGivingDialog({
   lockInitialChurch = false,
   mode,
   memberChurchId,
-  memberCells = [],
+  memberCells = EMPTY_CELLS,
 }: MultiGivingDialogProps) {
   const activeCampaigns = useMemo(
     () => campaigns.filter(campaign => !campaign.status || campaign.status === 'active'),
