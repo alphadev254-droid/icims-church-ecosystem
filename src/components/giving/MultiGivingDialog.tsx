@@ -163,8 +163,8 @@ export function MultiGivingDialog({
     : memberCells;
 
   const submit = async () => {
-    if (mode === 'guest' && (!guestName.trim() || !guestEmail.trim())) {
-      toast.error('Full name and email are required');
+    if (mode === 'guest' && (!guestName.trim() || !guestPhone.trim())) {
+      toast.error('Full name and phone number are required');
       return;
     }
 
@@ -220,8 +220,8 @@ export function MultiGivingDialog({
             items: normalized,
             churchId: checkoutChurchId,
             guestName: guestName.trim(),
-            guestEmail: guestEmail.trim(),
-            guestPhone: guestPhone.trim() || undefined,
+            guestEmail: guestEmail.trim() || undefined,
+            guestPhone: guestPhone.trim(),
           })
         : await givingService.donateMultiple({ items: normalized, churchId: memberChurchId || checkoutChurchId || undefined });
 
@@ -252,11 +252,13 @@ export function MultiGivingDialog({
                 <Input value={guestName} onChange={event => setGuestName(event.target.value)} placeholder="John Doe" />
               </div>
               <div className="space-y-1">
-                <Label>Email *</Label>
+                <Label>Email (optional)</Label>
+                <p className="text-xs text-muted-foreground">Use your church account email, or add one to receive your receipt.</p>
                 <Input type="email" value={guestEmail} onChange={event => setGuestEmail(event.target.value)} placeholder="john@example.com" />
               </div>
               <div className="space-y-1 sm:col-span-2">
-                <Label>Phone (optional)</Label>
+                <Label>Phone *</Label>
+                <p className="text-xs text-muted-foreground">Use the phone number on your church account so this giving can be linked to you.</p>
                 <Input value={guestPhone} onChange={event => setGuestPhone(event.target.value)} placeholder="+265 999 000 000" />
               </div>
             </div>
@@ -287,9 +289,9 @@ export function MultiGivingDialog({
                     </div>
                     {showChurchSelector && (
                       <div className="min-w-0 space-y-1">
-                        <Label className="text-[11px] sm:text-xs">Church *</Label>
+                        <Label className="text-[11px] sm:text-xs">Member church *</Label>
                         <Select value={row.churchId} onValueChange={value => updateRow(index, { churchId: value, cellId: '' })}>
-                          <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm"><SelectValue placeholder="Select church" /></SelectTrigger>
+                          <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm"><SelectValue placeholder="Select member church" /></SelectTrigger>
                           <SelectContent>
                             {campaignChurches.map(church => (
                               <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>

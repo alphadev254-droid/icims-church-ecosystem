@@ -31,7 +31,14 @@ export default function PublicCampaignPage() {
     enabled: !!id,
   });
   const campaignUrl = window.location.href;
-  const campaignChurches = campaign?.availableChurches || (campaign?.churchId ? [{ id: campaign.churchId, name: campaign.church?.name || 'Church' }] : []);
+  const campaignChurches = useMemo(
+    () => campaign?.availableChurches?.length
+      ? campaign.availableChurches
+      : campaign?.churchId
+        ? [{ id: campaign.churchId, name: campaign.church?.name || 'Church' }]
+        : [],
+    [campaign],
+  );
   const linkedChurchIds = useMemo(() => {
     const fromMulti = churchIdsParam
       .split(',')
@@ -40,15 +47,26 @@ export default function PublicCampaignPage() {
     return fromMulti.length > 0 ? fromMulti : churchIdParam ? [churchIdParam] : [];
   }, [churchIdParam, churchIdsParam]);
   const hasChurchRestriction = linkedChurchIds.length > 0;
-  const availableChurches = hasChurchRestriction
-    ? campaignChurches.filter(church => linkedChurchIds.includes(church.id))
-    : campaignChurches;
-  const hasLockedChurch = linkedChurchIds.length === 1 && availableChurches.some(church => church.id === linkedChurchIds[0]);
+  const restrictedChurches = useMemo(
+    () => hasChurchRestriction
+      ? campaignChurches.filter(church => linkedChurchIds.includes(church.id))
+      : campaignChurches,
+    [campaignChurches, hasChurchRestriction, linkedChurchIds],
+  );
+  const hasInvalidChurchRestriction = hasChurchRestriction && restrictedChurches.length === 0;
+  const availableChurches = hasInvalidChurchRestriction ? campaignChurches : restrictedChurches;
+  const hasLockedChurch = !hasInvalidChurchRestriction && linkedChurchIds.length === 1 && availableChurches.some(church => church.id === linkedChurchIds[0]);
   const resolvedChurchId = availableChurches.length === 1 ? availableChurches[0].id : selectedChurchId;
+  const shouldChooseChurch = availableChurches.length > 1 || hasInvalidChurchRestriction;
+  const canShowGivingFields = !shouldChooseChurch || !!resolvedChurchId;
 
   useEffect(() => {
     if (hasLockedChurch) {
       setSelectedChurchId(linkedChurchIds[0]);
+      return;
+    }
+    if (availableChurches.length === 1 && selectedChurchId !== availableChurches[0].id) {
+      setSelectedChurchId(availableChurches[0].id);
       return;
     }
     if (selectedChurchId && !availableChurches.some(church => church.id === selectedChurchId)) {
@@ -58,7 +76,7 @@ export default function PublicCampaignPage() {
 
   // Load cells for fellowship_offering campaigns
   const { data: cells = [] } = useQuery({
-    queryKey: ['public-campaign-cells', id, selectedChurchId],
+    queryKey: ['public-campaign-cells', id, resolvedChurchId],
     queryFn: () => givingService.getPublicCampaignCells(id!, resolvedChurchId || undefined),
     enabled: !!id && campaign?.category === 'fellowship_offering' && (availableChurches.length <= 1 || !!resolvedChurchId),
   });
@@ -103,8 +121,8 @@ export default function PublicCampaignPage() {
 
   const handleDonate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.guestName.trim() || !form.guestEmail.trim()) {
-      toast.error('Full name and email are required');
+    if (!form.guestName.trim() || !form.guestPhone.trim()) {
+      toast.error('Full name and phone number are required');
       return;
     }
     const amount = parseFloat(form.amount);
@@ -117,7 +135,11 @@ export default function PublicCampaignPage() {
       return;
     }
     if (availableChurches.length > 1 && !resolvedChurchId) {
-      toast.error('Please select your church');
+      toast.error('Please select your member church, or the church you are giving through');
+      return;
+    }
+    if (!canShowGivingFields) {
+      toast.error('Please select your member church first');
       return;
     }
     setLoading(true);
@@ -127,8 +149,8 @@ export default function PublicCampaignPage() {
         churchId: resolvedChurchId || undefined,
         amount,
         guestName: form.guestName.trim(),
-        guestEmail: form.guestEmail.trim(),
-        guestPhone: form.guestPhone.trim() || undefined,
+        guestEmail: form.guestEmail.trim() || undefined,
+        guestPhone: form.guestPhone.trim(),
         ...(campaign?.category === 'fellowship_offering' && cellId ? { cellId } : {}),
       });
       window.location.href = result.authorization_url;
@@ -229,7 +251,7 @@ export default function PublicCampaignPage() {
           <DialogHeader>
             <DialogTitle>Give to {campaign.name}</DialogTitle>
             <p className="text-sm text-muted-foreground pt-1">
-              Fill in your details to proceed to payment. A receipt will be sent to your email.
+              Fill in your details to proceed to payment. If your phone or email matches your church membership, this giving will be linked to your profile.
             </p>
           </DialogHeader>
 
@@ -245,29 +267,36 @@ export default function PublicCampaignPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="guestEmail">Email Address *</Label>
+              <Label htmlFor="guestEmail">Email Address (optional)</Label>
+              <p className="text-xs text-muted-foreground">Enter the email on your church account, or add one to receive your receipt.</p>
               <Input
                 id="guestEmail"
                 type="email"
                 placeholder="john@example.com"
                 value={form.guestEmail}
                 onChange={e => setForm(f => ({ ...f, guestEmail: e.target.value }))}
-                required
               />
-              <p className="text-xs text-muted-foreground">Your receipt will be sent to this email</p>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="guestPhone">Phone Number (optional)</Label>
+              <Label htmlFor="guestPhone">Phone Number *</Label>
+              <p className="text-xs text-muted-foreground">Enter the phone number on your church account so we can link this giving to you.</p>
               <Input
                 id="guestPhone"
                 type="tel"
                 placeholder="+265 999 000 000"
                 value={form.guestPhone}
                 onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))}
+                required
               />
             </div>
 
-            {availableChurches.length > 1 && (
+            {hasInvalidChurchRestriction && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                The church on this link is no longer available. Please select a valid church for this campaign.
+              </div>
+            )}
+
+            {shouldChooseChurch && (
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div className="min-w-0 space-y-1">
                   <Label className="text-[11px] sm:text-xs">Campaign</Label>
@@ -276,10 +305,10 @@ export default function PublicCampaignPage() {
                   </div>
                 </div>
                 <div className="min-w-0 space-y-1">
-                  <Label className="text-[11px] sm:text-xs">Church <span className="text-destructive">*</span></Label>
+                  <Label className="text-[11px] sm:text-xs">Member church <span className="text-destructive">*</span></Label>
                   <Select value={selectedChurchId} onValueChange={value => { setSelectedChurchId(value); setCellId(''); }} disabled={hasLockedChurch}>
                     <SelectTrigger className="h-9 px-2 text-xs sm:h-10 sm:px-3 sm:text-sm">
-                      <SelectValue placeholder="Select church" />
+                      <SelectValue placeholder="Select member church" />
                     </SelectTrigger>
                     <SelectContent>
                       {availableChurches.map(church => (
@@ -291,6 +320,12 @@ export default function PublicCampaignPage() {
               </div>
             )}
 
+            {!canShowGivingFields ? (
+              <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                Select a church to choose the cell/fellowship and enter your giving amount.
+              </div>
+            ) : (
+              <>
             {/* Cell dropdown — only for fellowship_offering */}
             {campaign?.category === 'fellowship_offering' && (
               <div className="space-y-1">
@@ -357,8 +392,10 @@ export default function PublicCampaignPage() {
                 )}
               </div>
             )}
+              </>
+            )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !canShowGivingFields}>
               {loading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing...</> : 'Proceed to Payment'}
             </Button>
           </form>
