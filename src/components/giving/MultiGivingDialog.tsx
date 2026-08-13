@@ -258,6 +258,10 @@ export function MultiGivingDialog({
         <div className="space-y-4">
           {mode === 'guest' && (
             <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-sm">Are you a church member or guest?</Label>
+                <p className="text-xs text-muted-foreground">Choose how this giving should be recorded.</p>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
