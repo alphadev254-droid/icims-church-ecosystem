@@ -179,12 +179,12 @@ export const givingService = {
     return data.data;
   },
 
-  async guestDonate(dto: { campaignId: string; churchId?: string; amount: number; guestName: string; guestEmail?: string; guestPhone: string; cellId?: string }): Promise<any> {
+  async guestDonate(dto: { campaignId: string; churchId?: string; amount: number; guestName: string; guestEmail?: string; guestPhone: string; cellId?: string; donorType?: 'member' | 'guest' }): Promise<any> {
     const { data } = await apiClient.post('/giving/guest-donate', dto);
     return data.data;
   },
 
-  async guestDonateMultiple(dto: { items: GivingLineDto[]; churchId?: string; guestName: string; guestEmail?: string; guestPhone: string }): Promise<any> {
+  async guestDonateMultiple(dto: { items: GivingLineDto[]; churchId?: string; guestName: string; guestEmail?: string; guestPhone: string; donorType?: 'member' | 'guest' }): Promise<any> {
     const { data } = await apiClient.post('/giving/guest-donate-multiple', dto);
     return data.data;
   },

@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { givingService } from '@/services/giving';
 
 type CampaignOption = {
@@ -69,6 +70,7 @@ export function MultiGivingDialog({
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
+  const [publicDonorType, setPublicDonorType] = useState<'member' | 'guest'>('member');
   const [publicCellsByCampaign, setPublicCellsByCampaign] = useState<Record<string, CellOption[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const allowedChurchSet = useMemo(
@@ -94,7 +96,7 @@ export function MultiGivingDialog({
     if (mode === 'member') return memberChurchId || '';
     const churches = getCampaignChurches(campaignId);
     if (initialChurchId && churches.some(church => church.id === initialChurchId)) return initialChurchId;
-    return '';
+    return churches.length === 1 ? churches[0].id : '';
   };
 
   const getDefaultCellId = (campaignId: string, churchId?: string) => {
@@ -110,6 +112,7 @@ export function MultiGivingDialog({
     if (!open) return;
     const campaignId = initialCampaignId || activeCampaigns[0]?.id || '';
     const churchId = getDefaultChurchId(campaignId);
+    setPublicDonorType('member');
     setRows([{ ...emptyRow(campaignId, churchId), cellId: getDefaultCellId(campaignId, churchId) }]);
   }, [activeCampaigns, initialCampaignId, initialChurchId, memberCells, memberChurchId, open]);
 
@@ -223,6 +226,7 @@ export function MultiGivingDialog({
             guestName: guestName.trim(),
             guestEmail: guestEmail.trim() || undefined,
             guestPhone: guestPhone.trim(),
+            donorType: publicDonorType,
           })
         : await givingService.donateMultiple({ items: normalized, churchId: memberChurchId || checkoutChurchId || undefined });
 
@@ -247,20 +251,48 @@ export function MultiGivingDialog({
 
         <div className="space-y-4">
           {mode === 'guest' && (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPublicDonorType('member')}
+                  className="flex items-center gap-2 rounded-md border p-3 text-left text-sm transition-colors hover:bg-muted/70"
+                >
+                  <Checkbox checked={publicDonorType === 'member'} onCheckedChange={() => setPublicDonorType('member')} />
+                  <span className="font-medium">Church member</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPublicDonorType('guest')}
+                  className="flex items-center gap-2 rounded-md border p-3 text-left text-sm transition-colors hover:bg-muted/70"
+                >
+                  <Checkbox checked={publicDonorType === 'guest'} onCheckedChange={() => setPublicDonorType('guest')} />
+                  <span className="font-medium">Guest</span>
+                </button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label>Full Name *</Label>
                 <Input value={guestName} onChange={event => setGuestName(event.target.value)} placeholder="John Doe" />
               </div>
               <div className="space-y-1">
                 <Label>Email (optional)</Label>
-                <p className="text-xs text-muted-foreground">Use your church account email, or add one to receive your receipt.</p>
+                <p className="text-xs text-muted-foreground">
+                  {publicDonorType === 'member'
+                    ? 'Use the email on your church account, or add one to receive your receipt.'
+                    : 'Enter your email if you would like to receive your receipt.'}
+                </p>
                 <Input type="email" value={guestEmail} onChange={event => setGuestEmail(event.target.value)} placeholder="john@example.com" />
               </div>
               <div className="space-y-1 sm:col-span-2">
                 <Label>Phone *</Label>
-                <p className="text-xs text-muted-foreground">Use the phone number on your church account so this giving can be linked to you.</p>
+                <p className="text-xs text-muted-foreground">
+                  {publicDonorType === 'member'
+                    ? 'Use the phone number on your church account so this giving can be linked to you.'
+                    : 'Enter a phone number we can use for this giving record.'}
+                </p>
                 <Input value={guestPhone} onChange={event => setGuestPhone(event.target.value)} placeholder="+265 999 000 000" />
+              </div>
               </div>
             </div>
           )}
@@ -291,9 +323,13 @@ export function MultiGivingDialog({
                     </div>
                     {showChurchSelector && (
                       <div className="min-w-0 space-y-1">
-                        <Label className="text-[11px] sm:text-xs">Member church *</Label>
-                        <Select value={row.churchId} onValueChange={value => updateRow(index, { churchId: value, cellId: '' })} disabled={lockInitialChurch}>
-                          <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm"><SelectValue placeholder="Select member church" /></SelectTrigger>
+                        <Label className="text-[11px] sm:text-xs">
+                          {publicDonorType === 'member' ? 'Member church *' : 'Church giving through *'}
+                        </Label>
+                        <Select value={row.churchId} onValueChange={value => updateRow(index, { churchId: value, cellId: '' })} disabled={lockInitialChurch || campaignChurches.length === 1}>
+                          <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm">
+                            <SelectValue placeholder={publicDonorType === 'member' ? 'Select member church' : 'Select church'} />
+                          </SelectTrigger>
                           <SelectContent>
                             {campaignChurches.map(church => (
                               <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
@@ -305,7 +341,9 @@ export function MultiGivingDialog({
                     </div>
                     {!showGivingFields ? (
                       <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground sm:text-sm">
-                        Select your member church first, then enter the giving amount.
+                        {publicDonorType === 'member'
+                          ? 'Select your member church first, then enter the giving amount.'
+                          : 'Select the church you are giving through first, then enter the giving amount.'}
                       </div>
                     ) : (
                       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
