@@ -93,7 +93,7 @@ export function MultiGivingDialog({
     if (mode === 'member') return memberChurchId || '';
     const churches = getCampaignChurches(campaignId);
     if (initialChurchId && churches.some(church => church.id === initialChurchId)) return initialChurchId;
-    return churches[0]?.id || '';
+    return '';
   };
 
   const getDefaultCellId = (campaignId: string, churchId?: string) => {
@@ -268,7 +268,8 @@ export function MultiGivingDialog({
             {rows.map((row, index) => {
               const campaign = campaignMap.get(row.campaignId);
               const campaignChurches = getCampaignChurches(row.campaignId);
-              const showChurchSelector = mode === 'guest' && campaignChurches.length > 1 && !lockInitialChurch;
+              const showChurchSelector = mode === 'guest' && campaignChurches.length > 0;
+              const showGivingFields = mode !== 'guest' || !!row.churchId;
               const cells = getCellsForRow(row);
               return (
                 <div key={index} className="rounded-md border p-2.5 sm:p-3 space-y-3">
@@ -290,7 +291,7 @@ export function MultiGivingDialog({
                     {showChurchSelector && (
                       <div className="min-w-0 space-y-1">
                         <Label className="text-[11px] sm:text-xs">Member church *</Label>
-                        <Select value={row.churchId} onValueChange={value => updateRow(index, { churchId: value, cellId: '' })}>
+                        <Select value={row.churchId} onValueChange={value => updateRow(index, { churchId: value, cellId: '' })} disabled={lockInitialChurch}>
                           <SelectTrigger className="h-9 px-2 text-xs sm:px-3 sm:text-sm"><SelectValue placeholder="Select member church" /></SelectTrigger>
                           <SelectContent>
                             {campaignChurches.map(church => (
@@ -301,27 +302,33 @@ export function MultiGivingDialog({
                       </div>
                     )}
                     </div>
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
-                      <div className="min-w-0 space-y-1">
-                        <Label className="text-[11px] sm:text-xs">Amount</Label>
-                        <Input
-                          className="h-9 text-sm"
-                          type="number"
-                          min="1"
-                          value={row.amount}
-                          onChange={event => updateRow(index, { amount: event.target.value })}
-                          placeholder="0"
-                        />
+                    {!showGivingFields ? (
+                      <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground sm:text-sm">
+                        Select your member church first, then enter the giving amount.
                       </div>
-                      {!lockInitialCampaign && (
-                        <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeRow(index)} disabled={rows.length === 1}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    ) : (
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+                        <div className="min-w-0 space-y-1">
+                          <Label className="text-[11px] sm:text-xs">Amount</Label>
+                          <Input
+                            className="h-9 text-sm"
+                            type="number"
+                            min="1"
+                            value={row.amount}
+                            onChange={event => updateRow(index, { amount: event.target.value })}
+                            placeholder="0"
+                          />
+                        </div>
+                        {!lockInitialCampaign && (
+                          <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeRow(index)} disabled={rows.length === 1}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {campaign?.category === 'fellowship_offering' && (
+                  {showGivingFields && campaign?.category === 'fellowship_offering' && (
                     <div className="space-y-1">
                       <Label className="text-xs sm:text-sm">Cell / Fellowship *</Label>
                       <Select value={row.cellId} onValueChange={value => updateRow(index, { cellId: value })}>
