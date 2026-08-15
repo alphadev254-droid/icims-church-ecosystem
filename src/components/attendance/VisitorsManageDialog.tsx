@@ -21,15 +21,16 @@ interface Props {
 const PAGE_SIZE = 20;
 
 const TEMPLATE_ROWS = [
-  ['name', 'phone', 'email', 'residentialArea', 'gender', 'ageBracket', 'howHeard', 'notes'],
-  ['John Banda', '+265999123456 or +254712345678', 'john@example.com', 'Area 25', 'male', '18-35', 'invited_by_friend', 'First visit'],
+  ['name', 'phone', 'email', 'residentialArea', 'gender', 'ageBracket', 'howHeard', 'isNewConvert', 'notes'],
+  ['John Banda', '+265999123456 or +254712345678', 'john@example.com', 'Area 25', 'male', '18-35', 'invited_by_friend', 'false', 'First visit'],
 ];
 
 const FIELD_MAP: Record<string, keyof AttendanceVisitor> = {
   name: 'name', fullname: 'name', phone: 'phone', phonenumber: 'phone',
   email: 'email', emailaddress: 'email', residentialarea: 'residentialArea',
   area: 'residentialArea', gender: 'gender', agebracket: 'ageBracket',
-  age: 'ageBracket', howheard: 'howHeard', howyouheard: 'howHeard', notes: 'notes',
+  age: 'ageBracket', howheard: 'howHeard', howyouheard: 'howHeard',
+  isnewconvert: 'isNewConvert', newconvert: 'isNewConvert', notes: 'notes',
 };
 
 export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Props) {
@@ -140,7 +141,10 @@ export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Prop
         headers.forEach((h: string, idx: number) => {
           const field = FIELD_MAP[h];
           if (field && row[idx] !== undefined && row[idx] !== null) {
-            (visitor as any)[field] = String(row[idx]).trim();
+            const value = String(row[idx]).trim();
+            (visitor as any)[field] = field === 'isNewConvert'
+              ? ['true', 'yes', '1', 'y'].includes(value.toLowerCase())
+              : value;
           }
         });
         if (!visitor.name) { errors++; setUploadProgress(p => p ? { ...p, errors: p.errors + 1 } : null); continue; }
@@ -198,6 +202,7 @@ export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Prop
                     {v.gender && <span>{GENDER_LABELS[v.gender] ?? v.gender}</span>}
                     {v.ageBracket && <span>{v.ageBracket} yrs</span>}
                     {v.howHeard && <span>Via: {HOW_HEARD_LABELS[v.howHeard] ?? v.howHeard}</span>}
+                    {v.isNewConvert && <span className="font-medium text-accent">New convert</span>}
                   </div>
                   {v.notes && <div className="text-xs text-muted-foreground italic col-span-2 sm:col-span-3">{v.notes}</div>}
                 </div>
@@ -264,6 +269,10 @@ export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Prop
               </div>
             </div>
             <div><Label className="text-xs">Notes</Label><Input className="h-8 text-sm mt-0.5" value={draft.notes ?? ''} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={draft.isNewConvert === true} onCheckedChange={checked => setDraft(d => ({ ...d, isNewConvert: checked === true }))} />
+              New convert
+            </label>
             <div className="flex gap-2 justify-end">
               <Button type="button" variant="outline" size="sm" onClick={() => { setAddOpen(false); setDraft({ name: '' }); }}>Cancel</Button>
               <Button type="submit" size="sm" disabled={addMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">

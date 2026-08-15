@@ -61,6 +61,7 @@ export interface PublicAttendanceSubmission {
   adults?: number;
   seniors?: number;
   newVisitors?: number;
+  newConverts?: number;
   notes?: string;
   visitors?: Array<{
     name: string;
@@ -71,6 +72,8 @@ export interface PublicAttendanceSubmission {
     ageBracket?: string;
     howHeard?: string;
     notes?: string;
+    isNewConvert?: boolean;
+    invitedByUserId?: string;
   }>;
 }
 

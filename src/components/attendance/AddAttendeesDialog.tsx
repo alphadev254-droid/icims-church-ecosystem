@@ -21,6 +21,7 @@ type VisitorForm = {
   guestGender: string;
   guestAgeBracket: string;
   guestFirstTime: boolean;
+  isNewConvert: boolean;
   invitedBy: string;
 };
 
@@ -31,6 +32,7 @@ const emptyVisitorForm: VisitorForm = {
   guestGender: '',
   guestAgeBracket: '',
   guestFirstTime: false,
+  isNewConvert: false,
   invitedBy: '',
 };
 
@@ -97,6 +99,7 @@ export function AddAttendeesDialog({
       guestGender: visitorForm.guestGender || undefined,
       guestAgeBracket: visitorForm.guestAgeBracket || undefined,
       guestFirstTime: visitorType === 'guest' ? visitorForm.guestFirstTime : false,
+      isNewConvert: visitorType === 'guest' ? visitorForm.isNewConvert : false,
       invitedBy: visitorType === 'guest' ? visitorForm.invitedBy.trim() || undefined : undefined,
     }),
     onSuccess: () => {
@@ -316,6 +319,10 @@ export function AddAttendeesDialog({
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox checked={visitorForm.guestFirstTime} onCheckedChange={checked => setVisitorForm(form => ({ ...form, guestFirstTime: checked === true }))} />
                     First time visiting
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={visitorForm.isNewConvert} onCheckedChange={checked => setVisitorForm(form => ({ ...form, isNewConvert: checked === true }))} />
+                    New convert
                   </label>
                 </>
               )}

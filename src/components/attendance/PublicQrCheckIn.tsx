@@ -47,6 +47,7 @@ export function PublicQrCheckIn({
     guestGender: '',
     guestAgeBracket: '',
     guestFirstTime: false,
+    isNewConvert: false,
     invitedBy: '',
   });
 
@@ -131,6 +132,7 @@ export function PublicQrCheckIn({
         guestGender: form.guestGender || undefined,
         guestAgeBracket: form.guestAgeBracket || undefined,
         guestFirstTime: visitorType === 'guest' ? form.guestFirstTime : false,
+        isNewConvert: visitorType === 'guest' ? form.isNewConvert : false,
         invitedBy: visitorType === 'guest' ? form.invitedBy.trim() || undefined : undefined,
       });
       setSuccessName(form.guestName.trim());
@@ -291,6 +293,10 @@ export function PublicQrCheckIn({
                     <label className="flex items-center gap-2 text-sm">
                       <Checkbox checked={form.guestFirstTime} onCheckedChange={checked => setForm(f => ({ ...f, guestFirstTime: checked === true }))} />
                       First time visiting
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={form.isNewConvert} onCheckedChange={checked => setForm(f => ({ ...f, isNewConvert: checked === true }))} />
+                      New convert
                     </label>
                   </>
                 )}

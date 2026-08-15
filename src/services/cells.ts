@@ -66,6 +66,8 @@ export interface CellAttendanceRecord {
   visitorEmail?: string;
   isFirstTime?: boolean;
   invitedByUserId?: string;
+  invitedByUser?: { id: string; firstName: string; lastName: string; email?: string | null; phone?: string | null } | null;
+  isNewConvert?: boolean;
   notes?: string;
   user?: { id: string; firstName: string; lastName: string; memberType?: string | null } | null;
 }

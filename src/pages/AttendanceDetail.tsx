@@ -174,12 +174,14 @@ export default function AttendanceDetailPage() {
   const filteredFemaleCount = filteredParticipants.filter(p => getParticipantMeta(p).gender === 'female').length;
   const filteredMinistryMemberGuestCount = filteredParticipants.filter(p => getParticipantMeta(p).isMinistryMemberGuest).length;
   const filteredTrueVisitorCount = filteredParticipants.filter(p => getParticipantMeta(p).isTrueVisitor).length;
+  const filteredNewConvertCount = filteredParticipants.filter(p => p.isNewConvert).length;
   const participantExportSummary = [
     { label: 'Total participants', value: filteredParticipants.length },
     { label: 'Male', value: filteredMaleCount },
     { label: 'Female', value: filteredFemaleCount },
     { label: 'Visitors', value: filteredTrueVisitorCount },
     { label: 'Ministry member guests', value: filteredMinistryMemberGuestCount },
+    { label: 'New converts', value: filteredNewConvertCount },
   ];
   const participantExportData = filteredParticipants.map(participant => {
     const meta = getParticipantMeta(participant);
@@ -203,8 +205,14 @@ export default function AttendanceDetailPage() {
       guestName: participant.guestName || '',
       guestEmail: participant.guestEmail || '',
       guestPhone: participant.guestPhone || '',
+      guestResidentialArea: participant.guestResidentialArea || '',
+      guestHowHeard: participant.guestHowHeard || '',
+      guestNotes: participant.guestNotes || '',
       guestFirstTime: participant.guestFirstTime ? 'Yes' : 'No',
-      invitedBy: participant.invitedBy || '',
+      invitedBy: participant.invitedByUser
+        ? `${participant.invitedByUser.firstName} ${participant.invitedByUser.lastName}`.trim()
+        : participant.invitedBy || '',
+      isNewConvert: participant.isNewConvert ? 'Yes' : 'No',
       attendanceId: participant.attendanceId,
       participantId: participant.id,
     };
@@ -229,8 +237,12 @@ export default function AttendanceDetailPage() {
     { label: 'Guest Name', key: 'guestName' },
     { label: 'Guest Email', key: 'guestEmail' },
     { label: 'Guest Phone', key: 'guestPhone' },
+    { label: 'Guest Residential Area', key: 'guestResidentialArea' },
+    { label: 'Guest How Heard', key: 'guestHowHeard' },
+    { label: 'Guest Notes', key: 'guestNotes' },
     { label: 'Guest First Time', key: 'guestFirstTime' },
     { label: 'Invited By', key: 'invitedBy' },
+    { label: 'New Convert', key: 'isNewConvert' },
     { label: 'Attendance ID', key: 'attendanceId' },
     { label: 'Participant ID', key: 'participantId' },
   ];
@@ -266,7 +278,7 @@ export default function AttendanceDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-8">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total</CardTitle></CardHeader>
           <CardContent className="flex items-center justify-between">
@@ -288,6 +300,10 @@ export default function AttendanceDetailPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Ministry Member Guests</CardTitle></CardHeader>
           <CardContent className="font-heading text-2xl font-bold">{ministryMemberGuestCount}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">New Converts</CardTitle></CardHeader>
+          <CardContent className="font-heading text-2xl font-bold">{participants.filter(p => p.isNewConvert).length}</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">QR Status</CardTitle></CardHeader>
@@ -378,6 +394,7 @@ export default function AttendanceDetailPage() {
                     <span>Gender: <strong className="text-foreground">{meta.gender || '-'}</strong></span>
                     <span>Age: <strong className="text-foreground">{meta.ageLabel || '-'}</strong></span>
                     <span>Age group: <strong className="text-foreground">{meta.ageGroupLabel || '-'}</strong></span>
+                    <span>New convert: <strong className="text-foreground">{participant.isNewConvert ? 'Yes' : 'No'}</strong></span>
                     <span>Member type: <strong className="text-foreground capitalize">{meta.memberTypeLabel || '-'}</strong></span>
                     <span className="col-span-2">Home church: <strong className="text-foreground">{meta.homeChurch || '-'}</strong></span>
                     <span className="col-span-2">Ticket church: <strong className="text-foreground">{meta.attendanceChurch || '-'}</strong></span>
@@ -400,6 +417,7 @@ export default function AttendanceDetailPage() {
                   <TableHead>Age</TableHead>
                   <TableHead>Age Group</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>New Convert</TableHead>
                   <TableHead>Member Type</TableHead>
                   <TableHead>Home Church</TableHead>
                   <TableHead>Ticket Church</TableHead>
@@ -410,7 +428,7 @@ export default function AttendanceDetailPage() {
               </TableHeader>
               <TableBody>
                 {participantsLoading ? (
-                  <TableRow><TableCell colSpan={12} className="py-10 text-center text-muted-foreground">Loading participants...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={13} className="py-10 text-center text-muted-foreground">Loading participants...</TableCell></TableRow>
                 ) : filteredParticipants.length ? filteredParticipants.map(participant => {
                   const meta = getParticipantMeta(participant);
                   return (
@@ -423,6 +441,7 @@ export default function AttendanceDetailPage() {
                       <TableCell>
                         <Badge variant="outline">{meta.participantType}</Badge>
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{participant.isNewConvert ? 'Yes' : '-'}</TableCell>
                       <TableCell className="text-sm capitalize text-muted-foreground">{meta.memberTypeLabel || '-'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{meta.homeChurch || '-'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{meta.attendanceChurch || '-'}</TableCell>
@@ -432,7 +451,7 @@ export default function AttendanceDetailPage() {
                     </TableRow>
                   );
                 }) : (
-                  <TableRow><TableCell colSpan={12} className="py-10 text-center text-muted-foreground">No participants match the filters.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={13} className="py-10 text-center text-muted-foreground">No participants match the filters.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>

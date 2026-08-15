@@ -425,6 +425,7 @@ export default function ReportsPage() {
         const checkedInParticipants = (a as any).checkedInParticipants ?? (a as any)._count?.participants ?? 0;
         const visitors = (a as any).trueVisitors ?? (a as any).newVisitors ?? 0;
         const ministryMemberGuests = (a as any).ministryMemberGuests ?? 0;
+        const newConverts = (a as any).newConverts ?? 0;
         return [
           new Date(a.date).toLocaleDateString(),
           (a as any).church?.name || '',
@@ -440,10 +441,11 @@ export default function ReportsPage() {
           ((a as any).seniors ?? 0).toString(),
           visitors.toString(),
           ministryMemberGuests.toString(),
+          newConverts.toString(),
           (a as any).notes ?? ''
         ];
       }),
-      ['Date', 'Church', 'Service Type', 'Total', 'Checked-in Participants', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'Visitors', 'Ministry Member Guests', 'Notes'],
+      ['Date', 'Church', 'Service Type', 'Total', 'Checked-in Participants', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'Visitors', 'Ministry Member Guests', 'New Converts', 'Notes'],
     );
   };
 
@@ -646,12 +648,14 @@ export default function ReportsPage() {
         v.ageBracket || '',
         v.residentialArea || '',
         v.howHeard || '',
+        v.isNewConvert ? 'Yes' : 'No',
+        v.invitedByUser ? `${v.invitedByUser.firstName ?? ''} ${v.invitedByUser.lastName ?? ''}`.trim() : '',
         v.notes || '',
         v.attendance?.church?.name || '',
         v.attendance?.serviceType || '',
         v.attendance?.date ? new Date(v.attendance.date).toLocaleDateString() : '',
       ]),
-      ['Name', 'Phone', 'Email', 'Gender', 'Age Bracket', 'Residential Area', 'How Heard', 'Notes', 'Church', 'Service Type', 'Service Date'],
+      ['Name', 'Phone', 'Email', 'Gender', 'Age Bracket', 'Residential Area', 'How Heard', 'New Convert', 'Invited By', 'Notes', 'Church', 'Service Type', 'Service Date'],
     );
   };
 
@@ -673,6 +677,7 @@ export default function ReportsPage() {
         v.visitorPhone || '',
         v.visitorEmail || '',
         v.isFirstTime ? 'First Time' : 'Returning',
+        v.isNewConvert ? 'Yes' : 'No',
         v.meeting?.cell?.name || '',
         v.meeting?.cell?.zone || '',
         v.meeting?.cell?.church?.name || '',
@@ -680,7 +685,7 @@ export default function ReportsPage() {
         v.meeting?.topic || '',
         v.notes || '',
       ]),
-      ['Name', 'Phone', 'Email', 'Visit Type', 'Cell', 'Zone', 'Church', 'Meeting Date', 'Meeting Topic', 'Notes'],
+      ['Name', 'Phone', 'Email', 'Visit Type', 'New Convert', 'Cell', 'Zone', 'Church', 'Meeting Date', 'Meeting Topic', 'Notes'],
     );
   };
 

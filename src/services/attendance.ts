@@ -10,6 +10,9 @@ export interface AttendanceVisitor {
   ageBracket?: string;
   howHeard?: string;
   notes?: string;
+  isNewConvert?: boolean;
+  invitedByUserId?: string;
+  invitedByUser?: { id: string; firstName: string; lastName: string; email?: string | null; phone?: string | null } | null;
 }
 
 export interface AttendanceRecord {
@@ -25,6 +28,7 @@ export interface AttendanceRecord {
   adults?: number;
   seniors?: number;
   newVisitors?: number;
+  newConverts?: number;
   checkedInParticipants?: number;
   trueVisitors?: number;
   ministryMemberGuests?: number;
@@ -51,8 +55,14 @@ export interface AttendanceParticipant {
   guestPhone?: string | null;
   guestGender?: string | null;
   guestAgeBracket?: string | null;
+  guestResidentialArea?: string | null;
+  guestHowHeard?: string | null;
+  guestNotes?: string | null;
   guestFirstTime?: boolean;
   invitedBy?: string | null;
+  invitedByUserId?: string | null;
+  invitedByUser?: { id: string; firstName: string; lastName: string; email?: string | null; phone?: string | null } | null;
+  isNewConvert?: boolean;
   sourceChurch?: { id: string; name: string } | null;
   eventTicket?: {
     id: string;
@@ -195,7 +205,7 @@ export const attendanceService = {
     const { data } = await apiClient.post(`/attendance/${id}/scan-ticket`, { ticket });
     return data.data;
   },
-  scanVisitor: async (id: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestGender?: string; guestAgeBracket?: string; guestFirstTime?: boolean; invitedBy?: string }): Promise<AttendanceParticipant> => {
+  scanVisitor: async (id: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestGender?: string; guestAgeBracket?: string; guestResidentialArea?: string; guestHowHeard?: string; guestNotes?: string; guestFirstTime?: boolean; invitedBy?: string; invitedByUserId?: string; isNewConvert?: boolean }): Promise<AttendanceParticipant> => {
     const { data } = await apiClient.post(`/attendance/${id}/scan-visitor`, dto);
     return data.data;
   },
@@ -207,7 +217,7 @@ export const attendanceService = {
     const { data } = await apiClient.post(`/attendance/${id}/manual-members`, { userIds });
     return { data: data.data, created: data.created ?? data.data.length, skipped: data.skipped ?? 0 };
   },
-  addManualVisitor: async (id: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestGender?: string; guestAgeBracket?: string; guestFirstTime?: boolean; invitedBy?: string }): Promise<AttendanceParticipant> => {
+  addManualVisitor: async (id: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestGender?: string; guestAgeBracket?: string; guestResidentialArea?: string; guestHowHeard?: string; guestNotes?: string; guestFirstTime?: boolean; invitedBy?: string; invitedByUserId?: string; isNewConvert?: boolean }): Promise<AttendanceParticipant> => {
     const { data } = await apiClient.post(`/attendance/${id}/manual-visitor`, dto);
     return data.data;
   },
@@ -219,7 +229,7 @@ export const attendanceService = {
     const { data } = await apiClient.post(`/attendance/check-in/${token}/member`);
     return data.data;
   },
-  checkInGuestByQr: async (token: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestGender?: string; guestAgeBracket?: string; guestFirstTime?: boolean; invitedBy?: string }): Promise<AttendanceParticipant> => {
+  checkInGuestByQr: async (token: string, dto: { guestName: string; guestEmail?: string; guestPhone?: string; guestGender?: string; guestAgeBracket?: string; guestResidentialArea?: string; guestHowHeard?: string; guestNotes?: string; guestFirstTime?: boolean; invitedBy?: string; invitedByUserId?: string; isNewConvert?: boolean }): Promise<AttendanceParticipant> => {
     const { data } = await apiClient.post(`/attendance/check-in/${token}/guest`, dto);
     return data.data;
   },

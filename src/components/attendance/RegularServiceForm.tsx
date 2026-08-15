@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { type AttendanceVisitor } from '@/services/attendance';
 import { ChurchSelect } from '@/components/ChurchSelect';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,7 +40,7 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
 
   const addVisitor = () => setVisitors(v => [...v, { name: '' }]);
   const removeVisitor = (i: number) => setVisitors(v => v.filter((_, idx) => idx !== i));
-  const updateVisitor = (i: number, field: keyof AttendanceVisitor, value: string) =>
+  const updateVisitor = (i: number, field: keyof AttendanceVisitor, value: string | boolean) =>
     setVisitors(v => v.map((vis, idx) => idx === i ? { ...vis, [field]: value } : vis));
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -213,6 +214,13 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
               </div>
             </div>
             <div><Label className="text-xs sm:text-sm">Notes <span className="text-muted-foreground">(optional)</span></Label><Input className="h-9 sm:h-8 text-sm mt-0.5" placeholder="Any additional notes" value={v.notes ?? ''} onChange={e => updateVisitor(i, 'notes', e.target.value)} /></div>
+            <label className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+              <Checkbox
+                checked={v.isNewConvert === true}
+                onCheckedChange={checked => updateVisitor(i, 'isNewConvert', checked === true)}
+              />
+              New convert
+            </label>
           </div>
         ))}
       </div>}

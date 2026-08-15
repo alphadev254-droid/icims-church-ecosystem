@@ -34,6 +34,7 @@ interface AttendanceRow {
   visitorPhone?: string;
   visitorEmail?: string;
   isFirstTime?: boolean;
+  isNewConvert?: boolean;
   status: AttendanceStatus;
   notes?: string;
 }
@@ -405,8 +406,9 @@ export default function CellAttendancePage() {
       visitorPhone: g.visitorPhone ?? '',
       visitorEmail: g.visitorEmail ?? '',
       isFirstTime: g.isFirstTime ?? true,
+      isNewConvert: g.isNewConvert ?? false,
       status: 'present' as AttendanceStatus,
-      notes: '',
+      notes: g.notes ?? '',
     }));
 
     setRows([...memberRows, ...guestRows]);
@@ -445,7 +447,7 @@ export default function CellAttendancePage() {
   };
 
   const addGuest = () => {
-    setRows(r => [...r, { key: `guest-new-${Date.now()}`, isGuest: true, visitorName: '', visitorPhone: '', visitorEmail: '', isFirstTime: true, status: 'present', notes: '' }]);
+    setRows(r => [...r, { key: `guest-new-${Date.now()}`, isGuest: true, visitorName: '', visitorPhone: '', visitorEmail: '', isFirstTime: true, isNewConvert: false, status: 'present', notes: '' }]);
     setSaved(false);
   };
 
@@ -458,7 +460,7 @@ export default function CellAttendancePage() {
         throw new Error('Guest phone is required');
       }
       const records = currentRows.map(row => row.isGuest
-        ? { isVisitor: true, status: row.status, visitorName: row.visitorName, visitorPhone: row.visitorPhone, visitorEmail: row.visitorEmail || undefined, isFirstTime: row.isFirstTime ?? true, notes: row.notes || undefined }
+        ? { isVisitor: true, status: row.status, visitorName: row.visitorName, visitorPhone: row.visitorPhone, visitorEmail: row.visitorEmail || undefined, isFirstTime: row.isFirstTime ?? true, isNewConvert: row.isNewConvert ?? false, notes: row.notes || undefined }
         : { userId: row.userId, status: row.status, isVisitor: false, notes: row.notes || undefined }
       );
       return cellsService.submitAttendance(meetingId!, records);
@@ -482,6 +484,7 @@ export default function CellAttendancePage() {
     Status: r.status,
     ExcuseReason: r.status === 'excused' ? (r.notes ?? '') : '',
     FirstTime: r.isGuest ? (r.isFirstTime ? 'Yes' : 'No') : '',
+    NewConvert: r.isGuest ? (r.isNewConvert ? 'Yes' : 'No') : '',
   }));
 
   const exportHeaders = [
@@ -492,6 +495,7 @@ export default function CellAttendancePage() {
     { label: 'Status', key: 'Status' },
     { label: 'Excuse Reason', key: 'ExcuseReason' },
     { label: 'First Time', key: 'FirstTime' },
+    { label: 'New Convert', key: 'NewConvert' },
   ];
 
   const filteredRows = rows.filter(r => {
@@ -590,12 +594,13 @@ export default function CellAttendancePage() {
               <th className="text-left px-3 py-2 font-medium">Status</th>
               <th className="text-left px-3 py-2 font-medium">Excuse Reason</th>
               <th className="text-left px-3 py-2 font-medium">First Visit</th>
+              <th className="text-left px-3 py-2 font-medium">New Convert</th>
               <th className="w-8"></th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {filteredRows.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground text-xs">No records match this filter.</td></tr>
+              <tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground text-xs">No records match this filter.</td></tr>
             )}
             {filteredRows.map(row => (
               <tr key={row.key} className={`hover:bg-muted/30 ${row.status === 'present' ? 'bg-green-50/30' : row.status === 'excused' ? 'bg-yellow-50/30' : ''}`}>
@@ -674,6 +679,16 @@ export default function CellAttendancePage() {
                     <label className="flex items-center gap-1 text-xs cursor-pointer">
                       <input type="checkbox" checked={row.isFirstTime ?? true} onChange={e => updateGuest(row.key, 'isFirstTime', e.target.checked)} disabled={!canManage} className="h-3 w-3" />
                       {row.isFirstTime ? 'Yes' : 'No'}
+                    </label>
+                  )}
+                </td>
+
+                {/* New convert */}
+                <td className="px-3 py-1.5">
+                  {row.isGuest && (
+                    <label className="flex items-center gap-1 text-xs cursor-pointer">
+                      <input type="checkbox" checked={row.isNewConvert ?? false} onChange={e => updateGuest(row.key, 'isNewConvert', e.target.checked)} disabled={!canManage} className="h-3 w-3" />
+                      {row.isNewConvert ? 'Yes' : 'No'}
                     </label>
                   )}
                 </td>

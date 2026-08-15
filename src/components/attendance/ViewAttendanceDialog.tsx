@@ -109,9 +109,11 @@ export function ViewAttendanceDialog({ record, onClose }: Props) {
                     {v.email && <div className="text-muted-foreground text-xs">{v.email}</div>}
                     {v.residentialArea && <div className="text-muted-foreground text-xs col-span-2 sm:col-span-3">{v.residentialArea}</div>}
                     <div className="text-xs text-muted-foreground flex flex-wrap gap-3 col-span-2 sm:col-span-3 mt-0.5">
+                      {v.isNewConvert && <span className="font-medium text-accent">New convert</span>}
                       {v.gender && <span>{GENDER_LABELS[v.gender] ?? v.gender}</span>}
                       {v.ageBracket && <span>{v.ageBracket} yrs</span>}
                       {v.howHeard && <span>Via: {HOW_HEARD_LABELS[v.howHeard] ?? v.howHeard}</span>}
+                      {v.invitedByUser && <span>Invited by: {`${v.invitedByUser.firstName} ${v.invitedByUser.lastName}`.trim()}</span>}
                     </div>
                     {v.notes && <div className="text-xs text-muted-foreground italic col-span-2 sm:col-span-3">{v.notes}</div>}
                   </div>
