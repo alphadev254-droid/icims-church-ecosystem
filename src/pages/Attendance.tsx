@@ -319,7 +319,7 @@ export default function AttendancePage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Visitors (Not Ministry Guests)</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">External Visitors</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent><div className="font-heading text-xl font-bold sm:text-2xl">{totalVisitors}</div></CardContent>
