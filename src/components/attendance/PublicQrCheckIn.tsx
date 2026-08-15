@@ -39,6 +39,8 @@ export function PublicQrCheckIn({
   const [successName, setSuccessName] = useState<string | null>(null);
   const [signInOpen, setSignInOpen] = useState(false);
   const user = useAuthStore(state => state.user);
+  const logout = useAuthStore(state => state.logout);
+  const [memberSignInMessage, setMemberSignInMessage] = useState('');
   const [visitorType, setVisitorType] = useState<'guest' | 'ministry_member'>('guest');
   const [form, setForm] = useState({
     guestName: '',
@@ -72,7 +74,12 @@ export function PublicQrCheckIn({
     return session.event?.title || session.serviceType || 'Attendance Check-in';
   }, [session]);
 
-  const runMemberCheckIn = async () => {
+  const openMemberSignIn = (message?: string) => {
+    setMemberSignInMessage(message || '');
+    setSignInOpen(true);
+  };
+
+  const runMemberCheckIn = async (options?: { afterSignIn?: boolean }) => {
     setMemberLoading(true);
     try {
       const participant = await attendanceService.checkInMemberByQr(token);
@@ -80,10 +87,20 @@ export function PublicQrCheckIn({
       setSuccessName(user ? `${user.firstName} ${user.lastName}` : 'Member');
       toast.success('You are checked in');
       setSignInOpen(false);
+      setMemberSignInMessage('');
     } catch (err: any) {
-      if (err.response?.status === 401) {
-        toast.message('Sign in first, then tap member check-in again.');
-        setSignInOpen(true);
+      const status = err.response?.status;
+      if (status === 401 || status === 403) {
+        await logout();
+        const message = status === 403
+          ? 'Please sign in with the member account linked to this attendance.'
+          : 'Please sign in to be checked in.';
+        openMemberSignIn(message);
+        if (options?.afterSignIn) {
+          toast.error(err.response?.data?.message || 'That account could not be checked in for this attendance.');
+        } else {
+          toast.message(message);
+        }
       } else {
         toast.error(err.response?.data?.message || 'Could not check you in');
       }
@@ -94,7 +111,7 @@ export function PublicQrCheckIn({
 
   const checkInMember = async () => {
     if (!user) {
-      setSignInOpen(true);
+      openMemberSignIn('Please sign in to be checked in.');
       return;
     }
 
@@ -318,9 +335,9 @@ export function PublicQrCheckIn({
       logoInitial={displayName.charAt(0).toUpperCase()}
       mode="check-in"
       contextTitle="Sign in to be checked in."
-      contextDescription={`Use your ${displayName} member account and we will mark you present for ${title}.`}
+      contextDescription={memberSignInMessage || `Use your ${displayName} member account and we will mark you present for ${title}.`}
       submitLabel="Sign In & Check In"
-      onSuccess={runMemberCheckIn}
+      onSuccess={() => runMemberCheckIn({ afterSignIn: true })}
     />
     </>
   );
