@@ -13,6 +13,7 @@ export interface DashboardStats {
   memberGrowth: number;
   donationGrowth: number;
   totalNewVisitors: number;
+  totalFirstTimeVisitors?: number;
   retentionRate: number;
   attendanceRate: number;
   newMembersThisMonth: number;

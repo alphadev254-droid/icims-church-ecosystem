@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle, UserX, Group, CreditCard, Handshake, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle, UserX, Group, CreditCard, Handshake, UserCheck, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -424,6 +424,7 @@ export default function ReportsPage() {
       attendance.map(a => {
         const checkedInParticipants = (a as any).checkedInParticipants ?? (a as any)._count?.participants ?? 0;
         const visitors = (a as any).trueVisitors ?? (a as any).newVisitors ?? 0;
+        const firstTimeVisitors = (a as any).firstTimeVisitors ?? 0;
         const ministryMemberGuests = (a as any).ministryMemberGuests ?? 0;
         const newConverts = (a as any).newConverts ?? 0;
         return [
@@ -440,12 +441,13 @@ export default function ReportsPage() {
           ((a as any).adults ?? 0).toString(),
           ((a as any).seniors ?? 0).toString(),
           visitors.toString(),
+          firstTimeVisitors.toString(),
           ministryMemberGuests.toString(),
           newConverts.toString(),
           (a as any).notes ?? ''
         ];
       }),
-      ['Date', 'Church', 'Service Type', 'Total', 'Checked-in Participants', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'Visitors', 'Ministry Member Guests', 'New Converts', 'Notes'],
+      ['Date', 'Church', 'Service Type', 'Total', 'Checked-in Participants', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'Visitors', 'First Time Visitors', 'Ministry Member Guests', 'New Converts', 'Notes'],
     );
   };
 
@@ -1137,11 +1139,12 @@ export default function ReportsPage() {
 
       {/* Summary banner */}
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {[
             { label: 'Total Members', value: stats.totalMembers, icon: Users },
             { label: 'Total Giving', value: `${(stats as any).currency ?? 'MWK'} ${Number(stats.totalDonations).toLocaleString()}`, icon: HandCoins },
             { label: 'Avg. Attendance', value: stats.averageAttendance, icon: ClipboardList },
+            { label: 'First Time Visitors', value: (stats as any).totalFirstTimeVisitors ?? 0, icon: UserPlus },
             { label: 'Upcoming Events', value: stats.upcomingEvents ?? 0, icon: Calendar },
           ].map(item => {
             const Icon = item.icon;

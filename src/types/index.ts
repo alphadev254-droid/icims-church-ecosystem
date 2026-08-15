@@ -85,6 +85,7 @@ export interface DashboardStats {
   averageAttendance: number;
   memberGrowth: number;
   donationGrowth: number;
+  totalFirstTimeVisitors?: number;
 }
 
 export interface ApiResponse<T> {
