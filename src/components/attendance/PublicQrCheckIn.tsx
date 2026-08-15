@@ -51,6 +51,7 @@ export function PublicQrCheckIn({
   const logout = useAuthStore(state => state.logout);
   const [memberSignInMessage, setMemberSignInMessage] = useState('');
   const [memberCheckInNotice, setMemberCheckInNotice] = useState('');
+  const [memberCheckInNoticeOpen, setMemberCheckInNoticeOpen] = useState(false);
   const [visitorType, setVisitorType] = useState<'guest' | 'ministry_member'>('guest');
   const [form, setForm] = useState({
     guestName: '',
@@ -108,6 +109,7 @@ export function PublicQrCheckIn({
           setMemberSignInMessage('');
           const notice = 'That account is not linked as a member for this attendance. Please check in as a guest or ministry member below.';
           setMemberCheckInNotice(notice);
+          setMemberCheckInNoticeOpen(true);
           toast.error(notice);
           return;
         }
@@ -252,6 +254,11 @@ export function PublicQrCheckIn({
                 {memberLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
                 Check in as member
               </Button>
+              {memberCheckInNotice && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  {memberCheckInNotice}
+                </p>
+              )}
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
@@ -358,9 +365,7 @@ export function PublicQrCheckIn({
       submitLabel="Sign In & Check In"
       onSuccess={() => runMemberCheckIn({ afterSignIn: true })}
     />
-    <AlertDialog open={Boolean(memberCheckInNotice)} onOpenChange={open => {
-      if (!open) setMemberCheckInNotice('');
-    }}>
+    <AlertDialog open={memberCheckInNoticeOpen} onOpenChange={setMemberCheckInNoticeOpen}>
       <AlertDialogContent className="max-w-sm">
         <AlertDialogHeader>
           <AlertDialogTitle>Use guest check-in</AlertDialogTitle>
@@ -369,7 +374,7 @@ export function PublicQrCheckIn({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction onClick={() => setMemberCheckInNotice('')}>
+          <AlertDialogAction onClick={() => setMemberCheckInNoticeOpen(false)}>
             OK
           </AlertDialogAction>
         </AlertDialogFooter>
