@@ -211,6 +211,7 @@ export default function AttendancePage() {
   const getMinistryMemberGuestCount = (record: any) => record.ministryMemberGuests ?? 0;
   const getFirstTimeVisitorCount = (record: any) => record.firstTimeVisitors ?? 0;
   const totalVisitors = records.reduce((s, r) => s + getVisitorCount(r), 0);
+  const totalMinistryMemberGuests = records.reduce((s, r) => s + getMinistryMemberGuestCount(r), 0);
   const totalNewConverts = records.reduce((s, r) => s + ((r as any).newConverts ?? 0), 0);
   const totalFirstTimeVisitors = records.reduce((s, r) => s + getFirstTimeVisitorCount(r), 0);
   const avgAttendance = totalServices ? Math.round(totalAttendees / totalServices) : 0;
@@ -301,7 +302,7 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Total Services</CardTitle>
@@ -318,10 +319,17 @@ export default function AttendancePage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Total New Visitors</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Visitors (Not Ministry Guests)</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent><div className="font-heading text-xl font-bold sm:text-2xl">{totalVisitors}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Ministry Member Guests</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="font-heading text-xl font-bold sm:text-2xl">{totalMinistryMemberGuests}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
