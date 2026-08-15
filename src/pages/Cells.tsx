@@ -323,6 +323,18 @@ export default function CellsPage() {
                   )}
                 </div>
               </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {[
+                  { label: 'Attendance rate', value: `${overviewStats.attendanceRate ?? 0}%` },
+                  { label: 'Visitors', value: overviewStats.totalVisitors ?? 0 },
+                  { label: 'Total meetings', value: overviewStats.totalMeetings ?? 0 },
+                ].map(item => (
+                  <div key={item.label} className="min-w-0 rounded-md border bg-muted/30 px-3 py-2">
+                    <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                    <p className="text-sm font-semibold">{item.value}</p>
+                  </div>
+                ))}
+              </div>
               <div className="space-y-2">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Top cell/fellowship campaigns</p>
                 {overviewStats.cellGivingSummary?.topCampaigns?.length ? (
