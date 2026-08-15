@@ -90,8 +90,12 @@ export const cellsService = {
     return data;
   },
 
-  getOverviewStats: async (): Promise<any> => {
-    const { data } = await apiClient.get(`${BASE}/overview-stats`);
+  getOverviewStats: async (params?: {
+    givingPeriod?: 'this_week' | 'this_month' | 'last_month' | 'last_3_months' | 'custom';
+    givingStartDate?: string;
+    givingEndDate?: string;
+  }): Promise<any> => {
+    const { data } = await apiClient.get(`${BASE}/overview-stats`, { params });
     return data.data;
   },
 

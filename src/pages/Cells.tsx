@@ -16,13 +16,55 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ChurchSelect } from '@/components/ChurchSelect';
-import { Plus, Users, Calendar, MapPin, Pencil, Trash2, Eye, Lock, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Users, Calendar, MapPin, Pencil, Trash2, Eye, Lock, Search, ChevronLeft, ChevronRight, HandCoins } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { STALE_TIME } from '@/lib/query-config';
 import { useDebounce } from '@/hooks/use-debounce';
 
 const MEETING_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+type CellGivingPeriod = 'this_week' | 'this_month' | 'last_month' | 'last_3_months' | 'custom';
+
+function toDateInputValue(date: Date) {
+  const copy = new Date(date);
+  copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset());
+  return copy.toISOString().slice(0, 10);
+}
+
+function getCellGivingDateRange(period: CellGivingPeriod, customStart: string, customEnd: string) {
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+
+  if (period === 'custom') {
+    return { startDate: customStart || undefined, endDate: customEnd || undefined };
+  }
+
+  if (period === 'this_week') {
+    const day = start.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    start.setDate(start.getDate() - diff);
+  } else if (period === 'this_month') {
+    start.setDate(1);
+  } else if (period === 'last_month') {
+    start.setMonth(start.getMonth() - 1, 1);
+    end.setDate(0);
+  } else if (period === 'last_3_months') {
+    start.setMonth(start.getMonth() - 3);
+  }
+
+  return {
+    startDate: toDateInputValue(start),
+    endDate: toDateInputValue(end),
+  };
+}
+
+function formatCellGivingDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
 
 const formatMetaDate = (value?: string | null) => {
   if (!value) return '—';
@@ -95,7 +137,11 @@ export default function CellsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [churchFilter, setChurchFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [givingPeriod, setGivingPeriod] = useState<CellGivingPeriod>('this_month');
+  const [givingStartDate, setGivingStartDate] = useState('');
+  const [givingEndDate, setGivingEndDate] = useState('');
   const debouncedSearch = useDebounce(search, 350);
+  const givingDateRange = getCellGivingDateRange(givingPeriod, givingStartDate, givingEndDate);
 
   const canCreate = hasPermission('cells:create');
   const canManage = hasPermission('cells:update');
@@ -116,8 +162,12 @@ export default function CellsPage() {
   const pagination = cellsResponse?.pagination;
 
   const { data: overviewStats } = useQuery({
-    queryKey: ['cells-overview-stats'],
-    queryFn: () => cellsService.getOverviewStats(),
+    queryKey: ['cells-overview-stats', givingPeriod, givingDateRange.startDate, givingDateRange.endDate],
+    queryFn: () => cellsService.getOverviewStats({
+      givingPeriod,
+      givingStartDate: givingDateRange.startDate,
+      givingEndDate: givingDateRange.endDate,
+    }),
     enabled: !isMember,
     staleTime: STALE_TIME.DEFAULT,
   });
@@ -226,6 +276,77 @@ export default function CellsPage() {
               </Card>
             ))}
           </div>
+
+          <Card>
+            <CardContent className="space-y-4 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Cell/Fellowship Giving</p>
+                    <HandCoins className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="break-words text-xl font-bold sm:text-2xl">
+                    {overviewStats.cellGivingSummary?.currency ?? 'MWK'} {(overviewStats.cellGivingSummary?.totalRaised ?? 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCellGivingDate(overviewStats.cellGivingSummary?.startDate) ?? 'Start'} to {formatCellGivingDate(overviewStats.cellGivingSummary?.endDate) ?? 'today'}
+                  </p>
+                </div>
+                <div className="min-w-0 flex flex-col gap-2 sm:flex-row md:justify-end">
+                  <Select value={givingPeriod} onValueChange={(value: CellGivingPeriod) => setGivingPeriod(value)}>
+                    <SelectTrigger className="h-9 w-full min-w-0 sm:w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="this_week">This week</SelectItem>
+                      <SelectItem value="this_month">This month</SelectItem>
+                      <SelectItem value="last_month">Last month</SelectItem>
+                      <SelectItem value="last_3_months">Last 3 months</SelectItem>
+                      <SelectItem value="custom">Custom dates</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {givingPeriod === 'custom' && (
+                    <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex">
+                      <Input
+                        type="date"
+                        value={givingStartDate}
+                        onChange={event => setGivingStartDate(event.target.value)}
+                        className="h-9 min-w-0 text-xs sm:w-36"
+                      />
+                      <Input
+                        type="date"
+                        value={givingEndDate}
+                        onChange={event => setGivingEndDate(event.target.value)}
+                        className="h-9 min-w-0 text-xs sm:w-36"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Top cell/fellowship campaigns</p>
+                {overviewStats.cellGivingSummary?.topCampaigns?.length ? (
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {overviewStats.cellGivingSummary.topCampaigns.map((item: any, index: number) => (
+                      <div key={`${item.campaignId}-${item.cellId}-${item.churchId}-${item.currency}`} className="min-w-0 rounded-md border bg-muted/30 p-3">
+                        <p className="text-xs font-medium text-muted-foreground">#{index + 1}</p>
+                        <p className="truncate text-sm font-semibold">{item.name ?? 'Campaign'}</p>
+                        <p className="text-sm font-bold">{item.currency ?? overviewStats.cellGivingSummary.currency ?? 'MWK'} {(item.total ?? 0).toLocaleString()}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {item.count ?? 0} giving{item.count === 1 ? '' : 's'}
+                          {item.churchName ? ` · ${item.churchName}` : ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                    No cell/fellowship giving recorded for this period.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Ranking lists */}
           <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-4">
