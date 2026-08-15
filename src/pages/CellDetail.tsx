@@ -1030,7 +1030,7 @@ export default function CellDetailPage() {
 
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Attendance</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   <div className="rounded-lg border p-3">
                     <p className="text-xs text-muted-foreground">Expected</p>
                     <p className="text-lg font-bold">{viewMember.attendanceStats?.expectedMeetings ?? 0}</p>
@@ -1044,13 +1044,16 @@ export default function CellDetailPage() {
                     <p className="text-lg font-bold text-red-500">{viewMember.attendanceStats?.missedMeetings ?? 0}</p>
                   </div>
                   <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Excused</p>
+                    <p className="text-lg font-bold text-blue-500">{viewMember.attendanceStats?.excusedMeetings ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
                     <p className="text-xs text-muted-foreground">Rate</p>
                     <p className="text-lg font-bold">{viewMember.attendanceStats?.attendanceRate == null ? '-' : `${viewMember.attendanceStats.attendanceRate}%`}</p>
                   </div>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Last attended: {formatMemberDate(viewMember.attendanceStats?.lastAttendedAt)}
-                  {viewMember.attendanceStats?.excusedMeetings ? ` · ${viewMember.attendanceStats.excusedMeetings} excused` : ''}
                 </p>
               </div>
 
