@@ -32,6 +32,7 @@ export interface AttendanceRecord {
   checkedInParticipants?: number;
   trueVisitors?: number;
   ministryMemberGuests?: number;
+  firstTimeVisitors?: number;
   serviceType: string;
   notes?: string;
   eventId?: string;

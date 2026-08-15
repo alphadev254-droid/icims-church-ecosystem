@@ -171,16 +171,19 @@ export default function AttendanceDetailPage() {
   const femaleCount = participants.filter(p => getParticipantMeta(p).gender === 'female').length;
   const ministryMemberGuestCount = participants.filter(p => getParticipantMeta(p).isMinistryMemberGuest).length;
   const trueVisitorCount = participants.filter(p => getParticipantMeta(p).isTrueVisitor).length;
+  const firstTimeVisitorCount = participants.filter(p => getParticipantMeta(p).isTrueVisitor && p.guestFirstTime).length;
   const filteredMaleCount = filteredParticipants.filter(p => getParticipantMeta(p).gender === 'male').length;
   const filteredFemaleCount = filteredParticipants.filter(p => getParticipantMeta(p).gender === 'female').length;
   const filteredMinistryMemberGuestCount = filteredParticipants.filter(p => getParticipantMeta(p).isMinistryMemberGuest).length;
   const filteredTrueVisitorCount = filteredParticipants.filter(p => getParticipantMeta(p).isTrueVisitor).length;
+  const filteredFirstTimeVisitorCount = filteredParticipants.filter(p => getParticipantMeta(p).isTrueVisitor && p.guestFirstTime).length;
   const filteredNewConvertCount = filteredParticipants.filter(p => p.isNewConvert).length;
   const participantExportSummary = [
     { label: 'Total participants', value: filteredParticipants.length },
     { label: 'Male', value: filteredMaleCount },
     { label: 'Female', value: filteredFemaleCount },
     { label: 'Visitors', value: filteredTrueVisitorCount },
+    { label: 'First time visitors', value: filteredFirstTimeVisitorCount },
     { label: 'Ministry member guests', value: filteredMinistryMemberGuestCount },
     { label: 'New converts', value: filteredNewConvertCount },
   ];
@@ -279,7 +282,7 @@ export default function AttendanceDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-8">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-9">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total</CardTitle></CardHeader>
           <CardContent className="flex items-center justify-between">
@@ -297,6 +300,10 @@ export default function AttendanceDetailPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Visitors</CardTitle></CardHeader>
           <CardContent className="font-heading text-2xl font-bold">{trueVisitorCount}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">First Time Visitors</CardTitle></CardHeader>
+          <CardContent className="font-heading text-2xl font-bold">{firstTimeVisitorCount}</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Ministry Member Guests</CardTitle></CardHeader>

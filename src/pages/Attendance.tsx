@@ -209,8 +209,10 @@ export default function AttendancePage() {
   const totalAttendees = records.reduce((s, r) => s + r.totalAttendees, 0);
   const getVisitorCount = (record: any) => record.trueVisitors ?? record.newVisitors ?? 0;
   const getMinistryMemberGuestCount = (record: any) => record.ministryMemberGuests ?? 0;
+  const getFirstTimeVisitorCount = (record: any) => record.firstTimeVisitors ?? 0;
   const totalVisitors = records.reduce((s, r) => s + getVisitorCount(r), 0);
   const totalNewConverts = records.reduce((s, r) => s + ((r as any).newConverts ?? 0), 0);
+  const totalFirstTimeVisitors = records.reduce((s, r) => s + getFirstTimeVisitorCount(r), 0);
   const avgAttendance = totalServices ? Math.round(totalAttendees / totalServices) : 0;
   const attendanceLinks = myLinks.filter((link: any) => link.type === 'attendance' || link.type === 'attendance_scanner');
   const filteredAttendanceLinks = attendanceLinks.filter((link: any) => {
@@ -244,6 +246,7 @@ export default function AttendancePage() {
               adults: (r as any).adults ?? 0,
               seniors: (r as any).seniors ?? 0,
               visitors: (r as any).trueVisitors ?? r.newVisitors ?? 0,
+              firstTimeVisitors: (r as any).firstTimeVisitors ?? 0,
               ministryMemberGuests: (r as any).ministryMemberGuests ?? 0,
               newConverts: (r as any).newConverts ?? 0,
               notes: r.notes || '',
@@ -262,6 +265,7 @@ export default function AttendancePage() {
               { label: 'Adults (36-59)', key: 'adults' },
               { label: 'Seniors (60+)', key: 'seniors' },
               { label: 'Visitors', key: 'visitors' },
+              { label: 'First Time Visitors', key: 'firstTimeVisitors' },
               { label: 'Ministry Member Guests', key: 'ministryMemberGuests' },
               { label: 'New Converts', key: 'newConverts' },
               { label: 'Notes', key: 'notes' },
@@ -297,7 +301,7 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">Total Services</CardTitle>
@@ -325,6 +329,13 @@ export default function AttendancePage() {
             <UserPlus className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent><div className="font-heading text-xl font-bold sm:text-2xl">{totalNewConverts}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">First Time Visitors</CardTitle>
+            <UserPlus className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="font-heading text-xl font-bold sm:text-2xl">{totalFirstTimeVisitors}</div></CardContent>
         </Card>
       </div>
 
@@ -538,7 +549,7 @@ export default function AttendancePage() {
             </div>
           ) : (
             <div className="w-full overflow-x-auto">
-            <Table className="min-w-[1260px]">
+            <Table className="min-w-[1360px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="whitespace-nowrap">Date</TableHead>
@@ -553,6 +564,7 @@ export default function AttendancePage() {
                   <TableHead className="text-right">Adults</TableHead>
                   <TableHead className="text-right">Seniors</TableHead>
                   <TableHead className="text-right">Visitors</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">First Time Visitors</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Ministry Member Guests</TableHead>
                   <TableHead className="text-right whitespace-nowrap">New Converts</TableHead>
                   <TableHead className="w-28 whitespace-nowrap">Actions</TableHead>
@@ -575,6 +587,7 @@ export default function AttendancePage() {
                     <TableCell className="text-right text-muted-foreground">{(r as any).adults ?? 0}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{(r as any).seniors ?? 0}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{getVisitorCount(r)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{getFirstTimeVisitorCount(r)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{getMinistryMemberGuestCount(r)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{(r as any).newConverts ?? 0}</TableCell>
                     <TableCell>
