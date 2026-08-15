@@ -177,7 +177,7 @@ export const attendanceService = {
   deleteVisitor: async (id: string, visitorId: string): Promise<void> => {
     await apiClient.delete(`/attendance/${id}/visitors/${visitorId}`);
   },
-  getParticipants: async (id: string, params?: { page?: number; limit?: number }): Promise<{ data: AttendanceParticipant[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
+  getParticipants: async (id: string, params?: { page?: number; limit?: number; participantType?: 'all' | 'visitors' | 'ministry_member_guests' | 'new_converts' }): Promise<{ data: AttendanceParticipant[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
     const { data } = await apiClient.get(`/attendance/${id}/participants`, { params });
     return { data: data.data, pagination: data.pagination };
   },

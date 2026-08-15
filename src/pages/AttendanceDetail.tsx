@@ -25,6 +25,7 @@ export default function AttendanceDetailPage() {
   const [genderFilter, setGenderFilter] = useState('all');
   const [ageFilter, setAgeFilter] = useState('all');
   const [churchFilter, setChurchFilter] = useState('all');
+  const [participantTypeFilter, setParticipantTypeFilter] = useState<'all' | 'visitors' | 'ministry_member_guests' | 'new_converts'>('all');
   const canUpdate = hasPermission('attendance:update');
 
   const { data: record, isLoading } = useQuery({
@@ -34,8 +35,8 @@ export default function AttendanceDetailPage() {
   });
 
   const { data: participantsResponse, isLoading: participantsLoading } = useQuery({
-    queryKey: ['attendance-participants', id],
-    queryFn: () => attendanceService.getParticipants(id, { limit: 1000 }),
+    queryKey: ['attendance-participants', id, participantTypeFilter],
+    queryFn: () => attendanceService.getParticipants(id, { limit: 1000, participantType: participantTypeFilter }),
     enabled: !!id,
   });
 
@@ -341,7 +342,16 @@ export default function AttendanceDetailPage() {
                 pdfTitle={`${record.serviceType} Attendance Participants`}
                 summary={participantExportSummary}
               />
-              <div className="grid grid-cols-2 gap-2 sm:w-[520px] sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:w-[700px] sm:grid-cols-4">
+                <Select value={participantTypeFilter} onValueChange={value => setParticipantTypeFilter(value as typeof participantTypeFilter)}>
+                  <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All people</SelectItem>
+                    <SelectItem value="visitors">Visitors</SelectItem>
+                    <SelectItem value="ministry_member_guests">Ministry member guests</SelectItem>
+                    <SelectItem value="new_converts">New converts</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Select value={churchFilter} onValueChange={setChurchFilter}>
                   <SelectTrigger><SelectValue placeholder="Church" /></SelectTrigger>
                   <SelectContent>

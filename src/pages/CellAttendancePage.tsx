@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 
 type AttendanceStatus = 'present' | 'absent' | 'excused';
-type FilterType = 'all' | 'present' | 'absent' | 'excused' | 'guest';
+type FilterType = 'all' | 'present' | 'absent' | 'excused' | 'guest' | 'new_convert';
 
 interface AttendanceRow {
   key: string;
@@ -501,6 +501,7 @@ export default function CellAttendancePage() {
   const filteredRows = rows.filter(r => {
     if (filter === 'all') return true;
     if (filter === 'guest') return r.isGuest;
+    if (filter === 'new_convert') return r.isGuest && r.isNewConvert;
     return r.status === filter;
   });
 
@@ -508,6 +509,7 @@ export default function CellAttendancePage() {
   const absentCount  = rows.filter(r => !r.isGuest && r.status === 'absent').length;
   const excusedCount = rows.filter(r => r.status === 'excused').length;
   const guestCount   = rows.filter(r => r.isGuest).length;
+  const newConvertCount = rows.filter(r => r.isGuest && r.isNewConvert).length;
 
   const excuseRow = excuseKey ? rows.find(r => r.key === excuseKey) : null;
   const excuseRowWasAlreadyExcused = excuseRow?.status === 'excused' && !!excuseRow?.notes;
@@ -548,12 +550,13 @@ export default function CellAttendancePage() {
       </div>
 
       {/* Summary — large tap-friendly cards */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {[
           { label: 'Present',  value: presentCount, color: 'text-green-600', filter: 'present' as FilterType },
           { label: 'Absent',   value: absentCount,  color: 'text-red-500',   filter: 'absent' as FilterType },
           { label: 'Excused',  value: excusedCount, color: 'text-yellow-500',filter: 'excused' as FilterType },
           { label: 'Guests',   value: guestCount,   color: 'text-blue-500',  filter: 'guest' as FilterType },
+          { label: 'New Converts', value: newConvertCount, color: 'text-accent', filter: 'new_convert' as FilterType },
         ].map(s => (
           <button
             key={s.label}
