@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lock, Mail, X } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
 
@@ -33,6 +33,7 @@ export function SignInDialog({
   const login = useAuthStore(s => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const isCheckIn = mode === 'check-in';
@@ -259,13 +260,21 @@ export function SignInDialog({
               <div style={fieldStyle}>
                 <Lock size={17} color="rgba(255,255,255,0.48)" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={event => setPassword(event.target.value)}
                   placeholder="Enter password"
                   style={inputStyle}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(value => !value)}
+                  style={iconButtonStyle}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
               </div>
             </label>
 
@@ -355,4 +364,18 @@ const inputStyle: React.CSSProperties = {
   color: '#fff',
   background: 'transparent',
   fontFamily: 'inherit',
+};
+
+const iconButtonStyle: React.CSSProperties = {
+  width: 30,
+  height: 30,
+  border: 'none',
+  borderRadius: 8,
+  background: 'transparent',
+  color: 'rgba(255,255,255,0.58)',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0,
 };

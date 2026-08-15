@@ -41,6 +41,7 @@ export function PublicQrCheckIn({
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
   const [memberSignInMessage, setMemberSignInMessage] = useState('');
+  const [memberCheckInNotice, setMemberCheckInNotice] = useState('');
   const [visitorType, setVisitorType] = useState<'guest' | 'ministry_member'>('guest');
   const [form, setForm] = useState({
     guestName: '',
@@ -88,6 +89,7 @@ export function PublicQrCheckIn({
       toast.success('You are checked in');
       setSignInOpen(false);
       setMemberSignInMessage('');
+      setMemberCheckInNotice('');
     } catch (err: any) {
       const status = err.response?.status;
       if (status === 401 || status === 403) {
@@ -95,7 +97,9 @@ export function PublicQrCheckIn({
         if (options?.afterSignIn && status === 403) {
           setSignInOpen(false);
           setMemberSignInMessage('');
-          toast.error(err.response?.data?.message || 'That account could not be checked in for this attendance.');
+          const notice = 'That account is not linked as a member for this attendance. Please check in as a guest or ministry member below.';
+          setMemberCheckInNotice(notice);
+          toast.error(notice);
           return;
         }
         const message = status === 403
@@ -239,6 +243,11 @@ export function PublicQrCheckIn({
                 {memberLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
                 Check in as member
               </Button>
+              {memberCheckInNotice && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  {memberCheckInNotice}
+                </p>
+              )}
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
