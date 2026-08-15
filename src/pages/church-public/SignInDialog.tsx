@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Lock, Mail, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { toast } from 'sonner';
 
 interface SignInDialogProps {
   open: boolean;
@@ -57,7 +58,9 @@ export function SignInDialog({
       return;
     }
 
-    setError(result.message || 'Invalid email or password');
+    const message = result.message || 'Invalid email or password';
+    setError(message);
+    toast.error(message);
   };
 
   return (

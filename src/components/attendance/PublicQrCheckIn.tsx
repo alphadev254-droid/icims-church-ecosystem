@@ -92,6 +92,12 @@ export function PublicQrCheckIn({
       const status = err.response?.status;
       if (status === 401 || status === 403) {
         await logout();
+        if (options?.afterSignIn && status === 403) {
+          setSignInOpen(false);
+          setMemberSignInMessage('');
+          toast.error(err.response?.data?.message || 'That account could not be checked in for this attendance.');
+          return;
+        }
         const message = status === 403
           ? 'Please sign in with the member account linked to this attendance.'
           : 'Please sign in to be checked in.';
