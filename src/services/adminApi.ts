@@ -553,6 +553,7 @@ export const adminApi = {
     packageId: string;
     amount?: number;
     billingCycle: string;
+    months?: number;
     dueDate: string;
     servicePeriodStart: string;
     servicePeriodEnd?: string;

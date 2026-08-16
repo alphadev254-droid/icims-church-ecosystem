@@ -59,6 +59,7 @@ interface SubForm {
 interface InvoiceForm {
   packageId: string;
   billingCycle: string;
+  months: string;
   amount: string;
   dueDate: string;
   servicePeriodStart: string;
@@ -154,9 +155,13 @@ function calculateInvoicePackageAmount(
   billingCycle: string,
   country: string | null | undefined,
   rates?: { mwkRate: number; kesRate: number; malawiDiscount: number; kenyaDiscount: number },
+  months = 1,
 ) {
   if (!pkg || !rates) return '';
-  const usdAmount = billingCycle === 'yearly' ? Number(pkg.priceYearly ?? 0) : Number(pkg.priceMonthly ?? 0);
+  const selectedMonths = Math.max(1, Number(months) || 1);
+  const usdAmount = billingCycle === 'yearly'
+    ? Number(pkg.priceYearly ?? 0)
+    : Number(pkg.priceMonthly ?? 0) * selectedMonths;
   const isMalawi = country === 'Malawi';
   const rate = isMalawi ? rates.mwkRate : rates.kesRate;
   const discount = isMalawi ? rates.malawiDiscount : rates.kenyaDiscount;
@@ -185,6 +190,7 @@ export default function AdminUserDetail() {
   const [invoiceForm, setInvoiceForm] = useState<InvoiceForm>({
     packageId: '',
     billingCycle: 'monthly',
+    months: '1',
     amount: '',
     dueDate: today(),
     servicePeriodStart: today(),
@@ -218,11 +224,20 @@ export default function AdminUserDetail() {
 
   useEffect(() => {
     if (!invoiceOpen || !invoiceForm.packageId) return;
-    const amount = calculateInvoicePackageAmount(selectedInvoicePackage, invoiceForm.billingCycle, invoiceCountry, packageRates);
-    if (amount && amount !== invoiceForm.amount) {
-      setInvoiceForm(f => ({ ...f, amount }));
+    const months = invoiceForm.billingCycle === 'yearly' ? 12 : Math.max(1, Number(invoiceForm.months) || 1);
+    const amount = calculateInvoicePackageAmount(selectedInvoicePackage, invoiceForm.billingCycle, invoiceCountry, packageRates, months);
+    const servicePeriodEnd = invoiceForm.servicePeriodStart
+      ? addMonthsMinusDay(new Date(invoiceForm.servicePeriodStart), months)
+      : invoiceForm.servicePeriodEnd;
+    if ((amount && amount !== invoiceForm.amount) || servicePeriodEnd !== invoiceForm.servicePeriodEnd || String(months) !== invoiceForm.months) {
+      setInvoiceForm(f => ({
+        ...f,
+        amount: amount || f.amount,
+        months: String(months),
+        servicePeriodEnd,
+      }));
     }
-  }, [invoiceOpen, invoiceForm.packageId, invoiceForm.billingCycle, invoiceForm.amount, selectedInvoicePackage, invoiceCountry, packageRates]);
+  }, [invoiceOpen, invoiceForm.packageId, invoiceForm.billingCycle, invoiceForm.months, invoiceForm.amount, invoiceForm.servicePeriodStart, invoiceForm.servicePeriodEnd, selectedInvoicePackage, invoiceCountry, packageRates]);
 
   const { data: churchesData } = useQuery({
     queryKey: ['admin-all-churches', churchSearch],
@@ -283,6 +298,7 @@ export default function AdminUserDetail() {
       ministryAdminId: id!,
       packageId: invoiceForm.packageId,
       billingCycle: invoiceForm.billingCycle,
+      months: Number(invoiceForm.months) || 1,
       amount: invoiceForm.amount ? Number(invoiceForm.amount) : undefined,
       dueDate: invoiceForm.dueDate,
       servicePeriodStart: invoiceForm.servicePeriodStart,
@@ -413,15 +429,17 @@ export default function AdminUserDetail() {
     startDate.setDate(startDate.getDate() + (current?.expiresAt ? 1 : 0));
     const start = startDate.toISOString().split('T')[0];
     const billingCycle = 'monthly';
+    const months = 1;
     const packageId = current?.packageId || packages[0]?.id || '';
     const initialPackage = packages.find((pkg: any) => pkg.id === packageId) || current?.package;
     setInvoiceForm({
       packageId,
       billingCycle,
-      amount: calculateInvoicePackageAmount(initialPackage, billingCycle, invoiceCountry, packageRates),
+      months: String(months),
+      amount: calculateInvoicePackageAmount(initialPackage, billingCycle, invoiceCountry, packageRates, months),
       dueDate: current?.expiresAt ? toDateInput(current.expiresAt) : today(),
       servicePeriodStart: start,
-      servicePeriodEnd: addMonthsMinusDay(startDate, 1),
+      servicePeriodEnd: addMonthsMinusDay(startDate, months),
       notes: DEFAULT_INVOICE_NOTES,
       terms: DEFAULT_INVOICE_TERMS,
       status: 'draft',
@@ -785,10 +803,13 @@ export default function AdminUserDetail() {
               <Label className="text-xs">Package</Label>
               <Select value={invoiceForm.packageId} onValueChange={v => {
                 const pkg = packages.find((p: any) => p.id === v);
+                const months = invoiceForm.billingCycle === 'yearly' ? 12 : Math.max(1, Number(invoiceForm.months) || 1);
                 setInvoiceForm(f => ({
                   ...f,
                   packageId: v,
-                  amount: calculateInvoicePackageAmount(pkg, f.billingCycle, invoiceCountry, packageRates),
+                  months: String(months),
+                  amount: calculateInvoicePackageAmount(pkg, f.billingCycle, invoiceCountry, packageRates, months),
+                  servicePeriodEnd: f.servicePeriodStart ? addMonthsMinusDay(new Date(f.servicePeriodStart), months) : f.servicePeriodEnd,
                 }));
               }}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select package" /></SelectTrigger>
@@ -802,19 +823,50 @@ export default function AdminUserDetail() {
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">Billing</Label>
-                <Select value={invoiceForm.billingCycle} onValueChange={v => setInvoiceForm(f => ({
-                  ...f,
-                  billingCycle: v,
-                  amount: calculateInvoicePackageAmount(selectedInvoicePackage, v, invoiceCountry, packageRates),
-                }))}>
+                <Select value={invoiceForm.billingCycle} onValueChange={v => {
+                  const months = v === 'yearly' ? 12 : Math.max(1, Number(invoiceForm.months) || 1);
+                  setInvoiceForm(f => ({
+                    ...f,
+                    billingCycle: v,
+                    months: String(months),
+                    amount: calculateInvoicePackageAmount(selectedInvoicePackage, v, invoiceCountry, packageRates, months),
+                    servicePeriodEnd: f.servicePeriodStart ? addMonthsMinusDay(new Date(f.servicePeriodStart), months) : f.servicePeriodEnd,
+                  }));
+                }}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="monthly" className="text-xs">Monthly</SelectItem>
                     <SelectItem value="yearly" className="text-xs">Yearly</SelectItem>
-                    <SelectItem value="custom" className="text-xs">Custom</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Months</Label>
+                <Select
+                  value={invoiceForm.months}
+                  disabled={invoiceForm.billingCycle === 'yearly'}
+                  onValueChange={v => {
+                    const months = Math.max(1, Number(v) || 1);
+                    setInvoiceForm(f => ({
+                      ...f,
+                      months: String(months),
+                      amount: calculateInvoicePackageAmount(selectedInvoicePackage, f.billingCycle, invoiceCountry, packageRates, months),
+                      servicePeriodEnd: f.servicePeriodStart ? addMonthsMinusDay(new Date(f.servicePeriodStart), months) : f.servicePeriodEnd,
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[1, 3, 6, 12].map(months => (
+                      <SelectItem key={months} value={String(months)} className="text-xs">
+                        {months} month{months === 1 ? '' : 's'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">Amount ({invoiceCurrency(invoiceCountry)})</Label>
                 <Input className="h-8 text-xs" type="number" value={invoiceForm.amount}
@@ -845,12 +897,21 @@ export default function AdminUserDetail() {
               <div className="space-y-1">
                 <Label className="text-xs">Period Start</Label>
                 <Input className="h-8 text-xs" type="date" value={invoiceForm.servicePeriodStart}
-                  onChange={e => setInvoiceForm(f => ({ ...f, servicePeriodStart: e.target.value }))} />
+                  onChange={e => setInvoiceForm(f => {
+                    const months = f.billingCycle === 'yearly' ? 12 : Math.max(1, Number(f.months) || 1);
+                    return {
+                      ...f,
+                      servicePeriodStart: e.target.value,
+                      servicePeriodEnd: e.target.value ? addMonthsMinusDay(new Date(e.target.value), months) : f.servicePeriodEnd,
+                    };
+                  })} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Period End</Label>
                 <Input className="h-8 text-xs" type="date" value={invoiceForm.servicePeriodEnd}
-                  onChange={e => setInvoiceForm(f => ({ ...f, servicePeriodEnd: e.target.value }))} />
+                  readOnly
+                  aria-readonly="true"
+                  title="Period end is calculated from the start date and selected months" />
               </div>
             </div>
             <div className="space-y-1">
