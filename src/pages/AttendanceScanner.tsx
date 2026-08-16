@@ -25,6 +25,7 @@ export default function AttendanceScanner() {
   const scanningRef = useRef(false);
   const scanBusyRef = useRef(false);
   const lastScanRef = useRef<{ value: string; at: number } | null>(null);
+  const inactiveToastShownRef = useRef(false);
   const [status, setStatus] = useState<ScannerStatus>('idle');
   const [searchValue, setSearchValue] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -46,6 +47,22 @@ export default function AttendanceScanner() {
     if (record?.eventId) setScanMode('ticket');
   }, [record?.eventId]);
 
+  const scannerSessionActive = record
+    ? Boolean(
+        record.digitalCheckInEnabled
+        && record.qrStatus === 'active'
+        && (!record.qrActiveFrom || new Date(record.qrActiveFrom) <= new Date())
+        && (!record.qrActiveUntil || new Date(record.qrActiveUntil) >= new Date())
+      )
+    : true;
+
+  useEffect(() => {
+    if (record && !scannerSessionActive && !inactiveToastShownRef.current) {
+      inactiveToastShownRef.current = true;
+      toast.error('This attendance QR session is not active.');
+    }
+  }, [record, scannerSessionActive]);
+
   const stopCamera = () => {
     scanningRef.current = false;
     if (frameRef.current) {
@@ -64,6 +81,10 @@ export default function AttendanceScanner() {
       scanBusyRef.current = true;
     },
     onSuccess: (participant: any) => {
+      if (participant?.attendanceId && participant.attendanceId !== id) {
+        toast.error('Scanned successfully elsewhere, but not on this attendance record.');
+        return;
+      }
       setRecent(participant);
       const user = participant.user;
       toast.success(user ? `${user.firstName} ${user.lastName} checked in` : `${participant.guestName || 'Attendee'} checked in`);
@@ -193,7 +214,7 @@ export default function AttendanceScanner() {
           <div>
             <h1 className="font-heading text-2xl font-bold">Scan Attendee QR</h1>
             <p className="text-sm text-muted-foreground">
-              {isLoading ? 'Loading attendance...' : `${record?.serviceType || 'Attendance'} · ${record?.church?.name || 'Church'}`}
+              {isLoading ? 'Loading attendance...' : `${record?.serviceType || 'Attendance'} - ${record?.church?.name || 'Church'}`}
             </p>
           </div>
         </div>
@@ -217,6 +238,15 @@ export default function AttendanceScanner() {
             Member QR
           </Button>
         </div>
+      )}
+
+      {record && !scannerSessionActive && (
+        <Alert>
+          <ShieldAlert className="h-4 w-4" />
+          <AlertDescription>
+            This attendance QR session is not active. Activate it or update the QR validity time before scanning.
+          </AlertDescription>
+        </Alert>
       )}
 
       <Card className="overflow-hidden">

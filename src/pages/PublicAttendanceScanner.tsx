@@ -21,6 +21,7 @@ export default function PublicAttendanceScanner() {
   const scanningRef = useRef(false);
   const scanBusyRef = useRef(false);
   const lastScanRef = useRef<{ value: string; at: number } | null>(null);
+  const invalidToastShownRef = useRef(false);
   const [status, setStatus] = useState<ScannerStatus>('idle');
   const [searchValue, setSearchValue] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -75,6 +76,11 @@ export default function PublicAttendanceScanner() {
     mutationFn: (value: string) => sharedAccessService.scanMemberByScannerLink(token, value, accessCode || undefined),
     onMutate: () => { scanBusyRef.current = true; },
     onSuccess: (participant: any) => {
+      const attendanceId = attendanceQuery.data?.id;
+      if (attendanceId && participant?.attendanceId && participant.attendanceId !== attendanceId) {
+        toast.error('Scanned successfully elsewhere, but not on this attendance record.');
+        return;
+      }
       setRecent(participant);
       const user = participant.user;
       toast.success(user ? `${user.firstName} ${user.lastName} checked in` : 'Member checked in');
@@ -165,6 +171,13 @@ export default function PublicAttendanceScanner() {
   const recentName = recentUser ? `${recentUser.firstName} ${recentUser.lastName}` : 'Attendee';
   const recentContact = recentUser?.phone || recentUser?.email || '';
 
+  useEffect(() => {
+    if (invalid && !invalidToastShownRef.current) {
+      invalidToastShownRef.current = true;
+      toast.error(validation.data?.message || 'Invalid scanner link');
+    }
+  }, [invalid, validation.data?.message]);
+
   if (validation.isLoading) {
     return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -198,7 +211,7 @@ export default function PublicAttendanceScanner() {
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground"><Church className="h-5 w-5" /></div>
         <div className="min-w-0">
           <h1 className="font-heading text-2xl font-bold">Scan Attendee QR</h1>
-          <p className="text-sm text-muted-foreground">{attendanceQuery.isLoading ? 'Loading attendance...' : `${attendance?.serviceType || validation.data?.serviceType || 'Attendance'} · ${attendance?.church?.name || church?.name || 'Church'}`}</p>
+          <p className="text-sm text-muted-foreground">{attendanceQuery.isLoading ? 'Loading attendance...' : `${attendance?.serviceType || validation.data?.serviceType || 'Attendance'} - ${attendance?.church?.name || church?.name || 'Church'}`}</p>
           {attendance?._count && <p className="text-xs text-muted-foreground">{attendance._count.participants} checked in</p>}
         </div>
       </div>

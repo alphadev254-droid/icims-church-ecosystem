@@ -80,6 +80,12 @@ export function PublicQrCheckIn({
     return () => { mounted = false; };
   }, [token]);
 
+  useEffect(() => {
+    if (session && !session.isOpen) {
+      toast.error('This check-in QR code is not active.');
+    }
+  }, [session]);
+
   const title = useMemo(() => {
     if (!session) return 'Attendance Check-in';
     return session.event?.title || session.serviceType || 'Attendance Check-in';
