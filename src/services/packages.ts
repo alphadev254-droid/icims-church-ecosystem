@@ -90,6 +90,12 @@ export interface PackageInvoice {
     createdAt: string;
     gateway?: string | null;
   }>;
+  paymentOptions?: {
+    allowedMonths: number[];
+    invoiceMonths: number;
+    defaultMonths: number;
+    monthlyAmount: number;
+  };
 }
 
 export const packagesService = {
@@ -139,8 +145,8 @@ export const packagesService = {
     const { data } = await apiClient.get(`/packages/invoices/public/${token}`);
     return data.data;
   },
-  payPublicInvoice: async (token: string): Promise<{ authorization_url: string; reference: string; access_code?: string }> => {
-    const { data } = await apiClient.post(`/payments/invoice/${token}/pay`);
+  payPublicInvoice: async (token: string, months?: number): Promise<{ authorization_url: string; reference: string; access_code?: string }> => {
+    const { data } = await apiClient.post(`/payments/invoice/${token}/pay`, months ? { months } : undefined);
     return data.data;
   },
   calculateFees: async (packageId: string, billingCycle: string): Promise<{

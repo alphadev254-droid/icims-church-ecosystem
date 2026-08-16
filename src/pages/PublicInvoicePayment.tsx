@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, CreditCard, FileText, Loader2 } from 'lucide-react';
 import { packagesService } from '@/services/packages';
@@ -17,6 +18,7 @@ function date(value?: string | null) {
 
 export default function PublicInvoicePayment() {
   const { token = '' } = useParams();
+  const [selectedMonths, setSelectedMonths] = useState(1);
   const invoiceQuery = useQuery({
     queryKey: ['public-package-invoice', token],
     queryFn: () => packagesService.getPublicInvoice(token),
@@ -24,7 +26,7 @@ export default function PublicInvoicePayment() {
   });
 
   const payMutation = useMutation({
-    mutationFn: () => packagesService.payPublicInvoice(token),
+    mutationFn: () => packagesService.payPublicInvoice(token, selectedMonths),
     onSuccess: data => {
       if (!data.authorization_url) {
         toast.error('Payment gateway did not return a checkout link');
@@ -37,6 +39,23 @@ export default function PublicInvoicePayment() {
 
   const invoice = invoiceQuery.data;
   const isPaid = invoice?.status === 'paid' || (invoice?.balanceDue ?? 0) <= 0;
+  const paymentOptions = invoice?.paymentOptions;
+  const allowedMonths = paymentOptions?.allowedMonths?.length ? paymentOptions.allowedMonths : [1, 3, 6, 12];
+  const invoiceMonths = paymentOptions?.invoiceMonths ?? 1;
+  const monthlyAmount = paymentOptions?.monthlyAmount ?? ((invoice?.amount ?? 0) / invoiceMonths);
+  const extraMonths = Math.max(0, selectedMonths - invoiceMonths);
+  const extraAmount = Math.round(monthlyAmount * extraMonths * 100) / 100;
+  const payableBaseAmount = Math.round(((invoice?.balanceDue ?? 0) + extraAmount) * 100) / 100;
+  const selectedMonthsLabel = `${selectedMonths} month${selectedMonths === 1 ? '' : 's'}`;
+
+  useEffect(() => {
+    if (paymentOptions?.defaultMonths) setSelectedMonths(paymentOptions.defaultMonths);
+  }, [paymentOptions?.defaultMonths]);
+
+  const extensionCopy = useMemo(() => {
+    if (!extraMonths) return 'Pay this invoice only.';
+    return `Pay this invoice and add ${extraMonths} extra month${extraMonths === 1 ? '' : 's'} of package access.`;
+  }, [extraMonths]);
 
   return (
     <main className="min-h-[70vh] bg-background px-4 py-10">
@@ -105,6 +124,48 @@ export default function PublicInvoicePayment() {
                   </div>
                 </div>
 
+                {!isPaid && (
+                  <div className="rounded-lg border p-4">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">Pay subscription for</p>
+                        <p className="text-xs text-muted-foreground">
+                          Choose months only. ICIMS calculates the secure payable amount.
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold">{selectedMonthsLabel}</p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {allowedMonths.map(months => (
+                        <Button
+                          key={months}
+                          type="button"
+                          variant={selectedMonths === months ? 'default' : 'outline'}
+                          className="h-9 text-xs"
+                          onClick={() => setSelectedMonths(months)}
+                        >
+                          {months} month{months === 1 ? '' : 's'}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="mt-3 grid gap-2 rounded-md bg-muted/30 p-3 text-sm sm:grid-cols-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Invoice balance</p>
+                        <p className="font-medium">{money(invoice.currency, invoice.balanceDue)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Extra months</p>
+                        <p className="font-medium">{money(invoice.currency, extraAmount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Payable before fees</p>
+                        <p className="font-bold">{money(invoice.currency, payableBaseAmount)}</p>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">{extensionCopy}</p>
+                  </div>
+                )}
+
                 {isPaid ? (
                   <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-700">
                     <CheckCircle2 className="mb-2 h-5 w-5" />
@@ -115,7 +176,7 @@ export default function PublicInvoicePayment() {
                     <Button variant="outline" onClick={() => downloadPackageInvoicePdf(invoice, 'Ministry account')}>
                       Download PDF
                     </Button>
-                    <Button className="gap-2" onClick={() => payMutation.mutate()} disabled={payMutation.isPending}>
+                    <Button className="gap-2" onClick={() => payMutation.mutate()} disabled={payMutation.isPending || payableBaseAmount <= 0}>
                       {payMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                       Pay Securely
                     </Button>
