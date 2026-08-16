@@ -177,6 +177,7 @@ export default function PackagesPage() {
   const [upgradeDialog, setUpgradeDialog] = useState<{ open: boolean; packageId: string; packageName: string } | null>(null);
   const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [openingInvoicePaymentId, setOpeningInvoicePaymentId] = useState<string | null>(null);
 
   const { data: fees, isFetching: loadingFees } = useQuery({
     queryKey: ['package-fees', upgradeDialog?.packageId, billingCycle],
@@ -225,14 +226,6 @@ export default function PackagesPage() {
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to initiate payment'),
   });
 
-  const payInvoiceMutation = useMutation({
-    mutationFn: (invoiceId: string) => paymentService.initiateSubscription({ invoiceId }),
-    onSuccess: (data) => {
-      window.location.href = data.authorization_url;
-    },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to initiate invoice payment'),
-  });
-
   function handleUpgrade(pkgId: string, pkgName: string) {
     setUpgradeDialog({ open: true, packageId: pkgId, packageName: pkgName });
   }
@@ -266,6 +259,23 @@ export default function PackagesPage() {
       downloadPackageInvoicePdf(fullInvoice, 'Your ministry');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to load invoice payments for PDF');
+    }
+  }
+
+  async function handlePayInvoice(invoice: PackageInvoice) {
+    try {
+      setOpeningInvoicePaymentId(invoice.id);
+      const token = invoice.publicToken || (await fetchFullInvoice(invoice)).publicToken;
+      const url = invoicePayUrl(token);
+      if (!url) {
+        toast.error('Payment link is not available for this invoice yet');
+        return;
+      }
+      window.location.href = url;
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to open invoice payment');
+    } finally {
+      setOpeningInvoicePaymentId(null);
     }
   }
 
@@ -365,7 +375,7 @@ export default function PackagesPage() {
                                 <LinkIcon className="h-3.5 w-3.5" /> Link
                               </Button>
                               {!['paid', 'cancelled'].includes(invoice.status) && (
-                                <Button size="sm" className="h-8 text-xs gap-1" onClick={() => payInvoiceMutation.mutate(invoice.id)} disabled={payInvoiceMutation.isPending}>
+                                <Button size="sm" className="h-8 text-xs gap-1" onClick={() => handlePayInvoice(invoice)} disabled={openingInvoicePaymentId === invoice.id}>
                                   <Wallet className="h-3.5 w-3.5" /> Pay Now
                                 </Button>
                               )}

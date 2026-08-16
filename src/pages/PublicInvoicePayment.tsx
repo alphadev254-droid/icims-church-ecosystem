@@ -6,6 +6,7 @@ import { packagesService } from '@/services/packages';
 import { downloadPackageInvoicePdf } from '@/lib/invoice-pdf';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 function money(currency: string, value?: number | null) {
@@ -40,7 +41,7 @@ export default function PublicInvoicePayment() {
   const invoice = invoiceQuery.data;
   const isPaid = invoice?.status === 'paid' || (invoice?.balanceDue ?? 0) <= 0;
   const paymentOptions = invoice?.paymentOptions;
-  const allowedMonths = paymentOptions?.allowedMonths?.length ? paymentOptions.allowedMonths : [1, 3, 6, 12];
+  const allowedMonths = paymentOptions?.allowedMonths?.length ? paymentOptions.allowedMonths : Array.from({ length: 12 }, (_, index) => index + 1);
   const invoiceMonths = paymentOptions?.invoiceMonths ?? 1;
   const monthlyAmount = paymentOptions?.monthlyAmount ?? ((invoice?.amount ?? 0) / invoiceMonths);
   const extraMonths = Math.max(0, selectedMonths - invoiceMonths);
@@ -135,19 +136,18 @@ export default function PublicInvoicePayment() {
                       </div>
                       <p className="text-sm font-semibold">{selectedMonthsLabel}</p>
                     </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {allowedMonths.map(months => (
-                        <Button
-                          key={months}
-                          type="button"
-                          variant={selectedMonths === months ? 'default' : 'outline'}
-                          className="h-9 text-xs"
-                          onClick={() => setSelectedMonths(months)}
-                        >
-                          {months} month{months === 1 ? '' : 's'}
-                        </Button>
-                      ))}
-                    </div>
+                    <Select value={String(selectedMonths)} onValueChange={value => setSelectedMonths(Number(value))}>
+                      <SelectTrigger className="mt-3 h-11">
+                        <SelectValue placeholder="Select months" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {allowedMonths.map(months => (
+                          <SelectItem key={months} value={String(months)} className="my-1 rounded-md border border-transparent py-2 text-sm data-[state=checked]:border-accent data-[state=checked]:bg-accent/10">
+                            {months} month{months === 1 ? '' : 's'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <div className="mt-3 grid gap-2 rounded-md bg-muted/30 p-3 text-sm sm:grid-cols-3">
                       <div>
                         <p className="text-xs text-muted-foreground">Invoice balance</p>
