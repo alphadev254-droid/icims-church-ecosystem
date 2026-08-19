@@ -382,14 +382,14 @@ export default function AdminTreasury() {
                     <td className="p-3">{statusBadge(row.status)}</td>
                     <td className="p-3 text-right">
                       <div className="flex justify-end gap-1">
-                        {['pending', 'processing', 'review_required'].includes(row.status) && row.chargeId && (
+                        {['pending', 'processing', 'review_required'].includes(row.status) && (
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
                             onClick={() => reconcileMutation.mutate(row.id)}
                             disabled={reconcileMutation.isPending}
-                            title="Reconcile with PayChangu"
+                            title={row.chargeId ? 'Reconcile with PayChangu' : 'Mark failed: no PayChangu payout reference'}
                           >
                             <RefreshCw className={`h-4 w-4 ${reconcileMutation.isPending ? 'animate-spin' : ''}`} />
                           </Button>
