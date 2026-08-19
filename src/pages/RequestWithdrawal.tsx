@@ -60,6 +60,32 @@ type WithdrawalForm = z.infer<typeof withdrawalSchema>;
 type WithdrawalOtpResult = { message?: string; expiresInSeconds?: number };
 type SupportedBank = { uuid?: string; bank_uuid?: string; id?: string | number; name?: string };
 
+function getApiErrorMessage(err: unknown, fallback: string) {
+  const error = err as { response?: { data?: unknown }; message?: string };
+  const data = error.response?.data;
+
+  if (data && typeof data === 'object') {
+    const body = data as Record<string, unknown>;
+    if (body.message) {
+      if (typeof body.message === 'string') return body.message;
+      if (Array.isArray(body.message)) return body.message.map(String).join('. ');
+      if (typeof body.message === 'object') {
+        return Object.values(body.message as Record<string, unknown>)
+          .flatMap(value => Array.isArray(value) ? value.map(String) : [String(value)])
+          .filter(Boolean)
+          .join('. ') || fallback;
+      }
+    }
+
+    const fieldMessages = Object.values(body)
+      .flatMap(value => Array.isArray(value) ? value.map(String) : [])
+      .filter(Boolean);
+    if (fieldMessages.length > 0) return fieldMessages.join('. ');
+  }
+
+  return error.message || fallback;
+}
+
 export default function RequestWithdrawalPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -67,6 +93,7 @@ export default function RequestWithdrawalPage() {
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpExpiresIn, setOtpExpiresIn] = useState<number | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<WithdrawalForm>({
     resolver: zodResolver(withdrawalSchema),
@@ -91,36 +118,31 @@ export default function RequestWithdrawalPage() {
   const withdrawMutation = useMutation({
     mutationFn: walletService.requestWithdrawal,
     onSuccess: () => {
+      setSubmissionError(null);
       toast.success('Withdrawal request submitted successfully');
       qc.invalidateQueries({ queryKey: ['wallet-balance'] });
       qc.invalidateQueries({ queryKey: ['withdrawals'] });
       navigate(-1);
     },
-    onError: (err: { response?: { data?: { message?: string } } }) => {
-      const errorData = (err.response?.data || {}) as Record<string, unknown>;
-      let errorMessage = 'Failed to request withdrawal';
-      if (errorData?.message) {
-        errorMessage = String(errorData.message);
-      } else {
-        const msgs: string[] = [];
-        for (const value of Object.values(errorData)) {
-          if (Array.isArray(value)) msgs.push(...value.map(String));
-        }
-        if (msgs.length > 0) errorMessage = msgs.join('. ');
-      }
-      toast.error(errorMessage);
+    onError: (err: unknown) => {
+      const errorMessage = getApiErrorMessage(err, 'Failed to request withdrawal');
+      setSubmissionError(errorMessage);
+      toast.error(errorMessage, { id: 'withdrawal-request-error', duration: 8000 });
     },
   });
 
   const sendOtpMutation = useMutation({
     mutationFn: walletService.sendWithdrawalOtp,
     onSuccess: (result: WithdrawalOtpResult) => {
+      setSubmissionError(null);
       setOtpSent(true);
       setOtpExpiresIn(result.expiresInSeconds ?? 300);
       toast.success(result.message || 'OTP sent to your email');
     },
-    onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err.response?.data?.message || 'Failed to send OTP');
+    onError: (err: unknown) => {
+      const errorMessage = getApiErrorMessage(err, 'Failed to send OTP');
+      setSubmissionError(errorMessage);
+      toast.error(errorMessage, { id: 'withdrawal-otp-error', duration: 8000 });
     },
   });
 
@@ -173,11 +195,14 @@ export default function RequestWithdrawalPage() {
         <CardContent>
           <form
             onSubmit={handleSubmit(data => {
+              setSubmissionError(null);
               if (!otpSent) {
+                setSubmissionError('Request an OTP code first');
                 toast.error('Request an OTP code first');
                 return;
               }
               if (!/^\d{6}$/.test(otpCode)) {
+                setSubmissionError('Enter the 6-digit OTP code');
                 toast.error('Enter the 6-digit OTP code');
                 return;
               }
@@ -263,6 +288,12 @@ export default function RequestWithdrawalPage() {
             )}
 
             {errors.root && <p className="text-xs text-destructive">{errors.root.message}</p>}
+
+            {submissionError && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {submissionError}
+              </div>
+            )}
 
             <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
               <div className="flex items-start gap-3">
