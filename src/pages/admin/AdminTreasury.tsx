@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 type Method = 'mobile_money' | 'bank_transfer';
@@ -130,7 +131,18 @@ export default function AdminTreasury() {
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [selected, setSelected] = useState<AdminPlatformWithdrawal | null>(null);
+  const [ministryFilter, setMinistryFilter] = useState('all');
 
+  const { data: ministries = [] } = useQuery({
+    queryKey: ['admin-ministries'],
+    queryFn: () => adminApi.getMinistries().then(r => r.data.data),
+    staleTime: 5 * 60_000,
+  });
+  const { data: ministryWalletsData, isLoading: ministryWalletsLoading } = useQuery({
+    queryKey: ['admin-treasury-ministry-wallets', ministryFilter],
+    queryFn: () => adminApi.getTreasuryMinistryWallets({ ministry: ministryFilter }).then(r => r.data),
+    staleTime: 30_000,
+  });
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ['admin-treasury-summary'],
     queryFn: () => adminApi.getTreasurySummary().then(r => r.data.data),
@@ -228,6 +240,8 @@ export default function AdminTreasury() {
   const coverageTotal = summary ? paychanguTotal + totalProtected + summary.safeAvailableBalance : 0;
   const liabilityPercent = coverageTotal > 0 ? Math.min(100, (totalProtected / coverageTotal) * 100) : 0;
   const safePercent = coverageTotal > 0 ? Math.min(100, (summary!.safeAvailableBalance / coverageTotal) * 100) : 0;
+  const ministryWalletRows = ministryWalletsData?.data ?? [];
+  const ministryWalletSummary = ministryWalletsData?.summary;
 
   return (
     <div className="space-y-4">
@@ -236,6 +250,124 @@ export default function AdminTreasury() {
         <p className="text-sm text-muted-foreground">System-admin PayChangu balance, safe balance, and platform payouts.</p>
       </div>
 
+      <Tabs defaultValue="ministries" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2 sm:w-[420px]">
+          <TabsTrigger value="ministries">Ministry Wallets</TabsTrigger>
+          <TabsTrigger value="platform">Platform Treasury</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ministries" className="space-y-4">
+          <div className="rounded-lg border bg-card p-4 space-y-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold">Ministry Wallet Balances</h2>
+                <p className="text-xs text-muted-foreground">Totals are grouped by ministry across each ministry's church wallets.</p>
+              </div>
+              <div className="w-full lg:w-80">
+                <Label className="text-xs">Filter by ministry</Label>
+                <Select value={ministryFilter} onValueChange={setMinistryFilter}>
+                  <SelectTrigger className="mt-1 h-9 text-sm">
+                    <SelectValue placeholder="All ministries" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All ministries</SelectItem>
+                    {ministries.map((ministry) => (
+                      <SelectItem key={ministry.id} value={ministry.id}>
+                        {ministry.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <SummaryCard
+                label="Total Ministry Wallets"
+                value={money('MWK', ministryWalletSummary?.totalBalance)}
+                sub={`${ministryWalletSummary?.walletCount ?? 0} wallet(s)`}
+                icon={Wallet}
+                tone="bg-yellow-100 text-yellow-700"
+              />
+              <SummaryCard
+                label="Ministries"
+                value={(ministryWalletSummary?.ministryCount ?? 0).toLocaleString()}
+                sub={ministryFilter === 'all' ? 'All ministries' : 'Selected ministry'}
+                icon={Banknote}
+                tone="bg-blue-100 text-blue-700"
+              />
+              <SummaryCard
+                label="Average Balance"
+                value={money('MWK', (ministryWalletSummary?.walletCount ?? 0) > 0 ? (ministryWalletSummary!.totalBalance / ministryWalletSummary!.walletCount) : 0)}
+                sub="Per wallet"
+                icon={CreditCard}
+                tone="bg-emerald-100 text-emerald-700"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-lg border overflow-hidden bg-card">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs">
+                  <tr>
+                    <th className="text-left p-3">Ministry</th>
+                    <th className="text-left p-3">Admin</th>
+                    <th className="text-right p-3">Total Balance</th>
+                    <th className="text-right p-3">Wallets</th>
+                    <th className="text-left p-3">Church Wallets</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {ministryWalletsLoading ? (
+                    <tr><td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">Loading ministry wallets...</td></tr>
+                  ) : ministryWalletRows.length === 0 ? (
+                    <tr><td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">No ministry wallets found.</td></tr>
+                  ) : ministryWalletRows.map((row) => (
+                    <tr key={row.ministryId} className="align-top">
+                      <td className="p-3">
+                        <p className="text-sm font-medium">{row.ministryName}</p>
+                        <p className="text-xs text-muted-foreground">{row.country || 'Country not set'}</p>
+                      </td>
+                      <td className="p-3">
+                        <p className="text-xs font-medium">{row.ministryAdminName || '-'}</p>
+                        <p className="text-xs text-muted-foreground break-all">{row.ministryAdminEmail || '-'}</p>
+                      </td>
+                      <td className="p-3 text-right font-mono text-sm font-semibold whitespace-nowrap">
+                        {money(row.currency === 'mixed' ? 'MWK' : row.currency, row.totalBalance)}
+                      </td>
+                      <td className="p-3 text-right text-xs">
+                        <span className="font-medium">{row.walletCount}</span>
+                        <span className="text-muted-foreground"> wallet(s)</span>
+                      </td>
+                      <td className="p-3 min-w-[280px]">
+                        {row.wallets.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">No church wallets yet</span>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {row.wallets.map((wallet) => (
+                              <div key={wallet.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-2 py-1.5">
+                                <span className="text-xs">
+                                  {wallet.church?.name ?? 'Unknown church'}
+                                  {wallet.church?.status && wallet.church.status !== 'active' && (
+                                    <span className="ml-1 text-muted-foreground">({wallet.church.status})</span>
+                                  )}
+                                </span>
+                                <span className="text-xs font-mono font-medium">{money(wallet.currency, wallet.balance)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="platform" className="space-y-4">
       {summaryLoading ? <div className="h-36 rounded-lg bg-muted animate-pulse" /> : summary && (
         <div className="rounded-xl border bg-card overflow-hidden">
           <div className="grid gap-0 lg:grid-cols-[1.2fr_1fr]">
@@ -404,6 +536,8 @@ export default function AdminTreasury() {
           </div>
         </div>
       </div>
+        </TabsContent>
+      </Tabs>
       {selected && <DetailDialog row={selected} onClose={() => setSelected(null)} />}
     </div>
   );

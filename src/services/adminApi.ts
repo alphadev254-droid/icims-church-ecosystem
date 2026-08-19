@@ -419,6 +419,29 @@ export interface AdminTreasurySummary {
   paychanguRaw?: unknown;
 }
 
+export interface AdminTreasuryMinistryWallet {
+  ministryId: string;
+  ministryName: string;
+  ministryAdminName: string;
+  ministryAdminEmail: string;
+  country?: string | null;
+  currency: string;
+  totalBalance: number;
+  walletCount: number;
+  churchCount: number;
+  wallets: Array<{
+    id: string;
+    balance: number;
+    currency: string;
+    updatedAt: string;
+    church?: {
+      id: string;
+      name: string;
+      status: string;
+    } | null;
+  }>;
+}
+
 export interface AdminPlatformWithdrawal {
   id: string;
   initiatedBy: string;
@@ -623,6 +646,13 @@ export const adminApi = {
 
   getTreasurySummary: () =>
     apiClient.get<{ success: boolean; data: AdminTreasurySummary }>('/admin/treasury/summary'),
+
+  getTreasuryMinistryWallets: (params?: { ministry?: string }) =>
+    apiClient.get<{
+      success: boolean;
+      data: AdminTreasuryMinistryWallet[];
+      summary: { totalBalance: number; walletCount: number; ministryCount: number };
+    }>('/admin/treasury/ministry-wallets', { params }),
 
   getTreasuryWithdrawals: (params: { page?: number; limit?: number; status?: string }) =>
     apiClient.get<{ success: boolean; data: AdminPlatformWithdrawal[]; pagination: Pagination }>('/admin/treasury/withdrawals', { params }),
