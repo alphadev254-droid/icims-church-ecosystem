@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Banknote, CreditCard, Eye, RefreshCw, ShieldCheck, Wallet, Zap } from 'lucide-react';
-import { adminApi, type AdminPlatformWithdrawal } from '@/services/adminApi';
+import { AlertTriangle, Banknote, CreditCard, Eye, MoreHorizontal, RefreshCw, ShieldCheck, Wallet, Zap } from 'lucide-react';
+import { adminApi, type AdminPlatformWithdrawal, type AdminTreasuryMinistryWallet } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -119,6 +119,63 @@ function DetailDialog({ row, onClose }: { row: AdminPlatformWithdrawal; onClose:
   );
 }
 
+function MinistryWalletDialog({ row, onClose }: { row: AdminTreasuryMinistryWallet; onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-sm">Church Wallets - {row.ministryName}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <SummaryCard
+            label="Total Balance"
+            value={money(row.currency === 'mixed' ? 'MWK' : row.currency, row.totalBalance)}
+            sub={`${row.walletCount} wallet(s)`}
+            icon={Wallet}
+            tone="bg-yellow-100 text-yellow-700"
+          />
+          <SummaryCard
+            label="Churches"
+            value={row.churchCount.toLocaleString()}
+            sub="With wallets"
+            icon={Banknote}
+            tone="bg-blue-100 text-blue-700"
+          />
+          <SummaryCard
+            label="Admin"
+            value={row.ministryAdminName || '-'}
+            sub={row.ministryAdminEmail || undefined}
+            icon={ShieldCheck}
+            tone="bg-emerald-100 text-emerald-700"
+          />
+        </div>
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs">
+              <tr>
+                <th className="text-left p-3">Church</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-right p-3">Balance</th>
+                <th className="text-left p-3">Updated</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {row.wallets.map((wallet) => (
+                <tr key={wallet.id}>
+                  <td className="p-3 text-xs font-medium">{wallet.church?.name ?? 'Unknown church'}</td>
+                  <td className="p-3 text-xs capitalize">{wallet.church?.status ?? '-'}</td>
+                  <td className="p-3 text-right text-xs font-mono font-semibold">{money(wallet.currency, wallet.balance)}</td>
+                  <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(wallet.updatedAt).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function AdminTreasury() {
   const qc = useQueryClient();
   const [amount, setAmount] = useState('');
@@ -131,6 +188,7 @@ export default function AdminTreasury() {
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [selected, setSelected] = useState<AdminPlatformWithdrawal | null>(null);
+  const [selectedMinistryWallet, setSelectedMinistryWallet] = useState<AdminTreasuryMinistryWallet | null>(null);
   const [ministryFilter, setMinistryFilter] = useState('all');
 
   const { data: ministries = [] } = useQuery({
@@ -281,7 +339,7 @@ export default function AdminTreasury() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <SummaryCard
                 label="Total Ministry Wallets"
                 value={money('MWK', ministryWalletSummary?.totalBalance)}
@@ -295,13 +353,6 @@ export default function AdminTreasury() {
                 sub={ministryFilter === 'all' ? 'All ministries' : 'Selected ministry'}
                 icon={Banknote}
                 tone="bg-blue-100 text-blue-700"
-              />
-              <SummaryCard
-                label="Average Balance"
-                value={money('MWK', (ministryWalletSummary?.walletCount ?? 0) > 0 ? (ministryWalletSummary!.totalBalance / ministryWalletSummary!.walletCount) : 0)}
-                sub="Per wallet"
-                icon={CreditCard}
-                tone="bg-emerald-100 text-emerald-700"
               />
             </div>
           </div>
@@ -345,7 +396,7 @@ export default function AdminTreasury() {
                           <span className="text-xs text-muted-foreground">No church wallets yet</span>
                         ) : (
                           <div className="space-y-1.5">
-                            {row.wallets.map((wallet) => (
+                            {row.wallets.slice(0, 2).map((wallet) => (
                               <div key={wallet.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-2 py-1.5">
                                 <span className="text-xs">
                                   {wallet.church?.name ?? 'Unknown church'}
@@ -356,6 +407,18 @@ export default function AdminTreasury() {
                                 <span className="text-xs font-mono font-medium">{money(wallet.currency, wallet.balance)}</span>
                               </div>
                             ))}
+                            {row.wallets.length > 2 && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-full justify-between text-xs"
+                                onClick={() => setSelectedMinistryWallet(row)}
+                              >
+                                <span>View {row.wallets.length - 2} more church wallet(s)</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         )}
                       </td>
@@ -539,6 +602,12 @@ export default function AdminTreasury() {
         </TabsContent>
       </Tabs>
       {selected && <DetailDialog row={selected} onClose={() => setSelected(null)} />}
+      {selectedMinistryWallet && (
+        <MinistryWalletDialog
+          row={selectedMinistryWallet}
+          onClose={() => setSelectedMinistryWallet(null)}
+        />
+      )}
     </div>
   );
 }
