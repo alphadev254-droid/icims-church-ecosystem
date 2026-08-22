@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { CalendarIcon, Clock } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -130,7 +129,7 @@ export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick 
     return (
       <>
         {triggerButton}
-        {open && createPortal(
+        {open && (
           <div
             className="fixed inset-0 z-[1000] flex items-center justify-center bg-background/70 p-3 backdrop-blur-sm"
             onMouseDown={() => setOpen(false)}
@@ -146,8 +145,7 @@ export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick 
                 <Button type="button" size="sm" onClick={() => setOpen(false)}>Done</Button>
               </div>
             </div>
-          </div>,
-          document.body
+          </div>
         )}
       </>
     );
