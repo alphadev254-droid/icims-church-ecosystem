@@ -922,6 +922,40 @@ export default function CellDetailPage() {
                 </Card>
               </div>
 
+              {/* Top guest inviters */}
+              {stats && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <UserPlus className="h-4 w-4 text-accent" />
+                      Top Guest Inviters
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!stats.topGuestInviters?.length ? (
+                      <p className="text-xs text-muted-foreground py-2">No guest invitations recorded yet.</p>
+                    ) : (
+                      <div className="divide-y">
+                        {stats.topGuestInviters.map((member: any, i: number) => (
+                          <div key={member.id ?? i} className="flex items-center justify-between gap-3 py-2">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="w-4 shrink-0 text-xs text-muted-foreground">{i + 1}.</span>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium">{member.name}</p>
+                                <p className="truncate text-xs text-muted-foreground">{member.email || member.phone || 'Cell member'}</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="shrink-0 text-xs text-blue-600 border-blue-300">
+                              {member.count} guest{member.count === 1 ? '' : 's'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Repeat visitors */}
               {stats && (
                 <Card>
