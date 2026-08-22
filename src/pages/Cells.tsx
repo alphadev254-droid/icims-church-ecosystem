@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ChurchSelect } from '@/components/ChurchSelect';
-import { Plus, Users, Calendar, MapPin, Pencil, Trash2, Eye, Lock, Search, ChevronLeft, ChevronRight, HandCoins } from 'lucide-react';
+import { Plus, Users, Calendar, MapPin, Pencil, Trash2, Eye, Lock, Search, ChevronLeft, ChevronRight, HandCoins, Maximize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { STALE_TIME } from '@/lib/query-config';
@@ -140,6 +140,7 @@ export default function CellsPage() {
   const [givingPeriod, setGivingPeriod] = useState<CellGivingPeriod>('this_month');
   const [givingStartDate, setGivingStartDate] = useState('');
   const [givingEndDate, setGivingEndDate] = useState('');
+  const [expandedRankingKey, setExpandedRankingKey] = useState<string | null>(null);
   const debouncedSearch = useDebounce(search, 350);
   const givingDateRange = getCellGivingDateRange(givingPeriod, givingStartDate, givingEndDate);
 
@@ -196,6 +197,108 @@ export default function CellsPage() {
     onSuccess: () => { toast.success('Cell deleted'); qc.invalidateQueries({ queryKey: ['cells'] }); setDeleteCell(null); },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete cell'),
   });
+
+  const rankingSections = overviewStats ? [
+    {
+      key: 'members',
+      title: 'Most Members',
+      emptyText: 'No member ranking data yet.',
+      items: overviewStats.topByMembers ?? [],
+      value: (item: any) => item.count,
+      valueClassName: '',
+      detail: () => '',
+      canOpenCell: true,
+    },
+    {
+      key: 'meetings',
+      title: 'Most Meetings',
+      emptyText: 'No meeting ranking data yet.',
+      items: overviewStats.topByMeetings ?? [],
+      value: (item: any) => item.count,
+      valueClassName: '',
+      detail: () => '',
+      canOpenCell: true,
+    },
+    {
+      key: 'attendance-rate',
+      title: 'Best Attendance Rate',
+      emptyText: 'No attendance rate data yet.',
+      items: overviewStats.topByAttendanceRate ?? [],
+      value: (item: any) => `${item.attendanceRate ?? 0}%`,
+      valueClassName: 'text-green-600 border-green-300',
+      detail: (item: any) => `${item.present ?? 0} present of ${item.total ?? 0} expected`,
+      canOpenCell: true,
+    },
+    {
+      key: 'visitors',
+      title: 'Most Visitors / Guests',
+      emptyText: 'No visitors recorded yet.',
+      items: overviewStats.topByVisitors ?? [],
+      value: (item: any) => item.count,
+      valueClassName: '',
+      detail: () => '',
+      canOpenCell: true,
+    },
+    {
+      key: 'inviters',
+      title: 'Top Guest Inviters',
+      emptyText: 'No guest invitations recorded yet.',
+      items: overviewStats.topByInviters ?? [],
+      value: (item: any) => item.count,
+      valueClassName: '',
+      detail: (item: any) => item.email ?? '',
+      canOpenCell: false,
+    },
+    {
+      key: 'giving',
+      title: 'Most Giving',
+      emptyText: 'No cell giving recorded yet.',
+      items: overviewStats.topByGiving ?? [],
+      value: (item: any) => (item.total ?? 0).toLocaleString(),
+      valueClassName: '',
+      detail: () => '',
+      canOpenCell: true,
+    },
+  ] : [];
+  const expandedRanking = rankingSections.find(section => section.key === expandedRankingKey) ?? null;
+
+  const renderRankingRows = (section: any, expanded = false) => {
+    if (!section.items.length) {
+      return <p className={`text-xs text-muted-foreground ${expanded ? 'py-8 text-center' : 'py-2'}`}>{section.emptyText}</p>;
+    }
+
+    return (
+      <div className={expanded ? 'divide-y rounded-md border' : 'space-y-1.5'}>
+        {section.items.map((item: any, index: number) => {
+          const detail = section.detail(item);
+          return (
+            <div
+              key={`${section.key}-${item.id ?? index}`}
+              className={expanded ? 'grid gap-2 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center' : 'flex items-center justify-between gap-2'}
+            >
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="w-4 shrink-0 text-xs text-muted-foreground">{index + 1}.</span>
+                <div className="min-w-0">
+                  {section.canOpenCell && item.id ? (
+                    <button
+                      onClick={() => navigate(`/dashboard/cells/${item.id}`)}
+                      className="block max-w-full truncate text-left text-sm font-medium hover:text-accent"
+                    >
+                      {item.name}
+                    </button>
+                  ) : (
+                    <p className="truncate text-sm font-medium">{item.name}</p>
+                  )}
+                  {detail && <p className="truncate text-[11px] text-muted-foreground">{detail}</p>}
+                </div>
+              </div>
+              <Badge variant="outline" className={`shrink-0 text-xs ${section.valueClassName}`}>{section.value(item)}</Badge>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   if (!isMember && !hasCellFeature) {
     return (
@@ -362,116 +465,26 @@ export default function CellsPage() {
 
           {/* Ranking lists */}
           <div className="grid sm:grid-cols-2 xl:grid-cols-6 gap-4">
-            {/* Top by members */}
-            {overviewStats.topByMembers?.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Most Members</CardTitle></CardHeader>
+            {rankingSections.map(section => (
+              <Card key={section.key}>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                  <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">{section.title}</CardTitle>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setExpandedRankingKey(section.key)}
+                    title={`View ${section.title}`}
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                  </Button>
+                </CardHeader>
                 <CardContent className="space-y-1.5">
-                  {overviewStats.topByMembers.map((c: any, i: number) => (
-                    <div key={c.id} className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}.</span>
-                        <button onClick={() => navigate(`/dashboard/cells/${c.id}`)} className="text-sm font-medium truncate hover:text-accent text-left">{c.name}</button>
-                      </div>
-                      <Badge variant="outline" className="text-xs shrink-0">{c.count}</Badge>
-                    </div>
-                  ))}
+                  {renderRankingRows(section)}
                 </CardContent>
               </Card>
-            )}
-
-            {/* Top by meetings */}
-            {overviewStats.topByMeetings?.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Most Meetings</CardTitle></CardHeader>
-                <CardContent className="space-y-1.5">
-                  {overviewStats.topByMeetings.map((c: any, i: number) => (
-                    <div key={c.id} className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}.</span>
-                        <button onClick={() => navigate(`/dashboard/cells/${c.id}`)} className="text-sm font-medium truncate hover:text-accent text-left">{c.name}</button>
-                      </div>
-                      <Badge variant="outline" className="text-xs shrink-0">{c.count}</Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Top by attendance rate */}
-            {overviewStats.topByAttendanceRate?.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Best Attendance Rate</CardTitle></CardHeader>
-                <CardContent className="space-y-1.5">
-                  {overviewStats.topByAttendanceRate.map((c: any, i: number) => (
-                    <div key={c.id} className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}.</span>
-                        <button onClick={() => navigate(`/dashboard/cells/${c.id}`)} className="text-sm font-medium truncate hover:text-accent text-left">{c.name}</button>
-                      </div>
-                      <Badge variant="outline" className="text-xs shrink-0 text-green-600 border-green-300">{c.attendanceRate}%</Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Top by visitors */}
-            {overviewStats.topByVisitors?.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Most Visitors / Guests</CardTitle></CardHeader>
-                <CardContent className="space-y-1.5">
-                  {overviewStats.topByVisitors.map((c: any, i: number) => (
-                    <div key={c.id} className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}.</span>
-                        <button onClick={() => navigate(`/dashboard/cells/${c.id}`)} className="text-sm font-medium truncate hover:text-accent text-left">{c.name}</button>
-                      </div>
-                      <Badge variant="outline" className="text-xs shrink-0">{c.count}</Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Top by guest inviters */}
-            {overviewStats.topByInviters?.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Top Guest Inviters</CardTitle></CardHeader>
-                <CardContent className="space-y-1.5">
-                  {overviewStats.topByInviters.map((member: any, i: number) => (
-                    <div key={member.id} className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <span className="w-4 shrink-0 text-xs text-muted-foreground">{i + 1}.</span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{member.name}</p>
-                          {member.email && <p className="truncate text-[11px] text-muted-foreground">{member.email}</p>}
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="shrink-0 text-xs">{member.count}</Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Top by giving */}
-            {overviewStats.topByGiving?.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground uppercase tracking-wide">Most Giving</CardTitle></CardHeader>
-                <CardContent className="space-y-1.5">
-                  {overviewStats.topByGiving.map((c: any, i: number) => (
-                    <div key={c.id} className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}.</span>
-                        <button onClick={() => navigate(`/dashboard/cells/${c.id}`)} className="text-sm font-medium truncate hover:text-accent text-left">{c.name}</button>
-                      </div>
-                      <span className="text-xs font-medium shrink-0">{c.total.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+            ))}
           </div>
         </div>
       )}
@@ -590,6 +603,23 @@ export default function CellsPage() {
           </div>
         </div>
       )}
+
+      {/* Ranking Detail Dialog */}
+      <Dialog open={!!expandedRanking} onOpenChange={open => !open && setExpandedRankingKey(null)}>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading">{expandedRanking?.title}</DialogTitle>
+          </DialogHeader>
+          {expandedRanking && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {expandedRanking.items.length} item{expandedRanking.items.length === 1 ? '' : 's'} in this ranking.
+              </p>
+              {renderRankingRows(expandedRanking, true)}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
