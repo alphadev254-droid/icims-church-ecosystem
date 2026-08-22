@@ -943,11 +943,11 @@ export default function AttendancePage() {
             <div className="space-y-4">
               <div>
                 <Label>Valid From</Label>
-                <DateTimePicker value={scannerLinkValidFrom} onChange={setScannerLinkValidFrom} placeholder="Pick valid from" popoverSide="top" />
+                <DateTimePicker value={scannerLinkValidFrom} onChange={setScannerLinkValidFrom} placeholder="Pick valid from" presentation="centered" />
               </div>
               <div>
                 <Label>Expires At</Label>
-                <DateTimePicker value={scannerLinkExpiresAt} onChange={setScannerLinkExpiresAt} placeholder="Pick expiry time" popoverSide="top" />
+                <DateTimePicker value={scannerLinkExpiresAt} onChange={setScannerLinkExpiresAt} placeholder="Pick expiry time" presentation="centered" />
               </div>
               <div>
                 <Label>Usage Limit (optional)</Label>

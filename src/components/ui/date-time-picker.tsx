@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { CalendarIcon, Clock } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -15,6 +16,7 @@ type Props = {
   placeholder?: string;
   className?: string;
   popoverSide?: 'top' | 'right' | 'bottom' | 'left';
+  presentation?: 'popover' | 'centered';
 };
 
 function getDate(value?: string) {
@@ -36,25 +38,88 @@ function combineDateAndTime(date: Date, time: string) {
   return toDateTimeLocalInputValue(next);
 }
 
-export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick date and time', className, popoverSide = 'bottom' }: Props) {
+export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick date and time', className, popoverSide = 'bottom', presentation = 'popover' }: Props) {
   const [open, setOpen] = React.useState(false);
   const selected = getDate(value);
   const time = getTime(value);
 
+  React.useEffect(() => {
+    if (!open || presentation !== 'centered') return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open, presentation]);
+
+  const triggerButton = (
+    <Button
+      type="button"
+      variant="outline"
+      disabled={disabled}
+      onClick={presentation === 'centered' ? () => setOpen(true) : undefined}
+      className={cn('h-10 w-full justify-start gap-2 px-3 text-left font-normal', !selected && 'text-muted-foreground', className)}
+    >
+      <CalendarIcon className="h-4 w-4 shrink-0" />
+      <span className="min-w-0 truncate">
+        {selected ? format(selected, 'MMM d, yyyy h:mm a') : placeholder}
+      </span>
+    </Button>
+  );
+
+  const pickerPanel = (
+    <>
+      <Calendar
+        mode="single"
+        selected={selected}
+        onSelect={(date) => {
+          if (!date) return;
+          onChange(combineDateAndTime(date, time));
+        }}
+        initialFocus
+      />
+      <div className="flex items-center gap-2 border-t p-3">
+        <Clock className="h-4 w-4 text-muted-foreground" />
+        <Input
+          type="time"
+          value={time}
+          onChange={(event) => onChange(combineDateAndTime(selected || new Date(), event.target.value))}
+          className="h-9"
+        />
+      </div>
+    </>
+  );
+
+  if (presentation === 'centered') {
+    return (
+      <>
+        {triggerButton}
+        {open && createPortal(
+          <div
+            className="fixed inset-0 z-[1000] flex items-center justify-center bg-background/70 p-3 backdrop-blur-sm"
+            onMouseDown={() => setOpen(false)}
+          >
+            <div
+              className="max-h-[calc(100svh-2rem)] w-[min(22rem,calc(100vw-1.5rem))] overflow-y-auto rounded-lg border bg-popover text-popover-foreground shadow-xl"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <div className="border-b px-4 py-3 text-sm font-semibold">Pick date and time</div>
+              {pickerPanel}
+              <div className="flex justify-end border-t p-3">
+                <Button type="button" size="sm" onClick={() => setOpen(false)}>Done</Button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          className={cn('h-10 w-full justify-start gap-2 px-3 text-left font-normal', !selected && 'text-muted-foreground', className)}
-        >
-          <CalendarIcon className="h-4 w-4 shrink-0" />
-          <span className="min-w-0 truncate">
-            {selected ? format(selected, 'MMM d, yyyy h:mm a') : placeholder}
-          </span>
-        </Button>
+        {triggerButton}
       </PopoverTrigger>
       <PopoverContent
         className="max-h-[calc(100svh-2rem)] w-auto overflow-y-auto p-0"
@@ -62,24 +127,7 @@ export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick 
         side={popoverSide}
         collisionPadding={16}
       >
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={(date) => {
-            if (!date) return;
-            onChange(combineDateAndTime(date, time));
-          }}
-          initialFocus
-        />
-        <div className="flex items-center gap-2 border-t p-3">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <Input
-            type="time"
-            value={time}
-            onChange={(event) => onChange(combineDateAndTime(selected || new Date(), event.target.value))}
-            className="h-9"
-          />
-        </div>
+        {pickerPanel}
       </PopoverContent>
     </Popover>
   );
