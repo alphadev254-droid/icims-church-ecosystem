@@ -5,6 +5,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { toDateTimeLocalInputValue } from '@/lib/date-time';
 
@@ -55,21 +56,11 @@ export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick 
   const selected = getDate(value);
   const time = getTime(value);
 
-  React.useEffect(() => {
-    if (!open || presentation !== 'centered') return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, presentation]);
-
   const triggerButton = (
     <Button
       type="button"
       variant="outline"
       disabled={disabled}
-      onClick={presentation === 'centered' ? () => setOpen(true) : undefined}
       className={cn('h-10 w-full justify-start gap-2 px-3 text-left font-normal', !selected && 'text-muted-foreground', className)}
     >
       <CalendarIcon className="h-4 w-4 shrink-0" />
@@ -127,27 +118,21 @@ export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick 
 
   if (presentation === 'centered') {
     return (
-      <>
-        {triggerButton}
-        {open && (
-          <div
-            className="fixed inset-0 z-[1000] flex items-center justify-center bg-background/70 p-3 backdrop-blur-sm"
-            onMouseDown={() => setOpen(false)}
-          >
-            <div
-              className="max-h-[calc(100svh-2rem)] w-[min(22rem,calc(100vw-1.5rem))] overflow-y-auto rounded-lg border bg-popover text-popover-foreground shadow-xl"
-              onMouseDown={(event) => event.stopPropagation()}
-            >
-              <div className="border-b px-4 py-3 text-sm font-semibold">Pick date and time</div>
-              {directDateTimeControls}
-              {pickerPanel}
-              <div className="flex justify-end border-t p-3">
-                <Button type="button" size="sm" onClick={() => setOpen(false)}>Done</Button>
-              </div>
-            </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {triggerButton}
+        </DialogTrigger>
+        <DialogContent className="max-h-[calc(100svh-2rem)] max-w-sm gap-0 overflow-y-auto p-0">
+          <DialogHeader className="border-b px-4 py-3 text-left">
+            <DialogTitle className="text-sm font-semibold">Pick date and time</DialogTitle>
+          </DialogHeader>
+          {directDateTimeControls}
+          {pickerPanel}
+          <div className="flex justify-end border-t p-3">
+            <Button type="button" size="sm" onClick={() => setOpen(false)}>Done</Button>
           </div>
-        )}
-      </>
+        </DialogContent>
+      </Dialog>
     );
   }
 
