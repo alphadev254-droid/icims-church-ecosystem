@@ -31,11 +31,24 @@ function getTime(value?: string) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
+function getDateInputValue(date?: Date) {
+  if (!date) return '';
+  return format(date, 'yyyy-MM-dd');
+}
+
 function combineDateAndTime(date: Date, time: string) {
   const [hours, minutes] = time.split(':').map(Number);
   const next = new Date(date);
   next.setHours(Number.isFinite(hours) ? hours : 0, Number.isFinite(minutes) ? minutes : 0, 0, 0);
   return toDateTimeLocalInputValue(next);
+}
+
+function combineDateInputAndTime(dateValue: string, time: string, fallbackDate?: Date) {
+  const [year, month, day] = dateValue.split('-').map(Number);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return fallbackDate ? combineDateAndTime(fallbackDate, time) : '';
+  }
+  return combineDateAndTime(new Date(year, month - 1, day), time);
 }
 
 export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick date and time', className, popoverSide = 'bottom', presentation = 'popover' }: Props) {
@@ -65,6 +78,29 @@ export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick 
         {selected ? format(selected, 'MMM d, yyyy h:mm a') : placeholder}
       </span>
     </Button>
+  );
+
+  const directDateTimeControls = (
+    <div className="grid gap-3 border-b p-3 sm:grid-cols-[1fr_8.5rem]">
+      <div className="space-y-1.5">
+        <div className="text-xs font-medium text-muted-foreground">Date</div>
+        <Input
+          type="date"
+          value={getDateInputValue(selected)}
+          onChange={(event) => onChange(combineDateInputAndTime(event.target.value, time, selected))}
+          className="h-10"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <div className="text-xs font-medium text-muted-foreground">Time</div>
+        <Input
+          type="time"
+          value={time}
+          onChange={(event) => onChange(combineDateAndTime(selected || new Date(), event.target.value))}
+          className="h-10"
+        />
+      </div>
+    </div>
   );
 
   const pickerPanel = (
@@ -104,6 +140,7 @@ export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick 
               onMouseDown={(event) => event.stopPropagation()}
             >
               <div className="border-b px-4 py-3 text-sm font-semibold">Pick date and time</div>
+              {directDateTimeControls}
               {pickerPanel}
               <div className="flex justify-end border-t p-3">
                 <Button type="button" size="sm" onClick={() => setOpen(false)}>Done</Button>
