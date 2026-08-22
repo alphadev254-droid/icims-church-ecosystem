@@ -34,6 +34,8 @@ interface AttendanceRow {
   visitorPhone?: string;
   visitorEmail?: string;
   isFirstTime?: boolean;
+  invitedByUserId?: string;
+  invitedByUser?: { id: string; firstName: string; lastName: string; email?: string | null; phone?: string | null } | null;
   isNewConvert?: boolean;
   status: AttendanceStatus;
   notes?: string;
@@ -329,6 +331,20 @@ export default function CellAttendancePage() {
     ? (offeringCampaigns as any[]).flatMap((g: any) => g.posts || [])
     : (offeringCampaigns as any[]);
   const attendanceGuestRows = rows.filter(row => row.isGuest);
+  const inviterOptions = members
+    .filter(member => member.status === 'active' && member.userId && member.user)
+    .map(member => ({
+      id: member.userId,
+      name: `${member.user?.firstName ?? ''} ${member.user?.lastName ?? ''}`.trim() || member.user?.email || 'Member',
+      email: member.user?.email,
+    }));
+
+  const inviterName = (row: AttendanceRow) => {
+    const selected = inviterOptions.find(member => member.id === row.invitedByUserId);
+    if (selected) return selected.name;
+    if (row.invitedByUser) return `${row.invitedByUser.firstName ?? ''} ${row.invitedByUser.lastName ?? ''}`.trim() || row.invitedByUser.email || 'Member';
+    return '';
+  };
 
   const resetOffering = () => {
     setOfferingAmount(''); setOfferingNotes(''); setOfferingCampaignId('');
@@ -406,6 +422,8 @@ export default function CellAttendancePage() {
       visitorPhone: g.visitorPhone ?? '',
       visitorEmail: g.visitorEmail ?? '',
       isFirstTime: g.isFirstTime ?? true,
+      invitedByUserId: g.invitedByUserId ?? '',
+      invitedByUser: g.invitedByUser ?? null,
       isNewConvert: g.isNewConvert ?? false,
       status: 'present' as AttendanceStatus,
       notes: g.notes ?? '',
@@ -447,7 +465,7 @@ export default function CellAttendancePage() {
   };
 
   const addGuest = () => {
-    setRows(r => [...r, { key: `guest-new-${Date.now()}`, isGuest: true, visitorName: '', visitorPhone: '', visitorEmail: '', isFirstTime: true, isNewConvert: false, status: 'present', notes: '' }]);
+    setRows(r => [...r, { key: `guest-new-${Date.now()}`, isGuest: true, visitorName: '', visitorPhone: '', visitorEmail: '', isFirstTime: true, invitedByUserId: '', isNewConvert: false, status: 'present', notes: '' }]);
     setSaved(false);
   };
 
@@ -460,7 +478,7 @@ export default function CellAttendancePage() {
         throw new Error('Guest phone is required');
       }
       const records = currentRows.map(row => row.isGuest
-        ? { isVisitor: true, status: row.status, visitorName: row.visitorName, visitorPhone: row.visitorPhone, visitorEmail: row.visitorEmail || undefined, isFirstTime: row.isFirstTime ?? true, isNewConvert: row.isNewConvert ?? false, notes: row.notes || undefined }
+        ? { isVisitor: true, status: row.status, visitorName: row.visitorName, visitorPhone: row.visitorPhone, visitorEmail: row.visitorEmail || undefined, isFirstTime: row.isFirstTime ?? true, invitedByUserId: row.invitedByUserId || undefined, isNewConvert: row.isNewConvert ?? false, notes: row.notes || undefined }
         : { userId: row.userId, status: row.status, isVisitor: false, notes: row.notes || undefined }
       );
       return cellsService.submitAttendance(meetingId!, records);
@@ -483,6 +501,7 @@ export default function CellAttendancePage() {
     Type: r.isGuest ? 'Guest' : (r.isLeader ? 'Leader' : r.isAssistant ? 'Assistant' : 'Member'),
     Status: r.status,
     ExcuseReason: r.status === 'excused' ? (r.notes ?? '') : '',
+    InvitedBy: r.isGuest ? inviterName(r) : '',
     FirstTime: r.isGuest ? (r.isFirstTime ? 'Yes' : 'No') : '',
     NewConvert: r.isGuest ? (r.isNewConvert ? 'Yes' : 'No') : '',
   }));
@@ -494,6 +513,7 @@ export default function CellAttendancePage() {
     { label: 'Type', key: 'Type' },
     { label: 'Status', key: 'Status' },
     { label: 'Excuse Reason', key: 'ExcuseReason' },
+    { label: 'Invited By', key: 'InvitedBy' },
     { label: 'First Time', key: 'FirstTime' },
     { label: 'New Convert', key: 'NewConvert' },
   ];
@@ -590,7 +610,7 @@ export default function CellAttendancePage() {
 
       {/* Attendance table */}
       <div className="border rounded-lg overflow-x-auto">
-        <table className="w-full text-xs sm:text-sm min-w-[700px]">
+        <table className="w-full text-xs sm:text-sm min-w-[840px]">
           <thead className="bg-muted">
             <tr>
               <th className="text-left px-3 py-2 font-medium">Name</th>
@@ -599,6 +619,7 @@ export default function CellAttendancePage() {
               <th className="text-left px-3 py-2 font-medium">Type</th>
               <th className="text-left px-3 py-2 font-medium">Status</th>
               <th className="text-left px-3 py-2 font-medium">Excuse Reason</th>
+              <th className="text-left px-3 py-2 font-medium">Invited By</th>
               <th className="text-left px-3 py-2 font-medium">First Visit</th>
               <th className="text-left px-3 py-2 font-medium">New Convert</th>
               <th className="w-8"></th>
@@ -606,7 +627,7 @@ export default function CellAttendancePage() {
           </thead>
           <tbody className="divide-y">
             {filteredRows.length === 0 && (
-              <tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground text-xs">No records match this filter.</td></tr>
+              <tr><td colSpan={10} className="px-3 py-6 text-center text-muted-foreground text-xs">No records match this filter.</td></tr>
             )}
             {filteredRows.map(row => (
               <tr key={row.key} className={`hover:bg-muted/30 ${row.status === 'present' ? 'bg-green-50/30' : row.status === 'excused' ? 'bg-yellow-50/30' : ''}`}>
@@ -676,6 +697,32 @@ export default function CellAttendancePage() {
                     >
                       {row.notes || <span className="italic text-muted-foreground">{canManage ? 'Add reason' : 'No reason'}</span>}
                     </button>
+                  )}
+                </td>
+
+                {/* Invited by */}
+                <td className="px-3 py-1.5 min-w-[150px]">
+                  {row.isGuest && (
+                    canManage ? (
+                      <Select
+                        value={row.invitedByUserId || '_none'}
+                        onValueChange={value => updateGuest(row.key, 'invitedByUserId', value === '_none' ? '' : value)}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue placeholder="Select member" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_none">Not selected</SelectItem>
+                          {inviterOptions.map(member => (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{inviterName(row) || '—'}</span>
+                    )
                   )}
                 </td>
 
