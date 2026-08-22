@@ -14,6 +14,7 @@ type Props = {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  popoverSide?: 'top' | 'right' | 'bottom' | 'left';
 };
 
 function getDate(value?: string) {
@@ -35,7 +36,7 @@ function combineDateAndTime(date: Date, time: string) {
   return toDateTimeLocalInputValue(next);
 }
 
-export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick date and time', className }: Props) {
+export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick date and time', className, popoverSide = 'bottom' }: Props) {
   const [open, setOpen] = React.useState(false);
   const selected = getDate(value);
   const time = getTime(value);
@@ -55,7 +56,12 @@ export function DateTimePicker({ value, onChange, disabled, placeholder = 'Pick 
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="max-h-[calc(100svh-2rem)] w-auto overflow-y-auto p-0" align="start" collisionPadding={16}>
+      <PopoverContent
+        className="max-h-[calc(100svh-2rem)] w-auto overflow-y-auto p-0"
+        align="start"
+        side={popoverSide}
+        collisionPadding={16}
+      >
         <Calendar
           mode="single"
           selected={selected}
