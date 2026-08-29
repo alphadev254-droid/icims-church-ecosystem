@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { givingService, type Pledge, type PledgeStatus } from '@/services/giving';
 import { useAuthStore } from '@/stores/authStore';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { RecordPledgePaymentDialog } from '@/components/pledges/RecordPledgePaymentDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +17,7 @@ import {
   CreditCard, Hash, ExternalLink,
 } from 'lucide-react';
 import { STALE_TIME } from '@/lib/query-config';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 import { toast } from 'sonner';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -131,6 +133,8 @@ export default function PledgeDetailPage() {
   const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
   const { hasPermission } = useRole();
+  const hasOnlinePaymentsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_ONLINE_PAYMENTS);
+  const hasManualRecordsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_MANUAL_RECORDS);
   const isMember = user?.roleName === 'member';
   const [payOpen, setPayOpen] = useState(false);
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
@@ -166,8 +170,8 @@ export default function PledgeDetailPage() {
   const pledgerName = pledge.user
     ? `${pledge.user.firstName} ${pledge.user.lastName}`
     : (pledge.pledgerName ?? 'Walk-in Pledger');
-  const canPay = isMember && pledge.status !== 'fulfilled' && pledge.campaign?.status === 'active';
-  const canRecordPayment = !isMember && hasPermission('donations:create') && pledge.status !== 'fulfilled';
+  const canPay = isMember && hasOnlinePaymentsFeature && pledge.status !== 'fulfilled' && pledge.campaign?.status === 'active';
+  const canRecordPayment = !isMember && hasPermission('donations:create') && hasManualRecordsFeature && pledge.status !== 'fulfilled';
 
   return (
     <div className="space-y-4 sm:space-y-6">

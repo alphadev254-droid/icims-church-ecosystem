@@ -241,7 +241,7 @@ function EditPledgeDialog({ pledge, open, onOpenChange }: {
 }
 
 function MemberPledgeCard({ pledge, onView, onEdit, onPayNow }: {
-  pledge: Pledge; onView: () => void; onEdit: () => void; onPayNow: () => void;
+  pledge: Pledge; onView: () => void; onEdit: () => void; onPayNow: () => void; canPayOnline: boolean;
 }) {
   const balance = pledge.pledgedAmount - pledge.amountPaid;
   const p = pct(pledge);
@@ -281,7 +281,7 @@ function MemberPledgeCard({ pledge, onView, onEdit, onPayNow }: {
               <Pencil className="h-3 w-3 mr-1" /> Edit
             </Button>
           )}
-          {pledge.status !== 'fulfilled' && pledge.campaign?.status === 'active' && (
+          {canPayOnline && pledge.status !== 'fulfilled' && pledge.campaign?.status === 'active' && (
             <Button size="sm" className="flex-1 h-7 text-xs bg-accent text-accent-foreground hover:bg-accent/90" onClick={onPayNow}>
               <Wallet className="h-3 w-3 mr-1" /> Pay Now
             </Button>
@@ -351,8 +351,10 @@ export default function PledgesPage() {
   const { hasPermission } = useRole();
   const hasPledgesFeature = useHasFeature(PACKAGE_FEATURES.PLEDGES_MANAGEMENT);
   const hasManualRecordsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_MANUAL_RECORDS);
+  const hasOnlinePaymentsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_ONLINE_PAYMENTS);
   const isMember = user?.roleName === 'member';
   const canRecordPledgePayment = !isMember && hasPermission('donations:create') && hasManualRecordsFeature;
+  const canPayPledgeOnline = isMember && hasOnlinePaymentsFeature;
 
   const campaignIdFilter = searchParams.get('campaignId') ?? undefined;
 
@@ -627,6 +629,7 @@ export default function PledgesPage() {
                 onView={() => navigate(`/dashboard/pledges/${pledge.id}`)}
                 onEdit={() => setEditingPledge(pledge)}
                 onPayNow={() => navigate(`/dashboard/pledges/${pledge.id}`)}
+                canPayOnline={canPayPledgeOnline}
               />
             ))}
           </div>
