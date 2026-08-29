@@ -41,6 +41,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { Link } from 'react-router-dom';
 import { buildPublicEventUrl } from '@/lib/public-links';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -128,9 +129,23 @@ interface EventFormProps {
   isPending: boolean;
   submitLabel: string;
   churches?: Array<{ id: string; name: string }>;
+  canUseTicketing?: boolean;
+  canUsePublicLinks?: boolean;
+  canUseGuestBooking?: boolean;
+  canUseOnlinePayments?: boolean;
 }
 
-function EventForm({ defaultValues, onSubmit, isPending, submitLabel, churches = [] }: EventFormProps) {
+function EventForm({
+  defaultValues,
+  onSubmit,
+  isPending,
+  submitLabel,
+  churches = [],
+  canUseTicketing = true,
+  canUsePublicLinks = true,
+  canUseGuestBooking = true,
+  canUseOnlinePayments = true,
+}: EventFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const imageFileRef = useRef<File | null>(null);
 
@@ -421,15 +436,17 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel, churches =
       </div>
 
       {/* Requires Ticket */}
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="requiresTicket"
-          {...register('requiresTicket')}
-          className="h-4 w-4"
-        />
-        <Label htmlFor="requiresTicket" className="cursor-pointer">Requires Ticket</Label>
-      </div>
+      {canUseTicketing && (
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="requiresTicket"
+            {...register('requiresTicket')}
+            className="h-4 w-4"
+          />
+          <Label htmlFor="requiresTicket" className="cursor-pointer">Requires Ticket</Label>
+        </div>
+      )}
 
       {requiresTicket && (
         <>
@@ -438,12 +455,16 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel, churches =
               type="checkbox"
               id="isFree"
               {...register('isFree')}
+              disabled={!canUseOnlinePayments}
               className="h-4 w-4"
             />
-            <Label htmlFor="isFree" className="cursor-pointer">Free Event</Label>
+            <Label htmlFor="isFree" className="cursor-pointer">
+              Free Event
+              {!canUseOnlinePayments && <span className="ml-2 text-xs font-normal text-muted-foreground">Online paid tickets disabled</span>}
+            </Label>
           </div>
 
-          {!isFree && (
+          {!isFree && canUseOnlinePayments && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs sm:text-sm">Ticket Price</Label>
@@ -490,18 +511,20 @@ function EventForm({ defaultValues, onSubmit, isPending, submitLabel, churches =
             <p className="text-xs text-muted-foreground mt-1">Stop ticket sales at this date/time</p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="allowPublicTicketing"
-              {...register('allowPublicTicketing')}
-              className="h-4 w-4"
-            />
-            <Label htmlFor="allowPublicTicketing" className="cursor-pointer">
-              Allow public ticket purchasing
-              <span className="block text-xs text-muted-foreground font-normal">Guests can buy tickets without an account via the public event page</span>
-            </Label>
-          </div>
+          {canUsePublicLinks && canUseGuestBooking && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="allowPublicTicketing"
+                {...register('allowPublicTicketing')}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="allowPublicTicketing" className="cursor-pointer">
+                Allow public ticket purchasing
+                <span className="block text-xs text-muted-foreground font-normal">Guests can buy tickets without an account via the public event page</span>
+              </Label>
+            </div>
+          )}
         </>
       )}
 
@@ -536,7 +559,14 @@ export default function EventsPage() {
   const [appliedFilters, setAppliedFilters] = useState({ church: 'all', status: 'current', startDate: '', endDate: '' });
 
   const { hasPermission } = useRole();
-  const hasEventsFeature = useHasFeature('events_management');
+  const hasEventsFeature = useHasFeature(PACKAGE_FEATURES.EVENTS_MANAGEMENT);
+  const hasEventPublicLinksFeature = useHasFeature(PACKAGE_FEATURES.EVENT_PUBLIC_LINKS);
+  const hasEventQrCodesFeature = useHasFeature(PACKAGE_FEATURES.EVENT_QR_CODES);
+  const hasEventMemberBookingFeature = useHasFeature(PACKAGE_FEATURES.EVENT_MEMBER_BOOKING);
+  const hasEventGuestBookingFeature = useHasFeature(PACKAGE_FEATURES.EVENT_GUEST_BOOKING);
+  const hasEventTicketingFeature = useHasFeature(PACKAGE_FEATURES.EVENT_TICKETING);
+  const hasEventOnlinePaymentsFeature = useHasFeature(PACKAGE_FEATURES.EVENT_ONLINE_PAYMENTS);
+  const hasEventReportsFeature = useHasFeature(PACKAGE_FEATURES.EVENT_REPORTS);
   const user = useAuthStore((state) => state.user);
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -616,8 +646,10 @@ export default function EventsPage() {
   const canCreate = hasPermission('events:create') && hasEventsFeature;
   const canUpdate = hasPermission('events:update') && hasEventsFeature;
   const canDelete = hasPermission('events:delete') && hasEventsFeature;
-  const canViewTickets = hasPermission('tickets:read');
-  const canViewAllTickets = hasPermission('tickets:create');
+  const canViewTickets = hasPermission('tickets:read') && hasEventReportsFeature;
+  const canViewAllTickets = hasPermission('tickets:create') && hasEventReportsFeature;
+  const canSharePublicEvents = hasEventPublicLinksFeature && hasEventGuestBookingFeature;
+  const canGenerateEventQr = hasEventQrCodesFeature && canSharePublicEvents;
 
   // Feature gate
   if (!isMember && !hasEventsFeature) {
@@ -936,6 +968,10 @@ export default function EventsPage() {
                 </DialogHeader>
                 <EventForm
                   churches={churches}
+                  canUseTicketing={hasEventTicketingFeature}
+                  canUsePublicLinks={hasEventPublicLinksFeature}
+                  canUseGuestBooking={hasEventGuestBookingFeature}
+                  canUseOnlinePayments={hasEventOnlinePaymentsFeature}
                   onSubmit={(v) => {
                     console.log('Event form values:', v);
                     createMutation.mutate(v);
@@ -995,21 +1031,27 @@ export default function EventsPage() {
                           Tickets
                         </DropdownMenuItem>
                       )}
-                      {event.allowPublicTicketing && event.status !== 'cancelled' && (
+                      {event.allowPublicTicketing && event.status !== 'cancelled' && (canSharePublicEvents || canGenerateEventQr) && (
                         <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(event)}>
-                            <Copy className="h-4 w-4" />
-                            Public Link
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(event)}>
-                            <QrCode className="h-4 w-4" />
-                            QR Code
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(event)}>
-                            <Share2 className="h-4 w-4" />
-                            Share Event
-                          </DropdownMenuItem>
+                          {canSharePublicEvents && (
+                            <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(event)}>
+                              <Copy className="h-4 w-4" />
+                              Public Link
+                            </DropdownMenuItem>
+                          )}
+                          {canGenerateEventQr && (
+                            <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(event)}>
+                              <QrCode className="h-4 w-4" />
+                              QR Code
+                            </DropdownMenuItem>
+                          )}
+                          {canSharePublicEvents && (
+                            <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(event)}>
+                              <Share2 className="h-4 w-4" />
+                              Share Event
+                            </DropdownMenuItem>
+                          )}
                         </>
                       )}
                       {(canUpdate || (canDelete && event.status !== 'cancelled')) && <DropdownMenuSeparator />}
@@ -1050,7 +1092,7 @@ export default function EventsPage() {
                 </div>
 
                 {/* Member: download existing free ticket */}
-                {event.requiresTicket && event.isFree && isMember && event.userHasTicket && (
+                {event.requiresTicket && event.isFree && isMember && hasEventMemberBookingFeature && event.userHasTicket && (
                   <Button
                     size="sm" variant="outline"
                     className="w-full mt-2 h-7 text-xs"
@@ -1061,7 +1103,7 @@ export default function EventsPage() {
                 )}
 
                 {/* Member: get free ticket */}
-                {event.requiresTicket && event.isFree && isMember && !event.userHasTicket && canBookTicket(event) && (
+                {event.requiresTicket && event.isFree && isMember && hasEventMemberBookingFeature && !event.userHasTicket && canBookTicket(event) && (
                   <Button
                     size="sm"
                     className="w-full mt-2 h-7 text-xs bg-accent text-accent-foreground hover:bg-accent/90"
@@ -1072,7 +1114,7 @@ export default function EventsPage() {
                 )}
 
                 {/* Member: view paid ticket */}
-                {event.requiresTicket && !event.isFree && canViewTickets && event.userHasTicket && canBookTicket(event) && (
+                {event.requiresTicket && !event.isFree && canViewTickets && hasEventMemberBookingFeature && event.userHasTicket && canBookTicket(event) && (
                   <Button
                     size="sm" variant="outline"
                     className="w-full mt-2 h-7 text-xs"
@@ -1083,7 +1125,7 @@ export default function EventsPage() {
                 )}
 
                 {/* Member: pay for ticket */}
-                {event.requiresTicket && !event.isFree && isMember && !event.userHasTicket && canBookTicket(event) && (
+                {event.requiresTicket && !event.isFree && isMember && hasEventMemberBookingFeature && hasEventOnlinePaymentsFeature && !event.userHasTicket && canBookTicket(event) && (
                   <Button
                     size="sm"
                     className="w-full mt-2 h-7 text-xs bg-accent text-accent-foreground hover:bg-accent/90"
@@ -1142,19 +1184,21 @@ export default function EventsPage() {
                   The public event page will only show the churches checked here.
                 </p>
               </div>
-              <div className="rounded-lg border bg-muted/30 p-4 text-center">
-                {qrImageUrl ? (
-                  <img
-                    src={qrImageUrl}
-                    alt={`${shareEvent.title} event QR code`}
-                    className="mx-auto h-64 w-64 rounded-md bg-white p-2"
-                  />
-                ) : (
-                  <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-                    Select at least one church to generate the QR code.
-                  </div>
-                )}
-              </div>
+              {canGenerateEventQr && (
+                <div className="rounded-lg border bg-muted/30 p-4 text-center">
+                  {qrImageUrl ? (
+                    <img
+                      src={qrImageUrl}
+                      alt={`${shareEvent.title} event QR code`}
+                      className="mx-auto h-64 w-64 rounded-md bg-white p-2"
+                    />
+                  ) : (
+                    <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                      Select at least one church to generate the QR code.
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="space-y-1">
                 <p className="text-sm font-semibold leading-snug">{shareEvent.title}</p>
                 <p className="break-all rounded-md bg-muted p-3 text-xs text-muted-foreground">
@@ -1180,25 +1224,27 @@ export default function EventsPage() {
                   <Share2 className="mr-2 h-4 w-4" />
                   Facebook
                 </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="outline" size="sm" disabled={!qrEventUrl}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Download QR
-                      <ChevronDown className="ml-2 h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem onClick={downloadEventQrPng}>
-                      <ImageIcon className="mr-2 h-4 w-4" />
-                      Download PNG
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={downloadEventQrPdf}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Download PDF
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {canGenerateEventQr && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" variant="outline" size="sm" disabled={!qrEventUrl}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download QR
+                        <ChevronDown className="ml-2 h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onClick={downloadEventQrPng}>
+                        <ImageIcon className="mr-2 h-4 w-4" />
+                        Download PNG
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={downloadEventQrPdf}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Download PDF
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
           )}
@@ -1215,6 +1261,10 @@ export default function EventsPage() {
               key={editEvent.id}
               churches={churches}
               defaultValues={buildEditDefaults(editEvent)}
+              canUseTicketing={hasEventTicketingFeature}
+              canUsePublicLinks={hasEventPublicLinksFeature}
+              canUseGuestBooking={hasEventGuestBookingFeature}
+              canUseOnlinePayments={hasEventOnlinePaymentsFeature}
               onSubmit={(v) => updateMutation.mutate({ id: editEvent.id, dto: v })}
               isPending={updateMutation.isPending}
               submitLabel="Save Changes"

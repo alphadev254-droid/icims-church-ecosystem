@@ -51,9 +51,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 // ─── Package Form ─────────────────────────────────────────────────────────────
 
-function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClose }: {
+function PackageForm({ pkg, bundles, rates, onSubmit, isPending, onClose }: {
   pkg?: any;
-  features: any[];
   bundles: any[];
   rates: Rates | undefined;
   onSubmit: (data: any) => void;
@@ -75,31 +74,6 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
     maxGivings: pkg?.maxGivings ?? '',
     maxCells: pkg?.maxCells ?? '',
   });
-
-  // Selected features with optional limit values
-  const [selectedFeatures, setSelectedFeatures] = useState<Record<string, { selected: boolean; limit: string }>>(
-    () => {
-      const map: Record<string, { selected: boolean; limit: string }> = {};
-      const packageBundleIds = new Set((pkg?.moduleBundles ?? []).map((pb: any) => pb.bundleId || pb.bundle?.id));
-      const bundledFeatureIds = new Set<string>();
-      bundles
-        .filter(bundle => packageBundleIds.has(bundle.id))
-        .forEach(bundle => {
-          bundle.features?.forEach((bf: any) => {
-            const featureId = bf.featureId || bf.feature?.id;
-            if (featureId) bundledFeatureIds.add(featureId);
-          });
-        });
-      features.forEach(f => {
-        const existing = pkg?.features?.find((pf: any) => pf.featureId === f.id || pf.feature?.id === f.id);
-        map[f.id] = {
-          selected: !!existing && !bundledFeatureIds.has(f.id),
-          limit: existing?.limitValue != null ? String(existing.limitValue) : '',
-        };
-      });
-      return map;
-    }
-  );
 
   const [selectedBundles, setSelectedBundles] = useState<Record<string, { selected: boolean; limit: string }>>(
     () => {
@@ -136,20 +110,6 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedBundleFeatureIds = new Set<string>();
-    Object.entries(selectedBundles)
-      .filter(([, v]) => v.selected)
-      .forEach(([bundleId]) => {
-        const bundle = bundles.find(item => item.id === bundleId);
-        bundle?.features?.forEach((bf: any) => {
-          const featureId = bf.featureId || bf.feature?.id;
-          if (featureId) selectedBundleFeatureIds.add(featureId);
-        });
-      });
-    const featureList = Object.entries(selectedFeatures)
-      .filter(([, v]) => v.selected)
-      .filter(([featureId]) => !selectedBundleFeatureIds.has(featureId))
-      .map(([featureId]) => ({ featureId, limitValue: null }));
     const moduleBundleList = Object.entries(selectedBundles)
       .filter(([, v]) => v.selected)
       .map(([bundleId, v]) => ({ bundleId, limitValue: v.limit ? Number(v.limit) : null }));
@@ -179,19 +139,12 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
       maxEvents: form.maxEvents ? Number(form.maxEvents) : null,
       maxGivings: form.maxGivings ? Number(form.maxGivings) : null,
       maxCells: form.maxCells ? Number(form.maxCells) : null,
-      features: featureList,
+      features: [],
       moduleBundles: moduleBundleList,
       bundleFeatureOverrides: bundleFeatureOverrideList,
       isPrivate: form.isPrivate,
     });
   };
-
-  const grouped = features.reduce((acc: Record<string, any[]>, f) => {
-    const cat = f.category || 'core';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(f);
-    return acc;
-  }, {});
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -312,37 +265,6 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
           {bundles.length === 0 && (
             <p className="px-3 py-3 text-sm text-muted-foreground">No module bundles seeded yet.</p>
           )}
-        </div>
-      </div>
-
-      {/* Legacy/additional direct features */}
-      <div>
-        <Label className="text-xs text-muted-foreground uppercase tracking-wide">Additional Direct Features</Label>
-        <div className="mt-1.5 border rounded-lg divide-y max-h-64 overflow-y-auto">
-          {Object.entries(grouped).map(([cat, feats]) => (
-            <div key={cat}>
-              <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 capitalize">{cat}</p>
-              {feats.map((f: any) => (
-                <div key={f.id} className="flex items-start gap-3 px-3 py-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedFeatures[f.id]?.selected ?? false}
-                    onChange={e => setSelectedFeatures(prev => ({
-                      ...prev,
-                      [f.id]: { ...prev[f.id], selected: e.target.checked },
-                    }))}
-                    className="h-4 w-4 mt-0.5 shrink-0"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm leading-snug">{f.displayName}</span>
-                    {f.description && (
-                      <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{f.description}</span>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ))}
         </div>
       </div>
 
@@ -545,19 +467,6 @@ export default function AdminPackagesPage() {
                         <Badge variant="outline" className="text-xs px-2 py-0.5">+{pkg.moduleBundles.length - 5} more</Badge>
                       )}
                     </div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                      Features <span className="font-normal normal-case">({pkg.features?.length ?? 0})</span>
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {pkg.features?.slice(0, 8).map((pf: any) => (
-                        <Badge key={pf.featureId} variant="secondary" className="text-xs px-2 py-0.5">
-                          {pf.feature?.displayName}
-                        </Badge>
-                      ))}
-                      {(pkg.features?.length ?? 0) > 8 && (
-                        <Badge variant="outline" className="text-xs px-2 py-0.5">+{pkg.features.length - 8} more</Badge>
-                      )}
-                    </div>
                   </div>
 
                   {/* ── Footer ── */}
@@ -735,27 +644,6 @@ export default function AdminPackagesPage() {
                     )}
                   </div>
 
-                  {/* Features */}
-                  <div className="px-6 py-4">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                      Features ({viewPkg.features?.length ?? 0})
-                    </p>
-                    {viewPkg.features?.length > 0 ? (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {viewPkg.features.map((pf: any) => (
-                          <div key={pf.featureId} className="rounded-md border bg-muted/20 px-2.5 py-2">
-                            <p className="text-xs font-medium leading-snug">{pf.feature?.displayName}</p>
-                            {pf.feature?.description && (
-                              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{pf.feature.description}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">No features linked</p>
-                    )}
-                  </div>
-
                   {/* Footer actions */}
                   <div className="px-6 py-4 flex items-center justify-between bg-muted/10">
                     <span className="text-xs text-muted-foreground">
@@ -780,7 +668,7 @@ export default function AdminPackagesPage() {
       <Dialog open={pkgOpen} onOpenChange={setPkgOpen}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Create Package</DialogTitle></DialogHeader>
-          <PackageForm features={features} bundles={bundles} rates={rates} onSubmit={dto => createPkgMutation.mutate(dto)} isPending={createPkgMutation.isPending} onClose={() => setPkgOpen(false)} />
+          <PackageForm bundles={bundles} rates={rates} onSubmit={dto => createPkgMutation.mutate(dto)} isPending={createPkgMutation.isPending} onClose={() => setPkgOpen(false)} />
         </DialogContent>
       </Dialog>
 
@@ -789,7 +677,7 @@ export default function AdminPackagesPage() {
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Package — {editPkg?.displayName}</DialogTitle></DialogHeader>
           {editPkg && (
-            <PackageForm pkg={editPkg} features={features} bundles={bundles} rates={rates} onSubmit={dto => updatePkgMutation.mutate({ id: editPkg.id, dto })} isPending={updatePkgMutation.isPending} onClose={() => setEditPkg(null)} />
+            <PackageForm pkg={editPkg} bundles={bundles} rates={rates} onSubmit={dto => updatePkgMutation.mutate({ id: editPkg.id, dto })} isPending={updatePkgMutation.isPending} onClose={() => setEditPkg(null)} />
           )}
         </DialogContent>
       </Dialog>

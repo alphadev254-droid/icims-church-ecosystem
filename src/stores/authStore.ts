@@ -39,11 +39,15 @@ export interface AuthUser {
     name: string;
     displayName: string;
     features: Array<{
+      featureId?: string;
       limitValue: number | null;
       feature: {
+        id?: string;
         name: string;
         displayName: string;
+        description?: string | null;
         category: string;
+        sortOrder?: number;
       };
     }>;
   } | null;

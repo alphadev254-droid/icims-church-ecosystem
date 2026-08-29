@@ -75,6 +75,8 @@ function routePackageFeature(route: string): string | null {
   if (route === '/dashboard/pledges') return PACKAGE_FEATURES.PLEDGES_MANAGEMENT;
   if (route === '/dashboard/transactions') return PACKAGE_FEATURES.TRANSACTIONS_VIEW;
   if (route === '/dashboard/withdrawals') return PACKAGE_FEATURES.GIVING_WITHDRAWALS;
+  if (route === '/dashboard/events') return PACKAGE_FEATURES.EVENTS_MANAGEMENT;
+  if (route === '/dashboard/my-tickets') return PACKAGE_FEATURES.EVENT_MEMBER_BOOKING;
   return null;
 }
 

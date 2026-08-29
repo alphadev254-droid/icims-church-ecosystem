@@ -28,6 +28,8 @@ import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 
 const ticketSchema = z.object({
   attendeeType: z.enum(['member', 'guest']).default('member'),
@@ -64,6 +66,9 @@ export default function EventTicketsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { hasPermission } = useRole();
+  const hasEventReportsFeature = useHasFeature(PACKAGE_FEATURES.EVENT_REPORTS);
+  const hasEventTicketingFeature = useHasFeature(PACKAGE_FEATURES.EVENT_TICKETING);
+  const hasEventManualPaymentsFeature = useHasFeature(PACKAGE_FEATURES.EVENT_MANUAL_PAYMENTS);
   const [createOpen, setCreateOpen] = useState(false);
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
   const [churchFilter, setChurchFilter] = useState('all');
@@ -208,7 +213,24 @@ export default function EventTicketsPage() {
     },
   });
 
-  const canCreate = hasPermission('tickets:create');
+  const canCreate = hasPermission('tickets:create') && hasEventManualPaymentsFeature;
+  const canCancelTicket = hasPermission('tickets:create') && hasEventTicketingFeature;
+
+  if (!hasEventReportsFeature) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/events')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="font-heading text-xl sm:text-2xl font-bold">Event Tickets</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Event reports are not available in your current package.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -548,7 +570,7 @@ export default function EventTicketsPage() {
                     <td className="p-3 text-xs sm:text-sm capitalize whitespace-nowrap">{ticket.transaction?.paymentMethod?.replace('_', ' ') || '-'}</td>
                     <td className="p-3 text-xs sm:text-sm whitespace-nowrap">{new Date(ticket.createdAt).toLocaleDateString()}</td>
                     <td className="p-3 text-right">
-                      {canCreate && ticket.status !== 'cancelled' && (
+                      {canCancelTicket && ticket.status !== 'cancelled' && (
                         <Button
                           type="button"
                           variant="ghost"
