@@ -217,32 +217,33 @@ function PackageForm({ pkg, bundles, markets, rates, onSubmit, isPending, onClos
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <div>
-          <Label>{form.isPrivate ? 'Private Monthly Price' : 'Base Monthly Price'}</Label>
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.isPrivate ? form.currencyCode : 'USD'}</span>
-            <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
-          </div>
-          {!form.isPrivate && <ConversionHint usd={form.priceMonthly} rates={rates} />}
-        </div>
-        <div>
-          <Label>{form.isPrivate ? 'Private Yearly Price' : 'Base Yearly Price'}</Label>
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.isPrivate ? form.currencyCode : 'USD'}</span>
-            <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
-          </div>
-          {!form.isPrivate && <ConversionHint usd={form.priceYearly} rates={rates} />}
-        </div>
-        <div>
-          <Label>Package Currency</Label>
-          <Select value={form.isPrivate ? form.currencyCode : 'USD'} onValueChange={value => setForm(f => ({ ...f, currencyCode: value }))} disabled={!form.isPrivate}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {CURRENCY_OPTIONS.map(currency => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {!form.isPrivate && <p className="mt-1 text-xs text-muted-foreground">Public packages use market prices.</p>}
-        </div>
+        {form.isPrivate && (
+          <>
+            <div>
+              <Label>Private Monthly Price</Label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.currencyCode}</span>
+                <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <Label>Private Yearly Price</Label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.currencyCode}</span>
+                <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <Label>Package Currency</Label>
+              <Select value={form.currencyCode} onValueChange={value => setForm(f => ({ ...f, currencyCode: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CURRENCY_OPTIONS.map(currency => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
         <div>
           <Label>Sort Order</Label>
           <Input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: e.target.value }))} />
@@ -251,8 +252,8 @@ function PackageForm({ pkg, bundles, markets, rates, onSubmit, isPending, onClos
 
       {!form.isPrivate && (
         <div>
-          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Market Prices</Label>
-          <p className="mt-0.5 text-xs text-muted-foreground">Select the markets where this public package should be available.</p>
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Market Availability</Label>
+          <p className="mt-0.5 text-xs text-muted-foreground">Select the markets where this public package should be available. Prices are edited from each market.</p>
           <div className="mt-2 grid gap-2">
             {markets.map(market => {
               const value = marketPrices[market.id] ?? { selected: false, monthly: '', yearly: '', currencyCode: market.currencyCode };
@@ -271,19 +272,15 @@ function PackageForm({ pkg, bundles, markets, rates, onSubmit, isPending, onClos
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium">{market.name}</span>
                       <span className="block text-xs text-muted-foreground">{market.currencyCode} package payments via {market.packageGateway}</span>
+                      {value.selected && (
+                        <span className="block text-xs text-muted-foreground">
+                          {value.monthly || value.yearly
+                            ? `${fmtLocal(value.monthly || 0, market.currencyCode)}/mo · ${fmtLocal(value.yearly || 0, market.currencyCode)}/yr`
+                            : 'No price set yet'}
+                        </span>
+                      )}
                     </span>
                   </label>
-                  {value.selected && (
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                      <Input type="number" min="0" step="0.01" placeholder="Monthly" value={value.monthly}
-                        onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, monthly: e.target.value } }))} />
-                      <Input type="number" min="0" step="0.01" placeholder="Yearly" value={value.yearly}
-                        onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, yearly: e.target.value } }))} />
-                      <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium text-muted-foreground">
-                        {market.currencyCode}
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}
