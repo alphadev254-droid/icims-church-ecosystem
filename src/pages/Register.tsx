@@ -3,15 +3,21 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Church, Eye, EyeOff, CheckCircle2, ArrowRight, ArrowLeft, Globe } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Church, Eye, EyeOff, CheckCircle2, ArrowRight, ArrowLeft, Globe, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
+import apiClient from '@/lib/api-client';
+import { cn } from '@/lib/utils';
+import { FALLBACK_COUNTRIES, phonePlaceholderForCountry, type CountryOption } from '@/lib/countries';
 const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 
 const TITLES = ['Rev', 'Dr', 'Prof', 'Pastor', 'Prophet', 'Seer', 'Sister', 'Brother', 'Father', 'Deacon', 'Apostle', 'Evangelist', 'Other'] as const;
@@ -41,7 +47,7 @@ const schema = z.object({
   email: z.string().email('Enter a valid email address'),
   phone: z.string().min(1, 'Phone number is required'),
   gender: z.enum(['male', 'female'], { required_error: 'Gender is required' }),
-  accountCountry: z.enum(['Malawi', 'Kenya'], { required_error: 'Country is required' }),
+  accountCountry: z.string({ required_error: 'Country is required' }).min(2, 'Country is required'),
   anniversary: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
@@ -62,13 +68,69 @@ const STEPS = [
   { id: 3, label: 'Security' },
 ];
 
+function CountryCombobox({
+  countries,
+  value,
+  onChange,
+  error,
+}: {
+  countries: CountryOption[];
+  value: string;
+  onChange: (value: string) => void;
+  error?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = countries.find(country => country.name === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn('w-full justify-between font-normal', !selected && 'text-muted-foreground', error && 'border-destructive')}
+        >
+          <span className="truncate">{selected?.name || 'Select country'}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search country..." />
+          <CommandList className="max-h-64">
+            <CommandEmpty>No country found.</CommandEmpty>
+            <CommandGroup>
+              {countries.map(country => (
+                <CommandItem
+                  key={country.iso2 || country.name}
+                  value={`${country.name} ${country.iso2 || ''}`}
+                  onSelect={() => {
+                    onChange(country.name);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4', selected?.name === country.name ? 'opacity-100' : 'opacity-0')} />
+                  <span className="truncate">{country.name}</span>
+                  {country.iso2 && <span className="ml-auto text-xs text-muted-foreground">{country.iso2}</span>}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function RegisterPage() {
   const { register: authRegister } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [accountCountry, setAccountCountry] = useState<'Malawi' | 'Kenya' | ''>('');
+  const [accountCountry, setAccountCountry] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [title, setTitle] = useState<string>('');
   const [subdomainSlug, setSubdomainSlug] = useState('');
@@ -84,12 +146,24 @@ export default function RegisterPage() {
       subdomain: '',
       email: '',
       phone: '',
+      accountCountry: '',
       anniversary: '',
       password: '',
       confirmPassword: '',
       acceptedTerms: false,
     },
   });
+
+  const { data: countries = FALLBACK_COUNTRIES } = useQuery<CountryOption[]>({
+    queryKey: ['public-countries'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/packages/countries');
+      return data.data?.length ? data.data : FALLBACK_COUNTRIES;
+    },
+    staleTime: 24 * 60 * 60_000,
+  });
+
+  const selectedCountry = countries.find(country => country.name === accountCountry);
 
   const nextStep = async () => {
     const fields: (keyof FormValues)[] = step === 1
@@ -265,7 +339,7 @@ export default function RegisterPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Phone number</Label>
-                    <Input {...register('phone')} placeholder={accountCountry === 'Kenya' ? '+254...' : '+265...'} autoComplete="off" className={errors.phone ? 'border-destructive' : ''} />
+                    <Input {...register('phone')} placeholder={phonePlaceholderForCountry(selectedCountry)} autoComplete="off" className={errors.phone ? 'border-destructive' : ''} />
                     {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
                   </div>
                 </div>
@@ -273,15 +347,15 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Country</Label>
-                    <Select value={accountCountry} onValueChange={(v: 'Malawi' | 'Kenya') => { setAccountCountry(v); setValue('accountCountry', v); }}>
-                      <SelectTrigger className={errors.accountCountry ? 'border-destructive' : ''}>
-                        <SelectValue placeholder="Select country" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Malawi">Malawi</SelectItem>
-                        <SelectItem value="Kenya">Kenya</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <CountryCombobox
+                      countries={countries}
+                      value={accountCountry}
+                      error={!!errors.accountCountry}
+                      onChange={value => {
+                        setAccountCountry(value);
+                        setValue('accountCountry', value, { shouldDirty: true, shouldValidate: true });
+                      }}
+                    />
                     {errors.accountCountry && <p className="text-xs text-destructive">{errors.accountCountry.message}</p>}
                   </div>
                   <div className="space-y-1.5">

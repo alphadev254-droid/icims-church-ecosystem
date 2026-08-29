@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -18,7 +17,13 @@ interface Package {
   features: PkgFeature[];
 }
 interface Feature { id: string; name: string; displayName: string; description?: string; category: string; }
-type Country = 'Kenya' | 'Malawi';
+interface PricingMeta {
+  market: string;
+  marketName: string;
+  country?: string | null;
+  currency: string;
+  gateway: string;
+}
 
 function limitLabel(v: number | null | undefined) {
   if (v == null) return '∞';
@@ -48,16 +53,16 @@ export default function PricingPage() {
     canonical: 'https://churchcentral.church/pricing',
   });
 
-  const [country, setCountry] = useState<Country>('Kenya');
-
-  const { data: packages = [], isLoading } = useQuery<Package[]>({
-    queryKey: ['public-packages', country],
+  const { data: packageResponse, isLoading } = useQuery<{ packages: Package[]; pricing?: PricingMeta }>({
+    queryKey: ['public-packages'],
     queryFn: async () => {
-      const { data } = await apiClient.get('/packages', { params: { country } });
-      return data.data;
+      const { data } = await apiClient.get('/packages');
+      return { packages: data.data ?? [], pricing: data.pricing };
     },
     staleTime: 5 * 60_000,
   });
+  const packages = packageResponse?.packages ?? [];
+  const pricing = packageResponse?.pricing;
 
   const { data: allFeatures = [] } = useQuery<Feature[]>({
     queryKey: ['public-features'],
@@ -99,27 +104,21 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* COUNTRY TOGGLE + CARDS */}
+      {/* RESOLVED MARKET + CARDS */}
       <section className="py-20 bg-muted/30">
         <div className="container">
 
-          {/* Country toggle */}
           <div className="flex justify-center mb-12">
-            <div className="inline-flex items-center gap-1 bg-background border border-border rounded-xl p-1 shadow-sm">
-              <p className="text-xs text-muted-foreground px-3">Pricing for:</p>
-              {(['Kenya', 'Malawi'] as Country[]).map(c => (
-                <button
-                  key={c}
-                  onClick={() => setCountry(c)}
-                  className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
-                    country === c
-                      ? 'bg-accent text-accent-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {c === 'Kenya' ? '🇰🇪' : '🇲🇼'} {c}
-                </button>
-              ))}
+            <div className="max-w-xl rounded-xl border border-border bg-background px-5 py-4 text-center shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-accent">Pricing market</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{pricing?.marketName || 'General'} Pricing</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {pricing?.market === 'malawi'
+                  ? 'Malawi accounts use MWK package pricing and PayChangu for package payments.'
+                  : pricing?.market === 'kenya'
+                    ? 'Kenya accounts use KES package pricing and Paystack for package payments.'
+                    : 'Other countries use General package pricing and Paystack for package payments.'}
+              </p>
             </div>
           </div>
 
@@ -131,7 +130,7 @@ export default function PricingPage() {
             <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto items-stretch">
               {packages.map((pkg, i) => {
                 const isPremium = pkg.name === 'premium';
-                const currency = pkg.currency ?? (country === 'Kenya' ? 'KES' : 'MWK');
+                const currency = pkg.currency ?? pricing?.currency ?? 'KES';
                 const monthly = `${currency} ${pkg.priceMonthly.toLocaleString()}`;
                 const yearly  = `${currency} ${pkg.priceYearly.toLocaleString()}`;
                 const saving  = pkg.priceMonthly > 0

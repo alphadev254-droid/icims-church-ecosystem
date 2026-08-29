@@ -10,10 +10,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers3, Plus, Pencil, Trash2, Package2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Rates { mwkRate: number; kesRate: number; malawiDiscount: number; kenyaDiscount: number; }
+interface PricingMarket { id: string; code: string; name: string; currencyCode: string; packageGateway: string; isDefault?: boolean; isActive?: boolean; sortOrder?: number; _count?: { countries?: number; packagePrices?: number }; }
+interface CountryMarket { id: string; name: string; iso2: string; phoneCode?: string; currencyCode?: string; pricingMarketId?: string | null; pricingMarket?: PricingMarket | null; isActive: boolean; }
 
 function fmtUSD(n: number) { return `$${n % 1 === 0 ? n : n.toFixed(2)}`; }
 function fmtKES(usd: number, rates: Rates) { return `KES ${Math.round(usd * rates.kesRate * rates.kenyaDiscount).toLocaleString()}`; }
@@ -28,6 +31,11 @@ function ConversionHint({ usd, rates }: { usd: string | number; rates: Rates | u
       ≈ {fmtKES(val, rates)} · {fmtMWK(val, rates)}
     </p>
   );
+}
+
+function fmtLocal(amount: number | string, currency: string) {
+  const value = Number(amount || 0);
+  return `${currency} ${value.toLocaleString()}`;
 }
 
 const LIMIT_FIELDS = [
@@ -51,9 +59,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 // ─── Package Form ─────────────────────────────────────────────────────────────
 
-function PackageForm({ pkg, bundles, rates, onSubmit, isPending, onClose }: {
+function PackageForm({ pkg, bundles, markets, rates, onSubmit, isPending, onClose }: {
   pkg?: any;
   bundles: any[];
+  markets: PricingMarket[];
   rates: Rates | undefined;
   onSubmit: (data: any) => void;
   isPending: boolean;
@@ -65,6 +74,7 @@ function PackageForm({ pkg, bundles, rates, onSubmit, isPending, onClose }: {
     description: pkg?.description ?? '',
     priceMonthly: pkg?.priceMonthly ?? 0,
     priceYearly: pkg?.priceYearly ?? 0,
+    currencyCode: pkg?.currencyCode ?? 'USD',
     isActive: pkg?.isActive ?? true,
     isPrivate: pkg?.isPrivate ?? false,
     sortOrder: pkg?.sortOrder ?? 0,
@@ -108,6 +118,22 @@ function PackageForm({ pkg, bundles, rates, onSubmit, isPending, onClose }: {
     }
   );
 
+  const [marketPrices, setMarketPrices] = useState<Record<string, { selected: boolean; monthly: string; yearly: string; currencyCode: string }>>(
+    () => {
+      const map: Record<string, { selected: boolean; monthly: string; yearly: string; currencyCode: string }> = {};
+      markets.forEach(market => {
+        const existing = pkg?.marketPrices?.find((price: any) => price.pricingMarketId === market.id || price.pricingMarket?.id === market.id);
+        map[market.id] = {
+          selected: !!existing,
+          monthly: existing ? String(existing.priceMonthly) : '',
+          yearly: existing ? String(existing.priceYearly) : '',
+          currencyCode: existing?.currencyCode || market.currencyCode,
+        };
+      });
+      return map;
+    }
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const moduleBundleList = Object.entries(selectedBundles)
@@ -129,10 +155,22 @@ function PackageForm({ pkg, bundles, rates, onSubmit, isPending, onClose }: {
           }));
       });
 
+    const marketPriceList = form.isPrivate
+      ? []
+      : Object.entries(marketPrices)
+          .filter(([, value]) => value.selected)
+          .map(([pricingMarketId, value]) => ({
+            pricingMarketId,
+            priceMonthly: Number(value.monthly || 0),
+            priceYearly: Number(value.yearly || 0),
+            currencyCode: value.currencyCode,
+          }));
+
     onSubmit({
       ...form,
       priceMonthly: Number(form.priceMonthly),
       priceYearly: Number(form.priceYearly),
+      currencyCode: form.isPrivate ? form.currencyCode : 'USD',
       sortOrder: Number(form.sortOrder),
       maxChurches: form.maxChurches ? Number(form.maxChurches) : null,
       maxMembers: form.maxMembers ? Number(form.maxMembers) : null,
@@ -142,6 +180,7 @@ function PackageForm({ pkg, bundles, rates, onSubmit, isPending, onClose }: {
       features: [],
       moduleBundles: moduleBundleList,
       bundleFeatureOverrides: bundleFeatureOverrideList,
+      marketPrices: marketPriceList,
       isPrivate: form.isPrivate,
     });
   };
@@ -164,28 +203,86 @@ function PackageForm({ pkg, bundles, rates, onSubmit, isPending, onClose }: {
         <Textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <div>
-          <Label>Price Monthly (USD)</Label>
+          <Label>{form.isPrivate ? 'Private Monthly Price' : 'Base Monthly Price'}</Label>
           <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-            <Input type="number" min="0" step="0.01" className="pl-5" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.isPrivate ? form.currencyCode : 'USD'}</span>
+            <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
           </div>
-          <ConversionHint usd={form.priceMonthly} rates={rates} />
+          {!form.isPrivate && <ConversionHint usd={form.priceMonthly} rates={rates} />}
         </div>
         <div>
-          <Label>Price Yearly (USD)</Label>
+          <Label>{form.isPrivate ? 'Private Yearly Price' : 'Base Yearly Price'}</Label>
           <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-            <Input type="number" min="0" step="0.01" className="pl-5" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.isPrivate ? form.currencyCode : 'USD'}</span>
+            <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
           </div>
-          <ConversionHint usd={form.priceYearly} rates={rates} />
+          {!form.isPrivate && <ConversionHint usd={form.priceYearly} rates={rates} />}
+        </div>
+        <div>
+          <Label>Package Currency</Label>
+          <Select value={form.isPrivate ? form.currencyCode : 'USD'} onValueChange={value => setForm(f => ({ ...f, currencyCode: value }))} disabled={!form.isPrivate}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {['USD', 'MWK', 'KES'].map(currency => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {!form.isPrivate && <p className="mt-1 text-xs text-muted-foreground">Public packages use market prices.</p>}
         </div>
         <div>
           <Label>Sort Order</Label>
           <Input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: e.target.value }))} />
         </div>
       </div>
+
+      {!form.isPrivate && (
+        <div>
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Market Prices</Label>
+          <p className="mt-0.5 text-xs text-muted-foreground">Select the markets where this public package should be available.</p>
+          <div className="mt-2 grid gap-2">
+            {markets.map(market => {
+              const value = marketPrices[market.id] ?? { selected: false, monthly: '', yearly: '', currencyCode: market.currencyCode };
+              return (
+                <div key={market.id} className="rounded-lg border p-3">
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={value.selected}
+                      onChange={e => setMarketPrices(prev => ({
+                        ...prev,
+                        [market.id]: { ...value, selected: e.target.checked },
+                      }))}
+                      className="mt-1 h-4 w-4"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium">{market.name}</span>
+                      <span className="block text-xs text-muted-foreground">{market.currencyCode} package payments via {market.packageGateway}</span>
+                    </span>
+                  </label>
+                  {value.selected && (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <Input type="number" min="0" step="0.01" placeholder="Monthly" value={value.monthly}
+                        onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, monthly: e.target.value } }))} />
+                      <Input type="number" min="0" step="0.01" placeholder="Yearly" value={value.yearly}
+                        onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, yearly: e.target.value } }))} />
+                      <Select value={value.currencyCode} onValueChange={currencyCode => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, currencyCode } }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {['MWK', 'KES', 'USD'].map(currency => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {markets.length === 0 && (
+              <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">No pricing markets found. Seed or create markets first.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Limits */}
       <div>
@@ -299,7 +396,19 @@ export default function AdminPackagesPage() {
   const [editPkg, setEditPkg] = useState<any>(null);
   const [viewPkg, setViewPkg] = useState<any>(null);
   const [deletePkg, setDeletePkg] = useState<any>(null);
-  const [tab, setTab] = useState<'packages' | 'features'>('packages');
+  const [tab, setTab] = useState<'packages' | 'features' | 'markets'>('packages');
+  const [marketOpen, setMarketOpen] = useState(false);
+  const [editMarket, setEditMarket] = useState<PricingMarket | null>(null);
+  const [countrySearch, setCountrySearch] = useState('');
+  const [marketForm, setMarketForm] = useState({
+    code: '',
+    name: '',
+    currencyCode: 'KES',
+    packageGateway: 'paystack',
+    isDefault: false,
+    isActive: true,
+    sortOrder: 0,
+  });
 
   const { data: packages = [], isLoading: pkgLoading } = useQuery({
     queryKey: ['admin-packages'],
@@ -314,6 +423,16 @@ export default function AdminPackagesPage() {
   const { data: bundles = [] } = useQuery({
     queryKey: ['admin-module-bundles'],
     queryFn: async () => { const { data } = await apiClient.get('/admin/packages/module-bundles'); return data.data; },
+  });
+
+  const { data: markets = [] } = useQuery<PricingMarket[]>({
+    queryKey: ['admin-pricing-markets'],
+    queryFn: async () => { const { data } = await apiClient.get('/admin/packages/pricing-markets'); return data.data; },
+  });
+
+  const { data: countries = [] } = useQuery<CountryMarket[]>({
+    queryKey: ['admin-pricing-countries'],
+    queryFn: async () => { const { data } = await apiClient.get('/admin/packages/countries'); return data.data; },
   });
 
   const { data: rates } = useQuery<Rates>({
@@ -340,6 +459,53 @@ export default function AdminPackagesPage() {
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
   });
 
+  const openMarketForm = (market?: PricingMarket) => {
+    setEditMarket(market ?? null);
+    setMarketForm({
+      code: market?.code ?? '',
+      name: market?.name ?? '',
+      currencyCode: market?.currencyCode ?? 'KES',
+      packageGateway: market?.packageGateway ?? 'paystack',
+      isDefault: !!market?.isDefault,
+      isActive: market?.isActive ?? true,
+      sortOrder: market?.sortOrder ?? 0,
+    });
+    setMarketOpen(true);
+  };
+
+  const saveMarketMutation = useMutation({
+    mutationFn: (dto: any) => editMarket
+      ? apiClient.put(`/admin/packages/pricing-markets/${editMarket.id}`, dto)
+      : apiClient.post('/admin/packages/pricing-markets', dto),
+    onSuccess: () => {
+      toast.success(editMarket ? 'Market updated' : 'Market created');
+      qc.invalidateQueries({ queryKey: ['admin-pricing-markets'] });
+      setMarketOpen(false);
+      setEditMarket(null);
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to save market'),
+  });
+
+  const deleteMarketMutation = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/admin/packages/pricing-markets/${id}`),
+    onSuccess: () => {
+      toast.success('Market disabled');
+      qc.invalidateQueries({ queryKey: ['admin-pricing-markets'] });
+      qc.invalidateQueries({ queryKey: ['admin-pricing-countries'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to disable market'),
+  });
+
+  const assignCountryMutation = useMutation({
+    mutationFn: ({ countryId, pricingMarketId }: { countryId: string; pricingMarketId: string | null }) =>
+      apiClient.put(`/admin/packages/countries/${countryId}/market`, { pricingMarketId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-pricing-countries'] });
+      qc.invalidateQueries({ queryKey: ['admin-pricing-markets'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to update country market'),
+  });
+
   const createFeatMutation = { isPending: false };
   const updateFeatMutation = { isPending: false };
 
@@ -361,7 +527,7 @@ export default function AdminPackagesPage() {
 
       {/* Tabs */}
       <div className="border-b flex gap-1">
-        {(['packages', 'features'] as const).map(t => (
+        {(['packages', 'features', 'markets'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm capitalize border-b-2 transition-colors ${tab === t ? 'border-accent text-accent font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             {t}
@@ -404,11 +570,11 @@ export default function AdminPackagesPage() {
                     </div>
                   </div>
 
-                  {/* USD price prominent */}
+                  {/* Package price */}
                   <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-2xl font-bold">{fmtUSD(pkg.priceMonthly)}</span>
+                    <span className="text-2xl font-bold">{pkg.currencyCode === 'USD' ? fmtUSD(pkg.priceMonthly) : fmtLocal(pkg.priceMonthly, pkg.currencyCode || 'USD')}</span>
                     <span className="text-sm opacity-70">/mo</span>
-                    <span className="text-sm opacity-50 ml-1">{fmtUSD(pkg.priceYearly)}/yr</span>
+                    <span className="text-sm opacity-50 ml-1">{pkg.currencyCode === 'USD' ? fmtUSD(pkg.priceYearly) : fmtLocal(pkg.priceYearly, pkg.currencyCode || 'USD')}/yr</span>
                   </div>
                 </div>
 
@@ -421,8 +587,22 @@ export default function AdminPackagesPage() {
                     </div>
                   )}
 
-                  {/* ── Currency conversions ── */}
-                  {rates && pkg.priceMonthly > 0 && (
+                  {/* ── Market pricing ── */}
+                  {!pkg.isPrivate && pkg.marketPrices?.length > 0 && (
+                    <div className="px-5 py-3 border-b bg-muted/30 grid gap-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Market Prices</p>
+                      {pkg.marketPrices.slice(0, 3).map((price: any) => (
+                        <div key={price.id || price.pricingMarketId} className="flex items-center justify-between gap-3 text-xs">
+                          <span className="text-muted-foreground">{price.pricingMarket?.name || 'Market'}</span>
+                          <span className="font-semibold">{fmtLocal(price.priceMonthly, price.currencyCode)}/mo</span>
+                        </div>
+                      ))}
+                      {pkg.marketPrices.length > 3 && <p className="text-xs text-muted-foreground">+{pkg.marketPrices.length - 3} more market(s)</p>}
+                    </div>
+                  )}
+
+                  {/* ── Legacy conversion fallback ── */}
+                  {!pkg.isPrivate && rates && pkg.priceMonthly > 0 && (!pkg.marketPrices || pkg.marketPrices.length === 0) && (
                     <div className="px-5 py-3 border-b bg-muted/30 grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-xs text-muted-foreground mb-0.5">Kenya (KES)</p>
@@ -518,6 +698,101 @@ export default function AdminPackagesPage() {
         </div>
       )}
 
+      {tab === 'markets' && (
+        <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold">Pricing Markets</h2>
+                <p className="text-xs text-muted-foreground">Control currency and package checkout gateway by market.</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => openMarketForm()}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Market
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {markets.map(market => (
+                <Card key={market.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium">{market.name}</p>
+                          {market.isDefault && <Badge variant="outline">Default</Badge>}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{market.currencyCode} package payments via {market.packageGateway}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{market._count?.countries ?? 0} countries · {market._count?.packagePrices ?? 0} package prices</p>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <button className="rounded p-1.5 hover:bg-muted" title="Edit market" onClick={() => openMarketForm(market)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        {!market.isDefault && (
+                          <button className="rounded p-1.5 text-destructive hover:bg-destructive/10" title="Disable market" onClick={() => deleteMarketMutation.mutate(market.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-sm font-semibold">Country Assignment</h2>
+              <p className="text-xs text-muted-foreground">Unassigned countries use the default General market.</p>
+            </div>
+            <Input value={countrySearch} onChange={e => setCountrySearch(e.target.value)} placeholder="Search countries..." className="max-w-md" />
+            <div className="max-h-[560px] overflow-y-auto rounded-lg border">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Country</th>
+                    <th className="px-3 py-2 text-left font-medium">Currency</th>
+                    <th className="px-3 py-2 text-left font-medium">Pricing Market</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {countries
+                    .filter(country => {
+                      const search = countrySearch.trim().toLowerCase();
+                      return !search || country.name.toLowerCase().includes(search) || country.iso2.toLowerCase().includes(search);
+                    })
+                    .slice(0, 250)
+                    .map(country => (
+                      <tr key={country.id}>
+                        <td className="px-3 py-2">
+                          <p className="font-medium">{country.name}</p>
+                          <p className="text-xs text-muted-foreground">{country.iso2}{country.phoneCode ? ` · ${country.phoneCode}` : ''}</p>
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">{country.currencyCode || '-'}</td>
+                        <td className="px-3 py-2">
+                          <Select
+                            value={country.pricingMarketId || '__default__'}
+                            onValueChange={value => assignCountryMutation.mutate({
+                              countryId: country.id,
+                              pricingMarketId: value === '__default__' ? null : value,
+                            })}
+                          >
+                            <SelectTrigger className="h-9 min-w-52"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__default__">Default General</SelectItem>
+                              {markets.map(market => <SelectItem key={market.id} value={market.id}>{market.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* View Package Dialog */}
       <Dialog open={!!viewPkg} onOpenChange={open => !open && setViewPkg(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
@@ -540,9 +815,9 @@ export default function AdminPackagesPage() {
                   </div>
                   <p className="text-xs opacity-50 font-mono mb-3">{viewPkg.name}</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold">${viewPkg.priceMonthly}</span>
+                    <span className="text-3xl font-bold">{viewPkg.currencyCode === 'USD' ? fmtUSD(viewPkg.priceMonthly) : fmtLocal(viewPkg.priceMonthly, viewPkg.currencyCode || 'USD')}</span>
                     <span className="opacity-70">/mo</span>
-                    <span className="opacity-50 ml-1 text-sm">${viewPkg.priceYearly}/yr</span>
+                    <span className="opacity-50 ml-1 text-sm">{viewPkg.currencyCode === 'USD' ? fmtUSD(viewPkg.priceYearly) : fmtLocal(viewPkg.priceYearly, viewPkg.currencyCode || 'USD')}/yr</span>
                   </div>
                 </div>
 
@@ -555,8 +830,24 @@ export default function AdminPackagesPage() {
                     </div>
                   )}
 
-                  {/* Currency conversions */}
-                  {rates && viewPkg.priceMonthly > 0 && (
+                  {/* Market pricing */}
+                  {!viewPkg.isPrivate && viewPkg.marketPrices?.length > 0 && (
+                    <div className="px-6 py-4 bg-muted/20">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Market Pricing</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {viewPkg.marketPrices.map((price: any) => (
+                          <div key={price.id || price.pricingMarketId} className="bg-background rounded-lg border p-3">
+                            <p className="text-xs text-muted-foreground mb-1">{price.pricingMarket?.name || 'Market'}</p>
+                            <p className="font-semibold text-sm">{fmtLocal(price.priceMonthly, price.currencyCode)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{fmtLocal(price.priceYearly, price.currencyCode)}/yr</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Legacy conversion fallback */}
+                  {!viewPkg.isPrivate && rates && viewPkg.priceMonthly > 0 && (!viewPkg.marketPrices || viewPkg.marketPrices.length === 0) && (
                     <div className="px-6 py-4 bg-muted/20">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Pricing by Country</p>
                       <div className="grid grid-cols-2 gap-4">
@@ -668,7 +959,7 @@ export default function AdminPackagesPage() {
       <Dialog open={pkgOpen} onOpenChange={setPkgOpen}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Create Package</DialogTitle></DialogHeader>
-          <PackageForm bundles={bundles} rates={rates} onSubmit={dto => createPkgMutation.mutate(dto)} isPending={createPkgMutation.isPending} onClose={() => setPkgOpen(false)} />
+          <PackageForm bundles={bundles} markets={markets} rates={rates} onSubmit={dto => createPkgMutation.mutate(dto)} isPending={createPkgMutation.isPending} onClose={() => setPkgOpen(false)} />
         </DialogContent>
       </Dialog>
 
@@ -677,8 +968,67 @@ export default function AdminPackagesPage() {
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Package — {editPkg?.displayName}</DialogTitle></DialogHeader>
           {editPkg && (
-            <PackageForm pkg={editPkg} bundles={bundles} rates={rates} onSubmit={dto => updatePkgMutation.mutate({ id: editPkg.id, dto })} isPending={updatePkgMutation.isPending} onClose={() => setEditPkg(null)} />
+            <PackageForm pkg={editPkg} bundles={bundles} markets={markets} rates={rates} onSubmit={dto => updatePkgMutation.mutate({ id: editPkg.id, dto })} isPending={updatePkgMutation.isPending} onClose={() => setEditPkg(null)} />
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={marketOpen} onOpenChange={setMarketOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader><DialogTitle>{editMarket ? 'Edit Market' : 'Create Market'}</DialogTitle></DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveMarketMutation.mutate({
+                ...marketForm,
+                sortOrder: Number(marketForm.sortOrder || 0),
+              });
+            }}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label>Code</Label>
+                <Input value={marketForm.code} onChange={e => setMarketForm(f => ({ ...f, code: e.target.value }))} placeholder="general" disabled={!!editMarket} required />
+              </div>
+              <div>
+                <Label>Name</Label>
+                <Input value={marketForm.name} onChange={e => setMarketForm(f => ({ ...f, name: e.target.value }))} placeholder="General" required />
+              </div>
+              <div>
+                <Label>Currency</Label>
+                <Input value={marketForm.currencyCode} onChange={e => setMarketForm(f => ({ ...f, currencyCode: e.target.value.toUpperCase() }))} placeholder="KES" required />
+              </div>
+              <div>
+                <Label>Package Gateway</Label>
+                <Select value={marketForm.packageGateway} onValueChange={value => setMarketForm(f => ({ ...f, packageGateway: value }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="paystack">Paystack</SelectItem>
+                    <SelectItem value="paychangu">PayChangu</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Sort Order</Label>
+                <Input type="number" value={marketForm.sortOrder} onChange={e => setMarketForm(f => ({ ...f, sortOrder: Number(e.target.value || 0) }))} />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={marketForm.isDefault} onCheckedChange={value => setMarketForm(f => ({ ...f, isDefault: value }))} />
+                Default market
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={marketForm.isActive} onCheckedChange={value => setMarketForm(f => ({ ...f, isActive: value }))} />
+                Active
+              </label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setMarketOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saveMarketMutation.isPending}>{saveMarketMutation.isPending ? 'Saving...' : 'Save Market'}</Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 
