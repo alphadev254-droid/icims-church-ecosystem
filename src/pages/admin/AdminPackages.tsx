@@ -80,10 +80,20 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
   const [selectedFeatures, setSelectedFeatures] = useState<Record<string, { selected: boolean; limit: string }>>(
     () => {
       const map: Record<string, { selected: boolean; limit: string }> = {};
+      const packageBundleIds = new Set((pkg?.moduleBundles ?? []).map((pb: any) => pb.bundleId || pb.bundle?.id));
+      const bundledFeatureIds = new Set<string>();
+      bundles
+        .filter(bundle => packageBundleIds.has(bundle.id))
+        .forEach(bundle => {
+          bundle.features?.forEach((bf: any) => {
+            const featureId = bf.featureId || bf.feature?.id;
+            if (featureId) bundledFeatureIds.add(featureId);
+          });
+        });
       features.forEach(f => {
         const existing = pkg?.features?.find((pf: any) => pf.featureId === f.id || pf.feature?.id === f.id);
         map[f.id] = {
-          selected: !!existing,
+          selected: !!existing && !bundledFeatureIds.has(f.id),
           limit: existing?.limitValue != null ? String(existing.limitValue) : '',
         };
       });
@@ -105,14 +115,59 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
     }
   );
 
+  const [bundleFeatureEnabled, setBundleFeatureEnabled] = useState<Record<string, boolean>>(
+    () => {
+      const map: Record<string, boolean> = {};
+      bundles.forEach(bundle => {
+        bundle.features?.forEach((bf: any) => {
+          const featureId = bf.featureId || bf.feature?.id;
+          if (!featureId) return;
+          const existingOverride = pkg?.bundleFeatureOverrides?.find((override: any) => {
+            const overrideBundleId = override.bundleId || override.bundle?.id;
+            const overrideFeatureId = override.featureId || override.feature?.id;
+            return overrideBundleId === bundle.id && overrideFeatureId === featureId;
+          });
+          map[`${bundle.id}:${featureId}`] = existingOverride ? existingOverride.enabled !== false : true;
+        });
+      });
+      return map;
+    }
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const selectedBundleFeatureIds = new Set<string>();
+    Object.entries(selectedBundles)
+      .filter(([, v]) => v.selected)
+      .forEach(([bundleId]) => {
+        const bundle = bundles.find(item => item.id === bundleId);
+        bundle?.features?.forEach((bf: any) => {
+          const featureId = bf.featureId || bf.feature?.id;
+          if (featureId) selectedBundleFeatureIds.add(featureId);
+        });
+      });
     const featureList = Object.entries(selectedFeatures)
       .filter(([, v]) => v.selected)
+      .filter(([featureId]) => !selectedBundleFeatureIds.has(featureId))
       .map(([featureId]) => ({ featureId, limitValue: null }));
     const moduleBundleList = Object.entries(selectedBundles)
       .filter(([, v]) => v.selected)
       .map(([bundleId, v]) => ({ bundleId, limitValue: v.limit ? Number(v.limit) : null }));
+    const bundleFeatureOverrideList = Object.entries(selectedBundles)
+      .filter(([, v]) => v.selected)
+      .flatMap(([bundleId]) => {
+        const bundle = bundles.find(item => item.id === bundleId);
+        return (bundle?.features ?? [])
+          .map((bf: any) => ({ bundleId, featureId: bf.featureId || bf.feature?.id }))
+          .filter((item: any) => item.featureId && bundleFeatureEnabled[`${item.bundleId}:${item.featureId}`] === false)
+          .map((item: any) => ({
+            bundleId: item.bundleId,
+            featureId: item.featureId,
+            enabled: false,
+            limitValue: null,
+            reason: 'Disabled for this package.',
+          }));
+      });
 
     onSubmit({
       ...form,
@@ -126,6 +181,7 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
       maxCells: form.maxCells ? Number(form.maxCells) : null,
       features: featureList,
       moduleBundles: moduleBundleList,
+      bundleFeatureOverrides: bundleFeatureOverrideList,
       isPrivate: form.isPrivate,
     });
   };
@@ -199,7 +255,7 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
       {/* Features */}
       <div>
         <Label className="text-xs text-muted-foreground uppercase tracking-wide">Module Bundles</Label>
-        <div className="mt-1.5 border rounded-lg divide-y max-h-72 overflow-y-auto">
+        <div className="mt-1.5 border rounded-lg divide-y max-h-96 overflow-y-auto">
           {bundles.map(bundle => (
             <div key={bundle.id} className="px-3 py-2.5">
               <div className="flex items-start gap-3">
@@ -222,11 +278,31 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
                   {bundle.description && (
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{bundle.description}</p>
                   )}
-                  <div className="flex flex-wrap gap-1.5 mt-2">
+                  <div className="grid gap-1.5 mt-2 sm:grid-cols-2">
                     {bundle.features?.map((bf: any) => (
-                      <Badge key={bf.featureId} variant="outline" className="text-[11px] px-1.5 py-0">
-                        {bf.feature?.displayName}
-                      </Badge>
+                      <label
+                        key={bf.featureId}
+                        className={`flex items-start gap-2 rounded-md border px-2 py-1.5 ${selectedBundles[bundle.id]?.selected ? 'bg-background' : 'bg-muted/30 opacity-70'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={bundleFeatureEnabled[`${bundle.id}:${bf.featureId}`] ?? true}
+                          disabled={!selectedBundles[bundle.id]?.selected}
+                          onChange={e => setBundleFeatureEnabled(prev => ({
+                            ...prev,
+                            [`${bundle.id}:${bf.featureId}`]: e.target.checked,
+                          }))}
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-xs font-medium leading-snug">{bf.feature?.displayName}</span>
+                          {bf.feature?.description && (
+                            <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                              {bf.feature.description}
+                            </span>
+                          )}
+                        </span>
+                      </label>
                     ))}
                   </div>
                 </div>
@@ -247,7 +323,7 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
             <div key={cat}>
               <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 capitalize">{cat}</p>
               {feats.map((f: any) => (
-                <div key={f.id} className="flex items-center gap-3 px-3 py-2">
+                <div key={f.id} className="flex items-start gap-3 px-3 py-2">
                   <input
                     type="checkbox"
                     checked={selectedFeatures[f.id]?.selected ?? false}
@@ -255,9 +331,14 @@ function PackageForm({ pkg, features, bundles, rates, onSubmit, isPending, onClo
                       ...prev,
                       [f.id]: { ...prev[f.id], selected: e.target.checked },
                     }))}
-                    className="h-4 w-4"
+                    className="h-4 w-4 mt-0.5 shrink-0"
                   />
-                  <span className="flex-1 text-sm">{f.displayName}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm leading-snug">{f.displayName}</span>
+                    {f.description && (
+                      <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{f.description}</span>
+                    )}
+                  </span>
                 </div>
               ))}
             </div>
@@ -530,7 +611,7 @@ export default function AdminPackagesPage() {
 
       {/* View Package Dialog */}
       <Dialog open={!!viewPkg} onOpenChange={open => !open && setViewPkg(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
           {viewPkg && (() => {
             const accentMap: Record<string, string> = {
               basic: 'from-slate-500 to-slate-600',
@@ -624,6 +705,28 @@ export default function AdminPackagesPage() {
                             {pb.bundle?.description && (
                               <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{pb.bundle.description}</p>
                             )}
+                            {pb.bundle?.features?.length > 0 && (
+                              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                {pb.bundle.features.map((bf: any) => {
+                                  const disabledOverride = viewPkg.bundleFeatureOverrides?.some((override: any) => {
+                                    const overrideBundleId = override.bundleId || override.bundle?.id;
+                                    const overrideFeatureId = override.featureId || override.feature?.id;
+                                    return overrideBundleId === pb.bundleId && overrideFeatureId === bf.featureId && override.enabled === false;
+                                  });
+                                  return (
+                                    <div key={bf.featureId} className={`rounded-md border px-2 py-1.5 ${disabledOverride ? 'bg-muted/40 opacity-70' : 'bg-background'}`}>
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-xs font-medium leading-snug">{bf.feature?.displayName}</span>
+                                        {disabledOverride && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Disabled</Badge>}
+                                      </div>
+                                      {bf.feature?.description && (
+                                        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{bf.feature.description}</p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -638,11 +741,14 @@ export default function AdminPackagesPage() {
                       Features ({viewPkg.features?.length ?? 0})
                     </p>
                     {viewPkg.features?.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid gap-2 sm:grid-cols-2">
                         {viewPkg.features.map((pf: any) => (
-                          <Badge key={pf.featureId} variant="secondary" className="text-xs px-2.5 py-1">
-                            {pf.feature?.displayName}
-                          </Badge>
+                          <div key={pf.featureId} className="rounded-md border bg-muted/20 px-2.5 py-2">
+                            <p className="text-xs font-medium leading-snug">{pf.feature?.displayName}</p>
+                            {pf.feature?.description && (
+                              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{pf.feature.description}</p>
+                            )}
+                          </div>
                         ))}
                       </div>
                     ) : (
@@ -672,7 +778,7 @@ export default function AdminPackagesPage() {
 
       {/* Create Package Dialog */}
       <Dialog open={pkgOpen} onOpenChange={setPkgOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Create Package</DialogTitle></DialogHeader>
           <PackageForm features={features} bundles={bundles} rates={rates} onSubmit={dto => createPkgMutation.mutate(dto)} isPending={createPkgMutation.isPending} onClose={() => setPkgOpen(false)} />
         </DialogContent>
@@ -680,7 +786,7 @@ export default function AdminPackagesPage() {
 
       {/* Edit Package Dialog */}
       <Dialog open={!!editPkg} onOpenChange={open => !open && setEditPkg(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Package — {editPkg?.displayName}</DialogTitle></DialogHeader>
           {editPkg && (
             <PackageForm pkg={editPkg} features={features} bundles={bundles} rates={rates} onSubmit={dto => updatePkgMutation.mutate({ id: editPkg.id, dto })} isPending={updatePkgMutation.isPending} onClose={() => setEditPkg(null)} />
