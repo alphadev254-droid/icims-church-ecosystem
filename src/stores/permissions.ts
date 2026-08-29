@@ -3,6 +3,7 @@ import {
   BookOpen, Building2, TrendingUp, BarChart3, Settings, Shield, UserCog, Package2, Receipt, Wallet, Users, Bell, Handshake, Globe, Baby, type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from './authStore';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 
 export type UserRole =
   | 'system_admin'
@@ -63,6 +64,25 @@ const PERMISSION_TO_ROUTE: Array<{ permission: string; route: string }> = [
   { permission: 'subaccounts:view', route: '/dashboard/subaccount' },
 ];
 
+function userHasPackageFeature(user: any, featureName: string) {
+  if (!user || user.roleName === 'system_admin') return true;
+  return (user.package?.features || []).some((link: any) => link?.feature?.name === featureName);
+}
+
+function routePackageFeature(route: string): string | null {
+  if (route === '/dashboard/giving') return PACKAGE_FEATURES.GIVING_TRACKING;
+  if (route === '/dashboard/donations') return PACKAGE_FEATURES.TRANSACTIONS_VIEW;
+  if (route === '/dashboard/pledges') return PACKAGE_FEATURES.PLEDGES_MANAGEMENT;
+  if (route === '/dashboard/transactions') return PACKAGE_FEATURES.TRANSACTIONS_VIEW;
+  if (route === '/dashboard/withdrawals') return PACKAGE_FEATURES.GIVING_WITHDRAWALS;
+  return null;
+}
+
+function isPackageRouteAvailable(route: string, user: any) {
+  const feature = routePackageFeature(route);
+  return !feature || userHasPackageFeature(user, feature);
+}
+
 /** Build sidebar nav items from the user's permission array */
 export function getNavForPermissions(permissions: string[], user?: { accountCountry?: string | null; roleName?: string } | null): NavItem[] {
   const permSet = new Set(permissions);
@@ -71,6 +91,7 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
   return PERMISSION_TO_NAV
     .filter(({ permission, item }) => {
       if (!permSet.has(permission)) return false;
+      if (!isPackageRouteAvailable(item.to, currentUser)) return false;
       
       // Hide users from members
       if (item.to === '/dashboard/users') {
@@ -128,6 +149,9 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
   
   for (const { permission, item } of PERMISSION_TO_NAV) {
     if (permSet.has(permission) && !routes.includes(item.to)) {
+      if (!isPackageRouteAvailable(item.to, currentUser)) {
+        continue;
+      }
       // Hide withdrawals route for non-Malawi accounts and members
       if (item.to === '/dashboard/withdrawals' && (currentUser?.accountCountry !== 'Malawi' || currentUser?.roleName === 'member')) {
         continue;
@@ -170,6 +194,9 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
 
   for (const { permission, route } of PERMISSION_TO_ROUTE) {
     if (permSet.has(permission) && !routes.includes(route)) {
+      if (!isPackageRouteAvailable(route, currentUser)) {
+        continue;
+      }
       routes.push(route);
     }
   }

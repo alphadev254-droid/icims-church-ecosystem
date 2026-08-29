@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { walletService, type WithdrawalPayload } from '@/services/wallet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertTriangle, CheckCircle2, Wallet, Plus, ArrowDownToLine } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 
 type SupportedBank = { uuid?: string; bank_uuid?: string; id?: string | number; name?: string };
 
@@ -259,6 +261,8 @@ function RequestWithdrawalDialog({
 
 export default function WithdrawalsPage() {
   const { user } = useAuth();
+  const hasWalletsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_WALLETS);
+  const hasWithdrawalsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_WITHDRAWALS);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [appliedStartDate, setAppliedStartDate] = useState('');
@@ -268,13 +272,13 @@ export default function WithdrawalsPage() {
   const { data: balance } = useQuery({
     queryKey: ['wallet-balance'],
     queryFn: walletService.getBalance,
-    enabled: user?.accountCountry === 'Malawi',
+    enabled: user?.accountCountry === 'Malawi' && hasWalletsFeature,
   });
 
   const { data: banks = [], isLoading: isLoadingBanks } = useQuery({
     queryKey: ['wallet-supported-banks'],
     queryFn: walletService.getSupportedBanks,
-    enabled: user?.accountCountry === 'Malawi',
+    enabled: user?.accountCountry === 'Malawi' && hasWithdrawalsFeature,
     staleTime: 5 * 60_000,
   });
 
@@ -284,7 +288,7 @@ export default function WithdrawalsPage() {
       startDate: appliedStartDate || undefined,
       endDate: appliedEndDate || undefined,
     }),
-    enabled: user?.accountCountry === 'Malawi',
+    enabled: user?.accountCountry === 'Malawi' && hasWithdrawalsFeature,
   });
 
   const handleApplyFilters = () => {
@@ -313,6 +317,20 @@ export default function WithdrawalsPage() {
             <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-xl font-semibold mb-2">Withdrawals Not Available</h2>
             <p className="text-muted-foreground">Withdrawals are only available for Malawi accounts.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!hasWalletsFeature || !hasWithdrawalsFeature) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-xl font-semibold mb-2">Withdrawals Not Available</h2>
+            <p className="text-muted-foreground">Wallets and withdrawals are not available in your current package.</p>
           </CardContent>
         </Card>
       </div>

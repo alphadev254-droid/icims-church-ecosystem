@@ -18,6 +18,7 @@ import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 import { Link } from 'react-router-dom';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 
 export default function TransactionsPage() {
   const TYPE_LABEL: Record<string, string> = {
@@ -37,7 +38,7 @@ export default function TransactionsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const { hasPermission, role } = useRole();
-  const hasTransactions = useHasFeature('transactions_view');
+  const hasTransactions = useHasFeature(PACKAGE_FEATURES.TRANSACTIONS_VIEW);
   const qc = useQueryClient();
   const isMember = role === 'member';
 

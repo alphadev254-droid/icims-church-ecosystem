@@ -6,6 +6,7 @@ import { churchesService } from '@/services/churches';
 import { useAuthStore } from '@/stores/authStore';
 import { RecordPledgePaymentDialog } from '@/components/pledges/RecordPledgePaymentDialog';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import {
   ChevronLeft, ChevronRight, Pencil,
 } from 'lucide-react';
 import { STALE_TIME } from '@/lib/query-config';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 import { toast } from 'sonner';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -347,8 +349,10 @@ export default function PledgesPage() {
   const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
   const { hasPermission } = useRole();
+  const hasPledgesFeature = useHasFeature(PACKAGE_FEATURES.PLEDGES_MANAGEMENT);
+  const hasManualRecordsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_MANUAL_RECORDS);
   const isMember = user?.roleName === 'member';
-  const canRecordPledgePayment = !isMember && hasPermission('donations:create');
+  const canRecordPledgePayment = !isMember && hasPermission('donations:create') && hasManualRecordsFeature;
 
   const campaignIdFilter = searchParams.get('campaignId') ?? undefined;
 
@@ -379,7 +383,7 @@ export default function PledgesPage() {
   const { data: churches = [] } = useQuery({
     queryKey: ['churches-select'],
     queryFn: churchesService.getSelectable,
-    enabled: !!user && !isMember,
+    enabled: !!user && !isMember && hasPledgesFeature,
     ...PLEDGE_QUERY_OPTIONS,
   });
 
@@ -392,7 +396,7 @@ export default function PledgesPage() {
       page,
       limit: PAGE_SIZE,
     }),
-    enabled: !!user && isMember,
+    enabled: !!user && isMember && hasPledgesFeature,
     ...PLEDGE_QUERY_OPTIONS,
   });
 
@@ -409,7 +413,7 @@ export default function PledgesPage() {
       page,
       limit: PAGE_SIZE,
     }),
-    enabled: !!user && !isMember,
+    enabled: !!user && !isMember && hasPledgesFeature,
     ...PLEDGE_QUERY_OPTIONS,
   });
 
@@ -423,6 +427,25 @@ export default function PledgesPage() {
   const pledges        = isMember ? myPledges : ministryPledges;
   const pagination     = isMember ? myPagination : ministryPagination;
   const defaultCurrency = pledges[0]?.currency ?? 'MWK';
+
+  if (!hasPledgesFeature) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <div>
+          <h1 className="font-heading text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Handshake className="h-5 w-5 text-accent" />
+            Pledges
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Giving commitments</p>
+        </div>
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Pledges are not available in your current package.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">

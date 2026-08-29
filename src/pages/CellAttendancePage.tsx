@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cellsService, type CellMember } from '@/services/cells';
 import { givingService } from '@/services/giving';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { ArrowLeft, Plus, Trash2, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 
 type AttendanceStatus = 'present' | 'absent' | 'excused';
 type FilterType = 'all' | 'present' | 'absent' | 'excused' | 'guest' | 'first_time_guest' | 'new_convert';
@@ -260,6 +262,9 @@ export default function CellAttendancePage() {
   const qc = useQueryClient();
   const { hasPermission } = useRole();
   const canManage = hasPermission('cells:update');
+  const hasManualGivingFeature = useHasFeature(PACKAGE_FEATURES.GIVING_MANUAL_RECORDS);
+  const hasCellOfferingFeature = useHasFeature(PACKAGE_FEATURES.GIVING_CELL_OFFERING);
+  const canRecordMeetingOffering = canManage && hasManualGivingFeature && hasCellOfferingFeature;
 
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [seeded, setSeeded] = useState(false);
@@ -324,7 +329,7 @@ export default function CellAttendancePage() {
   const { data: offeringCampaigns = [] } = useQuery({
     queryKey: ['fellowship-campaigns', (cell as any)?.churchId],
     queryFn: () => givingService.getSelectableCampaigns({ category: 'fellowship_offering', churchId: (cell as any)?.churchId }),
-    enabled: !!cell && canManage,
+    enabled: !!cell && canRecordMeetingOffering,
     staleTime: STALE_TIME.DEFAULT,
   });
   const flatOfferingCampaigns: any[] = Array.isArray(offeringCampaigns) && (offeringCampaigns as any[])[0]?.label
@@ -773,12 +778,16 @@ export default function CellAttendancePage() {
               variant="outline"
               className="h-8 gap-1.5 text-xs"
               onClick={() => setOfferingDialogOpen(true)}
-              disabled={flatOfferingCampaigns.length === 0}
+              disabled={!canRecordMeetingOffering || flatOfferingCampaigns.length === 0}
             >
               <Plus className="h-3.5 w-3.5" /> Record Offering
             </Button>
           </div>
-          {flatOfferingCampaigns.length === 0 ? (
+          {!canRecordMeetingOffering ? (
+            <p className="text-xs text-muted-foreground">
+              Meeting offerings are not available in this package.
+            </p>
+          ) : flatOfferingCampaigns.length === 0 ? (
             <p className="text-xs text-muted-foreground">
               No active Cells/fellowship offering campaigns found for this cell's church.{' '}
               Create one under <strong>Giving → Campaigns</strong> with category "Cells/Fellowship Offering".

@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, ShieldCheck, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { walletService, type WithdrawalFeePreview, type WithdrawalPayload } from '@/services/wallet';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 
 type WithdrawalRequestState = {
   payload?: WithdrawalPayload;
@@ -55,6 +57,7 @@ export default function RequestWithdrawalPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const qc = useQueryClient();
+  const hasWithdrawalsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_WITHDRAWALS);
   const state = (location.state || {}) as WithdrawalRequestState;
   const payload = state.payload;
   const preview = state.preview;
@@ -102,14 +105,18 @@ export default function RequestWithdrawalPage() {
     },
   });
 
-  if (!payload || !preview) {
+  if (!hasWithdrawalsFeature || !payload || !preview) {
     return (
       <div className="max-w-xl mx-auto">
         <Card>
           <CardContent className="pt-6 text-center">
             <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-xl font-semibold mb-2">Start from withdrawals</h2>
-            <p className="text-sm text-muted-foreground">Enter withdrawal details first so we can confirm the allowed amount and send an OTP.</p>
+            <h2 className="text-xl font-semibold mb-2">{hasWithdrawalsFeature ? 'Start from withdrawals' : 'Withdrawals Not Available'}</h2>
+            <p className="text-sm text-muted-foreground">
+              {hasWithdrawalsFeature
+                ? 'Enter withdrawal details first so we can confirm the allowed amount and send an OTP.'
+                : 'Withdrawals are not available in your current package.'}
+            </p>
             <Button onClick={() => navigate('/dashboard/withdrawals')} className="mt-4">Go to Withdrawals</Button>
           </CardContent>
         </Card>

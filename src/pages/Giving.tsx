@@ -32,6 +32,7 @@ import { MultiGivingDialog } from '@/components/giving/MultiGivingDialog';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 import { buildPublicGivingUrl } from '@/lib/public-links';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 
 const formatMetaDate = (value?: string | null) => {
   if (!value) return '—';
@@ -121,13 +122,26 @@ function getSummaryDateRange(period: GivingSummaryPeriod, customStart: string, c
   };
 }
 
-function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditing = false, churches = [] }: {
+function CampaignForm({
+  defaultValues,
+  onSubmit,
+  isPending,
+  submitLabel,
+  isEditing = false,
+  churches = [],
+  canUsePublicLinks = true,
+  canUsePledges = true,
+  canUseCellOffering = true,
+}: {
   defaultValues?: Partial<CampaignFormValues>;
   onSubmit: (v: CampaignFormValues) => void;
   isPending: boolean;
   submitLabel: string;
   isEditing?: boolean;
   churches?: Array<{ id: string; name: string }>;
+  canUsePublicLinks?: boolean;
+  canUsePledges?: boolean;
+  canUseCellOffering?: boolean;
 }) {
   const { register, handleSubmit, setValue, watch, formState: { errors, isValid } } = useForm<CampaignFormValues>({
     resolver: zodResolver(campaignSchema),
@@ -147,7 +161,12 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditi
 
   const handleFormSubmit = (v: CampaignFormValues) => {
     console.log('[CampaignForm] ✓ submit fired with values:', v);
-    onSubmit(v);
+    onSubmit({
+      ...v,
+      category: !canUseCellOffering && v.category === 'fellowship_offering' ? 'offering' : v.category,
+      allowPublicDonations: canUsePublicLinks ? v.allowPublicDonations : false,
+      allowPledging: canUsePledges ? v.allowPledging : false,
+    });
   };
 
   const handleInvalid = (errs: any) => {
@@ -221,7 +240,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditi
           <SelectContent>
             <SelectItem value="tithe">Tithe</SelectItem>
             <SelectItem value="offering">Offering</SelectItem>
-            <SelectItem value="fellowship_offering">Cells/Fellowship Offering</SelectItem>
+            {canUseCellOffering && <SelectItem value="fellowship_offering">Cells/Fellowship Offering</SelectItem>}
             <SelectItem value="partnership">Partnership</SelectItem>
             <SelectItem value="welfare">Welfare</SelectItem>
             <SelectItem value="missions">Missions</SelectItem>
@@ -263,6 +282,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditi
         <Input className="h-8 text-xs sm:h-10 sm:text-sm" type="date" {...register('endDate')} />
       </div>
 
+      {canUsePublicLinks && (
       <div className="flex items-center gap-3 rounded-md border p-2 sm:p-3">
         <input
           type="checkbox"
@@ -276,7 +296,9 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditi
           <p className="text-xs text-muted-foreground">Generate a public link so anyone can give without logging in</p>
         </div>
       </div>
+      )}
 
+      {canUsePledges && (
       <div className="flex items-center gap-3 rounded-md border p-2 sm:p-3">
         <input
           type="checkbox"
@@ -290,6 +312,7 @@ function CampaignForm({ defaultValues, onSubmit, isPending, submitLabel, isEditi
           <p className="text-xs text-muted-foreground">Members can commit to give a specific amount by a deadline</p>
         </div>
       </div>
+      )}
 
       <Button type="submit" size="sm" disabled={isPending} className="w-full h-8 text-xs sm:h-10 sm:text-sm">
         {isPending ? 'Saving...' : submitLabel}
@@ -320,16 +343,22 @@ export default function GivingPage() {
   const [summaryStartDate, setSummaryStartDate] = useState('');
   const [summaryEndDate, setSummaryEndDate] = useState('');
   const { hasPermission } = useRole();
-  const hasGivingFeature = useHasFeature('giving_tracking');
-  const hasPledgesFeature = useHasFeature('pledges_management');
+  const hasGivingFeature = useHasFeature(PACKAGE_FEATURES.GIVING_TRACKING);
+  const hasCampaignsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_CAMPAIGNS);
+  const hasOnlinePaymentsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_ONLINE_PAYMENTS);
+  const hasPublicLinksFeature = useHasFeature(PACKAGE_FEATURES.GIVING_PUBLIC_LINKS);
+  const hasQrCodesFeature = useHasFeature(PACKAGE_FEATURES.GIVING_QR_CODES);
+  const hasCellOfferingFeature = useHasFeature(PACKAGE_FEATURES.GIVING_CELL_OFFERING);
+  const hasPledgesFeature = useHasFeature(PACKAGE_FEATURES.PLEDGES_MANAGEMENT);
+  const hasTransactionsFeature = useHasFeature(PACKAGE_FEATURES.TRANSACTIONS_VIEW);
   const user = useAuthStore(state => state.user);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const isMember = user?.roleName === 'member';
-  const canCreate = hasPermission('campaigns:create') && hasGivingFeature;
-  const canUpdate = hasPermission('campaigns:update') && hasGivingFeature;
-  const canDelete = hasPermission('campaigns:delete') && hasGivingFeature;
-  const canViewDonations = hasPermission('donations:read');
+  const canCreate = hasPermission('campaigns:create') && hasCampaignsFeature;
+  const canUpdate = hasPermission('campaigns:update') && hasCampaignsFeature;
+  const canDelete = hasPermission('campaigns:delete') && hasCampaignsFeature;
+  const canViewDonations = hasPermission('donations:read') && hasTransactionsFeature;
 
   const { data: campaignsResponse = [], isLoading } = useQuery({
     queryKey: ['campaigns', churchFilter, categoryFilter, statusFilter],
@@ -374,7 +403,7 @@ export default function GivingPage() {
   const { data: memberCells = [] } = useQuery({
     queryKey: ['my-cells-simple'],
     queryFn: () => cellsService.getSimple(),
-    enabled: isMember,
+    enabled: isMember && hasCellOfferingFeature,
     staleTime: STALE_TIME.DEFAULT,
   });
 
@@ -479,7 +508,7 @@ export default function GivingPage() {
   const qrGivingUrl = shareCampaign && selectedShareChurchIds.length > 0
     ? buildPublicGivingUrl(shareCampaign.id, user?.subdomain, selectedShareChurchIds)
     : '';
-  const qrImageUrl = qrGivingUrl
+  const qrImageUrl = qrGivingUrl && hasQrCodesFeature
     ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(qrGivingUrl)}`
     : '';
 
@@ -560,6 +589,12 @@ export default function GivingPage() {
     if (amount <= 0) return toast.error('Invalid amount');
 
     // Fellowship offering requires a cell selection
+    if (!hasOnlinePaymentsFeature) {
+      return toast.error('Online giving payments are not available in your current package');
+    }
+    if (donateCampaign.category === 'fellowship_offering' && !hasCellOfferingFeature) {
+      return toast.error('Cell/Fellowship Offering is not available in your current package');
+    }
     if (donateCampaign.category === 'fellowship_offering' && !donateCellId) {
       return toast.error('Please select your cell/fellowship');
     }
@@ -607,15 +642,20 @@ export default function GivingPage() {
 
   const renderCampaignCard = (campaign: any) => {
     const progress = campaign.targetAmount ? (campaign.totalRaised! / campaign.targetAmount) * 100 : 0;
-    const hasMemberActions = isMember && (campaign.status === 'active' || campaign.allowPledging || campaign.userHasDonated);
+    const canDonateToCampaign = campaign.status === 'active'
+      && hasOnlinePaymentsFeature
+      && (campaign.category !== 'fellowship_offering' || hasCellOfferingFeature);
+    const canPledgeToCampaign = campaign.allowPledging && hasPledgesFeature;
+    const canShareCampaign = campaign.allowPublicDonations && campaign.status === 'active' && (hasPublicLinksFeature || hasQrCodesFeature);
+    const hasMemberActions = isMember && (canDonateToCampaign || canPledgeToCampaign || (campaign.userHasDonated && hasTransactionsFeature));
     const hasAdminActions = !isMember && (
       canViewDonations ||
       canUpdate ||
       canDelete ||
-      campaign.allowPublicDonations
+      canShareCampaign
     );
     const hasAdminPrimaryActions = !isMember && (canViewDonations || canUpdate);
-    const hasAdminNonDeleteActions = !isMember && (canViewDonations || canUpdate || campaign.allowPublicDonations);
+    const hasAdminNonDeleteActions = !isMember && (canViewDonations || canUpdate || canShareCampaign);
     const hasCardActions = hasMemberActions || hasAdminActions;
 
     return (
@@ -646,19 +686,19 @@ export default function GivingPage() {
                 <DropdownMenuContent align="end" className="w-48">
                   {isMember ? (
                     <>
-                      {campaign.status === 'active' && (
+                      {canDonateToCampaign && (
                         <DropdownMenuItem className="gap-2" onClick={() => setDonateCampaign(campaign)}>
                           <Wallet className="h-4 w-4" />
                           Give
                         </DropdownMenuItem>
                       )}
-                      {campaign.allowPledging && (
+                      {canPledgeToCampaign && (
                         <DropdownMenuItem className="gap-2" onClick={() => setPledgeCampaign(campaign)}>
                           <Handshake className="h-4 w-4" />
                           Pledge
                         </DropdownMenuItem>
                       )}
-                      {campaign.userHasDonated && (
+                      {campaign.userHasDonated && hasTransactionsFeature && (
                         <DropdownMenuItem className="gap-2" onClick={() => navigate(`/dashboard/donations?campaignId=${campaign.id}`)}>
                           <Eye className="h-4 w-4" />
                           My Givings
@@ -685,30 +725,38 @@ export default function GivingPage() {
                           Edit
                         </DropdownMenuItem>
                       )}
-                      {campaign.allowPublicDonations && (
+                      {canShareCampaign && (
                         <>
                           {hasAdminPrimaryActions && <DropdownMenuSeparator />}
-                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
-                            {copiedCampaignId === campaign.id ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                            Copy Public Link
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
-                            <QrCode className="h-4 w-4" />
-                            Show QR Code
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
-                            <Share2 className="h-4 w-4" />
-                            Share WhatsApp
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
-                            <Share2 className="h-4 w-4" />
-                            Share Facebook
-                          </DropdownMenuItem>
+                          {hasPublicLinksFeature && (
+                            <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
+                              {copiedCampaignId === campaign.id ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                              Copy Public Link
+                            </DropdownMenuItem>
+                          )}
+                          {hasQrCodesFeature && (
+                            <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
+                              <QrCode className="h-4 w-4" />
+                              Show QR Code
+                            </DropdownMenuItem>
+                          )}
+                          {hasPublicLinksFeature && (
+                            <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
+                              <Share2 className="h-4 w-4" />
+                              Share WhatsApp
+                            </DropdownMenuItem>
+                          )}
+                          {hasPublicLinksFeature && (
+                            <DropdownMenuItem className="gap-2" onClick={() => openShareDialog(campaign)}>
+                              <Share2 className="h-4 w-4" />
+                              Share Facebook
+                            </DropdownMenuItem>
+                          )}
                         </>
                       )}
                       {canUpdate && (campaign.status === 'active' || campaign.status === 'completed') && (
                         <>
-                          {(hasAdminPrimaryActions || campaign.allowPublicDonations) && <DropdownMenuSeparator />}
+                          {(hasAdminPrimaryActions || canShareCampaign) && <DropdownMenuSeparator />}
                           {campaign.status === 'active' ? (
                             <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => setEndCampaignId(campaign.id)}>
                               <StopCircle className="h-4 w-4" />
@@ -885,6 +933,9 @@ export default function GivingPage() {
                   isPending={createMutation.isPending}
                   submitLabel="Create"
                   churches={churches}
+                  canUsePublicLinks={hasPublicLinksFeature}
+                  canUsePledges={hasPledgesFeature}
+                  canUseCellOffering={hasCellOfferingFeature}
                 />
               </DialogContent>
             </Dialog>
@@ -1041,7 +1092,7 @@ export default function GivingPage() {
                 </p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-4 text-center">
-                {qrImageUrl ? (
+                {hasQrCodesFeature && qrImageUrl ? (
                   <img
                     src={qrImageUrl}
                     alt={`${shareCampaign.name} giving QR code`}
@@ -1049,7 +1100,7 @@ export default function GivingPage() {
                   />
                 ) : (
                   <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-                    Select at least one church to generate the QR code.
+                    {hasQrCodesFeature ? 'Select at least one church to generate the QR code.' : 'QR codes are not available in this package.'}
                   </div>
                 )}
               </div>
@@ -1060,46 +1111,54 @@ export default function GivingPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={!qrGivingUrl}
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(qrGivingUrl);
-                    toast.success('Giving link copied');
-                  }}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy Link
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => shareWhatsApp(shareCampaign)}>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  WhatsApp
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => shareFacebook(shareCampaign)}>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Facebook
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="outline" size="sm" disabled={!qrGivingUrl}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Download QR
-                      <ChevronDown className="ml-2 h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem onClick={downloadGivingQrPng}>
-                      <ImageIcon className="mr-2 h-4 w-4" />
-                      Download PNG
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={downloadGivingQrPdf}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Download PDF
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {hasPublicLinksFeature && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!qrGivingUrl}
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(qrGivingUrl);
+                      toast.success('Giving link copied');
+                    }}
+                  >
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy Link
+                  </Button>
+                )}
+                {hasPublicLinksFeature && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => shareWhatsApp(shareCampaign)}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    WhatsApp
+                  </Button>
+                )}
+                {hasPublicLinksFeature && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => shareFacebook(shareCampaign)}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Facebook
+                  </Button>
+                )}
+                {hasQrCodesFeature && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" variant="outline" size="sm" disabled={!qrGivingUrl}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download QR
+                        <ChevronDown className="ml-2 h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onClick={downloadGivingQrPng}>
+                        <ImageIcon className="mr-2 h-4 w-4" />
+                        Download PNG
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={downloadGivingQrPdf}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Download PDF
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
           )}
@@ -1146,6 +1205,9 @@ export default function GivingPage() {
               submitLabel="Update"
               isEditing={true}
               churches={churches}
+              canUsePublicLinks={hasPublicLinksFeature}
+              canUsePledges={hasPledgesFeature}
+              canUseCellOffering={hasCellOfferingFeature}
             />
           )}
         </DialogContent>

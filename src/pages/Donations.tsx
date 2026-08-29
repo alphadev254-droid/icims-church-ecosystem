@@ -18,6 +18,8 @@ import { STALE_TIME } from '@/lib/query-config';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 
 // ─── Member search dropdown ───────────────────────────────────────────────────
 
@@ -413,13 +415,16 @@ export default function DonationsPage() {
   const [cashDialogOpen, setCashDialogOpen] = useState(false);
   const currentUser = useAuthStore(s => s.user);
   const { hasPermission } = useRole();
-  const canCreate = hasPermission('donations:create') && currentUser?.roleName !== 'member';
+  const hasTransactionsFeature = useHasFeature(PACKAGE_FEATURES.TRANSACTIONS_VIEW);
+  const hasManualRecordsFeature = useHasFeature(PACKAGE_FEATURES.GIVING_MANUAL_RECORDS);
+  const hasCellOfferingFeature = useHasFeature(PACKAGE_FEATURES.GIVING_CELL_OFFERING);
+  const canCreate = hasPermission('donations:create') && currentUser?.roleName !== 'member' && hasManualRecordsFeature;
   const selectedChurchId = churchFilter !== 'all' ? churchFilter : undefined;
 
   const { data: campaign } = useQuery({
     queryKey: ['campaign-detail', campaignId, selectedChurchId],
     queryFn: () => givingService.getCampaign(campaignId!, selectedChurchId ? { churchId: selectedChurchId } : undefined),
-    enabled: !!campaignId,
+    enabled: !!campaignId && hasTransactionsFeature,
     staleTime: STALE_TIME.DEFAULT,
   });
 
@@ -428,6 +433,7 @@ export default function DonationsPage() {
   const { data: donations = [], isLoading } = useQuery({
     queryKey: ['donations', campaignId, selectedChurchId],
     queryFn: () => givingService.getDonations(campaignId || undefined, selectedChurchId),
+    enabled: hasTransactionsFeature,
     staleTime: STALE_TIME.DEFAULT,
   });
 
@@ -438,13 +444,29 @@ export default function DonationsPage() {
   const { data: transactionData, isLoading: isLoadingTransaction } = useQuery({
     queryKey: ['donation-transaction', expandedDonation],
     queryFn: () => givingService.getDonationTransaction(expandedDonation!),
-    enabled: !!expandedDonation,
+    enabled: !!expandedDonation && hasTransactionsFeature,
     staleTime: STALE_TIME.DEFAULT,
   });
 
   const handleToggleExpand = (donationId: string) => {
     setExpandedDonation(expandedDonation === donationId ? null : donationId);
   };
+
+  const canRecordForCampaign = canCreate && (!campaignCategory || campaignCategory !== 'fellowship_offering' || hasCellOfferingFeature);
+
+  if (!hasTransactionsFeature) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" className="gap-2" onClick={() => navigate('/dashboard/giving')}>
+          <ArrowLeft className="h-4 w-4" />
+          Back to Giving
+        </Button>
+        <div className="rounded-lg border bg-muted/30 p-6 text-sm text-muted-foreground">
+          Transaction records are not available in your current package.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -485,7 +507,7 @@ export default function DonationsPage() {
               </SelectContent>
             </Select>
           )}
-          {canCreate && campaignId && (
+          {canRecordForCampaign && campaignId && (
             <Button
               size="sm"
               className="h-8 text-xs gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90"
@@ -684,7 +706,7 @@ export default function DonationsPage() {
         </div>
       )}
 
-      {canCreate && campaignId && (
+      {canRecordForCampaign && campaignId && (
         <CashDonationDialog
           open={cashDialogOpen}
           onOpenChange={setCashDialogOpen}
