@@ -260,11 +260,17 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
                   </label>
                   {value.selected && (
                     <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                      <Input type="number" min="0" step="0.01" placeholder="Monthly" value={value.monthly}
-                        onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, monthly: e.target.value } }))} />
-                      <Input type="number" min="0" step="0.01" placeholder="Yearly" value={value.yearly}
-                        onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, yearly: e.target.value } }))} />
-                      <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium text-muted-foreground">
+                      <div>
+                        <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Monthly price</Label>
+                        <Input className="mt-1" type="number" min="0" step="0.01" placeholder="Monthly" value={value.monthly}
+                          onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, monthly: e.target.value } }))} />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Yearly price</Label>
+                        <Input className="mt-1" type="number" min="0" step="0.01" placeholder="Yearly" value={value.yearly}
+                          onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, yearly: e.target.value } }))} />
+                      </div>
+                      <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium text-muted-foreground sm:mt-5">
                         {market.currencyCode}
                       </div>
                     </div>
