@@ -151,6 +151,28 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
     }
   );
   const [expandedMarketOverrides, setExpandedMarketOverrides] = useState<Record<string, boolean>>({});
+  const packageConfigSignature = JSON.stringify({
+    packageId: pkg?.id ?? null,
+    moduleBundles: (pkg?.moduleBundles ?? []).map((bundle: any) => ({
+      bundleId: bundle.bundleId || bundle.bundle?.id,
+      limitValue: bundle.limitValue ?? null,
+    })),
+    bundleFeatureOverrides: (pkg?.bundleFeatureOverrides ?? []).map((override: any) => ({
+      bundleId: override.bundleId || override.bundle?.id,
+      featureId: override.featureId || override.feature?.id,
+      enabled: override.enabled,
+    })),
+    marketPrices: (pkg?.marketPrices ?? []).map((price: any) => ({
+      pricingMarketId: price.pricingMarketId || price.pricingMarket?.id,
+      priceMonthly: price.priceMonthly,
+      priceYearly: price.priceYearly,
+    })),
+    marketFeatureOverrides: (pkg?.marketFeatureOverrides ?? []).map((override: any) => ({
+      pricingMarketId: override.pricingMarketId || override.pricingMarket?.id,
+      featureId: override.featureId || override.feature?.id,
+      enabled: override.enabled,
+    })),
+  });
 
   useEffect(() => {
     const nextSelectedBundles: Record<string, { selected: boolean; limit: string }> = {};
@@ -205,7 +227,7 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
     setBundleFeatureEnabled(nextBundleFeatureEnabled);
     setMarketPrices(nextMarketPrices);
     setMarketFeatureEnabled(nextMarketFeatureEnabled);
-  }, [pkg?.id, bundles.length, markets.length]);
+  }, [packageConfigSignature, bundles.length, markets.length]);
 
   const inheritedFeatureItems: any[] = Array.from(new Map(Object.entries(selectedBundles)
     .filter(([, value]) => value.selected)
@@ -622,10 +644,22 @@ export default function AdminPackagesPage() {
     queryFn: async () => { const { data } = await apiClient.get('/admin/packages/countries'); return data.data; },
   });
 
+  const syncPackageInCache = (savedPackage: any) => {
+    if (!savedPackage?.id) return;
+    qc.setQueryData(['admin-packages'], (current: any) => {
+      if (!Array.isArray(current)) return current;
+      const exists = current.some((item: any) => item.id === savedPackage.id);
+      return exists
+        ? current.map((item: any) => item.id === savedPackage.id ? savedPackage : item)
+        : [...current, savedPackage];
+    });
+  };
+
   const createPkgMutation = useMutation({
     mutationFn: (dto: any) => apiClient.post('/admin/packages', dto),
     onSuccess: (response) => {
       const pkg = response.data?.data;
+      syncPackageInCache(pkg);
       console.log('[AdminPackages] create package response overrides', {
         packageId: pkg?.id,
         marketFeatureOverrideCount: pkg?.marketFeatureOverrides?.length ?? 0,
@@ -640,6 +674,7 @@ export default function AdminPackagesPage() {
     mutationFn: ({ id, dto }: { id: string; dto: any }) => apiClient.put(`/admin/packages/${id}`, dto),
     onSuccess: (response) => {
       const pkg = response.data?.data;
+      syncPackageInCache(pkg);
       console.log('[AdminPackages] update package response overrides', {
         packageId: pkg?.id,
         marketFeatureOverrideCount: pkg?.marketFeatureOverrides?.length ?? 0,
