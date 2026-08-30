@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Layers3, Plus, Pencil, Trash2, Package2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Rates { mwkRate: number; kesRate: number; malawiDiscount: number; kenyaDiscount: number; }
 interface PricingMarket {
   id: string;
   code: string;
@@ -29,19 +28,6 @@ interface PricingMarket {
 interface CountryMarket { id: string; name: string; iso2: string; phoneCode?: string; currencyCode?: string; pricingMarketId?: string | null; pricingMarket?: PricingMarket | null; isActive: boolean; }
 
 function fmtUSD(n: number) { return `$${n % 1 === 0 ? n : n.toFixed(2)}`; }
-function fmtKES(usd: number, rates: Rates) { return `KES ${Math.round(usd * rates.kesRate * rates.kenyaDiscount).toLocaleString()}`; }
-function fmtMWK(usd: number, rates: Rates) { return `MWK ${Math.round(usd * rates.mwkRate * rates.malawiDiscount).toLocaleString()}`; }
-
-// Small inline conversion hint shown below a USD price input
-function ConversionHint({ usd, rates }: { usd: string | number; rates: Rates | undefined }) {
-  const val = Number(usd);
-  if (!rates || !val || isNaN(val)) return null;
-  return (
-    <p className="text-xs text-muted-foreground mt-0.5">
-      ≈ {fmtKES(val, rates)} · {fmtMWK(val, rates)}
-    </p>
-  );
-}
 
 function fmtLocal(amount: number | string, currency: string) {
   const value = Number(amount || 0);
@@ -71,11 +57,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 // ─── Package Form ─────────────────────────────────────────────────────────────
 
-function PackageForm({ pkg, bundles, markets, rates, onSubmit, isPending, onClose }: {
+function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
   pkg?: any;
   bundles: any[];
   markets: PricingMarket[];
-  rates: Rates | undefined;
   onSubmit: (data: any) => void;
   isPending: boolean;
   onClose: () => void;
@@ -215,33 +200,34 @@ function PackageForm({ pkg, bundles, markets, rates, onSubmit, isPending, onClos
         <Textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <div>
-          <Label>{form.isPrivate ? 'Private Monthly Price' : 'Base Monthly Price'}</Label>
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.isPrivate ? form.currencyCode : 'USD'}</span>
-            <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
-          </div>
-          {!form.isPrivate && <ConversionHint usd={form.priceMonthly} rates={rates} />}
-        </div>
-        <div>
-          <Label>{form.isPrivate ? 'Private Yearly Price' : 'Base Yearly Price'}</Label>
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.isPrivate ? form.currencyCode : 'USD'}</span>
-            <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
-          </div>
-          {!form.isPrivate && <ConversionHint usd={form.priceYearly} rates={rates} />}
-        </div>
-        <div>
-          <Label>Package Currency</Label>
-          <Select value={form.isPrivate ? form.currencyCode : 'USD'} onValueChange={value => setForm(f => ({ ...f, currencyCode: value }))} disabled={!form.isPrivate}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {CURRENCY_OPTIONS.map(currency => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {!form.isPrivate && <p className="mt-1 text-xs text-muted-foreground">Public packages use market prices.</p>}
-        </div>
+      <div className={`grid grid-cols-1 gap-3 ${form.isPrivate ? 'sm:grid-cols-4' : 'sm:grid-cols-1'}`}>
+        {form.isPrivate && (
+          <>
+            <div>
+              <Label>Private Monthly Price</Label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.currencyCode}</span>
+                <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <Label>Private Yearly Price</Label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.currencyCode}</span>
+                <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <Label>Package Currency</Label>
+              <Select value={form.currencyCode} onValueChange={value => setForm(f => ({ ...f, currencyCode: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CURRENCY_OPTIONS.map(currency => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
         <div>
           <Label>Sort Order</Label>
           <Input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: e.target.value }))} />
@@ -444,12 +430,6 @@ export default function AdminPackagesPage() {
     queryFn: async () => { const { data } = await apiClient.get('/admin/packages/countries'); return data.data; },
   });
 
-  const { data: rates } = useQuery<Rates>({
-    queryKey: ['admin-package-rates'],
-    queryFn: async () => { const { data } = await apiClient.get('/admin/packages/rates'); return data.data; },
-    staleTime: 60_000,
-  });
-
   const createPkgMutation = useMutation({
     mutationFn: (dto: any) => apiClient.post('/admin/packages', dto),
     onSuccess: () => { toast.success('Package created'); qc.invalidateQueries({ queryKey: ['admin-packages'] }); setPkgOpen(false); },
@@ -579,12 +559,13 @@ export default function AdminPackagesPage() {
                     </div>
                   </div>
 
-                  {/* Package price */}
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-2xl font-bold">{pkg.currencyCode === 'USD' ? fmtUSD(pkg.priceMonthly) : fmtLocal(pkg.priceMonthly, pkg.currencyCode || 'USD')}</span>
-                    <span className="text-sm opacity-70">/mo</span>
-                    <span className="text-sm opacity-50 ml-1">{pkg.currencyCode === 'USD' ? fmtUSD(pkg.priceYearly) : fmtLocal(pkg.priceYearly, pkg.currencyCode || 'USD')}/yr</span>
-                  </div>
+                  {pkg.isPrivate && (
+                    <div className="mt-3 flex items-baseline gap-2">
+                      <span className="text-2xl font-bold">{pkg.currencyCode === 'USD' ? fmtUSD(pkg.priceMonthly) : fmtLocal(pkg.priceMonthly, pkg.currencyCode || 'USD')}</span>
+                      <span className="text-sm opacity-70">/mo</span>
+                      <span className="text-sm opacity-50 ml-1">{pkg.currencyCode === 'USD' ? fmtUSD(pkg.priceYearly) : fmtLocal(pkg.priceYearly, pkg.currencyCode || 'USD')}/yr</span>
+                    </div>
+                  )}
                 </div>
 
                 <CardContent className="flex-1 flex flex-col gap-0 p-0">
@@ -607,22 +588,6 @@ export default function AdminPackagesPage() {
                         </div>
                       ))}
                       {pkg.marketPrices.length > 3 && <p className="text-xs text-muted-foreground">+{pkg.marketPrices.length - 3} more market(s)</p>}
-                    </div>
-                  )}
-
-                  {/* ── Legacy conversion fallback ── */}
-                  {!pkg.isPrivate && rates && pkg.priceMonthly > 0 && (!pkg.marketPrices || pkg.marketPrices.length === 0) && (
-                    <div className="px-5 py-3 border-b bg-muted/30 grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-0.5">Kenya (KES)</p>
-                        <p className="text-sm font-semibold">{fmtKES(pkg.priceMonthly, rates)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
-                        <p className="text-xs text-muted-foreground">{fmtKES(pkg.priceYearly, rates)}/yr</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-0.5">Malawi (MWK)</p>
-                        <p className="text-sm font-semibold">{fmtMWK(pkg.priceMonthly, rates)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
-                        <p className="text-xs text-muted-foreground">{fmtMWK(pkg.priceYearly, rates)}/yr</p>
-                      </div>
                     </div>
                   )}
 
@@ -822,12 +787,14 @@ export default function AdminPackagesPage() {
                     {!viewPkg.isActive && <Badge className="text-xs bg-white/20 text-white border-0">Inactive</Badge>}
                     {viewPkg.isPrivate && <Badge className="text-xs bg-amber-400/30 text-amber-100 border-0">Private</Badge>}
                   </div>
-                  <p className="text-xs opacity-50 font-mono mb-3">{viewPkg.name}</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold">{viewPkg.currencyCode === 'USD' ? fmtUSD(viewPkg.priceMonthly) : fmtLocal(viewPkg.priceMonthly, viewPkg.currencyCode || 'USD')}</span>
-                    <span className="opacity-70">/mo</span>
-                    <span className="opacity-50 ml-1 text-sm">{viewPkg.currencyCode === 'USD' ? fmtUSD(viewPkg.priceYearly) : fmtLocal(viewPkg.priceYearly, viewPkg.currencyCode || 'USD')}/yr</span>
-                  </div>
+                  <p className={`text-xs opacity-50 font-mono ${viewPkg.isPrivate ? 'mb-3' : ''}`}>{viewPkg.name}</p>
+                  {viewPkg.isPrivate && (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold">{viewPkg.currencyCode === 'USD' ? fmtUSD(viewPkg.priceMonthly) : fmtLocal(viewPkg.priceMonthly, viewPkg.currencyCode || 'USD')}</span>
+                      <span className="opacity-70">/mo</span>
+                      <span className="opacity-50 ml-1 text-sm">{viewPkg.currencyCode === 'USD' ? fmtUSD(viewPkg.priceYearly) : fmtLocal(viewPkg.priceYearly, viewPkg.currencyCode || 'USD')}/yr</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="divide-y">
@@ -852,31 +819,6 @@ export default function AdminPackagesPage() {
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Legacy conversion fallback */}
-                  {!viewPkg.isPrivate && rates && viewPkg.priceMonthly > 0 && (!viewPkg.marketPrices || viewPkg.marketPrices.length === 0) && (
-                    <div className="px-6 py-4 bg-muted/20">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Pricing by Country</p>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-background rounded-lg border p-3">
-                          <p className="text-xs text-muted-foreground mb-1">🇰🇪 Kenya</p>
-                          <p className="font-semibold text-sm">{fmtKES(viewPkg.priceMonthly, rates)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{fmtKES(viewPkg.priceYearly, rates)}/yr</p>
-                        </div>
-                        <div className="bg-background rounded-lg border p-3">
-                          <p className="text-xs text-muted-foreground mb-1">🇲🇼 Malawi</p>
-                          <p className="font-semibold text-sm">{fmtMWK(viewPkg.priceMonthly, rates)}<span className="text-xs font-normal text-muted-foreground">/mo</span></p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{fmtMWK(viewPkg.priceYearly, rates)}/yr</p>
-                        </div>
-                      </div>
-                      {rates && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Rates: $1 = KES {rates.kesRate} · $1 = MWK {rates.mwkRate}
-                          {rates.malawiDiscount < 1 && ` · Malawi discount: ${Math.round((1 - rates.malawiDiscount) * 100)}% off`}
-                        </p>
-                      )}
                     </div>
                   )}
 
@@ -968,7 +910,7 @@ export default function AdminPackagesPage() {
       <Dialog open={pkgOpen} onOpenChange={setPkgOpen}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Create Package</DialogTitle></DialogHeader>
-          <PackageForm bundles={bundles} markets={markets} rates={rates} onSubmit={dto => createPkgMutation.mutate(dto)} isPending={createPkgMutation.isPending} onClose={() => setPkgOpen(false)} />
+          <PackageForm bundles={bundles} markets={markets} onSubmit={dto => createPkgMutation.mutate(dto)} isPending={createPkgMutation.isPending} onClose={() => setPkgOpen(false)} />
         </DialogContent>
       </Dialog>
 
@@ -977,7 +919,7 @@ export default function AdminPackagesPage() {
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Package — {editPkg?.displayName}</DialogTitle></DialogHeader>
           {editPkg && (
-            <PackageForm pkg={editPkg} bundles={bundles} markets={markets} rates={rates} onSubmit={dto => updatePkgMutation.mutate({ id: editPkg.id, dto })} isPending={updatePkgMutation.isPending} onClose={() => setEditPkg(null)} />
+            <PackageForm pkg={editPkg} bundles={bundles} markets={markets} onSubmit={dto => updatePkgMutation.mutate({ id: editPkg.id, dto })} isPending={updatePkgMutation.isPending} onClose={() => setEditPkg(null)} />
           )}
         </DialogContent>
       </Dialog>
