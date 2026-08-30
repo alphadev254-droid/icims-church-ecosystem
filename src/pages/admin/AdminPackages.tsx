@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
@@ -170,6 +170,27 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
     })
     .map(item => [item.featureId, item])).values());
 
+  useEffect(() => {
+    const savedOverrides = pkg?.marketFeatureOverrides ?? [];
+    console.log('[PackageForm] loaded market feature overrides', {
+      packageId: pkg?.id,
+      packageName: pkg?.name,
+      marketCount: markets.length,
+      bundleCount: bundles.length,
+      inheritedFeatureCount: inheritedFeatureItems.length,
+      savedOverrideCount: savedOverrides.length,
+      savedDisabledCount: savedOverrides.filter((override: any) => override.enabled === false).length,
+      savedOverrides: savedOverrides.map((override: any) => ({
+        pricingMarketId: override.pricingMarketId || override.pricingMarket?.id,
+        featureId: override.featureId || override.feature?.id,
+        enabled: override.enabled,
+      })),
+      currentDisabledKeys: Object.entries(marketFeatureEnabled)
+        .filter(([, enabled]) => enabled === false)
+        .map(([key]) => key),
+    });
+  }, [pkg?.id, markets.length, bundles.length]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const moduleBundleList = Object.entries(selectedBundles)
@@ -214,6 +235,19 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
               limitValue: null,
               reason: 'Disabled for this market.',
             })));
+
+    console.log('[PackageForm] submitting package market feature overrides', {
+      packageId: pkg?.id,
+      packageName: form.name,
+      isPrivate: form.isPrivate,
+      selectedMarketIds: Object.entries(marketPrices).filter(([, value]) => value.selected).map(([marketId]) => marketId),
+      inheritedFeatureCount: inheritedFeatureItems.length,
+      disabledKeys: Object.entries(marketFeatureEnabled)
+        .filter(([, enabled]) => enabled === false)
+        .map(([key]) => key),
+      marketFeatureOverrideCount: marketFeatureOverrideList.length,
+      marketFeatureOverrides: marketFeatureOverrideList,
+    });
 
     onSubmit({
       ...form,
@@ -535,13 +569,29 @@ export default function AdminPackagesPage() {
 
   const createPkgMutation = useMutation({
     mutationFn: (dto: any) => apiClient.post('/admin/packages', dto),
-    onSuccess: () => { toast.success('Package created'); qc.invalidateQueries({ queryKey: ['admin-packages'] }); setPkgOpen(false); },
+    onSuccess: (response) => {
+      const pkg = response.data?.data;
+      console.log('[AdminPackages] create package response overrides', {
+        packageId: pkg?.id,
+        marketFeatureOverrideCount: pkg?.marketFeatureOverrides?.length ?? 0,
+        marketFeatureOverrides: pkg?.marketFeatureOverrides,
+      });
+      toast.success('Package created'); qc.invalidateQueries({ queryKey: ['admin-packages'] }); setPkgOpen(false);
+    },
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
   });
 
   const updatePkgMutation = useMutation({
     mutationFn: ({ id, dto }: { id: string; dto: any }) => apiClient.put(`/admin/packages/${id}`, dto),
-    onSuccess: () => { toast.success('Package updated'); qc.invalidateQueries({ queryKey: ['admin-packages'] }); setEditPkg(null); },
+    onSuccess: (response) => {
+      const pkg = response.data?.data;
+      console.log('[AdminPackages] update package response overrides', {
+        packageId: pkg?.id,
+        marketFeatureOverrideCount: pkg?.marketFeatureOverrides?.length ?? 0,
+        marketFeatureOverrides: pkg?.marketFeatureOverrides,
+      });
+      toast.success('Package updated'); qc.invalidateQueries({ queryKey: ['admin-packages'] }); setEditPkg(null);
+    },
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed'),
   });
 
