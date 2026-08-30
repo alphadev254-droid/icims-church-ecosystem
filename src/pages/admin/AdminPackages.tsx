@@ -130,6 +130,45 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
       return map;
     }
   );
+  const [marketFeatureEnabled, setMarketFeatureEnabled] = useState<Record<string, boolean>>(
+    () => {
+      const map: Record<string, boolean> = {};
+      markets.forEach(market => {
+        bundles.forEach(bundle => {
+          bundle.features?.forEach((bf: any) => {
+            const featureId = bf.featureId || bf.feature?.id;
+            if (!featureId) return;
+            const existingOverride = pkg?.marketFeatureOverrides?.find((override: any) => {
+              const overrideMarketId = override.pricingMarketId || override.pricingMarket?.id;
+              const overrideFeatureId = override.featureId || override.feature?.id;
+              return overrideMarketId === market.id && overrideFeatureId === featureId;
+            });
+            map[`${market.id}:${featureId}`] = existingOverride ? existingOverride.enabled !== false : true;
+          });
+        });
+      });
+      return map;
+    }
+  );
+  const [expandedMarketOverrides, setExpandedMarketOverrides] = useState<Record<string, boolean>>({});
+
+  const inheritedFeatureItems: any[] = Array.from(new Map(Object.entries(selectedBundles)
+    .filter(([, value]) => value.selected)
+    .flatMap(([bundleId]) => {
+      const bundle = bundles.find(item => item.id === bundleId);
+      return (bundle?.features ?? [])
+        .filter((bf: any) => {
+          const featureId = bf.featureId || bf.feature?.id;
+          return featureId && bundleFeatureEnabled[`${bundleId}:${featureId}`] !== false;
+        })
+        .map((bf: any) => ({
+          bundleId,
+          featureId: bf.featureId || bf.feature?.id,
+          bundleName: bundle?.name,
+          feature: bf.feature,
+        }));
+    })
+    .map(item => [item.featureId, item])).values());
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,6 +201,19 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
             priceYearly: Number(value.yearly || 0),
             currencyCode: markets.find(market => market.id === pricingMarketId)?.currencyCode || value.currencyCode,
           }));
+    const marketFeatureOverrideList = form.isPrivate
+      ? []
+      : Object.entries(marketPrices)
+          .filter(([, value]) => value.selected)
+          .flatMap(([pricingMarketId]) => inheritedFeatureItems
+            .filter(item => marketFeatureEnabled[`${pricingMarketId}:${item.featureId}`] === false)
+            .map(item => ({
+              pricingMarketId,
+              featureId: item.featureId,
+              enabled: false,
+              limitValue: null,
+              reason: 'Disabled for this market.',
+            })));
 
     onSubmit({
       ...form,
@@ -177,6 +229,7 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
       features: [],
       moduleBundles: moduleBundleList,
       bundleFeatureOverrides: bundleFeatureOverrideList,
+      marketFeatureOverrides: marketFeatureOverrideList,
       marketPrices: marketPriceList,
       isPrivate: form.isPrivate,
     });
@@ -259,19 +312,63 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
                     </span>
                   </label>
                   {value.selected && (
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                      <div>
-                        <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Monthly price</Label>
-                        <Input className="mt-1" type="number" min="0" step="0.01" placeholder="Monthly" value={value.monthly}
-                          onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, monthly: e.target.value } }))} />
+                    <div className="mt-3 space-y-3">
+                      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                        <div>
+                          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Monthly price</Label>
+                          <Input className="mt-1" type="number" min="0" step="0.01" placeholder="Monthly" value={value.monthly}
+                            onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, monthly: e.target.value } }))} />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Yearly price</Label>
+                          <Input className="mt-1" type="number" min="0" step="0.01" placeholder="Yearly" value={value.yearly}
+                            onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, yearly: e.target.value } }))} />
+                        </div>
+                        <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium text-muted-foreground sm:mt-5">
+                          {market.currencyCode}
+                        </div>
                       </div>
-                      <div>
-                        <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Yearly price</Label>
-                        <Input className="mt-1" type="number" min="0" step="0.01" placeholder="Yearly" value={value.yearly}
-                          onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, yearly: e.target.value } }))} />
-                      </div>
-                      <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium text-muted-foreground sm:mt-5">
-                        {market.currencyCode}
+
+                      <div className="rounded-md border bg-muted/20">
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium"
+                          onClick={() => setExpandedMarketOverrides(prev => ({ ...prev, [market.id]: !prev[market.id] }))}
+                        >
+                          <span>Feature overrides</span>
+                          <span className="text-muted-foreground">
+                            {inheritedFeatureItems.filter(item => marketFeatureEnabled[`${market.id}:${item.featureId}`] === false).length} disabled
+                          </span>
+                        </button>
+                        {expandedMarketOverrides[market.id] && (
+                          <div className="grid gap-1.5 border-t p-2 sm:grid-cols-2">
+                            {inheritedFeatureItems.map(item => (
+                              <label key={`${market.id}:${item.featureId}`} className="flex items-start gap-2 rounded border bg-background px-2 py-1.5">
+                                <input
+                                  type="checkbox"
+                                  checked={marketFeatureEnabled[`${market.id}:${item.featureId}`] ?? true}
+                                  onChange={event => setMarketFeatureEnabled(prev => ({
+                                    ...prev,
+                                    [`${market.id}:${item.featureId}`]: event.target.checked,
+                                  }))}
+                                  className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                                />
+                                <span className="min-w-0">
+                                  <span className="block text-xs font-medium leading-snug">{item.feature?.displayName}</span>
+                                  <span className="block text-[10px] text-muted-foreground">{item.bundleName}</span>
+                                  {item.feature?.description && (
+                                    <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
+                                      {item.feature.description}
+                                    </span>
+                                  )}
+                                </span>
+                              </label>
+                            ))}
+                            {inheritedFeatureItems.length === 0 && (
+                              <p className="col-span-full text-xs text-muted-foreground">Select at least one module bundle before setting market feature overrides.</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
