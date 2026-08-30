@@ -24,7 +24,6 @@ interface PricingMarket {
   isDefault?: boolean;
   isActive?: boolean;
   sortOrder?: number;
-  packagePrices?: Array<{ id?: string; packageId: string; priceMonthly: number; priceYearly: number; currencyCode: string; package?: { displayName?: string } }>;
   _count?: { countries?: number; packagePrices?: number };
 }
 interface CountryMarket { id: string; name: string; iso2: string; phoneCode?: string; currencyCode?: string; pricingMarketId?: string | null; pricingMarket?: PricingMarket | null; isActive: boolean; }
@@ -217,33 +216,32 @@ function PackageForm({ pkg, bundles, markets, rates, onSubmit, isPending, onClos
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        {form.isPrivate && (
-          <>
-            <div>
-              <Label>Private Monthly Price</Label>
-              <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.currencyCode}</span>
-                <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
-              </div>
-            </div>
-            <div>
-              <Label>Private Yearly Price</Label>
-              <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.currencyCode}</span>
-                <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
-              </div>
-            </div>
-            <div>
-              <Label>Package Currency</Label>
-              <Select value={form.currencyCode} onValueChange={value => setForm(f => ({ ...f, currencyCode: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CURRENCY_OPTIONS.map(currency => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </>
-        )}
+        <div>
+          <Label>{form.isPrivate ? 'Private Monthly Price' : 'Base Monthly Price'}</Label>
+          <div className="relative">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.isPrivate ? form.currencyCode : 'USD'}</span>
+            <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
+          </div>
+          {!form.isPrivate && <ConversionHint usd={form.priceMonthly} rates={rates} />}
+        </div>
+        <div>
+          <Label>{form.isPrivate ? 'Private Yearly Price' : 'Base Yearly Price'}</Label>
+          <div className="relative">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.isPrivate ? form.currencyCode : 'USD'}</span>
+            <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
+          </div>
+          {!form.isPrivate && <ConversionHint usd={form.priceYearly} rates={rates} />}
+        </div>
+        <div>
+          <Label>Package Currency</Label>
+          <Select value={form.isPrivate ? form.currencyCode : 'USD'} onValueChange={value => setForm(f => ({ ...f, currencyCode: value }))} disabled={!form.isPrivate}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {CURRENCY_OPTIONS.map(currency => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {!form.isPrivate && <p className="mt-1 text-xs text-muted-foreground">Public packages use market prices.</p>}
+        </div>
         <div>
           <Label>Sort Order</Label>
           <Input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: e.target.value }))} />
@@ -252,8 +250,8 @@ function PackageForm({ pkg, bundles, markets, rates, onSubmit, isPending, onClos
 
       {!form.isPrivate && (
         <div>
-          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Market Availability</Label>
-          <p className="mt-0.5 text-xs text-muted-foreground">Select the markets where this public package should be available. Prices are edited from each market.</p>
+          <Label className="text-xs text-muted-foreground uppercase tracking-wide">Market Prices</Label>
+          <p className="mt-0.5 text-xs text-muted-foreground">Select the markets where this public package should be available.</p>
           <div className="mt-2 grid gap-2">
             {markets.map(market => {
               const value = marketPrices[market.id] ?? { selected: false, monthly: '', yearly: '', currencyCode: market.currencyCode };
@@ -272,15 +270,19 @@ function PackageForm({ pkg, bundles, markets, rates, onSubmit, isPending, onClos
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium">{market.name}</span>
                       <span className="block text-xs text-muted-foreground">{market.currencyCode} package payments via {market.packageGateway}</span>
-                      {value.selected && (
-                        <span className="block text-xs text-muted-foreground">
-                          {value.monthly || value.yearly
-                            ? `${fmtLocal(value.monthly || 0, market.currencyCode)}/mo · ${fmtLocal(value.yearly || 0, market.currencyCode)}/yr`
-                            : 'No price set yet'}
-                        </span>
-                      )}
                     </span>
                   </label>
+                  {value.selected && (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                      <Input type="number" min="0" step="0.01" placeholder="Monthly" value={value.monthly}
+                        onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, monthly: e.target.value } }))} />
+                      <Input type="number" min="0" step="0.01" placeholder="Yearly" value={value.yearly}
+                        onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, yearly: e.target.value } }))} />
+                      <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium text-muted-foreground">
+                        {market.currencyCode}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -416,7 +418,6 @@ export default function AdminPackagesPage() {
     isActive: true,
     sortOrder: 0,
   });
-  const [marketPackagePrices, setMarketPackagePrices] = useState<Record<string, { selected: boolean; monthly: string; yearly: string }>>({});
 
   const { data: packages = [], isLoading: pkgLoading } = useQuery({
     queryKey: ['admin-packages'],
@@ -449,8 +450,6 @@ export default function AdminPackagesPage() {
     staleTime: 60_000,
   });
 
-  const publicPackages = packages.filter((pkg: any) => !pkg.isPrivate);
-
   const createPkgMutation = useMutation({
     mutationFn: (dto: any) => apiClient.post('/admin/packages', dto),
     onSuccess: () => { toast.success('Package created'); qc.invalidateQueries({ queryKey: ['admin-packages'] }); setPkgOpen(false); },
@@ -470,15 +469,6 @@ export default function AdminPackagesPage() {
   });
 
   const openMarketForm = (market?: PricingMarket) => {
-    const priceMap: Record<string, { selected: boolean; monthly: string; yearly: string }> = {};
-    publicPackages.forEach((pkg: any) => {
-      const existing = market?.packagePrices?.find(price => price.packageId === pkg.id);
-      priceMap[pkg.id] = {
-        selected: !!existing,
-        monthly: existing ? String(existing.priceMonthly) : '',
-        yearly: existing ? String(existing.priceYearly) : '',
-      };
-    });
     setEditMarket(market ?? null);
     setMarketForm({
       code: market?.code ?? '',
@@ -489,7 +479,6 @@ export default function AdminPackagesPage() {
       isActive: market?.isActive ?? true,
       sortOrder: market?.sortOrder ?? 0,
     });
-    setMarketPackagePrices(priceMap);
     setMarketOpen(true);
   };
 
@@ -500,7 +489,6 @@ export default function AdminPackagesPage() {
     onSuccess: () => {
       toast.success(editMarket ? 'Market updated' : 'Market created');
       qc.invalidateQueries({ queryKey: ['admin-pricing-markets'] });
-      qc.invalidateQueries({ queryKey: ['admin-packages'] });
       setMarketOpen(false);
       setEditMarket(null);
     },
@@ -995,7 +983,7 @@ export default function AdminPackagesPage() {
       </Dialog>
 
       <Dialog open={marketOpen} onOpenChange={setMarketOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl">
           <DialogHeader><DialogTitle>{editMarket ? 'Edit Market' : 'Create Market'}</DialogTitle></DialogHeader>
           <form
             className="space-y-4"
@@ -1004,13 +992,6 @@ export default function AdminPackagesPage() {
               saveMarketMutation.mutate({
                 ...marketForm,
                 sortOrder: Number(marketForm.sortOrder || 0),
-                packagePrices: Object.entries(marketPackagePrices)
-                  .filter(([, value]) => value.selected)
-                  .map(([packageId, value]) => ({
-                    packageId,
-                    priceMonthly: Number(value.monthly || 0),
-                    priceYearly: Number(value.yearly || 0),
-                  })),
               });
             }}
           >
@@ -1056,66 +1037,6 @@ export default function AdminPackagesPage() {
                 <Switch checked={marketForm.isActive} onCheckedChange={value => setMarketForm(f => ({ ...f, isActive: value }))} />
                 Active
               </label>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Packages In This Market</Label>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Check a package to make it available in this market, then set its monthly and yearly price in {marketForm.currencyCode}.
-              </p>
-              <div className="mt-2 divide-y rounded-lg border">
-                {publicPackages.map((pkg: any) => {
-                  const value = marketPackagePrices[pkg.id] ?? { selected: false, monthly: '', yearly: '' };
-                  return (
-                    <div key={pkg.id} className="grid gap-3 p-3 md:grid-cols-[minmax(0,1fr)_140px_140px] md:items-center">
-                      <label className="flex min-w-0 items-start gap-2">
-                        <input
-                          type="checkbox"
-                          checked={value.selected}
-                          onChange={e => setMarketPackagePrices(prev => ({
-                            ...prev,
-                            [pkg.id]: { ...value, selected: e.target.checked },
-                          }))}
-                          className="mt-1 h-4 w-4 shrink-0"
-                        />
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium">{pkg.displayName}</span>
-                          <span className="block text-xs text-muted-foreground">{pkg.name}</span>
-                        </span>
-                      </label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder={`Monthly ${marketForm.currencyCode}`}
-                        value={value.monthly}
-                        disabled={!value.selected}
-                        onChange={e => setMarketPackagePrices(prev => ({
-                          ...prev,
-                          [pkg.id]: { ...value, monthly: e.target.value },
-                        }))}
-                      />
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder={`Yearly ${marketForm.currencyCode}`}
-                        value={value.yearly}
-                        disabled={!value.selected}
-                        onChange={e => setMarketPackagePrices(prev => ({
-                          ...prev,
-                          [pkg.id]: { ...value, yearly: e.target.value },
-                        }))}
-                      />
-                    </div>
-                  );
-                })}
-                {publicPackages.length === 0 && (
-                  <p className="p-3 text-sm text-muted-foreground">No public packages found yet.</p>
-                )}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Private/custom packages keep their own price on the package because they belong to a negotiated ministry package.
-              </p>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setMarketOpen(false)}>Cancel</Button>
