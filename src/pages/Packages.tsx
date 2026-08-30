@@ -531,7 +531,7 @@ export default function PackagesPage() {
                   <Button variant="outline" className="gap-2" onClick={() => copyInvoicePaymentLink(viewInvoice)}>
                     <LinkIcon className="h-4 w-4" /> Copy Link
                   </Button>
-                  <Button className="gap-2" onClick={() => payInvoiceMutation.mutate(viewInvoice.id)} disabled={payInvoiceMutation.isPending}>
+                  <Button className="gap-2" onClick={() => handlePayInvoice(viewInvoice)} disabled={openingInvoicePaymentId === viewInvoice.id}>
                     <Wallet className="h-4 w-4" /> Pay Invoice
                   </Button>
                 </div>
