@@ -149,15 +149,16 @@ export const packagesService = {
     const { data } = await apiClient.post(`/payments/invoice/${token}/pay`, months ? { months } : undefined);
     return data.data;
   },
-  calculateFees: async (packageId: string, billingCycle: string): Promise<{
+  calculateFees: async (packageId: string, billingCycle: string, durationMonths?: number): Promise<{
     currency: string;
     baseAmount: number;
+    durationMonths: number;
     convenienceFee: number;
     systemFeeAmount: number;
     transactionCost: number;
     totalAmount: number;
   }> => {
-    const { data } = await apiClient.get('/packages/calculate-fees', { params: { packageId, billingCycle } });
+    const { data } = await apiClient.get('/packages/calculate-fees', { params: { packageId, billingCycle, durationMonths } });
     return data.data;
   },
   createPayment: async (dto: {

@@ -3,6 +3,7 @@ import apiClient from '@/lib/api-client';
 export interface SubscriptionPayload {
   packageId?: string;
   billingCycle?: 'monthly' | 'yearly';
+  durationMonths?: number;
   invoiceId?: string;
 }
 

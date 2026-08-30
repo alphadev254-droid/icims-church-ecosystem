@@ -177,11 +177,12 @@ export default function PackagesPage() {
   const [upgradeDialog, setUpgradeDialog] = useState<{ open: boolean; packageId: string; packageName: string } | null>(null);
   const [viewInvoiceId, setViewInvoiceId] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [durationMonths, setDurationMonths] = useState(1);
   const [openingInvoicePaymentId, setOpeningInvoicePaymentId] = useState<string | null>(null);
 
   const { data: fees, isFetching: loadingFees } = useQuery({
-    queryKey: ['package-fees', upgradeDialog?.packageId, billingCycle],
-    queryFn: () => packagesService.calculateFees(upgradeDialog!.packageId, billingCycle),
+    queryKey: ['package-fees', upgradeDialog?.packageId, billingCycle, durationMonths],
+    queryFn: () => packagesService.calculateFees(upgradeDialog!.packageId, billingCycle, durationMonths),
     enabled: !!upgradeDialog?.packageId,
   });
 
@@ -218,8 +219,8 @@ export default function PackagesPage() {
   });
 
   const subscribePaymentMutation = useMutation({
-    mutationFn: ({ packageId, billingCycle }: { packageId: string; billingCycle: 'monthly' | 'yearly' }) =>
-      paymentService.initiateSubscription({ packageId, billingCycle }),
+    mutationFn: ({ packageId, billingCycle, durationMonths }: { packageId: string; billingCycle: 'monthly' | 'yearly'; durationMonths: number }) =>
+      paymentService.initiateSubscription({ packageId, billingCycle, durationMonths }),
     onSuccess: (data) => {
       window.location.href = data.authorization_url;
     },
@@ -227,12 +228,14 @@ export default function PackagesPage() {
   });
 
   function handleUpgrade(pkgId: string, pkgName: string) {
+    setBillingCycle('monthly');
+    setDurationMonths(1);
     setUpgradeDialog({ open: true, packageId: pkgId, packageName: pkgName });
   }
 
   function handleConfirmUpgrade() {
     if (!upgradeDialog) return;
-    subscribePaymentMutation.mutate({ packageId: upgradeDialog.packageId, billingCycle });
+    subscribePaymentMutation.mutate({ packageId: upgradeDialog.packageId, billingCycle, durationMonths });
   }
 
   function copyInvoicePaymentLink(invoice: PackageInvoice) {
@@ -280,6 +283,9 @@ export default function PackagesPage() {
   }
 
   const currentPkg = currentData?.package?.name;
+  const durationLabel = billingCycle === 'yearly'
+    ? `${durationMonths / 12} year${durationMonths === 12 ? '' : 's'}`
+    : `${durationMonths} month${durationMonths === 1 ? '' : 's'}`;
 
   return (
     <div className="space-y-6">
@@ -564,11 +570,34 @@ export default function PackagesPage() {
 
             <div>
               <Label>Billing Cycle</Label>
-              <Select value={billingCycle} onValueChange={(v: 'monthly' | 'yearly') => setBillingCycle(v)}>
+              <Select value={billingCycle} onValueChange={(v: 'monthly' | 'yearly') => {
+                setBillingCycle(v);
+                setDurationMonths(v === 'yearly' ? 12 : 1);
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="monthly">Monthly</SelectItem>
                   <SelectItem value="yearly">Yearly (Save more)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>{billingCycle === 'yearly' ? 'Number of Years' : 'Number of Months'}</Label>
+              <Select value={String(durationMonths)} onValueChange={value => setDurationMonths(Number(value))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {billingCycle === 'yearly'
+                    ? [1, 2, 3].map(years => (
+                      <SelectItem key={years} value={String(years * 12)}>
+                        {years} year{years === 1 ? '' : 's'}
+                      </SelectItem>
+                    ))
+                    : Array.from({ length: 12 }, (_, index) => index + 1).map(months => (
+                      <SelectItem key={months} value={String(months)}>
+                        {months} month{months === 1 ? '' : 's'}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -580,7 +609,7 @@ export default function PackagesPage() {
             ) : fees && (
               <div className="rounded-md border bg-muted/40 p-3 space-y-1.5 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Package price</span>
+                  <span className="text-muted-foreground">Package price ({durationLabel})</span>
                   <span className="font-medium">{fmt(fees.baseAmount, fees.currency)}</span>
                 </div>
                 <div className="flex justify-between">
