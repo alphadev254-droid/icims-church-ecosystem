@@ -152,6 +152,61 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
   );
   const [expandedMarketOverrides, setExpandedMarketOverrides] = useState<Record<string, boolean>>({});
 
+  useEffect(() => {
+    const nextSelectedBundles: Record<string, { selected: boolean; limit: string }> = {};
+    const nextBundleFeatureEnabled: Record<string, boolean> = {};
+
+    bundles.forEach(bundle => {
+      const existing = pkg?.moduleBundles?.find((pb: any) => pb.bundleId === bundle.id || pb.bundle?.id === bundle.id);
+      nextSelectedBundles[bundle.id] = {
+        selected: !!existing,
+        limit: existing?.limitValue != null ? String(existing.limitValue) : '',
+      };
+
+      bundle.features?.forEach((bf: any) => {
+        const featureId = bf.featureId || bf.feature?.id;
+        if (!featureId) return;
+        const existingOverride = pkg?.bundleFeatureOverrides?.find((override: any) => {
+          const overrideBundleId = override.bundleId || override.bundle?.id;
+          const overrideFeatureId = override.featureId || override.feature?.id;
+          return overrideBundleId === bundle.id && overrideFeatureId === featureId;
+        });
+        nextBundleFeatureEnabled[`${bundle.id}:${featureId}`] = existingOverride ? existingOverride.enabled !== false : true;
+      });
+    });
+
+    const nextMarketPrices: Record<string, { selected: boolean; monthly: string; yearly: string; currencyCode: string }> = {};
+    const nextMarketFeatureEnabled: Record<string, boolean> = {};
+
+    markets.forEach(market => {
+      const existing = pkg?.marketPrices?.find((price: any) => price.pricingMarketId === market.id || price.pricingMarket?.id === market.id);
+      nextMarketPrices[market.id] = {
+        selected: !!existing,
+        monthly: existing ? String(existing.priceMonthly) : '',
+        yearly: existing ? String(existing.priceYearly) : '',
+        currencyCode: existing?.currencyCode || market.currencyCode,
+      };
+
+      bundles.forEach(bundle => {
+        bundle.features?.forEach((bf: any) => {
+          const featureId = bf.featureId || bf.feature?.id;
+          if (!featureId) return;
+          const existingOverride = pkg?.marketFeatureOverrides?.find((override: any) => {
+            const overrideMarketId = override.pricingMarketId || override.pricingMarket?.id;
+            const overrideFeatureId = override.featureId || override.feature?.id;
+            return overrideMarketId === market.id && overrideFeatureId === featureId;
+          });
+          nextMarketFeatureEnabled[`${market.id}:${featureId}`] = existingOverride ? existingOverride.enabled !== false : true;
+        });
+      });
+    });
+
+    setSelectedBundles(nextSelectedBundles);
+    setBundleFeatureEnabled(nextBundleFeatureEnabled);
+    setMarketPrices(nextMarketPrices);
+    setMarketFeatureEnabled(nextMarketFeatureEnabled);
+  }, [pkg?.id, bundles.length, markets.length]);
+
   const inheritedFeatureItems: any[] = Array.from(new Map(Object.entries(selectedBundles)
     .filter(([, value]) => value.selected)
     .flatMap(([bundleId]) => {
