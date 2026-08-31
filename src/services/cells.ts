@@ -195,6 +195,10 @@ export const cellsService = {
     return data.data;
   },
 
+  deleteMeeting: async (meetingId: string): Promise<void> => {
+    await apiClient.delete(`${BASE}/meetings/${meetingId}`);
+  },
+
   // Attendance
   getAttendance: async (meetingId: string): Promise<CellAttendanceRecord[]> => {
     const { data } = await apiClient.get(`${BASE}/meetings/${meetingId}/attendance`);

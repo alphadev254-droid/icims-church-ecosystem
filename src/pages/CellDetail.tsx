@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Users, Calendar, MapPin, UserPlus, Plus, Trash2, ClipboardList, ChevronLeft, ChevronRight, Search, AlertTriangle, TrendingUp, TrendingDown, Minus, Pencil, Eye } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -63,6 +64,7 @@ export default function CellDetailPage() {
   const [meetingDateFrom, setMeetingDateFrom] = useState('');
   const [meetingDateTo, setMeetingDateTo] = useState('');
   const [meetingPage, setMeetingPage] = useState(1);
+  const [deleteMeeting, setDeleteMeeting] = useState<CellMeeting | null>(null);
 
   const { data: cell, isLoading } = useQuery({
     queryKey: ['cell-detail', id],
@@ -186,6 +188,18 @@ export default function CellDetailPage() {
       setMeetingForm({ date: '', topic: '', notes: '' });
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create meeting'),
+  });
+
+  const deleteMeetingMutation = useMutation({
+    mutationFn: (meetingId: string) => cellsService.deleteMeeting(meetingId),
+    onSuccess: () => {
+      toast.success('Meeting deleted');
+      qc.invalidateQueries({ queryKey: ['cell-meetings', id] });
+      qc.invalidateQueries({ queryKey: ['cell-detail', id] });
+      qc.invalidateQueries({ queryKey: ['cell-stats', id] });
+      setDeleteMeeting(null);
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete meeting'),
   });
 
   // Switch to meetings tab if read-only member — only once when determined
@@ -500,6 +514,17 @@ export default function CellDetailPage() {
                         onClick={() => navigate(`/dashboard/cells/${id}/meetings/${m.id}/attendance`)}
                       >
                         <ClipboardList className="h-3 w-3" /> <span className="hidden sm:inline">Attendance</span>
+                      </Button>
+                    )}
+                    {effectiveCanManage && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                        title="Delete meeting"
+                        onClick={() => setDeleteMeeting(m)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
                   </div>
@@ -1319,6 +1344,31 @@ export default function CellDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteMeeting} onOpenChange={open => !open && setDeleteMeeting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Meeting</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete the meeting for{' '}
+              <strong>
+                {deleteMeeting ? new Date(deleteMeeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+              </strong>
+              {deleteMeeting?.topic ? <> on <strong>{deleteMeeting.topic}</strong></> : ''}? This will also delete its attendance records and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMeetingMutation.isPending}
+              onClick={() => deleteMeeting && deleteMeetingMutation.mutate(deleteMeeting.id)}
+            >
+              {deleteMeetingMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
