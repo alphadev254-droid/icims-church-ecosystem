@@ -652,6 +652,7 @@ export default function ReportsPage() {
         v.ageBracket || '',
         v.residentialArea || '',
         v.howHeard || '',
+        v.isFirstTime ? 'First Time' : 'Returning',
         v.isNewConvert ? 'Yes' : 'No',
         v.invitedByUser ? `${v.invitedByUser.firstName ?? ''} ${v.invitedByUser.lastName ?? ''}`.trim() : (v.invitedBy || ''),
         v.notes || '',
@@ -659,7 +660,7 @@ export default function ReportsPage() {
         v.attendance?.serviceType || '',
         v.attendance?.date ? new Date(v.attendance.date).toLocaleDateString() : '',
       ]),
-      ['Name', 'Phone', 'Email', 'Gender', 'Age Bracket', 'Residential Area', 'How Heard', 'New Convert', 'Invited By', 'Notes', 'Church', 'Service Type', 'Service Date'],
+      ['Name', 'Phone', 'Email', 'Gender', 'Age Bracket', 'Residential Area', 'How Heard', 'Visit Type', 'New Convert', 'Invited By', 'Notes', 'Church', 'Service Type', 'Service Date'],
     );
   };
 
@@ -1041,7 +1042,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Church Visitors Report',
-      description: 'Detailed visitors from church service attendance — with gender, age, area, and how they heard.',
+      description: 'Church service guests with contact details, gender, age, area, how they heard, visit type, new-convert status, inviter, notes, church, service type, and date.',
       icon: UserCheck,
       onExport: handleExportChurchVisitors,
       filterComponent: (
