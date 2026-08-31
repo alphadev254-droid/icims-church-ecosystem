@@ -240,6 +240,8 @@ export default function ReportsPage() {
   const { data: campaigns = [] } = useQuery({ queryKey: ['campaigns-select'], queryFn: () => givingService.getSelectableCampaigns(), enabled: hasReports });
   const { data: simpleCells = [] } = useQuery({ queryKey: ['cells-simple'], queryFn: () => cellsService.getSimple(), enabled: hasReports });
   const { data: teams = [] } = useQuery({ queryKey: ['teams-report', memberChurchFilter], queryFn: () => teamsService.getAll(memberChurchFilter !== 'all' ? memberChurchFilter : undefined), enabled: hasReports });
+  const cellGroupCells = (simpleCells as any[]).filter((c: any) => cellChurchFilter === 'all' || c.churchId === cellChurchFilter);
+  const visitorCells = (simpleCells as any[]).filter((c: any) => visitorChurchFilter === 'all' || c.churchId === visitorChurchFilter);
 
   // Flatten grouped campaigns if needed
   const flatCampaigns = Array.isArray(campaigns) && (campaigns as any[])[0]?.label
@@ -953,7 +955,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Cell Groups Report',
-      description: 'All cell groups with leader, member counts, meetings, attendance & conversion rates.',
+      description: 'Cell/fellowship summary by church: leaders, members, meeting activity, visitors, offerings, attendance rate, and conversion rate.',
       icon: Group,
       onExport: handleExportCellGroups,
       filterComponent: (
@@ -976,8 +978,7 @@ export default function ReportsPage() {
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Cells" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Cells</SelectItem>
-                {(simpleCells as any[])
-                  .filter((c: any) => cellChurchFilter === 'all' || c.churchId === cellChurchFilter)
+                {cellGroupCells
                   .map((c: any) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}{c.zone ? ` — ${c.zone}` : ''}</SelectItem>
                   ))}
@@ -996,14 +997,14 @@ export default function ReportsPage() {
     },
     {
       title: 'Cell Visitors Report',
-      description: 'Visitors recorded at cell meetings — first-time and returning guests with contact details.',
+      description: 'Guest list from cell/fellowship meetings with contact details, visit type, new-convert status, and meeting context.',
       icon: UserCheck,
       onExport: handleExportVisitors,
       filterComponent: (
         <div className="space-y-2 mb-3">
           <div>
             <Label className="text-xs">Filter by Church</Label>
-            <Select value={visitorChurchFilter} onValueChange={setVisitorChurchFilter}>
+            <Select value={visitorChurchFilter} onValueChange={v => { setVisitorChurchFilter(v); setVisitorCellFilter('all'); }}>
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Churches" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Churches</SelectItem>
@@ -1019,7 +1020,7 @@ export default function ReportsPage() {
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Cells" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Cells</SelectItem>
-                {simpleCells.map((c: any) => (
+                {visitorCells.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}{c.zone ? ` — ${c.zone}` : ''}</SelectItem>
                 ))}
               </SelectContent>

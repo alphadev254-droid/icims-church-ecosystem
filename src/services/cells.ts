@@ -82,7 +82,7 @@ export interface CellStats {
 const BASE = '/cells';
 
 export const cellsService = {
-  getAll: async (params?: { churchId?: string; search?: string; status?: string; page?: number; limit?: number; export?: boolean }): Promise<{ data: Cell[]; pagination?: { total: number; page: number; limit: number; pages: number } }> => {
+  getAll: async (params?: { churchId?: string; cellId?: string; search?: string; status?: string; page?: number; limit?: number; export?: boolean }): Promise<{ data: Cell[]; pagination?: { total: number; page: number; limit: number; pages: number } }> => {
     const { data } = await apiClient.get(BASE, { params });
     // Members get plain array, admins get { data, pagination }
     if (params?.export) return data;
@@ -99,7 +99,7 @@ export const cellsService = {
     return data.data;
   },
 
-  getSimple: async (): Promise<{ id: string; name: string; zone?: string | null }[]> => {
+  getSimple: async (): Promise<{ id: string; churchId: string; name: string; zone?: string | null }[]> => {
     const { data } = await apiClient.get(`${BASE}/select`);
     return data.data;
   },
