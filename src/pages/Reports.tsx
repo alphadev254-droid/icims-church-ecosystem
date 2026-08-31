@@ -651,7 +651,7 @@ export default function ReportsPage() {
         v.residentialArea || '',
         v.howHeard || '',
         v.isNewConvert ? 'Yes' : 'No',
-        v.invitedByUser ? `${v.invitedByUser.firstName ?? ''} ${v.invitedByUser.lastName ?? ''}`.trim() : '',
+        v.invitedByUser ? `${v.invitedByUser.firstName ?? ''} ${v.invitedByUser.lastName ?? ''}`.trim() : (v.invitedBy || ''),
         v.notes || '',
         v.attendance?.church?.name || '',
         v.attendance?.serviceType || '',
