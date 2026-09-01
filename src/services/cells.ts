@@ -174,7 +174,7 @@ export const cellsService = {
   },
 
   // Meetings
-  getVisitors: async (params?: { cellId?: string; churchId?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean }): Promise<{
+  getVisitors: async (params?: { cellId?: string; churchId?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean; groupByVisitor?: boolean }): Promise<{
     data: any[];
     pagination: { total: number; page: number; limit: number; totalPages: number };
   }> => {

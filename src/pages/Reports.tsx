@@ -209,7 +209,7 @@ export default function ReportsPage() {
               break;
             }
             case 'Cell Visitors Report': {
-              const p: any = { limit, page, export: true };
+              const p: any = { limit, page, export: true, groupByVisitor: true };
               if (visitorChurchFilter !== 'all') p.churchId = visitorChurchFilter;
               if (visitorCellFilter !== 'all') p.cellId = visitorCellFilter;
               if (visitorStartDate) p.startDate = visitorStartDate;
@@ -218,7 +218,7 @@ export default function ReportsPage() {
               break;
             }
             case 'Church Visitors Report': {
-              const p: any = { limit, page, export: true };
+              const p: any = { limit, page, export: true, groupByVisitor: true };
               if (churchVisitorChurchFilter !== 'all') p.churchId = churchVisitorChurchFilter;
               if (churchVisitorServiceType !== 'all') p.serviceType = churchVisitorServiceType;
               if (churchVisitorStartDate) p.startDate = churchVisitorStartDate;
@@ -768,6 +768,7 @@ export default function ReportsPage() {
   const handleExportChurchVisitors = async () => {
     const batchParams = getBatchParams('Church Visitors Report');
     const response = await attendanceService.getServiceVisitors({
+      groupByVisitor: true,
       ...(churchVisitorChurchFilter !== 'all' ? { churchId: churchVisitorChurchFilter } : {}),
       ...(churchVisitorServiceType !== 'all' ? { serviceType: churchVisitorServiceType } : {}),
       ...(churchVisitorStartDate ? { startDate: churchVisitorStartDate } : {}),
@@ -786,21 +787,25 @@ export default function ReportsPage() {
         v.ageBracket || '',
         v.residentialArea || '',
         v.howHeard || '',
-        v.isFirstTime ? 'First Time' : 'Returning',
+        v.isFirstVisit ? 'Yes' : 'No',
+        v.isReturnVisit ? 'Yes' : 'No',
+        String(v.totalVisits ?? ''),
+        v.firstVisitDate ? new Date(v.firstVisitDate).toLocaleDateString() : '',
+        v.lastVisitDate ? new Date(v.lastVisitDate).toLocaleDateString() : '',
         v.isNewConvert ? 'Yes' : 'No',
-        v.invitedByUser ? `${v.invitedByUser.firstName ?? ''} ${v.invitedByUser.lastName ?? ''}`.trim() : (v.invitedBy || ''),
+        v.invitedBy || '',
+        v.churchesVisited || '',
+        v.serviceTypes || '',
         v.notes || '',
-        v.attendance?.church?.name || '',
-        v.attendance?.serviceType || '',
-        v.attendance?.date ? new Date(v.attendance.date).toLocaleDateString() : '',
       ]),
-      ['Name', 'Phone', 'Email', 'Gender', 'Age Bracket', 'Residential Area', 'How Heard', 'Visit Type', 'New Convert', 'Invited By', 'Notes', 'Church', 'Service Type', 'Service Date'],
+      ['Name', 'Phone', 'Email', 'Gender', 'Age Bracket', 'Residential Area', 'How Heard', 'First Visit', 'Return Visit', 'Total Visits', 'First Visit Date', 'Last Visit Date', 'New Convert', 'Invited By', 'Churches Visited', 'Service Types', 'Notes'],
     );
   };
 
   const handleExportVisitors = async () => {
     const batchParams = getBatchParams('Cell Visitors Report');
     const response = await cellsService.getVisitors({
+      groupByVisitor: true,
       ...(visitorChurchFilter !== 'all' ? { churchId: visitorChurchFilter } : {}),
       ...(visitorCellFilter !== 'all' ? { cellId: visitorCellFilter } : {}),
       ...(visitorStartDate ? { startDate: visitorStartDate } : {}),
@@ -815,16 +820,20 @@ export default function ReportsPage() {
         v.visitorName || '',
         v.visitorPhone || '',
         v.visitorEmail || '',
-        v.isFirstTime ? 'First Time' : 'Returning',
+        v.isFirstVisit ? 'Yes' : 'No',
+        v.isReturnVisit ? 'Yes' : 'No',
+        String(v.totalVisits ?? ''),
+        v.firstVisitDate ? new Date(v.firstVisitDate).toLocaleDateString() : '',
+        v.lastVisitDate ? new Date(v.lastVisitDate).toLocaleDateString() : '',
         v.isNewConvert ? 'Yes' : 'No',
-        v.meeting?.cell?.name || '',
-        v.meeting?.cell?.zone || '',
-        v.meeting?.cell?.church?.name || '',
-        v.meeting?.date ? new Date(v.meeting.date).toLocaleDateString() : '',
-        v.meeting?.topic || '',
+        v.invitedBy || '',
+        v.cellsVisited || '',
+        v.zones || '',
+        v.churchesVisited || '',
+        v.meetingTopics || '',
         v.notes || '',
       ]),
-      ['Name', 'Phone', 'Email', 'Visit Type', 'New Convert', 'Cell', 'Zone', 'Church', 'Meeting Date', 'Meeting Topic', 'Notes'],
+      ['Name', 'Phone', 'Email', 'First Visit', 'Return Visit', 'Total Visits', 'First Visit Date', 'Last Visit Date', 'New Convert', 'Invited By', 'Cells Visited', 'Zones', 'Churches Visited', 'Meeting Topics', 'Notes'],
     );
   };
 
@@ -1203,7 +1212,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Cell Visitors Report',
-      description: 'Guest list from cell/fellowship meetings with contact details, visit type, new-convert status, and meeting context.',
+      description: 'Follow-up list of unique cell/fellowship guests with visit counts, first visit, return visit, inviter, and meeting context.',
       icon: UserCheck,
       onExport: handleExportVisitors,
       filterComponent: (
@@ -1247,7 +1256,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Church Visitors Report',
-      description: 'Church service guests with contact details, gender, age, area, how they heard, visit type, new-convert status, inviter, notes, church, service type, and date.',
+      description: 'Follow-up list of unique church service guests with contact details, first visit, return visit, inviter, and service context.',
       icon: UserCheck,
       onExport: handleExportChurchVisitors,
       filterComponent: (

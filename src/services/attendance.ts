@@ -234,7 +234,7 @@ export const attendanceService = {
     const { data } = await apiClient.post(`/attendance/check-in/${token}/guest`, dto);
     return data.data;
   },
-  getServiceVisitors: async (params?: { churchId?: string; serviceType?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean }): Promise<any[] | { data: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
+  getServiceVisitors: async (params?: { churchId?: string; serviceType?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean; groupByVisitor?: boolean }): Promise<any[] | { data: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
     const { data } = await apiClient.get('/attendance/visitors', { params });
     if (params?.export) return data;
     return data.data;
