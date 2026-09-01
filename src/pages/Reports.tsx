@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle, UserX, Group, CreditCard, Handshake, UserCheck, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '@/services/events';
 import { toast } from 'sonner';
@@ -133,7 +133,7 @@ export default function ReportsPage() {
               const p: any = {
                 limit, page, export: true,
                 category: givingCategoryFilter !== 'all' ? givingCategoryFilter : undefined,
-                cellId: givingCellFilter !== 'all' ? givingCellFilter : undefined,
+                cellId: givingCategoryFilter === 'fellowship_offering' && givingCellFilter !== 'all' ? givingCellFilter : undefined,
                 startDate: givingStartDate || undefined,
                 endDate: givingEndDate || undefined,
               };
@@ -240,15 +240,59 @@ export default function ReportsPage() {
   const { data: campaigns = [] } = useQuery({ queryKey: ['campaigns-select'], queryFn: () => givingService.getSelectableCampaigns(), enabled: hasReports });
   const { data: simpleCells = [] } = useQuery({ queryKey: ['cells-simple'], queryFn: () => cellsService.getSimple(), enabled: hasReports });
   const { data: teams = [] } = useQuery({ queryKey: ['teams-report', memberChurchFilter], queryFn: () => teamsService.getAll(memberChurchFilter !== 'all' ? memberChurchFilter : undefined), enabled: hasReports });
+  const givingCells = useMemo(
+    () => (simpleCells as any[]).filter((c: any) => givingChurchFilter === 'all' || c.churchId === givingChurchFilter),
+    [simpleCells, givingChurchFilter],
+  );
   const cellGroupCells = (simpleCells as any[]).filter((c: any) => cellChurchFilter === 'all' || c.churchId === cellChurchFilter);
   const visitorCells = (simpleCells as any[]).filter((c: any) => visitorChurchFilter === 'all' || c.churchId === visitorChurchFilter);
 
   // Flatten grouped campaigns if needed
-  const flatCampaigns = Array.isArray(campaigns) && (campaigns as any[])[0]?.label
-    ? (campaigns as any[]).flatMap((group: any) => group.posts || [])
-    : (campaigns as any[]);
+  const flatCampaigns = useMemo(
+    () => Array.isArray(campaigns) && (campaigns as any[])[0]?.label
+      ? (campaigns as any[]).flatMap((group: any) => group.posts || [])
+      : (campaigns as any[]),
+    [campaigns],
+  );
+  const givingCampaignOptions = useMemo(
+    () => (flatCampaigns as any[]).filter((campaign: any) => {
+      const availableChurchIds = Array.isArray(campaign.availableChurchIds)
+        ? campaign.availableChurchIds
+        : [campaign.churchId].filter(Boolean);
+
+      return (givingCategoryFilter === 'all' || campaign.category === givingCategoryFilter)
+        && (givingChurchFilter === 'all' || availableChurchIds.includes(givingChurchFilter));
+    }),
+    [flatCampaigns, givingCategoryFilter, givingChurchFilter],
+  );
+  const shouldUseGivingCellFilter = givingCategoryFilter === 'fellowship_offering';
+  const effectiveGivingCellFilter = shouldUseGivingCellFilter && givingCellFilter !== 'all'
+    ? givingCellFilter
+    : undefined;
   const { data: kpisData = [], isLoading: kl } = useQuery({ queryKey: ['kpis'], queryFn: () => kpiService.getAll(), enabled: hasReports });
   const kpis = kpisData as KPI[];
+
+  useEffect(() => {
+    if (!shouldUseGivingCellFilter && givingCellFilter !== 'all') {
+      setGivingCellFilter('all');
+    }
+  }, [shouldUseGivingCellFilter, givingCellFilter]);
+
+  useEffect(() => {
+    if (!shouldUseGivingCellFilter || givingCellFilter === 'all') return;
+    const selectedCellStillVisible = givingCells.some((cell: any) => cell.id === givingCellFilter);
+    if (!selectedCellStillVisible) {
+      setGivingCellFilter('all');
+    }
+  }, [shouldUseGivingCellFilter, givingCellFilter, givingCells]);
+
+  useEffect(() => {
+    if (givingCampaignFilter === 'all') return;
+    const selectedCampaignStillVisible = givingCampaignOptions.some((campaign: any) => campaign.id === givingCampaignFilter);
+    if (!selectedCampaignStillVisible) {
+      setGivingCampaignFilter('all');
+    }
+  }, [givingCampaignFilter, givingCampaignOptions]);
 
   const calculateMutation = useMutation({
     mutationFn: kpiService.calculate,
@@ -378,7 +422,7 @@ export default function ReportsPage() {
       givingChurchFilter !== 'all' ? givingChurchFilter : undefined,
       {
         category: givingCategoryFilter !== 'all' ? givingCategoryFilter : undefined,
-        cellId: givingCellFilter !== 'all' ? givingCellFilter : undefined,
+        cellId: effectiveGivingCellFilter,
         startDate: givingStartDate || undefined,
         endDate: givingEndDate || undefined,
         ...batchParams,
@@ -782,8 +826,11 @@ export default function ReportsPage() {
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Campaigns" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Campaigns</SelectItem>
-                {(flatCampaigns as any[]).map(campaign => (
-                  <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
+                {givingCampaignOptions.map((campaign: any) => (
+                  <SelectItem key={campaign.id} value={campaign.id}>
+                    {campaign.name}
+                    {campaign.availableChurches?.length === 1 ? ` - ${campaign.availableChurches[0].name}` : ''}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -807,11 +854,9 @@ export default function ReportsPage() {
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Cells" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cells</SelectItem>
-                  {(simpleCells as any[])
-                    .filter((c: any) => givingChurchFilter === 'all' || c.churchId === givingChurchFilter)
-                    .map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
+                  {givingCells.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
