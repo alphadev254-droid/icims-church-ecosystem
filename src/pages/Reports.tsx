@@ -136,6 +136,7 @@ export default function ReportsPage() {
             case 'Giving Report': {
               const p: any = {
                 limit, page, export: true,
+                groupByPersonCampaign: true,
                 category: givingCategoryFilter !== 'all' ? givingCategoryFilter : undefined,
                 cellId: givingCategoryFilter === 'fellowship_offering' && givingCellFilter !== 'all' ? givingCellFilter : undefined,
                 startDate: givingStartDate || undefined,
@@ -459,6 +460,7 @@ export default function ReportsPage() {
       givingCampaignFilter !== 'all' ? givingCampaignFilter : undefined,
       givingChurchFilter !== 'all' ? givingChurchFilter : undefined,
       {
+        groupByPersonCampaign: true,
         category: givingCategoryFilter !== 'all' ? givingCategoryFilter : undefined,
         cellId: effectiveGivingCellFilter,
         startDate: givingStartDate || undefined,
@@ -472,23 +474,23 @@ export default function ReportsPage() {
     downloadCSV(
       'giving-report.csv',
       donations.map((d: any) => [
-        d.isAnonymous ? 'Anonymous' : d.isGuest ? (d.guestName || 'Guest') : `${d.user?.firstName ?? ''} ${d.user?.lastName ?? ''}`.trim() || d.donorName || '',
-        d.isAnonymous ? '' : d.isGuest ? (d.guestEmail || '') : (d.user?.email || d.donorEmail || ''),
-        d.isAnonymous ? '' : d.isGuest ? (d.guestPhone || '') : (d.user?.phone || ''),
-        d.isAnonymous ? 'Anonymous' : d.isGuest ? 'Guest' : 'Member',
-        d.amount.toString(),
+        d.name || '',
+        d.email || '',
+        d.phone || '',
+        d.donorType || '',
+        d.campaign || '',
+        d.category || '',
+        d.cell || '',
+        d.church || '',
         d.currency,
-        d.campaign?.name || '',
-        d.campaign?.category || '',
-        d.cell?.name || '',
-        d.church?.name || '',
-        d.paymentMethod || 'N/A',
-        d.isManual ? 'Manual' : 'Online',
-        d.reference || '',
-        d.status,
-        new Date(d.createdAt).toLocaleDateString()
+        (d.totalAmount ?? 0).toString(),
+        (d.transactionCount ?? 0).toString(),
+        d.paymentMethods || '',
+        d.statuses || '',
+        d.firstDonationDate ? new Date(d.firstDonationDate).toLocaleDateString() : '',
+        d.lastDonationDate ? new Date(d.lastDonationDate).toLocaleDateString() : '',
       ]),
-      ['Name', 'Email', 'Phone', 'Type', 'Amount', 'Currency', 'Campaign', 'Category', 'Cell', 'Church', 'Method', 'Entry', 'Reference', 'Status', 'Date'],
+      ['Name', 'Email', 'Phone', 'Type', 'Campaign', 'Category', 'Cell', 'Church', 'Currency', 'Campaign Total', 'No. of Transactions', 'Methods', 'Statuses', 'First Donation', 'Last Donation'],
     );
   };
 
@@ -859,7 +861,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Giving Report',
-      description: 'All giving records including type, method, amount, and status.',
+      description: 'Giving totals per person per campaign, with method and status summaries.',
       icon: HandCoins,
       onExport: handleExportGiving,
       filterComponent: (

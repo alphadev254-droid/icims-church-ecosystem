@@ -223,7 +223,7 @@ export const givingService = {
     await apiClient.delete(`/giving/campaigns/${id}`);
   },
 
-  async getDonations(campaignId?: string, churchId?: string, params?: { limit?: number; page?: number; export?: boolean; category?: string; cellId?: string; startDate?: string; endDate?: string }): Promise<DonationTransaction[]> {
+  async getDonations(campaignId?: string, churchId?: string, params?: { limit?: number; page?: number; export?: boolean; category?: string; cellId?: string; startDate?: string; endDate?: string; groupByPersonCampaign?: boolean }): Promise<any> {
     const queryParams: any = {};
     if (campaignId) queryParams.campaignId = campaignId;
     if (churchId) queryParams.churchId = churchId;
@@ -234,6 +234,7 @@ export const givingService = {
     if (params?.cellId) queryParams.cellId = params.cellId;
     if (params?.startDate) queryParams.startDate = params.startDate;
     if (params?.endDate) queryParams.endDate = params.endDate;
+    if (params?.groupByPersonCampaign) queryParams.groupByPersonCampaign = 'true';
     
     const { data } = await apiClient.get('/giving/donations', {
       params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
