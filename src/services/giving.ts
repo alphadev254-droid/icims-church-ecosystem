@@ -294,7 +294,7 @@ export const givingService = {
     return data;
   },
 
-  async getMinistryPledges(params?: { campaignId?: string; status?: string; churchId?: string; sortBy?: string; startDate?: string; endDate?: string; dueStartDate?: string; dueEndDate?: string; page?: number; limit?: number; export?: boolean }): Promise<{
+  async getMinistryPledges(params?: { campaignId?: string; category?: string; status?: string; churchId?: string; sortBy?: string; startDate?: string; endDate?: string; dueStartDate?: string; dueEndDate?: string; page?: number; limit?: number; export?: boolean; groupByPersonCampaign?: boolean }): Promise<{
     data: Pledge[];
     pagination: { page: number; limit: number; total: number; totalPages: number };
     summary: { totalPledged: number; totalPaid: number; outstanding: number; count: number };

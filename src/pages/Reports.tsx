@@ -60,6 +60,8 @@ export default function ReportsPage() {
   const [inactiveMemberChurchFilter, setInactiveMemberChurchFilter] = useState('all');
   const [pledgeChurchFilter, setPledgeChurchFilter] = useState('all');
   const [pledgeStatusFilter, setPledgeStatusFilter] = useState('all');
+  const [pledgeCategoryFilter, setPledgeCategoryFilter] = useState('all');
+  const [pledgeCampaignFilter, setPledgeCampaignFilter] = useState('all');
   const [txChurchFilter, setTxChurchFilter] = useState('all');
   const [txTypeFilter, setTxTypeFilter] = useState('all');
   const [txStartDate, setTxStartDate] = useState('');
@@ -178,9 +180,11 @@ export default function ReportsPage() {
               break;
             }
             case 'Pledge Report': {
-              const p: any = { limit, page, export: true };
+              const p: any = { limit, page, export: true, groupByPersonCampaign: true };
               if (pledgeChurchFilter !== 'all') p.churchId = pledgeChurchFilter;
               if (pledgeStatusFilter !== 'all') p.status = pledgeStatusFilter;
+              if (pledgeCategoryFilter !== 'all') p.category = pledgeCategoryFilter;
+              if (pledgeCampaignFilter !== 'all') p.campaignId = pledgeCampaignFilter;
               if (pledgeStartDate) p.startDate = pledgeStartDate;
               if (pledgeEndDate) p.endDate = pledgeEndDate;
               response = await givingService.getMinistryPledges(p);
@@ -296,6 +300,17 @@ export default function ReportsPage() {
     }),
     [flatCampaigns, givingByMemberCategoryFilter, givingByMemberChurchFilter],
   );
+  const pledgeCampaignOptions = useMemo(
+    () => (flatCampaigns as any[]).filter((campaign: any) => {
+      const availableChurchIds = Array.isArray(campaign.availableChurchIds)
+        ? campaign.availableChurchIds
+        : [campaign.churchId].filter(Boolean);
+
+      return (pledgeCategoryFilter === 'all' || campaign.category === pledgeCategoryFilter)
+        && (pledgeChurchFilter === 'all' || availableChurchIds.includes(pledgeChurchFilter));
+    }),
+    [flatCampaigns, pledgeCategoryFilter, pledgeChurchFilter],
+  );
   const shouldUseGivingCellFilter = givingCategoryFilter === 'fellowship_offering';
   const effectiveGivingCellFilter = shouldUseGivingCellFilter && givingCellFilter !== 'all'
     ? givingCellFilter
@@ -332,6 +347,14 @@ export default function ReportsPage() {
       setGivingByMemberCampaignFilter('all');
     }
   }, [givingByMemberCampaignFilter, givingByMemberCampaignOptions]);
+
+  useEffect(() => {
+    if (pledgeCampaignFilter === 'all') return;
+    const selectedCampaignStillVisible = pledgeCampaignOptions.some((campaign: any) => campaign.id === pledgeCampaignFilter);
+    if (!selectedCampaignStillVisible) {
+      setPledgeCampaignFilter('all');
+    }
+  }, [pledgeCampaignFilter, pledgeCampaignOptions]);
 
   const calculateMutation = useMutation({
     mutationFn: kpiService.calculate,
@@ -596,8 +619,11 @@ export default function ReportsPage() {
     const response = await givingService.getMinistryPledges({
       ...(pledgeChurchFilter !== 'all' ? { churchId: pledgeChurchFilter } : {}),
       ...(pledgeStatusFilter !== 'all' ? { status: pledgeStatusFilter } : {}),
+      ...(pledgeCategoryFilter !== 'all' ? { category: pledgeCategoryFilter } : {}),
+      ...(pledgeCampaignFilter !== 'all' ? { campaignId: pledgeCampaignFilter } : {}),
       ...(pledgeStartDate ? { startDate: pledgeStartDate } : {}),
       ...(pledgeEndDate ? { endDate: pledgeEndDate } : {}),
+      groupByPersonCampaign: true,
       ...batchParams,
     });
     handleBatchResponse('Pledge Report', response);
@@ -605,22 +631,25 @@ export default function ReportsPage() {
     downloadCSV(
       'pledges-report.csv',
       pledges.map((p: any) => [
-        p.user ? `${p.user.firstName} ${p.user.lastName}` : (p.pledgerName || 'Walk-in'),
-        p.user?.email || p.pledgerEmail || '',
-        p.user?.phone || p.pledgerPhone || '',
-        p.user?.cellMemberships?.[0]?.cell?.name || '',
-        p.campaign?.name || '',
-        p.campaign?.category || '',
-        p.church?.name || '',
-        p.pledgedAmount.toString(),
-        p.amountPaid.toString(),
-        (p.pledgedAmount - p.amountPaid).toString(),
-        p.currency,
-        p.status,
-        p.fulfillmentDeadline ? new Date(p.fulfillmentDeadline).toLocaleDateString() : '',
-        new Date(p.createdAt).toLocaleDateString(),
+        p.name || '',
+        p.email || '',
+        p.phone || '',
+        p.pledgerType || '',
+        p.campaign || '',
+        p.category || '',
+        p.church || '',
+        p.currency || '',
+        (p.pledgedTotal ?? 0).toString(),
+        (p.paidTotal ?? 0).toString(),
+        (p.outstandingTotal ?? 0).toString(),
+        (p.pledgeCount ?? 0).toString(),
+        p.statuses || '',
+        p.earliestDeadline ? new Date(p.earliestDeadline).toLocaleDateString() : '',
+        p.latestDeadline ? new Date(p.latestDeadline).toLocaleDateString() : '',
+        p.firstPledgeDate ? new Date(p.firstPledgeDate).toLocaleDateString() : '',
+        p.lastPledgeDate ? new Date(p.lastPledgeDate).toLocaleDateString() : '',
       ]),
-      ['Name', 'Email', 'Phone', 'Cell', 'Campaign', 'Category', 'Church', 'Pledged', 'Paid', 'Outstanding', 'Currency', 'Status', 'Deadline', 'Date'],
+      ['Name', 'Email', 'Phone', 'Type', 'Campaign', 'Category', 'Church', 'Currency', 'Pledged Total', 'Redeemed/Paid Total', 'Outstanding Total', 'No. of Pledges', 'Statuses', 'Earliest Deadline', 'Latest Deadline', 'First Pledge', 'Last Pledge'],
     );
   };
 
@@ -1009,7 +1038,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Pledge Report',
-      description: 'All pledges with outstanding balances, status, and deadlines.',
+      description: 'Pledge and redemption totals per person per campaign.',
       icon: Target,
       onExport: handleExportPledges,
       filterComponent: (
@@ -1035,6 +1064,36 @@ export default function ReportsPage() {
                 <SelectItem value="all">All Churches</SelectItem>
                 {(churches as any[]).map(church => (
                   <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Category</Label>
+            <Select value={pledgeCategoryFilter} onValueChange={setPledgeCategoryFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Categories" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="tithe">Tithe</SelectItem>
+                <SelectItem value="offering">Offering</SelectItem>
+                <SelectItem value="fellowship_offering">Cells/Fellowship Offering</SelectItem>
+                <SelectItem value="partnership">Partnership</SelectItem>
+                <SelectItem value="welfare">Welfare</SelectItem>
+                <SelectItem value="missions">Missions</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Campaign</Label>
+            <Select value={pledgeCampaignFilter} onValueChange={setPledgeCampaignFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Campaigns" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Campaigns</SelectItem>
+                {pledgeCampaignOptions.map((campaign: any) => (
+                  <SelectItem key={campaign.id} value={campaign.id}>
+                    {campaign.name}
+                    {campaign.availableChurches?.length === 1 ? ` - ${campaign.availableChurches[0].name}` : ''}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
