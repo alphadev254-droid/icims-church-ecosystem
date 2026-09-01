@@ -202,6 +202,25 @@ export default function SettingsPage() {
         <p className="text-sm text-muted-foreground">Manage your account, preferences, and system configuration</p>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4" /> Help & Documentation
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium">ICIMS User Guide</p>
+            <p className="text-xs text-muted-foreground">Download the client guide for modules, reports, finance workflows, roles, and daily use.</p>
+          </div>
+          <Button asChild variant="outline" className="w-full gap-2 sm:w-auto">
+            <a href="/ICIMS%20User%20Guide.docx">
+              <Download className="h-4 w-4" /> Open Guide
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Profile */}
       <Card>
         <CardHeader>
