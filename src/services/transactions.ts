@@ -79,8 +79,8 @@ export const transactionsService = {
     const { data } = await apiClient.get('/transactions/export', { params });
     return data;
   },
-  getGivingByMember: async (params?: { churchId?: string; startDate?: string; endDate?: string }): Promise<any[]> => {
+  getGivingByMember: async (params?: { churchId?: string; category?: string; campaignId?: string; groupByCampaign?: boolean; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean }): Promise<{ data: any[]; pagination?: { page: number; limit: number; total: number; totalPages: number } }> => {
     const { data } = await apiClient.get('/transactions/giving-by-member', { params });
-    return data.data;
+    return data;
   },
 };

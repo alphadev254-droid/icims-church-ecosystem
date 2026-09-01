@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle, UserX, Group, CreditCard, Handshake, UserCheck, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -64,6 +65,9 @@ export default function ReportsPage() {
   const [txStartDate, setTxStartDate] = useState('');
   const [txEndDate, setTxEndDate] = useState('');
   const [givingByMemberChurchFilter, setGivingByMemberChurchFilter] = useState('all');
+  const [givingByMemberCategoryFilter, setGivingByMemberCategoryFilter] = useState('all');
+  const [givingByMemberCampaignFilter, setGivingByMemberCampaignFilter] = useState('all');
+  const [givingByMemberPerCampaign, setGivingByMemberPerCampaign] = useState(false);
   const [givingByMemberStartDate, setGivingByMemberStartDate] = useState('');
   const [givingByMemberEndDate, setGivingByMemberEndDate] = useState('');
   const [memberStatusFilter, setMemberStatusFilter] = useState('all');
@@ -142,6 +146,19 @@ export default function ReportsPage() {
                 givingChurchFilter !== 'all' ? givingChurchFilter : undefined,
                 p,
               );
+              break;
+            }
+            case 'Giving by Member': {
+              const p: any = {
+                limit, page, export: true,
+                groupByCampaign: givingByMemberPerCampaign,
+                category: givingByMemberCategoryFilter !== 'all' ? givingByMemberCategoryFilter : undefined,
+                campaignId: givingByMemberCampaignFilter !== 'all' ? givingByMemberCampaignFilter : undefined,
+                startDate: givingByMemberStartDate || undefined,
+                endDate: givingByMemberEndDate || undefined,
+              };
+              if (givingByMemberChurchFilter !== 'all') p.churchId = givingByMemberChurchFilter;
+              response = await transactionsService.getGivingByMember(p);
               break;
             }
             case 'Attendance Report': {
@@ -226,6 +243,8 @@ export default function ReportsPage() {
     memberChurchFilter, memberStatusFilter, memberCellFilter, memberTeamFilter,
     givingCategoryFilter, givingCampaignFilter, givingChurchFilter, givingCellFilter,
     givingStartDate, givingEndDate,
+    givingByMemberChurchFilter, givingByMemberCategoryFilter, givingByMemberCampaignFilter,
+    givingByMemberPerCampaign, givingByMemberStartDate, givingByMemberEndDate,
     attendanceServiceFilter, attendanceChurchFilter, attendanceStartDate, attendanceEndDate,
     inactiveMemberChurchFilter,
     pledgeChurchFilter, pledgeStatusFilter, pledgeStartDate, pledgeEndDate,
@@ -265,6 +284,17 @@ export default function ReportsPage() {
     }),
     [flatCampaigns, givingCategoryFilter, givingChurchFilter],
   );
+  const givingByMemberCampaignOptions = useMemo(
+    () => (flatCampaigns as any[]).filter((campaign: any) => {
+      const availableChurchIds = Array.isArray(campaign.availableChurchIds)
+        ? campaign.availableChurchIds
+        : [campaign.churchId].filter(Boolean);
+
+      return (givingByMemberCategoryFilter === 'all' || campaign.category === givingByMemberCategoryFilter)
+        && (givingByMemberChurchFilter === 'all' || availableChurchIds.includes(givingByMemberChurchFilter));
+    }),
+    [flatCampaigns, givingByMemberCategoryFilter, givingByMemberChurchFilter],
+  );
   const shouldUseGivingCellFilter = givingCategoryFilter === 'fellowship_offering';
   const effectiveGivingCellFilter = shouldUseGivingCellFilter && givingCellFilter !== 'all'
     ? givingCellFilter
@@ -293,6 +323,14 @@ export default function ReportsPage() {
       setGivingCampaignFilter('all');
     }
   }, [givingCampaignFilter, givingCampaignOptions]);
+
+  useEffect(() => {
+    if (givingByMemberCampaignFilter === 'all') return;
+    const selectedCampaignStillVisible = givingByMemberCampaignOptions.some((campaign: any) => campaign.id === givingByMemberCampaignFilter);
+    if (!selectedCampaignStillVisible) {
+      setGivingByMemberCampaignFilter('all');
+    }
+  }, [givingByMemberCampaignFilter, givingByMemberCampaignOptions]);
 
   const calculateMutation = useMutation({
     mutationFn: kpiService.calculate,
@@ -620,21 +658,42 @@ export default function ReportsPage() {
   };
 
   const handleExportGivingByMember = async () => {
-    const params: any = {};
+    const batchParams = getBatchParams('Giving by Member');
+    const params: any = {
+      groupByCampaign: givingByMemberPerCampaign,
+      category: givingByMemberCategoryFilter !== 'all' ? givingByMemberCategoryFilter : undefined,
+      campaignId: givingByMemberCampaignFilter !== 'all' ? givingByMemberCampaignFilter : undefined,
+      ...batchParams,
+    };
     if (givingByMemberChurchFilter !== 'all') params.churchId = givingByMemberChurchFilter;
     if (givingByMemberStartDate) params.startDate = givingByMemberStartDate;
     if (givingByMemberEndDate) params.endDate = givingByMemberEndDate;
-    const data = await transactionsService.getGivingByMember(params);
+    const response = await transactionsService.getGivingByMember(params);
+    handleBatchResponse('Giving by Member', response);
+    const data = response?.data ?? [];
+    const rows = (data || []).map((r: any) => givingByMemberPerCampaign
+      ? [
+          r.firstName, r.lastName, r.email, r.phone || '',
+          r.gender || '', r.membershipType || '', r.status || '',
+          r.cell || '', r.church,
+          r.campaign || r.campaigns || '', r.campaignCategory || '', r.currency || '',
+          r.totalGiven.toString(), (r.transactionCount ?? r.donationCount ?? 0).toString(),
+        ]
+      : [
+          r.firstName, r.lastName, r.email, r.phone || '',
+          r.gender || '', r.membershipType || '', r.status || '',
+          r.cell || '', r.church, r.currency || '',
+          r.campaigns || '',
+          r.totalGiven.toString(), (r.transactionCount ?? r.donationCount ?? 0).toString(),
+        ]);
+    const headers = givingByMemberPerCampaign
+      ? ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Status', 'Cell', 'Church', 'Campaign', 'Category', 'Currency', 'Campaign Total Given', 'No. of Transactions']
+      : ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Status', 'Cell', 'Church', 'Currency', 'Campaigns', 'Total Given', 'No. of Transactions'];
+
     downloadCSV(
       'giving-by-member-report.csv',
-      (data || []).map((r: any) => [
-        r.firstName, r.lastName, r.email, r.phone || '',
-        r.gender || '', r.membershipType || '', r.status || '',
-        r.cell || '', r.church,
-        r.campaigns || '',
-        r.totalGiven.toString(), (r.transactionCount ?? r.donationCount ?? 0).toString(),
-      ]),
-      ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Status', 'Cell', 'Church', 'Campaigns', 'Total Given', 'No. of Transactions'],
+      rows,
+      headers,
     );
   };
 
@@ -893,6 +952,46 @@ export default function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label className="text-xs">Filter by Category</Label>
+            <Select value={givingByMemberCategoryFilter} onValueChange={setGivingByMemberCategoryFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Categories" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="tithe">Tithe</SelectItem>
+                <SelectItem value="offering">Offering</SelectItem>
+                <SelectItem value="fellowship_offering">Cells/Fellowship Offering</SelectItem>
+                <SelectItem value="partnership">Partnership</SelectItem>
+                <SelectItem value="welfare">Welfare</SelectItem>
+                <SelectItem value="missions">Missions</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Campaign</Label>
+            <Select value={givingByMemberCampaignFilter} onValueChange={setGivingByMemberCampaignFilter}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Campaigns" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Campaigns</SelectItem>
+                {givingByMemberCampaignOptions.map((campaign: any) => (
+                  <SelectItem key={campaign.id} value={campaign.id}>
+                    {campaign.name}
+                    {campaign.availableChurches?.length === 1 ? ` - ${campaign.availableChurches[0].name}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="flex items-start gap-2 rounded-md border border-border/70 p-2 text-xs">
+            <Checkbox
+              checked={givingByMemberPerCampaign}
+              onCheckedChange={(checked) => setGivingByMemberPerCampaign(checked === true)}
+            />
+            <span>
+              <span className="block font-medium">Show per campaign per person</span>
+              <span className="block text-muted-foreground">Exports one row for each member and campaign total.</span>
+            </span>
+          </label>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">From</Label>
