@@ -602,7 +602,7 @@ export default function ReportsPage() {
     if (cellGroupStartDate) params.startDate = cellGroupStartDate;
     if (cellGroupEndDate) params.endDate = cellGroupEndDate;
     const response = await cellsService.getAll(params);
-    handleBatchResponse('Cell Group Report', response);
+    handleBatchResponse('Cell Groups Report', response);
     const cells: any[] = (response as any)?.data ?? [];
     const hasDates = !!(cellGroupStartDate || cellGroupEndDate);
     downloadCSV(
@@ -987,7 +987,7 @@ export default function ReportsPage() {
             </Select>
           </div>
           <div>
-            <Label className="text-xs">Activity Date Range <span className="text-muted-foreground">(scopes meeting count)</span></Label>
+            <Label className="text-xs">Activity Date Range <span className="text-muted-foreground">(scopes meetings, attendance, visitors, conversion, and offering)</span></Label>
             <div className="grid grid-cols-2 gap-2 mt-1">
               <Input type="date" className="h-8 text-xs" value={cellGroupStartDate} onChange={e => setCellGroupStartDate(e.target.value)} placeholder="From" />
               <Input type="date" className="h-8 text-xs" value={cellGroupEndDate} onChange={e => setCellGroupEndDate(e.target.value)} placeholder="To" />
