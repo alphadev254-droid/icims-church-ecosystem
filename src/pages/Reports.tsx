@@ -19,7 +19,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Users, HandCoins, ClipboardList, Calendar, Download, FileText, Lock, Target, Plus, RefreshCw, Pencil, StopCircle, PlayCircle, UserX, Group, CreditCard, Handshake, UserCheck, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -30,8 +29,13 @@ import { eventsService } from '@/services/events';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 
+function escapeCSVCell(value: string) {
+  const text = value ?? '';
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
 function downloadCSV(filename: string, rows: string[][], headers: string[]) {
-  const content = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const content = [headers, ...rows].map(r => r.map(escapeCSVCell).join(',')).join('\n');
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -39,6 +43,119 @@ function downloadCSV(filename: string, rows: string[][], headers: string[]) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function appendUniqueValue(existing: string, value: string) {
+  if (!value) return existing;
+  const values = existing ? existing.split('; ').filter(Boolean) : [];
+  return values.includes(value) ? existing : [...values, value].join('; ');
+}
+
+function toReportAmount(value: unknown) {
+  const amount = Number(value ?? 0);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function formatReportAmount(value: number) {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(2);
+}
+
+type GivingCampaignExportRow = {
+  donorKey?: string;
+  userId?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  donorType?: string;
+  church?: string;
+  cell?: string;
+  currency?: string;
+  campaign?: string;
+  campaigns?: string;
+  totalAmount?: number | string | null;
+  totalGiven?: number | string | null;
+};
+
+function buildGivingCampaignMatrix(data: GivingCampaignExportRow[], options: { includeDonorType?: boolean } = {}) {
+  const campaignNames: string[] = [];
+  const campaignTotals = new Map<string, number>();
+  const members = new Map<string, {
+    name: string;
+    email: string;
+    phone: string;
+    donorType: string;
+    church: string;
+    cell: string;
+    currency: string;
+    campaignAmounts: Map<string, number>;
+    total: number;
+  }>();
+
+  for (const row of data) {
+    const campaignName = row.campaign || row.campaigns || 'Unassigned Campaign';
+    if (!campaignNames.includes(campaignName)) campaignNames.push(campaignName);
+
+    const name = row.name || [row.firstName, row.lastName].filter(Boolean).join(' ').trim() || row.email || row.phone || 'Unknown Donor';
+    const key = row.userId || row.donorKey || `${row.email || ''}|${row.phone || ''}|${name}`;
+    const amount = toReportAmount(row.totalGiven ?? row.totalAmount);
+
+    const member = members.get(key) ?? {
+      name,
+      email: row.email || '',
+      phone: row.phone || '',
+      donorType: '',
+      church: '',
+      cell: '',
+      currency: '',
+      campaignAmounts: new Map<string, number>(),
+      total: 0,
+    };
+
+    member.donorType = appendUniqueValue(member.donorType, row.donorType || '');
+    member.church = appendUniqueValue(member.church, row.church || '');
+    member.cell = appendUniqueValue(member.cell, row.cell || '');
+    member.currency = appendUniqueValue(member.currency, row.currency || '');
+    member.campaignAmounts.set(campaignName, (member.campaignAmounts.get(campaignName) ?? 0) + amount);
+    member.total += amount;
+    members.set(key, member);
+
+    campaignTotals.set(campaignName, (campaignTotals.get(campaignName) ?? 0) + amount);
+  }
+
+  const rows = Array.from(members.values())
+    .sort((a, b) => b.total - a.total)
+    .map(member => {
+      const baseColumns = options.includeDonorType
+        ? [member.name, member.email, member.phone, member.donorType, member.church, member.cell, member.currency]
+        : [member.name, member.email, member.phone, member.church, member.cell, member.currency];
+
+      return [
+        ...baseColumns,
+        ...campaignNames.map(campaign => formatReportAmount(member.campaignAmounts.get(campaign) ?? 0)),
+        formatReportAmount(member.total),
+      ];
+    });
+
+  const emptyMetadataColumns = options.includeDonorType ? ['', '', '', '', '', ''] : ['', '', '', '', ''];
+
+  const grandTotal = campaignNames.reduce((sum, campaign) => sum + (campaignTotals.get(campaign) ?? 0), 0);
+  if (rows.length > 0) {
+    rows.push([
+      'TOTAL',
+      ...emptyMetadataColumns,
+      ...campaignNames.map(campaign => formatReportAmount(campaignTotals.get(campaign) ?? 0)),
+      formatReportAmount(grandTotal),
+    ]);
+  }
+
+  return {
+    headers: options.includeDonorType
+      ? ['Name', 'Email', 'Phone', 'Type', 'Church', 'Cell', 'Currency', ...campaignNames, 'Total']
+      : ['Name', 'Email', 'Phone', 'Church', 'Cell', 'Currency', ...campaignNames, 'Total'],
+    rows,
+  };
 }
 
 export default function ReportsPage() {
@@ -69,7 +186,6 @@ export default function ReportsPage() {
   const [givingByMemberChurchFilter, setGivingByMemberChurchFilter] = useState('all');
   const [givingByMemberCategoryFilter, setGivingByMemberCategoryFilter] = useState('all');
   const [givingByMemberCampaignFilter, setGivingByMemberCampaignFilter] = useState('all');
-  const [givingByMemberPerCampaign, setGivingByMemberPerCampaign] = useState(false);
   const [givingByMemberStartDate, setGivingByMemberStartDate] = useState('');
   const [givingByMemberEndDate, setGivingByMemberEndDate] = useState('');
   const [memberStatusFilter, setMemberStatusFilter] = useState('all');
@@ -154,7 +270,7 @@ export default function ReportsPage() {
             case 'Giving by Member': {
               const p: any = {
                 limit, page, export: true,
-                groupByCampaign: givingByMemberPerCampaign,
+                groupByCampaign: true,
                 category: givingByMemberCategoryFilter !== 'all' ? givingByMemberCategoryFilter : undefined,
                 campaignId: givingByMemberCampaignFilter !== 'all' ? givingByMemberCampaignFilter : undefined,
                 startDate: givingByMemberStartDate || undefined,
@@ -249,7 +365,7 @@ export default function ReportsPage() {
     givingCategoryFilter, givingCampaignFilter, givingChurchFilter, givingCellFilter,
     givingStartDate, givingEndDate,
     givingByMemberChurchFilter, givingByMemberCategoryFilter, givingByMemberCampaignFilter,
-    givingByMemberPerCampaign, givingByMemberStartDate, givingByMemberEndDate,
+    givingByMemberStartDate, givingByMemberEndDate,
     attendanceServiceFilter, attendanceChurchFilter, attendanceStartDate, attendanceEndDate,
     inactiveMemberChurchFilter,
     pledgeChurchFilter, pledgeStatusFilter, pledgeStartDate, pledgeEndDate,
@@ -493,27 +609,12 @@ export default function ReportsPage() {
     );
     handleBatchResponse('Giving Report', response);
     const donations: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
+    const { rows, headers } = buildGivingCampaignMatrix(donations, { includeDonorType: true });
     
     downloadCSV(
       'giving-report.csv',
-      donations.map((d: any) => [
-        d.name || '',
-        d.email || '',
-        d.phone || '',
-        d.donorType || '',
-        d.campaign || '',
-        d.category || '',
-        d.cell || '',
-        d.church || '',
-        d.currency,
-        (d.totalAmount ?? 0).toString(),
-        (d.transactionCount ?? 0).toString(),
-        d.paymentMethods || '',
-        d.statuses || '',
-        d.firstDonationDate ? new Date(d.firstDonationDate).toLocaleDateString() : '',
-        d.lastDonationDate ? new Date(d.lastDonationDate).toLocaleDateString() : '',
-      ]),
-      ['Name', 'Email', 'Phone', 'Type', 'Campaign', 'Category', 'Cell', 'Church', 'Currency', 'Campaign Total', 'No. of Transactions', 'Methods', 'Statuses', 'First Donation', 'Last Donation'],
+      rows,
+      headers,
     );
   };
 
@@ -691,7 +792,7 @@ export default function ReportsPage() {
   const handleExportGivingByMember = async () => {
     const batchParams = getBatchParams('Giving by Member');
     const params: any = {
-      groupByCampaign: givingByMemberPerCampaign,
+      groupByCampaign: true,
       category: givingByMemberCategoryFilter !== 'all' ? givingByMemberCategoryFilter : undefined,
       campaignId: givingByMemberCampaignFilter !== 'all' ? givingByMemberCampaignFilter : undefined,
       ...batchParams,
@@ -702,24 +803,7 @@ export default function ReportsPage() {
     const response = await transactionsService.getGivingByMember(params);
     handleBatchResponse('Giving by Member', response);
     const data = response?.data ?? [];
-    const rows = (data || []).map((r: any) => givingByMemberPerCampaign
-      ? [
-          r.firstName, r.lastName, r.email, r.phone || '',
-          r.gender || '', r.membershipType || '', r.status || '',
-          r.cell || '', r.church,
-          r.campaign || r.campaigns || '', r.campaignCategory || '', r.currency || '',
-          r.totalGiven.toString(), (r.transactionCount ?? r.donationCount ?? 0).toString(),
-        ]
-      : [
-          r.firstName, r.lastName, r.email, r.phone || '',
-          r.gender || '', r.membershipType || '', r.status || '',
-          r.cell || '', r.church, r.currency || '',
-          r.campaigns || '',
-          r.totalGiven.toString(), (r.transactionCount ?? r.donationCount ?? 0).toString(),
-        ]);
-    const headers = givingByMemberPerCampaign
-      ? ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Status', 'Cell', 'Church', 'Campaign', 'Category', 'Currency', 'Campaign Total Given', 'No. of Transactions']
-      : ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Status', 'Cell', 'Church', 'Currency', 'Campaigns', 'Total Given', 'No. of Transactions'];
+    const { rows, headers } = buildGivingCampaignMatrix(data || []);
 
     downloadCSV(
       'giving-by-member-report.csv',
@@ -1022,16 +1106,9 @@ export default function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
-          <label className="flex items-start gap-2 rounded-md border border-border/70 p-2 text-xs">
-            <Checkbox
-              checked={givingByMemberPerCampaign}
-              onCheckedChange={(checked) => setGivingByMemberPerCampaign(checked === true)}
-            />
-            <span>
-              <span className="block font-medium">Show per campaign per person</span>
-              <span className="block text-muted-foreground">Exports one row for each member and campaign total.</span>
-            </span>
-          </label>
+          <p className="rounded-md border border-border/70 p-2 text-xs text-muted-foreground">
+            Export shows one row per member, campaign amounts as columns, and totals on the right and bottom.
+          </p>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">From</Label>
