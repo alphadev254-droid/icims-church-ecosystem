@@ -60,6 +60,26 @@ function formatReportAmount(value: number) {
   return Number.isInteger(value) ? value.toString() : value.toFixed(2);
 }
 
+function blankColumns(count: number) {
+  return Array.from({ length: count }, () => '');
+}
+
+function countTruthy<T>(items: T[], predicate: (item: T) => boolean) {
+  return items.reduce((total, item) => total + (predicate(item) ? 1 : 0), 0);
+}
+
+function summarizeAmountsByCurrency<T>(items: T[], getCurrency: (item: T) => string, getAmount: (item: T) => unknown) {
+  const totals = new Map<string, number>();
+  for (const item of items) {
+    const currency = getCurrency(item) || 'Unknown';
+    totals.set(currency, (totals.get(currency) ?? 0) + toReportAmount(getAmount(item)));
+  }
+  return Array.from(totals.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([currency, total]) => `${currency} ${formatReportAmount(total)}`)
+    .join('; ');
+}
+
 type GivingCampaignExportRow = {
   donorKey?: string;
   userId?: string;
@@ -694,28 +714,39 @@ export default function ReportsPage() {
     });
     handleBatchResponse('Membership Report', response);
     const members: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
+    const memberRows = members.map(m => [
+      m.firstName,
+      m.lastName,
+      m.email ?? '',
+      m.phone ?? '',
+      m.gender ?? '',
+      m.dateOfBirth ? new Date(m.dateOfBirth).toLocaleDateString() : '',
+      m.maritalStatus ?? '',
+      m.weddingDate ? new Date(m.weddingDate).toLocaleDateString() : '',
+      m.residentialNeighbourhood ?? '',
+      m.serviceInterest ?? '',
+      m.membershipType ?? '',
+      m.baptizedByImmersion ? 'Yes' : 'No',
+      m.church?.name ?? '',
+      m.roleName ?? '',
+      m.status,
+      Array.isArray((m as any).cells) ? (m as any).cells.map((c: any) => c.name).join('; ') : '',
+      Array.isArray(m.teams) ? m.teams.join('; ') : '',
+      new Date(m.createdAt).toLocaleDateString()
+    ]);
+    if (memberRows.length > 0) {
+      memberRows.push([
+        'TOTAL MEMBERS',
+        members.length.toString(),
+        `Active: ${countTruthy(members, m => m.status === 'active')}`,
+        `Inactive: ${countTruthy(members, m => m.status === 'inactive')}`,
+        `Baptized: ${countTruthy(members, m => !!m.baptizedByImmersion)}`,
+        ...blankColumns(13),
+      ]);
+    }
     downloadCSV(
       'members-report.csv',
-      members.map(m => [
-        m.firstName,
-        m.lastName,
-        m.email ?? '',
-        m.phone ?? '',
-        m.gender ?? '',
-        m.dateOfBirth ? new Date(m.dateOfBirth).toLocaleDateString() : '',
-        m.maritalStatus ?? '',
-        m.weddingDate ? new Date(m.weddingDate).toLocaleDateString() : '',
-        m.residentialNeighbourhood ?? '',
-        m.serviceInterest ?? '',
-        m.membershipType ?? '',
-        m.baptizedByImmersion ? 'Yes' : 'No',
-        m.church?.name ?? '',
-        m.roleName ?? '',
-        m.status,
-        Array.isArray((m as any).cells) ? (m as any).cells.map((c: any) => c.name).join('; ') : '',
-        Array.isArray(m.teams) ? m.teams.join('; ') : '',
-        new Date(m.createdAt).toLocaleDateString()
-      ]),
+      memberRows,
       [
         'First Name',
         'Last Name',
@@ -775,62 +806,129 @@ export default function ReportsPage() {
     const response = await attendanceService.getAll(params);
     handleBatchResponse('Attendance & Service Report', response);
     const attendance: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
+    const attendanceTotals = {
+      totalAttendees: 0,
+      checkedInParticipants: 0,
+      maleCount: 0,
+      femaleCount: 0,
+      children: 0,
+      youth: 0,
+      youngAdults: 0,
+      adults: 0,
+      seniors: 0,
+      visitors: 0,
+      firstTimeVisitors: 0,
+      ministryMemberGuests: 0,
+      newConverts: 0,
+    };
+    const attendanceRows = attendance.map(a => {
+      const checkedInParticipants = (a as any).checkedInParticipants ?? (a as any)._count?.participants ?? 0;
+      const visitors = (a as any).trueVisitors ?? (a as any).newVisitors ?? 0;
+      const firstTimeVisitors = (a as any).firstTimeVisitors ?? 0;
+      const ministryMemberGuests = (a as any).ministryMemberGuests ?? 0;
+      const newConverts = (a as any).newConverts ?? 0;
+      attendanceTotals.totalAttendees += toReportAmount(a.totalAttendees);
+      attendanceTotals.checkedInParticipants += toReportAmount(checkedInParticipants);
+      attendanceTotals.maleCount += toReportAmount((a as any).maleCount);
+      attendanceTotals.femaleCount += toReportAmount((a as any).femaleCount);
+      attendanceTotals.children += toReportAmount((a as any).children);
+      attendanceTotals.youth += toReportAmount((a as any).youth);
+      attendanceTotals.youngAdults += toReportAmount((a as any).youngAdults);
+      attendanceTotals.adults += toReportAmount((a as any).adults);
+      attendanceTotals.seniors += toReportAmount((a as any).seniors);
+      attendanceTotals.visitors += toReportAmount(visitors);
+      attendanceTotals.firstTimeVisitors += toReportAmount(firstTimeVisitors);
+      attendanceTotals.ministryMemberGuests += toReportAmount(ministryMemberGuests);
+      attendanceTotals.newConverts += toReportAmount(newConverts);
+      return [
+        new Date(a.date).toLocaleDateString(),
+        (a as any).church?.name || '',
+        a.serviceType,
+        a.totalAttendees.toString(),
+        checkedInParticipants.toString(),
+        ((a as any).maleCount ?? 0).toString(),
+        ((a as any).femaleCount ?? 0).toString(),
+        ((a as any).children ?? 0).toString(),
+        ((a as any).youth ?? 0).toString(),
+        ((a as any).youngAdults ?? 0).toString(),
+        ((a as any).adults ?? 0).toString(),
+        ((a as any).seniors ?? 0).toString(),
+        visitors.toString(),
+        firstTimeVisitors.toString(),
+        ministryMemberGuests.toString(),
+        newConverts.toString(),
+        (a as any).notes ?? ''
+      ];
+    });
+    if (attendanceRows.length > 0) {
+      attendanceRows.push([
+        'TOTAL',
+        '',
+        '',
+        formatReportAmount(attendanceTotals.totalAttendees),
+        formatReportAmount(attendanceTotals.checkedInParticipants),
+        formatReportAmount(attendanceTotals.maleCount),
+        formatReportAmount(attendanceTotals.femaleCount),
+        formatReportAmount(attendanceTotals.children),
+        formatReportAmount(attendanceTotals.youth),
+        formatReportAmount(attendanceTotals.youngAdults),
+        formatReportAmount(attendanceTotals.adults),
+        formatReportAmount(attendanceTotals.seniors),
+        formatReportAmount(attendanceTotals.visitors),
+        formatReportAmount(attendanceTotals.firstTimeVisitors),
+        formatReportAmount(attendanceTotals.ministryMemberGuests),
+        formatReportAmount(attendanceTotals.newConverts),
+        '',
+      ]);
+    }
     downloadCSV(
       'attendance-report.csv',
-      attendance.map(a => {
-        const checkedInParticipants = (a as any).checkedInParticipants ?? (a as any)._count?.participants ?? 0;
-        const visitors = (a as any).trueVisitors ?? (a as any).newVisitors ?? 0;
-        const firstTimeVisitors = (a as any).firstTimeVisitors ?? 0;
-        const ministryMemberGuests = (a as any).ministryMemberGuests ?? 0;
-        const newConverts = (a as any).newConverts ?? 0;
-        return [
-          new Date(a.date).toLocaleDateString(),
-          (a as any).church?.name || '',
-          a.serviceType,
-          a.totalAttendees.toString(),
-          checkedInParticipants.toString(),
-          ((a as any).maleCount ?? 0).toString(),
-          ((a as any).femaleCount ?? 0).toString(),
-          ((a as any).children ?? 0).toString(),
-          ((a as any).youth ?? 0).toString(),
-          ((a as any).youngAdults ?? 0).toString(),
-          ((a as any).adults ?? 0).toString(),
-          ((a as any).seniors ?? 0).toString(),
-          visitors.toString(),
-          firstTimeVisitors.toString(),
-          ministryMemberGuests.toString(),
-          newConverts.toString(),
-          (a as any).notes ?? ''
-        ];
-      }),
+      attendanceRows,
       ['Date', 'Church', 'Service Type', 'Total', 'Checked-in Participants', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'Visitors', 'First Time Visitors', 'Ministry Member Guests', 'New Converts', 'Notes'],
     );
   };
 
   const handleExportKPIs = () => {
+    const kpiRows = (kpis as KPI[]).map(k => {
+      const achievement = k.targetValue > 0 ? Math.round((k.currentValue / k.targetValue) * 100) : 0;
+      return [
+        k.name,
+        k.description || '',
+        k.category,
+        k.metricType,
+        k.attendanceType || 'N/A',
+        k.targetValue.toString(),
+        k.currentValue.toString(),
+        `${achievement}%`,
+        k.unit,
+        k.period,
+        new Date(k.startDate).toLocaleDateString(),
+        new Date(k.endDate).toLocaleDateString(),
+        k.isRecurring ? 'Yes' : 'No',
+        k.recurringActive ? 'Active' : 'Paused',
+        k.status,
+        k.church?.name || 'All Churches',
+      ];
+    });
+    if (kpiRows.length > 0) {
+      const targetTotal = (kpis as KPI[]).reduce((sum, k) => sum + toReportAmount(k.targetValue), 0);
+      const currentTotal = (kpis as KPI[]).reduce((sum, k) => sum + toReportAmount(k.currentValue), 0);
+      const achievement = targetTotal > 0 ? Math.round((currentTotal / targetTotal) * 100) : 0;
+      kpiRows.push([
+        'TOTAL',
+        '',
+        '',
+        '',
+        '',
+        formatReportAmount(targetTotal),
+        formatReportAmount(currentTotal),
+        `${achievement}%`,
+        ...blankColumns(8),
+      ]);
+    }
     downloadCSV(
       'kpi-report.csv',
-      (kpis as KPI[]).map(k => {
-        const achievement = k.targetValue > 0 ? Math.round((k.currentValue / k.targetValue) * 100) : 0;
-        return [
-          k.name,
-          k.description || '',
-          k.category,
-          k.metricType,
-          k.attendanceType || 'N/A',
-          k.targetValue.toString(),
-          k.currentValue.toString(),
-          `${achievement}%`,
-          k.unit,
-          k.period,
-          new Date(k.startDate).toLocaleDateString(),
-          new Date(k.endDate).toLocaleDateString(),
-          k.isRecurring ? 'Yes' : 'No',
-          k.recurringActive ? 'Active' : 'Paused',
-          k.status,
-          k.church?.name || 'All Churches',
-        ];
-      }),
+      kpiRows,
       ['KPI Name', 'Description', 'Category', 'Metric Type', 'Attendance Type', 'Target', 'Current', 'Achievement', 'Unit', 'Period', 'Start Date', 'End Date', 'Recurring', 'Recurring Status', 'Status', 'Church'],
     );
   };
@@ -846,17 +944,26 @@ export default function ReportsPage() {
     } as any);
     handleBatchResponse('Inactive Members Report', response);
     const members: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
+    const inactiveRows = members.map((m: any) => [
+      m.firstName, m.lastName, m.email ?? '', m.phone ?? '',
+      m.gender ?? '', m.membershipType ?? '',
+      m.baptizedByImmersion ? 'Yes' : 'No',
+      m.church?.name ?? '',
+      Array.isArray(m.cells) ? m.cells.map((c: any) => c.name).join('; ') : '',
+      m.residentialNeighbourhood ?? '',
+      m.roleName ?? '', m.status, new Date(m.createdAt).toLocaleDateString(),
+    ]);
+    if (inactiveRows.length > 0) {
+      inactiveRows.push([
+        'TOTAL INACTIVE MEMBERS',
+        members.length.toString(),
+        `Baptized: ${countTruthy(members, m => !!m.baptizedByImmersion)}`,
+        ...blankColumns(10),
+      ]);
+    }
     downloadCSV(
       'inactive-members-report.csv',
-      members.map((m: any) => [
-        m.firstName, m.lastName, m.email ?? '', m.phone ?? '',
-        m.gender ?? '', m.membershipType ?? '',
-        m.baptizedByImmersion ? 'Yes' : 'No',
-        m.church?.name ?? '',
-        Array.isArray(m.cells) ? m.cells.map((c: any) => c.name).join('; ') : '',
-        m.residentialNeighbourhood ?? '',
-        m.roleName ?? '', m.status, new Date(m.createdAt).toLocaleDateString(),
-      ]),
+      inactiveRows,
       ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Baptized', 'Church', 'Cell', 'Neighbourhood', 'Role', 'Status', 'Joined'],
     );
   };
@@ -893,27 +1000,37 @@ export default function ReportsPage() {
     const response = await transactionsService.exportAll(params);
     handleBatchResponse('Transaction Report', response);
     const transactions: any[] = (response as any)?.data ?? [];
+    const transactionRows = transactions.map((t: any) => [
+      t.user ? `${t.user.firstName} ${t.user.lastName}` : (t.guestName || 'Guest'),
+      t.user?.email || t.guestEmail || '',
+      t.amount.toString(),
+      t.baseAmount?.toString() || '',
+      t.currency,
+      t.type,
+      t.campaignName || '',
+      t.campaignCategory || '',
+      t.cellName || '',
+      t.paymentMethod,
+      t.status,
+      t.gateway || '',
+      t.church?.name || '',
+      t.isManual ? 'Manual' : 'Online',
+      t.reference || '',
+      t.paidAt ? new Date(t.paidAt).toLocaleDateString() : '',
+      new Date(t.createdAt).toLocaleDateString(),
+    ]);
+    if (transactionRows.length > 0) {
+      transactionRows.push([
+        'TOTAL',
+        `${transactions.length} transactions`,
+        summarizeAmountsByCurrency(transactions, t => t.currency, t => t.amount),
+        summarizeAmountsByCurrency(transactions, t => t.currency, t => t.baseAmount ?? t.amount),
+        ...blankColumns(13),
+      ]);
+    }
     downloadCSV(
       'transactions-report.csv',
-      transactions.map((t: any) => [
-        t.user ? `${t.user.firstName} ${t.user.lastName}` : (t.guestName || 'Guest'),
-        t.user?.email || t.guestEmail || '',
-        t.amount.toString(),
-        t.baseAmount?.toString() || '',
-        t.currency,
-        t.type,
-        t.campaignName || '',
-        t.campaignCategory || '',
-        t.cellName || '',
-        t.paymentMethod,
-        t.status,
-        t.gateway || '',
-        t.church?.name || '',
-        t.isManual ? 'Manual' : 'Online',
-        t.reference || '',
-        t.paidAt ? new Date(t.paidAt).toLocaleDateString() : '',
-        new Date(t.createdAt).toLocaleDateString(),
-      ]),
+      transactionRows,
       ['Name', 'Email', 'Amount', 'Base Amount', 'Currency', 'Type', 'Campaign', 'Category', 'Cell', 'Method', 'Status', 'Gateway', 'Church', 'Entry', 'Reference', 'Paid At', 'Date'],
     );
   };
@@ -952,25 +1069,49 @@ export default function ReportsPage() {
     handleBatchResponse('Cell Groups Report', response);
     const cells: any[] = (response as any)?.data ?? [];
     const hasDates = !!(cellGroupStartDate || cellGroupEndDate);
+    const cellRows = cells.map((c: any) => [
+      c.name,
+      c.zone || c.neighbourhood || '',
+      c.church?.name || '',
+      c.leaderName || '',
+      c._count?.members?.toString() || '0',
+      hasDates ? (c.meetingsInPeriod ?? 0).toString() : (c._count?.meetings ?? 0).toString(),
+      (c.totalVisitors ?? 0).toString(),
+      (c.totalOffering ?? 0).toString(),
+      c.attendanceRate != null ? `${c.attendanceRate}%` : 'N/A',
+      c.conversionRate != null ? `${c.conversionRate}%` : 'N/A',
+      c.lastMeetingDate ? new Date(c.lastMeetingDate).toLocaleDateString() : 'Never',
+      c.status,
+      c.meetingDay || '',
+      c.meetingTime || '',
+      c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '',
+    ]);
+    if (cellRows.length > 0) {
+      const memberTotal = cells.reduce((sum, c: any) => sum + toReportAmount(c._count?.members), 0);
+      const meetingTotal = cells.reduce((sum, c: any) => sum + toReportAmount(hasDates ? c.meetingsInPeriod : c._count?.meetings), 0);
+      const visitorTotal = cells.reduce((sum, c: any) => sum + toReportAmount(c.totalVisitors), 0);
+      const offeringTotal = cells.reduce((sum, c: any) => sum + toReportAmount(c.totalOffering), 0);
+      cellRows.push([
+        'TOTAL',
+        '',
+        '',
+        '',
+        formatReportAmount(memberTotal),
+        formatReportAmount(meetingTotal),
+        formatReportAmount(visitorTotal),
+        formatReportAmount(offeringTotal),
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+      ]);
+    }
     downloadCSV(
       'cell-groups-report.csv',
-      cells.map((c: any) => [
-        c.name,
-        c.zone || c.neighbourhood || '',
-        c.church?.name || '',
-        c.leaderName || '',
-        c._count?.members?.toString() || '0',
-        hasDates ? (c.meetingsInPeriod ?? 0).toString() : (c._count?.meetings ?? 0).toString(),
-        (c.totalVisitors ?? 0).toString(),
-        (c.totalOffering ?? 0).toString(),
-        c.attendanceRate != null ? `${c.attendanceRate}%` : 'N/A',
-        c.conversionRate != null ? `${c.conversionRate}%` : 'N/A',
-        c.lastMeetingDate ? new Date(c.lastMeetingDate).toLocaleDateString() : 'Never',
-        c.status,
-        c.meetingDay || '',
-        c.meetingTime || '',
-        c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '',
-      ]),
+      cellRows,
       ['Cell Name', 'Location / Neighbourhood', 'Church', 'Leader', 'Active Members',
         hasDates ? 'Meetings (Period)' : 'Total Meetings',
         'Total Visitors', 'Total Offering', 'Attendance Rate', 'Conversion Rate',
@@ -990,27 +1131,46 @@ export default function ReportsPage() {
     });
     handleBatchResponse('Church Visitors Report', response);
     const visitors: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
+    const churchVisitorRows = visitors.map((v: any) => [
+      v.name || '',
+      v.phone || '',
+      v.email || '',
+      v.gender || '',
+      v.ageBracket || '',
+      v.residentialArea || '',
+      v.howHeard || '',
+      v.isFirstVisit ? 'Yes' : 'No',
+      v.isReturnVisit ? 'Yes' : 'No',
+      String(v.totalVisits ?? ''),
+      v.firstVisitDate ? new Date(v.firstVisitDate).toLocaleDateString() : '',
+      v.lastVisitDate ? new Date(v.lastVisitDate).toLocaleDateString() : '',
+      v.isNewConvert ? 'Yes' : 'No',
+      v.invitedBy || '',
+      v.churchesVisited || '',
+      v.serviceTypes || '',
+      v.notes || '',
+    ]);
+    if (churchVisitorRows.length > 0) {
+      churchVisitorRows.push([
+        'TOTAL VISITORS',
+        visitors.length.toString(),
+        '',
+        '',
+        '',
+        '',
+        '',
+        countTruthy(visitors, v => !!v.isFirstVisit).toString(),
+        countTruthy(visitors, v => !!v.isReturnVisit).toString(),
+        formatReportAmount(visitors.reduce((sum, v) => sum + toReportAmount(v.totalVisits), 0)),
+        '',
+        '',
+        countTruthy(visitors, v => !!v.isNewConvert).toString(),
+        ...blankColumns(4),
+      ]);
+    }
     downloadCSV(
       'church-visitors-report.csv',
-      visitors.map((v: any) => [
-        v.name || '',
-        v.phone || '',
-        v.email || '',
-        v.gender || '',
-        v.ageBracket || '',
-        v.residentialArea || '',
-        v.howHeard || '',
-        v.isFirstVisit ? 'Yes' : 'No',
-        v.isReturnVisit ? 'Yes' : 'No',
-        String(v.totalVisits ?? ''),
-        v.firstVisitDate ? new Date(v.firstVisitDate).toLocaleDateString() : '',
-        v.lastVisitDate ? new Date(v.lastVisitDate).toLocaleDateString() : '',
-        v.isNewConvert ? 'Yes' : 'No',
-        v.invitedBy || '',
-        v.churchesVisited || '',
-        v.serviceTypes || '',
-        v.notes || '',
-      ]),
+      churchVisitorRows,
       ['Name', 'Phone', 'Email', 'Gender', 'Age Bracket', 'Residential Area', 'How Heard', 'First Visit', 'Return Visit', 'Total Visits', 'First Visit Date', 'Last Visit Date', 'New Convert', 'Invited By', 'Churches Visited', 'Service Types', 'Notes'],
     );
   };
@@ -1027,25 +1187,40 @@ export default function ReportsPage() {
     });
     handleBatchResponse('Cell Visitors Report', response);
     const visitors: any[] = (response as any)?.data ?? [];
+    const visitorRows = visitors.map((v: any) => [
+      v.visitorName || '',
+      v.visitorPhone || '',
+      v.visitorEmail || '',
+      v.isFirstVisit ? 'Yes' : 'No',
+      v.isReturnVisit ? 'Yes' : 'No',
+      String(v.totalVisits ?? ''),
+      v.firstVisitDate ? new Date(v.firstVisitDate).toLocaleDateString() : '',
+      v.lastVisitDate ? new Date(v.lastVisitDate).toLocaleDateString() : '',
+      v.isNewConvert ? 'Yes' : 'No',
+      v.invitedBy || '',
+      v.cellsVisited || '',
+      v.zones || '',
+      v.churchesVisited || '',
+      v.meetingTopics || '',
+      v.notes || '',
+    ]);
+    if (visitorRows.length > 0) {
+      visitorRows.push([
+        'TOTAL VISITORS',
+        visitors.length.toString(),
+        '',
+        countTruthy(visitors, v => !!v.isFirstVisit).toString(),
+        countTruthy(visitors, v => !!v.isReturnVisit).toString(),
+        formatReportAmount(visitors.reduce((sum, v) => sum + toReportAmount(v.totalVisits), 0)),
+        '',
+        '',
+        countTruthy(visitors, v => !!v.isNewConvert).toString(),
+        ...blankColumns(6),
+      ]);
+    }
     downloadCSV(
       'visitors-report.csv',
-      visitors.map((v: any) => [
-        v.visitorName || '',
-        v.visitorPhone || '',
-        v.visitorEmail || '',
-        v.isFirstVisit ? 'Yes' : 'No',
-        v.isReturnVisit ? 'Yes' : 'No',
-        String(v.totalVisits ?? ''),
-        v.firstVisitDate ? new Date(v.firstVisitDate).toLocaleDateString() : '',
-        v.lastVisitDate ? new Date(v.lastVisitDate).toLocaleDateString() : '',
-        v.isNewConvert ? 'Yes' : 'No',
-        v.invitedBy || '',
-        v.cellsVisited || '',
-        v.zones || '',
-        v.churchesVisited || '',
-        v.meetingTopics || '',
-        v.notes || '',
-      ]),
+      visitorRows,
       ['Name', 'Phone', 'Email', 'First Visit', 'Return Visit', 'Total Visits', 'First Visit Date', 'Last Visit Date', 'New Convert', 'Invited By', 'Cells Visited', 'Zones', 'Churches Visited', 'Meeting Topics', 'Notes'],
     );
   };
@@ -1112,7 +1287,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Giving Report',
-      description: 'Giving totals per person per campaign, with method and status summaries.',
+      description: 'Giving matrix by person, campaign, and total amount for stewardship review.',
       icon: HandCoins,
       onExport: handleExportGiving,
       filterComponent: (
@@ -1188,7 +1363,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Giving by Member',
-      description: 'Total giving per member — top contributors and stewardship overview.',
+      description: 'Member giving matrix with campaign columns and overall totals.',
       icon: Handshake,
       onExport: handleExportGivingByMember,
       filterComponent: (
@@ -1253,7 +1428,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Pledge Report',
-      description: 'Pledge and redemption totals per person per campaign.',
+      description: 'Pledge matrix by person and campaign, including pledged, paid, and outstanding totals.',
       icon: Target,
       onExport: handleExportPledges,
       filterComponent: (
@@ -1328,7 +1503,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Attendance Report',
-      description: 'Service attendance records with visitor and ministry member guest counts.',
+      description: 'Service attendance records with demographics, visitor counts, and bottom totals.',
       icon: ClipboardList,
       onExport: handleExportAttendance,
       filterComponent: (
@@ -1376,7 +1551,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Cell Groups Report',
-      description: 'Cell/fellowship summary by church: leaders, members, meeting activity, visitors, offerings, attendance rate, and conversion rate.',
+      description: 'Cell/fellowship summary with leaders, meetings, visitors, offerings, rates, and totals.',
       icon: Group,
       onExport: handleExportCellGroups,
       filterComponent: (
@@ -1509,7 +1684,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Transactions Report',
-      description: 'All payment transactions — tickets and giving.',
+      description: 'Financial transaction ledger with gateway, status, reference, and currency totals.',
       icon: CreditCard,
       onExport: handleExportTransactions,
       filterComponent: (
