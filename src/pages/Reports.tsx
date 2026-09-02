@@ -78,6 +78,22 @@ type GivingCampaignExportRow = {
   totalGiven?: number | string | null;
 };
 
+type PledgeCampaignExportRow = {
+  pledgerKey?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  pledgerType?: string;
+  campaign?: string;
+  church?: string;
+  currency?: string;
+  pledgedTotal?: number | string | null;
+  paidTotal?: number | string | null;
+  outstandingTotal?: number | string | null;
+  pledgeCount?: number | string | null;
+  statuses?: string;
+};
+
 function buildGivingCampaignMatrix(data: GivingCampaignExportRow[], options: { includeDonorType?: boolean } = {}) {
   const campaignNames: string[] = [];
   const campaignTotals = new Map<string, number>();
@@ -154,6 +170,136 @@ function buildGivingCampaignMatrix(data: GivingCampaignExportRow[], options: { i
     headers: options.includeDonorType
       ? ['Name', 'Email', 'Phone', 'Type', 'Church', 'Cell', 'Currency', ...campaignNames, 'Total']
       : ['Name', 'Email', 'Phone', 'Church', 'Cell', 'Currency', ...campaignNames, 'Total'],
+    rows,
+  };
+}
+
+function buildPledgeCampaignMatrix(data: PledgeCampaignExportRow[]) {
+  const campaignNames: string[] = [];
+  const campaignTotals = new Map<string, { pledged: number; paid: number; outstanding: number }>();
+  const pledgers = new Map<string, {
+    name: string;
+    email: string;
+    phone: string;
+    type: string;
+    church: string;
+    currency: string;
+    statuses: string;
+    campaignAmounts: Map<string, { pledged: number; paid: number; outstanding: number }>;
+    pledgedTotal: number;
+    paidTotal: number;
+    outstandingTotal: number;
+  }>();
+
+  for (const row of data) {
+    const campaignName = row.campaign || 'Unassigned Campaign';
+    if (!campaignNames.includes(campaignName)) campaignNames.push(campaignName);
+
+    const name = row.name || row.email || row.phone || 'Unknown Pledger';
+    const key = row.pledgerKey || `${row.email || ''}|${row.phone || ''}|${name}`;
+    const pledged = toReportAmount(row.pledgedTotal);
+    const paid = toReportAmount(row.paidTotal);
+    const outstanding = row.outstandingTotal == null ? pledged - paid : toReportAmount(row.outstandingTotal);
+
+    const pledger = pledgers.get(key) ?? {
+      name,
+      email: row.email || '',
+      phone: row.phone || '',
+      type: '',
+      church: '',
+      currency: '',
+      statuses: '',
+      campaignAmounts: new Map<string, { pledged: number; paid: number; outstanding: number }>(),
+      pledgedTotal: 0,
+      paidTotal: 0,
+      outstandingTotal: 0,
+    };
+
+    pledger.type = appendUniqueValue(pledger.type, row.pledgerType || '');
+    pledger.church = appendUniqueValue(pledger.church, row.church || '');
+    pledger.currency = appendUniqueValue(pledger.currency, row.currency || '');
+    pledger.statuses = appendUniqueValue(pledger.statuses, row.statuses || '');
+
+    const existingCampaign = pledger.campaignAmounts.get(campaignName) ?? { pledged: 0, paid: 0, outstanding: 0 };
+    existingCampaign.pledged += pledged;
+    existingCampaign.paid += paid;
+    existingCampaign.outstanding += outstanding;
+    pledger.campaignAmounts.set(campaignName, existingCampaign);
+    pledger.pledgedTotal += pledged;
+    pledger.paidTotal += paid;
+    pledger.outstandingTotal += outstanding;
+    pledgers.set(key, pledger);
+
+    const totals = campaignTotals.get(campaignName) ?? { pledged: 0, paid: 0, outstanding: 0 };
+    totals.pledged += pledged;
+    totals.paid += paid;
+    totals.outstanding += outstanding;
+    campaignTotals.set(campaignName, totals);
+  }
+
+  const campaignHeaders = campaignNames.flatMap(campaign => [
+    `${campaign} Pledged`,
+    `${campaign} Paid`,
+    `${campaign} Outstanding`,
+  ]);
+
+  const rows = Array.from(pledgers.values())
+    .sort((a, b) => b.pledgedTotal - a.pledgedTotal || a.name.localeCompare(b.name))
+    .map(pledger => [
+      pledger.name,
+      pledger.email,
+      pledger.phone,
+      pledger.type,
+      pledger.church,
+      pledger.currency,
+      pledger.statuses,
+      ...campaignNames.flatMap(campaign => {
+        const amounts = pledger.campaignAmounts.get(campaign) ?? { pledged: 0, paid: 0, outstanding: 0 };
+        return [
+          formatReportAmount(amounts.pledged),
+          formatReportAmount(amounts.paid),
+          formatReportAmount(amounts.outstanding),
+        ];
+      }),
+      formatReportAmount(pledger.pledgedTotal),
+      formatReportAmount(pledger.paidTotal),
+      formatReportAmount(pledger.outstandingTotal),
+    ]);
+
+  if (rows.length > 0) {
+    const grandTotals = Array.from(campaignTotals.values()).reduce(
+      (totals, campaign) => ({
+        pledged: totals.pledged + campaign.pledged,
+        paid: totals.paid + campaign.paid,
+        outstanding: totals.outstanding + campaign.outstanding,
+      }),
+      { pledged: 0, paid: 0, outstanding: 0 },
+    );
+
+    rows.push([
+      'TOTAL',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      ...campaignNames.flatMap(campaign => {
+        const totals = campaignTotals.get(campaign) ?? { pledged: 0, paid: 0, outstanding: 0 };
+        return [
+          formatReportAmount(totals.pledged),
+          formatReportAmount(totals.paid),
+          formatReportAmount(totals.outstanding),
+        ];
+      }),
+      formatReportAmount(grandTotals.pledged),
+      formatReportAmount(grandTotals.paid),
+      formatReportAmount(grandTotals.outstanding),
+    ]);
+  }
+
+  return {
+    headers: ['Name', 'Email', 'Phone', 'Type', 'Church', 'Currency', 'Statuses', ...campaignHeaders, 'Total Pledged', 'Total Paid', 'Total Outstanding'],
     rows,
   };
 }
@@ -729,28 +875,11 @@ export default function ReportsPage() {
     });
     handleBatchResponse('Pledge Report', response);
     const pledges: any[] = (response as any)?.data ?? [];
+    const { rows, headers } = buildPledgeCampaignMatrix(pledges);
     downloadCSV(
       'pledges-report.csv',
-      pledges.map((p: any) => [
-        p.name || '',
-        p.email || '',
-        p.phone || '',
-        p.pledgerType || '',
-        p.campaign || '',
-        p.category || '',
-        p.church || '',
-        p.currency || '',
-        (p.pledgedTotal ?? 0).toString(),
-        (p.paidTotal ?? 0).toString(),
-        (p.outstandingTotal ?? 0).toString(),
-        (p.pledgeCount ?? 0).toString(),
-        p.statuses || '',
-        p.earliestDeadline ? new Date(p.earliestDeadline).toLocaleDateString() : '',
-        p.latestDeadline ? new Date(p.latestDeadline).toLocaleDateString() : '',
-        p.firstPledgeDate ? new Date(p.firstPledgeDate).toLocaleDateString() : '',
-        p.lastPledgeDate ? new Date(p.lastPledgeDate).toLocaleDateString() : '',
-      ]),
-      ['Name', 'Email', 'Phone', 'Type', 'Campaign', 'Category', 'Church', 'Currency', 'Pledged Total', 'Redeemed/Paid Total', 'Outstanding Total', 'No. of Pledges', 'Statuses', 'Earliest Deadline', 'Latest Deadline', 'First Pledge', 'Last Pledge'],
+      rows,
+      headers,
     );
   };
 
