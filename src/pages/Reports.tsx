@@ -29,20 +29,61 @@ import { eventsService } from '@/services/events';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 
-function escapeCSVCell(value: string) {
-  const text = value ?? '';
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
+type ReportCellValue = string | number | boolean | null | undefined;
 
-function downloadCSV(filename: string, rows: string[][], headers: string[]) {
-  const content = [headers, ...rows].map(r => r.map(escapeCSVCell).join(',')).join('\n');
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+async function downloadReportWorkbook(filename: string, rows: ReportCellValue[][], headers: string[]) {
+  const XLSX = await import('xlsx-js-style');
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const ref = worksheet['!ref'];
+  const range = ref ? XLSX.utils.decode_range(ref) : { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } };
+  const totalColumnIndex = range.e.c;
+  const totalRowIndex = rows.length > 0 && String(rows[rows.length - 1]?.[0] ?? '').toUpperCase().startsWith('TOTAL')
+    ? range.e.r
+    : -1;
+  const blueStyle = {
+    fill: { patternType: 'solid', fgColor: { rgb: '1F4E78' } },
+    font: { color: { rgb: 'FFFFFF' }, bold: true },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: {
+      top: { style: 'thin', color: { rgb: 'D9EAF7' } },
+      bottom: { style: 'thin', color: { rgb: 'D9EAF7' } },
+      left: { style: 'thin', color: { rgb: 'D9EAF7' } },
+      right: { style: 'thin', color: { rgb: 'D9EAF7' } },
+    },
+  };
+  const bodyStyle = {
+    alignment: { vertical: 'top', wrapText: true },
+    border: {
+      bottom: { style: 'thin', color: { rgb: 'E5E7EB' } },
+    },
+  };
+
+  for (let rowIndex = range.s.r; rowIndex <= range.e.r; rowIndex += 1) {
+    for (let colIndex = range.s.c; colIndex <= range.e.c; colIndex += 1) {
+      const cellRef = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
+      if (!worksheet[cellRef]) worksheet[cellRef] = { t: 's', v: '' };
+      const isHeader = rowIndex === 0;
+      const isTotalColumn = colIndex === totalColumnIndex;
+      const isTotalRow = rowIndex === totalRowIndex;
+      worksheet[cellRef].s = isHeader || isTotalColumn || isTotalRow ? blueStyle : bodyStyle;
+    }
+  }
+
+  worksheet['!cols'] = headers.map((header, colIndex) => {
+    const maxLength = [header, ...rows.map(row => String(row[colIndex] ?? ''))]
+      .reduce((max, value) => Math.max(max, value.length), 0);
+    return { wch: Math.min(Math.max(maxLength + 2, 12), 34) };
+  });
+
+  worksheet['!rows'] = [{ hpt: 24 }, ...rows.map(() => ({ hpt: 22 }))];
+
+  const sheetName = filename
+    .replace(/\.xlsx$/i, '')
+    .replace(/[:\\/?*\[\]]/g, ' ')
+    .slice(0, 31) || 'Report';
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  XLSX.writeFile(workbook, filename);
 }
 
 function appendUniqueValue(existing: string, value: string) {
@@ -744,8 +785,8 @@ export default function ReportsPage() {
         ...blankColumns(13),
       ]);
     }
-    downloadCSV(
-      'members-report.csv',
+    await downloadReportWorkbook(
+      'members-report.xlsx',
       memberRows,
       [
         'First Name',
@@ -788,8 +829,8 @@ export default function ReportsPage() {
     const donations: any[] = Array.isArray(response) ? response : (response as any)?.data ?? [];
     const { rows, headers } = buildGivingCampaignMatrix(donations, { includeDonorType: true });
     
-    downloadCSV(
-      'giving-report.csv',
+    await downloadReportWorkbook(
+      'giving-report.xlsx',
       rows,
       headers,
     );
@@ -881,14 +922,14 @@ export default function ReportsPage() {
         '',
       ]);
     }
-    downloadCSV(
-      'attendance-report.csv',
+    await downloadReportWorkbook(
+      'attendance-report.xlsx',
       attendanceRows,
       ['Date', 'Church', 'Service Type', 'Total', 'Checked-in Participants', 'Male', 'Female', 'Children', 'Youth', 'Young Adults', 'Adults', 'Seniors', 'Visitors', 'First Time Visitors', 'Ministry Member Guests', 'New Converts', 'Notes'],
     );
   };
 
-  const handleExportKPIs = () => {
+  const handleExportKPIs = async () => {
     const kpiRows = (kpis as KPI[]).map(k => {
       const achievement = k.targetValue > 0 ? Math.round((k.currentValue / k.targetValue) * 100) : 0;
       return [
@@ -926,8 +967,8 @@ export default function ReportsPage() {
         ...blankColumns(8),
       ]);
     }
-    downloadCSV(
-      'kpi-report.csv',
+    await downloadReportWorkbook(
+      'kpi-report.xlsx',
       kpiRows,
       ['KPI Name', 'Description', 'Category', 'Metric Type', 'Attendance Type', 'Target', 'Current', 'Achievement', 'Unit', 'Period', 'Start Date', 'End Date', 'Recurring', 'Recurring Status', 'Status', 'Church'],
     );
@@ -961,8 +1002,8 @@ export default function ReportsPage() {
         ...blankColumns(10),
       ]);
     }
-    downloadCSV(
-      'inactive-members-report.csv',
+    await downloadReportWorkbook(
+      'inactive-members-report.xlsx',
       inactiveRows,
       ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Membership Type', 'Baptized', 'Church', 'Cell', 'Neighbourhood', 'Role', 'Status', 'Joined'],
     );
@@ -983,8 +1024,8 @@ export default function ReportsPage() {
     handleBatchResponse('Pledge Report', response);
     const pledges: any[] = (response as any)?.data ?? [];
     const { rows, headers } = buildPledgeCampaignMatrix(pledges);
-    downloadCSV(
-      'pledges-report.csv',
+    await downloadReportWorkbook(
+      'pledges-report.xlsx',
       rows,
       headers,
     );
@@ -1028,8 +1069,8 @@ export default function ReportsPage() {
         ...blankColumns(13),
       ]);
     }
-    downloadCSV(
-      'transactions-report.csv',
+    await downloadReportWorkbook(
+      'transactions-report.xlsx',
       transactionRows,
       ['Name', 'Email', 'Amount', 'Base Amount', 'Currency', 'Type', 'Campaign', 'Category', 'Cell', 'Method', 'Status', 'Gateway', 'Church', 'Entry', 'Reference', 'Paid At', 'Date'],
     );
@@ -1051,8 +1092,8 @@ export default function ReportsPage() {
     const data = response?.data ?? [];
     const { rows, headers } = buildGivingCampaignMatrix(data || []);
 
-    downloadCSV(
-      'giving-by-member-report.csv',
+    await downloadReportWorkbook(
+      'giving-by-member-report.xlsx',
       rows,
       headers,
     );
@@ -1109,8 +1150,8 @@ export default function ReportsPage() {
         '',
       ]);
     }
-    downloadCSV(
-      'cell-groups-report.csv',
+    await downloadReportWorkbook(
+      'cell-groups-report.xlsx',
       cellRows,
       ['Cell Name', 'Location / Neighbourhood', 'Church', 'Leader', 'Active Members',
         hasDates ? 'Meetings (Period)' : 'Total Meetings',
@@ -1168,8 +1209,8 @@ export default function ReportsPage() {
         ...blankColumns(4),
       ]);
     }
-    downloadCSV(
-      'church-visitors-report.csv',
+    await downloadReportWorkbook(
+      'church-visitors-report.xlsx',
       churchVisitorRows,
       ['Name', 'Phone', 'Email', 'Gender', 'Age Bracket', 'Residential Area', 'How Heard', 'First Visit', 'Return Visit', 'Total Visits', 'First Visit Date', 'Last Visit Date', 'New Convert', 'Invited By', 'Churches Visited', 'Service Types', 'Notes'],
     );
@@ -1218,8 +1259,8 @@ export default function ReportsPage() {
         ...blankColumns(6),
       ]);
     }
-    downloadCSV(
-      'visitors-report.csv',
+    await downloadReportWorkbook(
+      'visitors-report.xlsx',
       visitorRows,
       ['Name', 'Phone', 'Email', 'First Visit', 'Return Visit', 'Total Visits', 'First Visit Date', 'Last Visit Date', 'New Convert', 'Invited By', 'Cells Visited', 'Zones', 'Churches Visited', 'Meeting Topics', 'Notes'],
     );
@@ -2011,7 +2052,6 @@ export default function ReportsPage() {
     </div>
   );
 }
-
 function KPIForm({ kpi, onClose }: { kpi?: KPI | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
