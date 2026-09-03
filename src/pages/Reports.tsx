@@ -1068,38 +1068,62 @@ export default function ReportsPage() {
     const response = await transactionsService.exportAll(params);
     handleBatchResponse('Transaction Report', response);
     const transactions: any[] = (response as any)?.data ?? [];
-    const transactionRows = transactions.map((t: any) => [
-      t.user ? `${t.user.firstName} ${t.user.lastName}` : (t.guestName || 'Guest'),
-      t.user?.email || t.guestEmail || '',
-      t.amount.toString(),
-      t.baseAmount?.toString() || '',
-      t.currency,
-      t.type,
-      t.campaignName || '',
-      t.campaignCategory || '',
-      t.cellName || '',
-      t.paymentMethod,
-      t.status,
-      t.gateway || '',
-      t.church?.name || '',
-      t.isManual ? 'Manual' : 'Online',
-      t.reference || '',
-      t.paidAt ? new Date(t.paidAt).toLocaleDateString() : '',
-      new Date(t.createdAt).toLocaleDateString(),
-    ]);
+    const transactionRows = transactions.flatMap((t: any) => {
+      const commonColumns = [
+        t.user ? `${t.user.firstName} ${t.user.lastName}` : (t.guestName || 'Guest'),
+        t.user?.email || t.guestEmail || '',
+        t.type,
+        t.paymentMethod,
+        t.status,
+        t.gateway || '',
+        t.isManual ? 'Manual' : 'Online',
+        t.reference || '',
+        t.paidAt ? new Date(t.paidAt).toLocaleDateString() : '',
+        new Date(t.createdAt).toLocaleDateString(),
+      ];
+
+      if (t.type === 'donation' && Array.isArray(t.donationLines) && t.donationLines.length > 0) {
+        return t.donationLines.map((line: any) => [
+          ...commonColumns,
+          line.amount?.toString() || '0',
+          t.amount?.toString() || '',
+          line.currency || t.currency,
+          line.campaignName || t.campaignName || '',
+          line.campaignCategory || t.campaignCategory || '',
+          line.cellName || t.cellName || '',
+          line.churchName || t.church?.name || '',
+          t.eventTitle || '',
+        ]);
+      }
+
+      return [[
+        ...commonColumns,
+        t.amount?.toString() || '0',
+        t.amount?.toString() || '',
+        t.currency,
+        t.campaignName || '',
+        t.campaignCategory || '',
+        t.cellName || '',
+        t.church?.name || '',
+        t.eventTitle || '',
+      ]];
+    });
     if (transactionRows.length > 0) {
+      const rowAmounts = transactionRows.map(row => ({ currency: String(row[12] || ''), amount: row[10] }));
       transactionRows.push([
         'TOTAL',
         `${transactions.length} transactions`,
-        summarizeAmountsByCurrency(transactions, t => t.currency, t => t.amount),
-        summarizeAmountsByCurrency(transactions, t => t.currency, t => t.baseAmount ?? t.amount),
-        ...blankColumns(13),
+        `${transactionRows.length} report rows`,
+        ...blankColumns(7),
+        summarizeAmountsByCurrency(rowAmounts, row => row.currency, row => row.amount),
+        '',
+        ...blankColumns(6),
       ]);
     }
     await downloadReportWorkbook(
       'transactions-report.xlsx',
       transactionRows,
-      ['Name', 'Email', 'Amount', 'Base Amount', 'Currency', 'Type', 'Campaign', 'Category', 'Cell', 'Method', 'Status', 'Gateway', 'Church', 'Entry', 'Reference', 'Paid At', 'Date'],
+      ['Name', 'Email', 'Type', 'Method', 'Status', 'Gateway', 'Entry', 'Reference', 'Paid At', 'Date', 'Line Amount', 'Transaction Amount', 'Currency', 'Campaign', 'Category', 'Cell', 'Church', 'Event'],
     );
   };
 
