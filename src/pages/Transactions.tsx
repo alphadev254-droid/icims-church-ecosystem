@@ -20,6 +20,17 @@ import { STALE_TIME } from '@/lib/query-config';
 import { Link } from 'react-router-dom';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
 
+const getErrorMessage = (err: unknown, fallback: string) => {
+  if (typeof err === 'object' && err !== null && 'response' in err) {
+    const response = (err as { response?: { data?: { message?: unknown } } }).response;
+    if (typeof response?.data?.message === 'string') {
+      return response.data.message;
+    }
+  }
+
+  return fallback;
+};
+
 export default function TransactionsPage() {
   const TYPE_LABEL: Record<string, string> = {
     donation: 'Giving',
@@ -41,18 +52,6 @@ export default function TransactionsPage() {
   const hasTransactions = useHasFeature(PACKAGE_FEATURES.TRANSACTIONS_VIEW);
   const qc = useQueryClient();
   const isMember = role === 'member';
-
-  // Block members from accessing this page (after all hooks)
-  if (isMember) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Access Denied</h1>
-          <p className="text-sm text-muted-foreground">You don't have permission to view transactions.</p>
-        </div>
-      </div>
-    );
-  }
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
@@ -76,7 +75,7 @@ export default function TransactionsPage() {
       endDate: endDate || undefined,
     }),
     staleTime: STALE_TIME.DEFAULT,
-    enabled: hasTransactions,
+    enabled: hasTransactions && !isMember,
   });
 
   const transactions = data?.data || [];
@@ -86,7 +85,7 @@ export default function TransactionsPage() {
     queryKey: ['transaction-campaigns', churchFilter],
     queryFn: () => givingService.getSelectableCampaigns(churchFilter !== 'all' ? { churchId: churchFilter } : undefined),
     staleTime: STALE_TIME.DEFAULT,
-    enabled: hasTransactions,
+    enabled: hasTransactions && !isMember,
   });
 
   const updateStatusMutation = useMutation({
@@ -96,10 +95,21 @@ export default function TransactionsPage() {
       toast.success('Transaction status updated'); 
       qc.invalidateQueries({ queryKey: ['transactions'] }); 
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update status'),
+    onError: (err: unknown) => toast.error(getErrorMessage(err, 'Failed to update status')),
   });
 
   const canUpdate = hasPermission('transactions:update');
+
+  if (isMember) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Access Denied</h1>
+          <p className="text-sm text-muted-foreground">You don't have permission to view transactions.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!hasTransactions) {
     return (
@@ -374,7 +384,7 @@ export default function TransactionsPage() {
                         {canUpdate && transaction.status === 'pending' && (
                           <Select
                             defaultValue={transaction.status}
-                            onValueChange={(v) => updateStatusMutation.mutate({ id: transaction.id, status: v as any })}
+                            onValueChange={(v) => updateStatusMutation.mutate({ id: transaction.id, status: v as Transaction['status'] })}
                           >
                             <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
