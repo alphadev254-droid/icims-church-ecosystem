@@ -22,8 +22,15 @@ export interface TeamMember {
   memberType?: string | null;
   loginEnabled?: boolean;
   membershipType?: string;
+  roleName?: string | null;
+  roleDisplayName?: string | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  residentialNeighbourhood?: string | null;
   maritalStatus?: string;
+  weddingDate?: string | null;
   serviceInterest?: string;
+  baptizedByImmersion?: boolean | null;
   inTeam: boolean;
   isLeader: boolean;
 }

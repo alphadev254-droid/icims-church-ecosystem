@@ -17,6 +17,9 @@ import { Search, ArrowLeft, Crown, Users, ChevronLeft, ChevronRight, ShieldAlert
 import { AgeRangeFilter } from '@/components/AgeRangeFilter';
 import { toast } from 'sonner';
 
+const formatRoleLabel = (member: { roleDisplayName?: string | null; roleName?: string | null }) =>
+  member.roleDisplayName || member.roleName?.replace(/_/g, ' ') || 'Member';
+
 export default function TeamMembersPage() {
   const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
@@ -143,14 +146,14 @@ export default function TeamMembersPage() {
               lastName: m.lastName,
               email: m.email,
               phone: m.phone || '',
-              gender: (m as any).gender || '',
-              dateOfBirth: (m as any).dateOfBirth ? new Date((m as any).dateOfBirth).toLocaleDateString() : '',
-              residentialNeighbourhood: (m as any).residentialNeighbourhood || '',
-              membershipType: m.membershipType || '',
+              gender: m.gender || '',
+              dateOfBirth: m.dateOfBirth ? new Date(m.dateOfBirth).toLocaleDateString() : '',
+              residentialNeighbourhood: m.residentialNeighbourhood || '',
+              role: formatRoleLabel(m),
               maritalStatus: m.maritalStatus || '',
-              weddingDate: (m as any).weddingDate ? new Date((m as any).weddingDate).toLocaleDateString() : '',
+              weddingDate: m.weddingDate ? new Date(m.weddingDate).toLocaleDateString() : '',
               serviceInterest: m.serviceInterest || '',
-              baptizedByImmersion: (m as any).baptizedByImmersion ? 'Yes' : 'No',
+              baptizedByImmersion: m.baptizedByImmersion ? 'Yes' : 'No',
               inTeam: m.inTeam ? 'Yes' : 'No',
               isLeader: m.isLeader ? 'Yes' : 'No',
             }))}
@@ -163,7 +166,7 @@ export default function TeamMembersPage() {
               { label: 'Gender', key: 'gender' },
               { label: 'Date of Birth', key: 'dateOfBirth' },
               { label: 'Neighbourhood', key: 'residentialNeighbourhood' },
-              { label: 'Membership Type', key: 'membershipType' },
+              { label: 'Role', key: 'role' },
               { label: 'Marital Status', key: 'maritalStatus' },
               { label: 'Wedding Date', key: 'weddingDate' },
               { label: 'Service Interest', key: 'serviceInterest' },
@@ -263,7 +266,7 @@ export default function TeamMembersPage() {
                         <TableHead className="text-xs sm:text-sm">Gender</TableHead>
                         <TableHead className="text-xs sm:text-sm">DOB</TableHead>
                         <TableHead className="text-xs sm:text-sm">Neighbourhood</TableHead>
-                        <TableHead className="text-xs sm:text-sm">Membership</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Role</TableHead>
                         <TableHead className="text-xs sm:text-sm">Marital Status</TableHead>
                         <TableHead className="text-xs sm:text-sm">Wedding Date</TableHead>
                         <TableHead className="text-xs sm:text-sm">Service Interest</TableHead>
@@ -287,16 +290,16 @@ export default function TeamMembersPage() {
                           <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{member.firstName} {member.lastName}{member.memberType === 'child' ? ' (Child)' : ''}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.email}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.phone || '—'}</TableCell>
-                          <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{(member as any).gender || '—'}</TableCell>
-                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).dateOfBirth ? new Date((member as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
-                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).residentialNeighbourhood || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{member.gender || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.residentialNeighbourhood || '—'}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs whitespace-nowrap">{member.membershipType || 'Member'}</Badge>
+                            <Badge variant="outline" className="text-xs whitespace-nowrap capitalize">{formatRoleLabel(member)}</Badge>
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{member.maritalStatus || '—'}</TableCell>
-                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).weddingDate ? new Date((member as any).weddingDate).toLocaleDateString() : '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.weddingDate ? new Date(member.weddingDate).toLocaleDateString() : '—'}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.serviceInterest || '—'}</TableCell>
-                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -366,7 +369,7 @@ export default function TeamMembersPage() {
                         <TableHead className="text-xs sm:text-sm">Gender</TableHead>
                         <TableHead className="text-xs sm:text-sm">DOB</TableHead>
                         <TableHead className="text-xs sm:text-sm">Neighbourhood</TableHead>
-                        <TableHead className="text-xs sm:text-sm">Membership</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Role</TableHead>
                         <TableHead className="text-xs sm:text-sm">Marital Status</TableHead>
                         <TableHead className="text-xs sm:text-sm">Wedding Date</TableHead>
                         <TableHead className="text-xs sm:text-sm">Service Interest</TableHead>
@@ -391,16 +394,16 @@ export default function TeamMembersPage() {
                           <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{member.firstName} {member.lastName}{member.memberType === 'child' ? ' (Child)' : ''}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.email}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.phone || '—'}</TableCell>
-                          <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{(member as any).gender || '—'}</TableCell>
-                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).dateOfBirth ? new Date((member as any).dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
-                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).residentialNeighbourhood || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{member.gender || '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.residentialNeighbourhood || '—'}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs whitespace-nowrap">{member.membershipType || 'Member'}</Badge>
+                            <Badge variant="outline" className="text-xs whitespace-nowrap capitalize">{formatRoleLabel(member)}</Badge>
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground capitalize whitespace-nowrap">{member.maritalStatus || '—'}</TableCell>
-                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).weddingDate ? new Date((member as any).weddingDate).toLocaleDateString() : '—'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.weddingDate ? new Date(member.weddingDate).toLocaleDateString() : '—'}</TableCell>
                           <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.serviceInterest || '—'}</TableCell>
-                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{(member as any).baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
+                          <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{member.baptizedByImmersion ? 'Yes' : 'No'}</TableCell>
                           <TableCell className="text-center">
                             <button
                               onClick={() => leaderMutation.mutate({ userId: member.id, isLeader: !member.isLeader })}
