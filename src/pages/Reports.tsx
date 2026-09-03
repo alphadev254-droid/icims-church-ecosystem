@@ -1766,23 +1766,6 @@ export default function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
-          {txTypeFilter === 'donation' && (
-            <div>
-              <Label className="text-xs">Filter by Campaign</Label>
-              <Select value={txCampaignFilter} onValueChange={setTxCampaignFilter}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Campaigns" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Campaigns</SelectItem>
-                  {transactionCampaignOptions.map((campaign: any) => (
-                    <SelectItem key={campaign.id} value={campaign.id}>
-                      {campaign.name}
-                      {campaign.availableChurches?.length === 1 ? ` - ${campaign.availableChurches[0].name}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <div>
             <Label className="text-xs">Filter by Church</Label>
             <Select value={txChurchFilter} onValueChange={setTxChurchFilter}>
@@ -1794,6 +1777,30 @@ export default function ReportsPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Filter by Campaign</Label>
+            <Select
+              value={txCampaignFilter}
+              onValueChange={setTxCampaignFilter}
+              disabled={txTypeFilter !== 'donation'}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder={txTypeFilter === 'donation' ? 'All Campaigns' : 'Select Giving type first'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Campaigns</SelectItem>
+                {transactionCampaignOptions.map((campaign: any) => (
+                  <SelectItem key={campaign.id} value={campaign.id}>
+                    {campaign.name}
+                    {campaign.availableChurches?.length === 1 ? ` - ${campaign.availableChurches[0].name}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {txTypeFilter !== 'donation' && (
+              <p className="mt-1 text-[11px] text-muted-foreground">Available when Type is Giving.</p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
