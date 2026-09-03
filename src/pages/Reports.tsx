@@ -175,7 +175,11 @@ function buildGivingCampaignMatrix(data: GivingCampaignExportRow[], options: { i
     if (!campaignNames.includes(campaignName)) campaignNames.push(campaignName);
 
     const name = row.name || [row.firstName, row.lastName].filter(Boolean).join(' ').trim() || row.email || row.phone || 'Unknown Donor';
-    const key = row.userId || row.donorKey || `${row.email || ''}|${row.phone || ''}|${name}`;
+    const donorKey = row.userId || row.donorKey || `${row.email || ''}|${row.phone || ''}|${name}`;
+    const church = row.church || '';
+    const cell = row.cell || '';
+    const currency = row.currency || '';
+    const key = [donorKey, church, cell, currency].join('|');
     const amount = toReportAmount(row.totalGiven ?? row.totalAmount);
 
     const member = members.get(key) ?? {
@@ -183,17 +187,14 @@ function buildGivingCampaignMatrix(data: GivingCampaignExportRow[], options: { i
       email: row.email || '',
       phone: row.phone || '',
       donorType: '',
-      church: '',
-      cell: '',
-      currency: '',
+      church,
+      cell,
+      currency,
       campaignAmounts: new Map<string, number>(),
       total: 0,
     };
 
     member.donorType = appendUniqueValue(member.donorType, row.donorType || '');
-    member.church = appendUniqueValue(member.church, row.church || '');
-    member.cell = appendUniqueValue(member.cell, row.cell || '');
-    member.currency = appendUniqueValue(member.currency, row.currency || '');
     member.campaignAmounts.set(campaignName, (member.campaignAmounts.get(campaignName) ?? 0) + amount);
     member.total += amount;
     members.set(key, member);
@@ -257,7 +258,10 @@ function buildPledgeCampaignMatrix(data: PledgeCampaignExportRow[]) {
     if (!campaignNames.includes(campaignName)) campaignNames.push(campaignName);
 
     const name = row.name || row.email || row.phone || 'Unknown Pledger';
-    const key = row.pledgerKey || `${row.email || ''}|${row.phone || ''}|${name}`;
+    const pledgerKey = row.pledgerKey || `${row.email || ''}|${row.phone || ''}|${name}`;
+    const church = row.church || '';
+    const currency = row.currency || '';
+    const key = [pledgerKey, church, currency].join('|');
     const pledged = toReportAmount(row.pledgedTotal);
     const paid = toReportAmount(row.paidTotal);
     const outstanding = row.outstandingTotal == null ? pledged - paid : toReportAmount(row.outstandingTotal);
@@ -267,8 +271,8 @@ function buildPledgeCampaignMatrix(data: PledgeCampaignExportRow[]) {
       email: row.email || '',
       phone: row.phone || '',
       type: '',
-      church: '',
-      currency: '',
+      church,
+      currency,
       statuses: '',
       campaignAmounts: new Map<string, { pledged: number; paid: number; outstanding: number }>(),
       pledgedTotal: 0,
@@ -277,8 +281,6 @@ function buildPledgeCampaignMatrix(data: PledgeCampaignExportRow[]) {
     };
 
     pledger.type = appendUniqueValue(pledger.type, row.pledgerType || '');
-    pledger.church = appendUniqueValue(pledger.church, row.church || '');
-    pledger.currency = appendUniqueValue(pledger.currency, row.currency || '');
     pledger.statuses = appendUniqueValue(pledger.statuses, row.statuses || '');
 
     const existingCampaign = pledger.campaignAmounts.get(campaignName) ?? { pledged: 0, paid: 0, outstanding: 0 };
