@@ -346,6 +346,9 @@ export function AddAttendeesDialog({
                     {visitorForm.invitedByUserId && (
                       <p className="text-xs text-accent mt-0.5">✓ {visitorForm.invitedByName}</p>
                     )}
+                    {!visitorForm.invitedByUserId && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Search is limited to members of {record.church?.name || 'this church'}.</p>
+                    )}
                     {inviterOpen && debouncedInviterQuery.length >= 3 && (
                       <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-md max-h-48 overflow-y-auto">
                         {inviterSearchQuery.isLoading ? (
