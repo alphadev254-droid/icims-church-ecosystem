@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { attendanceService, type AttendanceVisitor } from '@/services/attendance';
 import { sharedAccessService } from '@/services/sharedAccess';
+import { useDebounce } from '@/hooks/use-debounce';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,6 +39,9 @@ export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Prop
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [draft, setDraft] = useState<AttendanceVisitor>({ name: '' });
+  const [inviterQuery, setInviterQuery] = useState('');
+  const [inviterOpen, setInviterOpen] = useState(false);
+  const debouncedInviterQuery = useDebounce(inviterQuery, 300);
   const [page, setPage] = useState(1);
   const [accumulated, setAccumulated] = useState<(AttendanceVisitor & { id?: string })[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number; errors: number } | null>(null);
@@ -75,6 +80,14 @@ export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Prop
     qc.removeQueries({ queryKey: ['attendance-visitors', record.id] });
   };
 
+  const inviterSearchQuery = useQuery({
+    queryKey: ['visitor-inviter-search', record.id, debouncedInviterQuery, token],
+    queryFn: () => token
+      ? sharedAccessService.searchMembersByScannerLink(token, { q: debouncedInviterQuery, limit: 10 })
+      : attendanceService.searchMembers(record.id, { q: debouncedInviterQuery, limit: 10 }),
+    enabled: addOpen && debouncedInviterQuery.length >= 3,
+  });
+
   const addMutation = useMutation({
     mutationFn: (v: AttendanceVisitor) => addVisitorApi(record.id, v),
     onSuccess: () => {
@@ -82,6 +95,7 @@ export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Prop
       resetList();
       setAddOpen(false);
       setDraft({ name: '' });
+      setInviterQuery('');
       toast.success('Visitor added');
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to add visitor'),
@@ -204,6 +218,11 @@ export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Prop
                     {v.howHeard && <span>Via: {HOW_HEARD_LABELS[v.howHeard] ?? v.howHeard}</span>}
                     {v.isNewConvert && <span className="font-medium text-accent">New convert</span>}
                   </div>
+                  {v.invitedByUser && (
+                    <div className="text-xs text-muted-foreground col-span-2 sm:col-span-3">
+                      Invited by: <span className="font-medium">{`${v.invitedByUser.firstName} ${v.invitedByUser.lastName}`.trim()}</span>
+                    </div>
+                  )}
                   {v.notes && <div className="text-xs text-muted-foreground italic col-span-2 sm:col-span-3">{v.notes}</div>}
                 </div>
                 {canUpdate && (
@@ -268,13 +287,60 @@ export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Prop
                 </Select>
               </div>
             </div>
+            <div className="relative">
+              <Label className="text-xs">Invited by</Label>
+              <Input
+                className="h-8 text-sm mt-0.5"
+                value={inviterQuery}
+                onChange={e => {
+                  setInviterQuery(e.target.value);
+                  if (!e.target.value) setDraft(d => ({ ...d, invitedByUserId: undefined }));
+                  setInviterOpen(true);
+                }}
+                onFocus={() => setInviterOpen(true)}
+                onBlur={() => setTimeout(() => setInviterOpen(false), 150)}
+                placeholder="Type name to search members…"
+                autoComplete="off"
+              />
+              {draft.invitedByUserId && (
+                <p className="text-xs text-accent mt-0.5">✓ {inviterQuery}</p>
+              )}
+              {inviterOpen && debouncedInviterQuery.length >= 3 && (
+                <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-md max-h-40 overflow-y-auto">
+                  {inviterSearchQuery.isLoading ? (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
+                  ) : (inviterSearchQuery.data?.data ?? []).length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">No members found</div>
+                  ) : (
+                    (inviterSearchQuery.data?.data ?? []).map((m: any) => {
+                      const name = `${m.firstName || ''} ${m.lastName || ''}`.trim();
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
+                          onClick={() => {
+                            setDraft(d => ({ ...d, invitedByUserId: m.id }));
+                            setInviterQuery(name);
+                            setInviterOpen(false);
+                          }}
+                        >
+                          <span className="font-medium">{name}</span>
+                          {m.phone && <span className="ml-2 text-xs text-muted-foreground">{m.phone}</span>}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
             <div><Label className="text-xs">Notes</Label><Input className="h-8 text-sm mt-0.5" value={draft.notes ?? ''} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></div>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={draft.isNewConvert === true} onCheckedChange={checked => setDraft(d => ({ ...d, isNewConvert: checked === true }))} />
               New convert
             </label>
             <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" size="sm" onClick={() => { setAddOpen(false); setDraft({ name: '' }); }}>Cancel</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => { setAddOpen(false); setDraft({ name: '' }); setInviterQuery(''); }}>Cancel</Button>
               <Button type="submit" size="sm" disabled={addMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">
                 {addMutation.isPending ? 'Adding...' : 'Add Visitor'}
               </Button>

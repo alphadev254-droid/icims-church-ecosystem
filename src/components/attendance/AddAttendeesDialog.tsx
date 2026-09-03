@@ -22,7 +22,8 @@ type VisitorForm = {
   guestAgeBracket: string;
   guestFirstTime: boolean;
   isNewConvert: boolean;
-  invitedBy: string;
+  invitedByUserId: string;
+  invitedByName: string;
 };
 
 const emptyVisitorForm: VisitorForm = {
@@ -33,7 +34,8 @@ const emptyVisitorForm: VisitorForm = {
   guestAgeBracket: '',
   guestFirstTime: false,
   isNewConvert: false,
-  invitedBy: '',
+  invitedByUserId: '',
+  invitedByName: '',
 };
 
 export function AddAttendeesDialog({
@@ -55,6 +57,9 @@ export function AddAttendeesDialog({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [visitorForm, setVisitorForm] = useState<VisitorForm>(emptyVisitorForm);
   const [visitorType, setVisitorType] = useState<'guest' | 'ministry_member'>('guest');
+  const [inviterQuery, setInviterQuery] = useState('');
+  const [debouncedInviterQuery, setDebouncedInviterQuery] = useState('');
+  const [inviterOpen, setInviterOpen] = useState(false);
 
   useEffect(() => {
     setTab(initialTab);
@@ -67,6 +72,17 @@ export function AddAttendeesDialog({
     }, 300);
     return () => window.clearTimeout(timer);
   }, [query]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedInviterQuery(inviterQuery.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [inviterQuery]);
+
+  const inviterSearchQuery = useQuery({
+    queryKey: ['attendance-inviter-search', record.id, debouncedInviterQuery],
+    queryFn: () => attendanceService.searchMembers(record.id, { q: debouncedInviterQuery, limit: 10 }),
+    enabled: open && tab === 'guest' && debouncedInviterQuery.length >= 3,
+  });
 
   const membersQuery = useQuery({
     queryKey: ['attendance-member-search', record.id, debouncedQuery, page],
@@ -100,11 +116,12 @@ export function AddAttendeesDialog({
       guestAgeBracket: visitorForm.guestAgeBracket || undefined,
       guestFirstTime: visitorType === 'guest' ? visitorForm.guestFirstTime : false,
       isNewConvert: visitorType === 'guest' ? visitorForm.isNewConvert : false,
-      invitedBy: visitorType === 'guest' ? visitorForm.invitedBy.trim() || undefined : undefined,
+      invitedByUserId: visitorType === 'guest' ? visitorForm.invitedByUserId || undefined : undefined,
     }),
     onSuccess: () => {
       refreshAttendance();
       setVisitorForm(emptyVisitorForm);
+      setInviterQuery('');
       setVisitorType('guest');
       toast.success(`${visitorType === 'guest' ? 'Guest' : 'Ministry member'} marked present`);
     },
@@ -312,9 +329,51 @@ export function AddAttendeesDialog({
               </div>
               {visitorType === 'guest' && (
                 <>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 relative">
                     <Label>Invited by</Label>
-                    <Input value={visitorForm.invitedBy} onChange={event => setVisitorForm(form => ({ ...form, invitedBy: event.target.value }))} />
+                    <Input
+                      value={inviterQuery}
+                      onChange={e => {
+                        setInviterQuery(e.target.value);
+                        if (!e.target.value) setVisitorForm(f => ({ ...f, invitedByUserId: '', invitedByName: '' }));
+                        setInviterOpen(true);
+                      }}
+                      onFocus={() => setInviterOpen(true)}
+                      onBlur={() => setTimeout(() => setInviterOpen(false), 150)}
+                      placeholder="Type name to search members…"
+                      autoComplete="off"
+                    />
+                    {visitorForm.invitedByUserId && (
+                      <p className="text-xs text-accent mt-0.5">✓ {visitorForm.invitedByName}</p>
+                    )}
+                    {inviterOpen && debouncedInviterQuery.length >= 3 && (
+                      <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-md max-h-48 overflow-y-auto">
+                        {inviterSearchQuery.isLoading ? (
+                          <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
+                        ) : (inviterSearchQuery.data?.data ?? []).length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-muted-foreground">No members found</div>
+                        ) : (
+                          (inviterSearchQuery.data?.data ?? []).map(m => {
+                            const name = `${m.firstName || ''} ${m.lastName || ''}`.trim();
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
+                                onClick={() => {
+                                  setVisitorForm(f => ({ ...f, invitedByUserId: m.id, invitedByName: name }));
+                                  setInviterQuery(name);
+                                  setInviterOpen(false);
+                                }}
+                              >
+                                <span className="font-medium">{name}</span>
+                                {m.phone && <span className="ml-2 text-xs text-muted-foreground">{m.phone}</span>}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
                   </div>
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox checked={visitorForm.guestFirstTime} onCheckedChange={checked => setVisitorForm(form => ({ ...form, guestFirstTime: checked === true }))} />
