@@ -388,6 +388,7 @@ export default function ReportsPage() {
   const [pledgeCampaignFilter, setPledgeCampaignFilter] = useState('all');
   const [txChurchFilter, setTxChurchFilter] = useState('all');
   const [txTypeFilter, setTxTypeFilter] = useState('all');
+  const [txCampaignFilter, setTxCampaignFilter] = useState('all');
   const [txStartDate, setTxStartDate] = useState('');
   const [txEndDate, setTxEndDate] = useState('');
   const [givingByMemberChurchFilter, setGivingByMemberChurchFilter] = useState('all');
@@ -517,6 +518,7 @@ export default function ReportsPage() {
               const p: any = { limit, page, export: true };
               if (txChurchFilter !== 'all') p.churchId = txChurchFilter;
               if (txTypeFilter !== 'all') p.type = txTypeFilter;
+              if (txTypeFilter === 'donation' && txCampaignFilter !== 'all') p.campaignId = txCampaignFilter;
               if (txStartDate) p.startDate = txStartDate;
               if (txEndDate) p.endDate = txEndDate;
               response = await transactionsService.exportAll(p);
@@ -576,7 +578,7 @@ export default function ReportsPage() {
     attendanceServiceFilter, attendanceChurchFilter, attendanceStartDate, attendanceEndDate,
     inactiveMemberChurchFilter,
     pledgeChurchFilter, pledgeStatusFilter, pledgeStartDate, pledgeEndDate,
-    txChurchFilter, txTypeFilter, txStartDate, txEndDate,
+    txChurchFilter, txTypeFilter, txCampaignFilter, txStartDate, txEndDate,
     cellChurchFilter, cellGroupCellFilter, cellGroupStartDate, cellGroupEndDate,
     visitorChurchFilter, visitorCellFilter, visitorStartDate, visitorEndDate,
     churchVisitorChurchFilter, churchVisitorServiceType, churchVisitorStartDate, churchVisitorEndDate,
@@ -634,6 +636,16 @@ export default function ReportsPage() {
     }),
     [flatCampaigns, pledgeCategoryFilter, pledgeChurchFilter],
   );
+  const transactionCampaignOptions = useMemo(
+    () => (flatCampaigns as any[]).filter((campaign: any) => {
+      const availableChurchIds = Array.isArray(campaign.availableChurchIds)
+        ? campaign.availableChurchIds
+        : [campaign.churchId].filter(Boolean);
+
+      return txChurchFilter === 'all' || availableChurchIds.includes(txChurchFilter);
+    }),
+    [flatCampaigns, txChurchFilter],
+  );
   const shouldUseGivingCellFilter = givingCategoryFilter === 'fellowship_offering';
   const effectiveGivingCellFilter = shouldUseGivingCellFilter && givingCellFilter !== 'all'
     ? givingCellFilter
@@ -678,6 +690,18 @@ export default function ReportsPage() {
       setPledgeCampaignFilter('all');
     }
   }, [pledgeCampaignFilter, pledgeCampaignOptions]);
+
+  useEffect(() => {
+    if (txTypeFilter !== 'donation') {
+      if (txCampaignFilter !== 'all') setTxCampaignFilter('all');
+      return;
+    }
+    if (txCampaignFilter === 'all') return;
+    const selectedCampaignStillVisible = transactionCampaignOptions.some((campaign: any) => campaign.id === txCampaignFilter);
+    if (!selectedCampaignStillVisible) {
+      setTxCampaignFilter('all');
+    }
+  }, [txTypeFilter, txCampaignFilter, transactionCampaignOptions]);
 
   const calculateMutation = useMutation({
     mutationFn: kpiService.calculate,
@@ -1036,6 +1060,7 @@ export default function ReportsPage() {
     const params: any = { ...batchParams };
     if (txChurchFilter !== 'all') params.churchId = txChurchFilter;
     if (txTypeFilter !== 'all') params.type = txTypeFilter;
+    if (txTypeFilter === 'donation' && txCampaignFilter !== 'all') params.campaignId = txCampaignFilter;
     if (txStartDate) params.startDate = txStartDate;
     if (txEndDate) params.endDate = txEndDate;
     const response = await transactionsService.exportAll(params);
@@ -1741,6 +1766,23 @@ export default function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
+          {txTypeFilter === 'donation' && (
+            <div>
+              <Label className="text-xs">Filter by Campaign</Label>
+              <Select value={txCampaignFilter} onValueChange={setTxCampaignFilter}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Campaigns" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Campaigns</SelectItem>
+                  {transactionCampaignOptions.map((campaign: any) => (
+                    <SelectItem key={campaign.id} value={campaign.id}>
+                      {campaign.name}
+                      {campaign.availableChurches?.length === 1 ? ` - ${campaign.availableChurches[0].name}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label className="text-xs">Filter by Church</Label>
             <Select value={txChurchFilter} onValueChange={setTxChurchFilter}>
@@ -2040,7 +2082,7 @@ export default function ReportsPage() {
                       <Download className="h-3.5 w-3.5" />
                       {bSize > 0
                         ? `Export Batch ${bPage} (rows ${fromRow.toLocaleString()}-${toRow.toLocaleString()})${bTotalPages > 0 ? ` · P${bPage} of ${bTotalPages}` : ''}`
-                        : 'Export CSV'}
+                        : 'Export XLSX'}
                     </Button>
                   </CardContent>
                 </Card>
