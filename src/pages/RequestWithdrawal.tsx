@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { walletService, type WithdrawalFeePreview, type WithdrawalPayload } from '@/services/wallet';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
+import { digitsInputProps, digitsOnly } from '@/lib/numeric-input';
 
 type WithdrawalRequestState = {
   payload?: WithdrawalPayload;
@@ -180,8 +181,8 @@ export default function RequestWithdrawalPage() {
               <Label className="text-xs sm:text-sm">OTP Code</Label>
               <Input
                 value={otpCode}
-                onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                inputMode="numeric"
+                onChange={e => setOtpCode(digitsOnly(e.target.value, 6))}
+                {...digitsInputProps}
                 placeholder="Enter 6-digit OTP"
                 className="mt-1.5 h-10 text-sm tracking-[0.35em]"
               />

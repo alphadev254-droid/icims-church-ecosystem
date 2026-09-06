@@ -16,6 +16,7 @@ import { AlertTriangle, CheckCircle2, Wallet, Plus, ArrowDownToLine } from 'luci
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
+import { decimalInputProps, digitsInputProps, digitsOnly, phoneInputProps, phoneInputValue, sanitizeDecimalInput, sanitizeDigitsInput, sanitizePhoneInput } from '@/lib/numeric-input';
 
 type SupportedBank = { uuid?: string; bank_uuid?: string; id?: string | number; name?: string };
 
@@ -165,9 +166,10 @@ function RequestWithdrawalDialog({
           <div>
             <Label className="text-xs sm:text-sm">Amount *</Label>
             <Input
-              type="number"
+              {...decimalInputProps}
               step="0.01"
               value={form.amount}
+              onInput={sanitizeDecimalInput}
               onChange={(e) => setForm(current => ({ ...current, amount: e.target.value }))}
               placeholder="Enter amount"
               className="mt-1.5 h-9 text-sm"
@@ -212,8 +214,10 @@ function RequestWithdrawalDialog({
               <div>
                 <Label className="text-xs sm:text-sm">Mobile Number *</Label>
                 <Input
+                  {...phoneInputProps}
                   value={form.mobileNumber}
-                  onChange={(e) => setForm(current => ({ ...current, mobileNumber: e.target.value }))}
+                  onInput={sanitizePhoneInput}
+                  onChange={(e) => setForm(current => ({ ...current, mobileNumber: phoneInputValue(e.target.value) }))}
                   placeholder="e.g. 0991234567"
                   className="mt-1.5 h-9 text-sm"
                 />
@@ -241,7 +245,7 @@ function RequestWithdrawalDialog({
               </div>
               <div>
                 <Label className="text-xs sm:text-sm">Account Number *</Label>
-                <Input value={form.accountNumber} onChange={(e) => setForm(current => ({ ...current, accountNumber: e.target.value }))} className="mt-1.5 h-9 text-sm" />
+                <Input {...digitsInputProps} value={form.accountNumber} onInput={e => sanitizeDigitsInput(e)} onChange={(e) => setForm(current => ({ ...current, accountNumber: digitsOnly(e.target.value) }))} className="mt-1.5 h-9 text-sm" />
               </div>
             </>
           )}

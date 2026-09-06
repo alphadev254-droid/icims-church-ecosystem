@@ -10,6 +10,7 @@ import { HandCoins, Share2, Copy, Check, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { givingService } from '@/services/giving';
+import { decimalInputProps, phoneInputProps, phoneInputValue, sanitizeDecimalInput, sanitizePhoneInput } from '@/lib/numeric-input';
 
 export default function PublicCampaignPage() {
   const { id } = useParams<{ id: string }>();
@@ -283,9 +284,11 @@ export default function PublicCampaignPage() {
               <Input
                 id="guestPhone"
                 type="tel"
+                {...phoneInputProps}
                 placeholder="+265 999 000 000"
                 value={form.guestPhone}
-                onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))}
+                onInput={sanitizePhoneInput}
+                onChange={e => setForm(f => ({ ...f, guestPhone: phoneInputValue(e.target.value) }))}
                 required
               />
             </div>
@@ -352,10 +355,11 @@ export default function PublicCampaignPage() {
               <Label htmlFor="amount">Amount ({campaign.currency}) *</Label>
               <Input
                 id="amount"
-                type="number"
+                {...decimalInputProps}
                 min="1"
                 placeholder="Enter amount"
                 value={form.amount}
+                onInput={sanitizeDecimalInput}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                 onBlur={handleAmountBlur}
                 required

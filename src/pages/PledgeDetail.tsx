@@ -19,6 +19,7 @@ import {
 import { STALE_TIME } from '@/lib/query-config';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
 import { toast } from 'sonner';
+import { decimalInputProps, decimalInputValue, sanitizeDecimalInput } from '@/lib/numeric-input';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -103,8 +104,8 @@ function PayPledgeDialog({ pledge, open, onClose }: { pledge: Pledge; open: bool
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground w-10 shrink-0">{pledge.currency}</span>
               <input
-                type="number" min="1" max={balance} step="any" placeholder="0.00"
-                value={amount} onChange={e => setAmount(e.target.value)}
+                {...decimalInputProps} min="1" max={balance} step="any" placeholder="0.00"
+                value={amount} onInput={sanitizeDecimalInput} onChange={e => setAmount(decimalInputValue(e.target.value))}
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
             </div>

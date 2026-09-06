@@ -20,6 +20,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
+import { decimalInputProps, sanitizeDecimalInput } from '@/lib/numeric-input';
 
 // ─── Member search dropdown ───────────────────────────────────────────────────
 
@@ -363,7 +364,7 @@ function CashDonationDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Amount <span className="text-destructive">*</span></Label>
-              <Input type="number" min="1" step="any" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
+              <Input {...decimalInputProps} min="1" step="any" placeholder="0.00" value={amount} onInput={sanitizeDecimalInput} onChange={e => setAmount(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>Currency</Label>

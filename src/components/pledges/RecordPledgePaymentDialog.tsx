@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { givingService, type Pledge, type RecordPledgePaymentDto } from '@/services/giving';
+import { decimalInputProps, decimalInputValue, sanitizeDecimalInput } from '@/lib/numeric-input';
 
 type PaymentMethod = NonNullable<RecordPledgePaymentDto['paymentMethod']>;
 
@@ -112,12 +113,13 @@ export function RecordPledgePaymentDialog({ pledge, open, onOpenChange }: Record
                 <Label htmlFor="pledge-payment-amount">Amount</Label>
                 <Input
                   id="pledge-payment-amount"
-                  type="number"
+                  {...decimalInputProps}
                   min="0.01"
                   max={outstanding || undefined}
                   step="0.01"
                   value={amount}
-                  onChange={event => setAmount(event.target.value)}
+                  onInput={sanitizeDecimalInput}
+                  onChange={event => setAmount(decimalInputValue(event.target.value))}
                 />
                 {amount && paymentAmount > outstanding && (
                   <p className="text-xs text-destructive">Amount cannot exceed the outstanding balance.</p>

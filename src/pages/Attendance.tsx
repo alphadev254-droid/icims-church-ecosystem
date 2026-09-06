@@ -28,6 +28,7 @@ import { dateTimeLocalToIso, toDateTimeLocalInputValue } from '@/lib/date-time';
 import { EditAttendanceForm } from '@/components/attendance/EditAttendanceForm';
 import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
 import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
+import { digitsInputProps, digitsOnly, sanitizeDigitsInput } from '@/lib/numeric-input';
 import { ViewAttendanceDialog } from '@/components/attendance/ViewAttendanceDialog';
 
 export default function AttendancePage() {
@@ -951,7 +952,7 @@ export default function AttendancePage() {
               </div>
               <div>
                 <Label>Usage Limit (optional)</Label>
-                <Input type="number" min="1" placeholder="Leave empty for unlimited" value={scannerLinkUsageLimit} onChange={e => setScannerLinkUsageLimit(e.target.value)} />
+                <Input {...digitsInputProps} min="1" placeholder="Leave empty for unlimited" value={scannerLinkUsageLimit} onInput={e => sanitizeDigitsInput(e)} onChange={e => setScannerLinkUsageLimit(digitsOnly(e.target.value))} />
               </div>
               <div>
                 <Label>Access Code (optional 4-digit PIN)</Label>

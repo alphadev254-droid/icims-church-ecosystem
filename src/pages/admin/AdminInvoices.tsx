@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Textarea } from '@/components/ui/textarea';
 import { downloadPackageInvoicePdf } from '@/lib/invoice-pdf';
 import { toast } from 'sonner';
+import { decimalInputProps, decimalInputValue, sanitizeDecimalInput } from '@/lib/numeric-input';
 
 function money(currency: string, value?: number | null) {
   return `${currency} ${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -285,7 +286,7 @@ export default function AdminInvoices() {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{paying?.invoiceNumber} balance: {paying ? money(paying.currency, paying.balanceDue) : ''}</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1"><Label>Amount</Label><Input type="number" value={paymentForm.amount} onChange={e => setPaymentForm(f => ({ ...f, amount: e.target.value }))} /></div>
+              <div className="space-y-1"><Label>Amount</Label><Input {...decimalInputProps} value={paymentForm.amount} onInput={sanitizeDecimalInput} onChange={e => setPaymentForm(f => ({ ...f, amount: decimalInputValue(e.target.value) }))} /></div>
               <div className="space-y-1"><Label>Date paid</Label><Input type="date" value={paymentForm.paidAt} onChange={e => setPaymentForm(f => ({ ...f, paidAt: e.target.value }))} /></div>
             </div>
             <div className="space-y-1">

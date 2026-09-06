@@ -8,6 +8,7 @@ import { Mail, Phone, MapPin, Clock, HeadphonesIcon, ShoppingCart, Wrench, Chevr
 import { toast } from 'sonner';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
+import { phoneInputProps, sanitizePhoneInput } from '@/lib/numeric-input';
 
 const IconFacebook = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
@@ -202,7 +203,7 @@ export default function ContactPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="phone">Phone <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
-                    <Input id="phone" type="tel" placeholder="+254 700 000 000" />
+                    <Input id="phone" {...phoneInputProps} type="tel" onInput={sanitizePhoneInput} placeholder="+254 700 000 000" />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="church">Church / Organisation</Label>

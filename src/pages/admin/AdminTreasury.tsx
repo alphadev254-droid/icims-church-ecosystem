@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { decimalInputProps, digitsInputProps, digitsOnly, phoneInputProps, phoneInputValue, sanitizeDecimalInput, sanitizeDigitsInput, sanitizePhoneInput } from '@/lib/numeric-input';
 
 type Method = 'mobile_money' | 'bank_transfer';
 type Operator = 'airtel' | 'tnm';
@@ -478,7 +479,7 @@ export default function AdminTreasury() {
           </div>
           <div>
             <Label className="text-xs">Payout Amount</Label>
-            <Input type="number" min="1" value={amount} onChange={e => setAmount(e.target.value)} className="mt-1 h-9 text-sm" />
+            <Input {...decimalInputProps} min="1" value={amount} onInput={sanitizeDecimalInput} onChange={e => setAmount(e.target.value)} className="mt-1 h-9 text-sm" />
           </div>
           <div>
             <Label className="text-xs">Method</Label>
@@ -504,7 +505,7 @@ export default function AdminTreasury() {
               </div>
               <div>
                 <Label className="text-xs">Mobile Number</Label>
-                <Input value={mobileNumber} onChange={e => setMobileNumber(e.target.value)} placeholder="0991234567" className="mt-1 h-9 text-sm" />
+                <Input {...phoneInputProps} value={mobileNumber} onInput={sanitizePhoneInput} onChange={e => setMobileNumber(phoneInputValue(e.target.value))} placeholder="0991234567" className="mt-1 h-9 text-sm" />
               </div>
             </>
           ) : (
@@ -527,7 +528,7 @@ export default function AdminTreasury() {
               </div>
               <div>
                 <Label className="text-xs">Account Number</Label>
-                <Input value={accountNumber} onChange={e => setAccountNumber(e.target.value)} className="mt-1 h-9 text-sm" />
+                <Input {...digitsInputProps} value={accountNumber} onInput={e => sanitizeDigitsInput(e)} onChange={e => setAccountNumber(digitsOnly(e.target.value))} className="mt-1 h-9 text-sm" />
               </div>
             </>
           )}
@@ -540,7 +541,7 @@ export default function AdminTreasury() {
               <Button type="button" variant="outline" className="h-9" onClick={onSendOtp} disabled={sendOtpMutation.isPending}>
                 {sendOtpMutation.isPending ? 'Sending...' : otpSent ? 'Resend OTP' : 'Send OTP'}
               </Button>
-              <Input value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="OTP" className="h-9 tracking-[0.35em]" />
+              <Input {...digitsInputProps} value={otpCode} onChange={e => setOtpCode(digitsOnly(e.target.value, 6))} placeholder="OTP" className="h-9 tracking-[0.35em]" />
             </div>
           </div>
           <Button className="w-full h-9 bg-accent text-accent-foreground hover:bg-accent/90" disabled={!otpSent || otpCode.length !== 6 || withdrawMutation.isPending} onClick={onWithdraw}>

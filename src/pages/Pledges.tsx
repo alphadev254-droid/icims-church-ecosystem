@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { STALE_TIME } from '@/lib/query-config';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
+import { decimalInputProps, decimalInputValue, sanitizeDecimalInput } from '@/lib/numeric-input';
 import { toast } from 'sonner';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -199,11 +200,12 @@ function EditPledgeDialog({ pledge, open, onOpenChange }: {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground w-10 shrink-0">{pledge.currency}</span>
                 <Input
-                  type="number"
+                  {...decimalInputProps}
                   min={minAmount}
                   step="any"
                   value={amount}
-                  onChange={e => setAmount(e.target.value)}
+                  onInput={sanitizeDecimalInput}
+                  onChange={e => setAmount(decimalInputValue(e.target.value))}
                 />
               </div>
               <p className="text-xs text-muted-foreground">

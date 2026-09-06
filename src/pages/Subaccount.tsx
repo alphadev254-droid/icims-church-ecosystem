@@ -15,11 +15,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Building2, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { digitsInputProps, digitsOnly, sanitizeDigitsInput } from '@/lib/numeric-input';
 
 const subaccountSchema = z.object({
   businessName: z.string().min(1, 'Business name required'),
   settlementBank: z.string().min(1, 'Bank code required'),
-  accountNumber: z.string().min(1, 'Account number required'),
+  accountNumber: z.string().min(1, 'Account number required').regex(/^\d+$/, 'Account number can only contain digits'),
   description: z.string().optional(),
 });
 
@@ -53,7 +54,7 @@ export default function SubaccountPage() {
     enabled: user?.accountCountry === 'Kenya',
   });
 
-  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<FormValues>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<FormValues>({
     resolver: zodResolver(subaccountSchema),
     values: subaccount ? {
       businessName: subaccount.businessName,
@@ -235,7 +236,14 @@ export default function SubaccountPage() {
                 </div>
                 <div>
                   <Label className="text-xs sm:text-sm">Account Number *</Label>
-                  <Input className="h-8 text-xs sm:h-10 sm:text-sm" {...register('accountNumber')} placeholder={selectedBank === 'MPESA' || selectedBank === 'MPPAYBILL' || selectedBank === 'MPTILL' ? 'e.g. 0714991414 or 0113765448' : 'Account number'} />
+                  <Input
+                    className="h-8 text-xs sm:h-10 sm:text-sm"
+                    {...register('accountNumber')}
+                    {...digitsInputProps}
+                    onInput={e => sanitizeDigitsInput(e)}
+                    onChange={e => setValue('accountNumber', digitsOnly(e.target.value), { shouldDirty: true, shouldValidate: true })}
+                    placeholder={selectedBank === 'MPESA' || selectedBank === 'MPPAYBILL' || selectedBank === 'MPTILL' ? 'e.g. 0714991414 or 0113765448' : 'Account number'}
+                  />
                   {errors.accountNumber && <p className="text-xs text-destructive mt-1">{errors.accountNumber.message}</p>}
                   {(selectedBank === 'MPESA' || selectedBank === 'MPPAYBILL' || selectedBank === 'MPTILL') && <p className="text-xs text-muted-foreground mt-1">Enter phone number (e.g. 0714991414)</p>}
                 </div>

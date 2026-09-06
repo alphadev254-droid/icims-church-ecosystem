@@ -42,6 +42,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { Link } from 'react-router-dom';
 import { buildPublicEventUrl } from '@/lib/public-links';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
+import { decimalInputProps, digitsInputProps, sanitizeDecimalInput, sanitizeDigitsInput } from '@/lib/numeric-input';
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -469,9 +470,10 @@ function EventForm({
               <div>
                 <Label className="text-xs sm:text-sm">Ticket Price</Label>
                 <Input
-                  type="number"
+                  {...decimalInputProps}
                   step="0.01"
                   {...register('ticketPrice', { valueAsNumber: true })}
+                  onInput={sanitizeDecimalInput}
                   className="h-8 text-xs sm:h-10 sm:text-sm"
                 />
               </div>
@@ -496,9 +498,10 @@ function EventForm({
               Total Tickets <span className="text-muted-foreground text-xs">(optional)</span>
             </Label>
             <Input
-              type="number"
+              {...digitsInputProps}
               placeholder="Leave empty for unlimited"
               {...register('totalTickets', { valueAsNumber: true })}
+              onInput={e => sanitizeDigitsInput(e)}
               className="h-8 text-xs sm:h-10 sm:text-sm"
             />
           </div>

@@ -16,12 +16,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import apiClient from '@/lib/api-client';
 import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
+import { phoneInputProps, sanitizePhoneInput } from '@/lib/numeric-input';
 
 const schema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
-  phone: z.string().min(1, 'Phone number is required'),
+  phone: z.string().min(1, 'Phone number is required').regex(/^\+?\d+$/, 'Phone number can only contain digits and an optional leading +'),
   gender: z.enum(['male', 'female'], { required_error: 'Gender is required' }),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced'], { required_error: 'Marital status is required' }),
@@ -216,7 +217,7 @@ export default function MemberRegisterPage() {
 
           <div className="space-y-1">
             <Label>Phone</Label>
-            <Input {...register('phone')} placeholder="+265 ..." autoComplete="off"
+            <Input {...register('phone')} {...phoneInputProps} onInput={sanitizePhoneInput} placeholder="+265 ..." autoComplete="off"
               className={errors.phone ? 'border-destructive' : ''} />
             {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
           </div>

@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Handshake, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { decimalInputProps, decimalInputValue, sanitizeDecimalInput } from '@/lib/numeric-input';
 
 interface PledgeDialogProps {
   campaign: GivingCampaign;
@@ -109,12 +110,13 @@ export function PledgeDialog({ campaign, open, onOpenChange }: PledgeDialogProps
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground w-10 shrink-0">{campaign.currency}</span>
                 <Input
-                  type="number"
+                  {...decimalInputProps}
                   min="1"
                   step="any"
                   placeholder="0.00"
                   value={amount}
-                  onChange={e => setAmount(e.target.value)}
+                  onInput={sanitizeDecimalInput}
+                  onChange={e => setAmount(decimalInputValue(e.target.value))}
                 />
               </div>
               <p className="text-xs text-muted-foreground">

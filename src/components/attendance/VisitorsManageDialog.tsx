@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, UserCheck, Trash2, ChevronDown, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { HOW_HEARD, AGE_BRACKETS, GENDER_LABELS, HOW_HEARD_LABELS } from './constants';
+import { phoneInputProps, phoneInputValue, sanitizePhoneInput } from '@/lib/numeric-input';
 
 interface Props {
   record: any;
@@ -256,7 +257,7 @@ export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Prop
             <p className="text-sm font-medium">Add New Visitor</p>
             <div className="grid grid-cols-2 gap-2">
               <div><Label className="text-xs">Full Name *</Label><Input className="h-8 text-sm mt-0.5" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="e.g. John Banda" /></div>
-              <div><Label className="text-xs">Phone</Label><Input className="h-8 text-sm mt-0.5" value={draft.phone ?? ''} onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))} placeholder="+265 / +254 ..." /></div>
+              <div><Label className="text-xs">Phone</Label><Input {...phoneInputProps} className="h-8 text-sm mt-0.5" value={draft.phone ?? ''} onInput={sanitizePhoneInput} onChange={e => setDraft(d => ({ ...d, phone: phoneInputValue(e.target.value) }))} placeholder="+265 / +254 ..." /></div>
               <div><Label className="text-xs">Email</Label><Input className="h-8 text-sm mt-0.5" type="email" value={draft.email ?? ''} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))} /></div>
               <div><Label className="text-xs">Residential Area</Label><Input className="h-8 text-sm mt-0.5" value={draft.residentialArea ?? ''} onChange={e => setDraft(d => ({ ...d, residentialArea: e.target.value }))} placeholder="e.g. Area 25" /></div>
             </div>

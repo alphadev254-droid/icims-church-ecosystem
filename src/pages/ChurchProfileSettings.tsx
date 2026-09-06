@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
+import { phoneInputProps, phoneInputValue, sanitizePhoneInput } from '@/lib/numeric-input';
 
 // ─── Image upload picker component ───────────────────────────────────────────
 
@@ -818,7 +819,7 @@ export default function ChurchProfileSettingsPage() {
       <SettingsSection title="Contact Information" icon={<Phone className="h-4 w-4 text-accent" />} locked={!hasFeature}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Phone">
-            <Input placeholder="+254 700 000 000" value={form.phone ?? ''} onChange={e => set('phone', e.target.value)} />
+            <Input {...phoneInputProps} placeholder="+254 700 000 000" value={form.phone ?? ''} onInput={sanitizePhoneInput} onChange={e => set('phone', phoneInputValue(e.target.value))} />
           </Field>
           <Field label="Email">
             <Input type="email" placeholder="info@church.org" value={form.email ?? ''} onChange={e => set('email', e.target.value)} />

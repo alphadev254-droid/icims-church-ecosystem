@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { givingService } from '@/services/giving';
+import { decimalInputProps, decimalInputValue, sanitizeDecimalInput } from '@/lib/numeric-input';
 
 type CampaignOption = {
   id: string;
@@ -317,10 +318,11 @@ export function MultiGivingDialog({
                           <Label className="text-[11px] sm:text-xs">Amount</Label>
                           <Input
                             className="h-9 text-sm"
-                            type="number"
+                            {...decimalInputProps}
                             min="1"
                             value={row.amount}
-                            onChange={event => updateRow(index, { amount: event.target.value })}
+                            onInput={sanitizeDecimalInput}
+                            onChange={event => updateRow(index, { amount: decimalInputValue(event.target.value) })}
                             placeholder="0"
                           />
                         </div>

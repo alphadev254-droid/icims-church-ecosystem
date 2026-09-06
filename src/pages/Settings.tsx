@@ -16,11 +16,12 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { User, Lock, Bell, Sun, Moon, Building2, Shield, Eye, EyeOff, Camera, Upload, QrCode, Download, ChevronDown, ImageIcon, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { phoneInputProps, sanitizePhoneInput } from '@/lib/numeric-input';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'First name required'),
   lastName: z.string().min(1, 'Last name required'),
-  phone: z.string().optional(),
+  phone: z.string().regex(/^\+?\d*$/, 'Phone number can only contain digits and an optional leading +').optional(),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
 
@@ -297,7 +298,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <Label>Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
-              <Input {...profileForm.register('phone')} placeholder="+265 ..." autoComplete="off" />
+              <Input {...profileForm.register('phone')} {...phoneInputProps} onInput={sanitizePhoneInput} placeholder="+265 ..." autoComplete="off" />
             </div>
             <Button type="submit" disabled={profileLoading} className="bg-accent text-accent-foreground hover:bg-accent/90">
               {profileLoading ? 'Saving...' : 'Save Profile'}

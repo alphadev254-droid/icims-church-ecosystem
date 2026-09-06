@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 import { buildPublicGivingUrl } from '@/lib/public-links';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
+import { decimalInputProps, decimalInputValue, sanitizeDecimalInput } from '@/lib/numeric-input';
 
 const formatMetaDate = (value?: string | null) => {
   if (!value) return '—';
@@ -263,7 +264,7 @@ function CampaignForm({
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <div>
           <Label className="text-xs sm:text-sm">Target Amount (Optional)</Label>
-          <Input className="h-8 text-xs sm:h-10 sm:text-sm" type="number" {...register('targetAmount')} placeholder="" />
+          <Input className="h-8 text-xs sm:h-10 sm:text-sm" {...decimalInputProps} {...register('targetAmount')} onInput={sanitizeDecimalInput} placeholder="" />
         </div>
         <div>
           <Label className="text-xs sm:text-sm">Currency*</Label>
@@ -1231,7 +1232,7 @@ export default function GivingPage() {
           <div className="space-y-4">
             <div>
               <Label>Amount ({donateCampaign?.currency})</Label>
-              <Input type="number" value={donateAmount} onChange={e => setDonateAmount(e.target.value)} placeholder="Enter amount" />
+              <Input {...decimalInputProps} value={donateAmount} onInput={sanitizeDecimalInput} onChange={e => setDonateAmount(decimalInputValue(e.target.value))} placeholder="Enter amount" />
             </div>
 
             {/* Cell dropdown — only for fellowship_offering campaigns */}

@@ -28,6 +28,7 @@ import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { useDebounce } from '@/hooks/use-debounce';
+import { decimalInputProps, sanitizeDecimalInput } from '@/lib/numeric-input';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
 
@@ -419,7 +420,7 @@ export default function EventTicketsPage() {
 
                   <div>
                     <Label className="text-xs sm:text-sm">Amount *</Label>
-                    <Input type="number" step="0.01" {...register('amount', { valueAsNumber: true })} className="h-8 text-xs sm:h-10 sm:text-sm" />
+                    <Input {...decimalInputProps} step="0.01" {...register('amount', { valueAsNumber: true })} onInput={sanitizeDecimalInput} className="h-8 text-xs sm:h-10 sm:text-sm" />
                   </div>
 
                   <div>

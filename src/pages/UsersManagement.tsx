@@ -34,6 +34,7 @@ import { AgeRangeFilter } from '@/components/AgeRangeFilter';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { digitsInputProps, digitsOnly, phoneInputProps, sanitizeDigitsInput, sanitizePhoneInput } from '@/lib/numeric-input';
 
 // ─── Role display helpers ─────────────────────────────────────────────────────
 const ROLE_DISPLAY: Record<string, string> = {
@@ -203,7 +204,7 @@ function MemberChildrenPanel({ member }: { member: AppUser }) {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label>Age</Label>
-                    <Input type="number" min="0" value={age} onChange={e => setAge(e.target.value)} />
+                    <Input {...digitsInputProps} min="0" value={age} onInput={e => sanitizeDigitsInput(e)} onChange={e => setAge(digitsOnly(e.target.value))} />
                   </div>
                   <div>
                     <Label>Sex</Label>
@@ -219,7 +220,7 @@ function MemberChildrenPanel({ member }: { member: AppUser }) {
                 </div>
                 <div>
                   <Label>Phone</Label>
-                  <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Optional" />
+                  <Input {...phoneInputProps} value={phone} onInput={sanitizePhoneInput} onChange={e => setPhone(e.target.value)} placeholder="Optional" />
                 </div>
                 <div>
                   <Label>Relationship</Label>
@@ -286,7 +287,7 @@ const createSchema = z.object({
   password: z.string().min(8, 'Min 8 characters'),
   firstName: z.string().min(1, 'First name required'),
   lastName: z.string().min(1, 'Last name required'),
-  phone: z.string().min(1, 'Phone number is required'),
+  phone: z.string().min(1, 'Phone number is required').regex(/^\+?\d+$/, 'Phone number can only contain digits and an optional leading +'),
   gender: z.enum(['male', 'female']).optional(),
   dateOfBirth: z.string().optional(),
   maritalStatus: z.enum(['single', 'married', 'widowed', 'divorced']).optional(),
@@ -321,7 +322,7 @@ const editSchema = z.object({
   email: z.string().email('Valid email required'),
   firstName: z.string().min(1, 'First name required'),
   lastName: z.string().min(1, 'Last name required'),
-  phone: z.string().optional().default(''),
+  phone: z.string().regex(/^\+?\d*$/, 'Phone number can only contain digits and an optional leading +').optional().default(''),
   password: z.string().min(8, 'Min 8 characters').optional().or(z.literal('')),
   gender: z.enum(['male', 'female']).optional(),
   dateOfBirth: z.string().optional(),
@@ -415,7 +416,7 @@ function CreateUserForm({ onSubmit, isPending }: {
       </div>
       <div>
         <Label>Phone *</Label>
-        <Input {...register('phone')} placeholder="+265 999 000 111" autoComplete="off" />
+        <Input {...register('phone')} {...phoneInputProps} onInput={sanitizePhoneInput} placeholder="+265 999 000 111" autoComplete="off" />
         {errors.phone && <p className="text-xs text-destructive mt-1">{errors.phone.message}</p>}
       </div>
       <div>
@@ -605,7 +606,7 @@ function EditUserForm({ user, onSubmit, isPending }: {
       </div>
       <div>
         <Label>Phone</Label>
-        <Input {...register('phone')} placeholder="+265 999 000 111" autoComplete="off" />
+        <Input {...register('phone')} {...phoneInputProps} onInput={sanitizePhoneInput} placeholder="+265 999 000 111" autoComplete="off" />
       </div>
       <div>
         <Label>New Password <span className="text-muted-foreground text-xs">(leave blank to keep current)</span></Label>
@@ -799,10 +800,11 @@ function ChildUserEditForm({ child, onSubmit, isPending }: {
         <div>
           <Label>Age</Label>
           <Input
-            type="number"
+            {...digitsInputProps}
             min="0"
             value={dateOfBirth ? String(calculatedAge ?? '') : age}
             readOnly={!!dateOfBirth}
+            onInput={e => sanitizeDigitsInput(e)}
             onChange={event => setAge(event.target.value)}
           />
         </div>
@@ -834,7 +836,7 @@ function ChildUserEditForm({ child, onSubmit, isPending }: {
 
       <div>
         <Label>Phone</Label>
-        <Input value={phone} onChange={event => setPhone(event.target.value)} placeholder="Optional" />
+        <Input {...phoneInputProps} value={phone} onInput={sanitizePhoneInput} onChange={event => setPhone(event.target.value)} placeholder="Optional" />
       </div>
 
       <div>
@@ -1880,7 +1882,9 @@ export default function UsersManagement() {
                       </td>
                       <td className="p-2">
                         <Input
+                          {...phoneInputProps}
                           value={row.phone || ''}
+                          onInput={sanitizePhoneInput}
                           onChange={(e) => {
                             const newData = [...csvData];
                             newData[idx].phone = e.target.value;

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CheckCircle2, Calendar, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import apiClient from '@/lib/api-client';
+import { phoneInputProps, phoneInputValue, sanitizePhoneInput } from '@/lib/numeric-input';
 
 interface BookDemoDialogProps {
   open: boolean;
@@ -140,7 +141,7 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Phone <span className="text-destructive">*</span></Label>
-                <Input type="tel" placeholder="+254 700 000 000" value={phone} onChange={e => setPhone(e.target.value)} required />
+                <Input {...phoneInputProps} type="tel" placeholder="+254 700 000 000" value={phone} onInput={sanitizePhoneInput} onChange={e => setPhone(phoneInputValue(e.target.value))} required />
               </div>
               <div className="space-y-1.5">
                 <Label>Country <span className="text-destructive">*</span></Label>

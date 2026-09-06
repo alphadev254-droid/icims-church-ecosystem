@@ -18,6 +18,7 @@ import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
 import apiClient from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { FALLBACK_COUNTRIES, phonePlaceholderForCountry, type CountryOption } from '@/lib/countries';
+import { digitsInputProps, phoneInputProps, sanitizeDigitsInput, sanitizePhoneInput } from '@/lib/numeric-input';
 const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 
 const TITLES = ['Rev', 'Dr', 'Prof', 'Pastor', 'Prophet', 'Seer', 'Sister', 'Brother', 'Father', 'Deacon', 'Apostle', 'Evangelist', 'Other'] as const;
@@ -45,7 +46,7 @@ const schema = z.object({
   currentMembership: z.coerce.number().int().min(0).optional(),
   numberOfBranches: z.coerce.number().int().min(0).optional(),
   email: z.string().email('Enter a valid email address'),
-  phone: z.string().min(1, 'Phone number is required'),
+  phone: z.string().min(1, 'Phone number is required').regex(/^\+?\d+$/, 'Phone number can only contain digits and an optional leading +'),
   gender: z.enum(['male', 'female'], { required_error: 'Gender is required' }),
   accountCountry: z.string({ required_error: 'Country is required' }).min(2, 'Country is required'),
   anniversary: z.string().optional(),
@@ -339,7 +340,14 @@ export default function RegisterPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Phone number</Label>
-                    <Input {...register('phone')} placeholder={phonePlaceholderForCountry(selectedCountry)} autoComplete="off" className={errors.phone ? 'border-destructive' : ''} />
+                    <Input
+                      {...register('phone')}
+                      {...phoneInputProps}
+                      placeholder={phonePlaceholderForCountry(selectedCountry)}
+                      autoComplete="off"
+                      className={errors.phone ? 'border-destructive' : ''}
+                      onInput={sanitizePhoneInput}
+                    />
                     {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
                   </div>
                 </div>
@@ -446,7 +454,13 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Current membership <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Input type="number" min={0} {...register('currentMembership')} placeholder="e.g. 250" autoComplete="off" />
+                    <Input
+                      {...digitsInputProps}
+                      {...register('currentMembership')}
+                      placeholder="e.g. 250"
+                      autoComplete="off"
+                      onInput={e => sanitizeDigitsInput(e)}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Number of branches</Label>

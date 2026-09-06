@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers3, Plus, Pencil, Trash2, Package2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
+import { decimalInputProps, decimalInputValue, digitsInputProps, digitsOnly, sanitizeDecimalInput, sanitizeDigitsInput } from '@/lib/numeric-input';
 
 interface PricingMarket {
   id: string;
@@ -371,14 +372,14 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
               <Label>Private Monthly Price</Label>
               <div className="relative">
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.currencyCode}</span>
-                <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} />
+                <Input {...decimalInputProps} min="0" step="0.01" className="pl-14" value={form.priceMonthly} onInput={sanitizeDecimalInput} onChange={e => setForm(f => ({ ...f, priceMonthly: decimalInputValue(e.target.value) }))} />
               </div>
             </div>
             <div>
               <Label>Private Yearly Price</Label>
               <div className="relative">
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{form.currencyCode}</span>
-                <Input type="number" min="0" step="0.01" className="pl-14" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} />
+                <Input {...decimalInputProps} min="0" step="0.01" className="pl-14" value={form.priceYearly} onInput={sanitizeDecimalInput} onChange={e => setForm(f => ({ ...f, priceYearly: decimalInputValue(e.target.value) }))} />
               </div>
             </div>
             <div>
@@ -394,7 +395,7 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
         )}
         <div>
           <Label>Sort Order</Label>
-          <Input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: e.target.value }))} />
+          <Input {...digitsInputProps} value={form.sortOrder} onInput={e => sanitizeDigitsInput(e)} onChange={e => setForm(f => ({ ...f, sortOrder: digitsOnly(e.target.value) }))} />
         </div>
       </div>
 
@@ -427,13 +428,15 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
                       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                         <div>
                           <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Monthly price</Label>
-                          <Input className="mt-1" type="number" min="0" step="0.01" placeholder="Monthly" value={value.monthly}
-                            onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, monthly: e.target.value } }))} />
+                          <Input className="mt-1" {...decimalInputProps} min="0" step="0.01" placeholder="Monthly" value={value.monthly}
+                            onInput={sanitizeDecimalInput}
+                            onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, monthly: decimalInputValue(e.target.value) } }))} />
                         </div>
                         <div>
                           <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Yearly price</Label>
-                          <Input className="mt-1" type="number" min="0" step="0.01" placeholder="Yearly" value={value.yearly}
-                            onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, yearly: e.target.value } }))} />
+                          <Input className="mt-1" {...decimalInputProps} min="0" step="0.01" placeholder="Yearly" value={value.yearly}
+                            onInput={sanitizeDecimalInput}
+                            onChange={e => setMarketPrices(prev => ({ ...prev, [market.id]: { ...value, yearly: decimalInputValue(e.target.value) } }))} />
                         </div>
                         <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium text-muted-foreground sm:mt-5">
                           {market.currencyCode}
@@ -501,9 +504,10 @@ function PackageForm({ pkg, bundles, markets, onSubmit, isPending, onClose }: {
             <div key={lf.key}>
               <Label className="text-xs">{lf.label}</Label>
               <Input
-                type="number" min="1" placeholder="∞"
+                {...digitsInputProps} min="1" placeholder="∞"
                 value={(form as any)[lf.key]}
-                onChange={e => setForm(f => ({ ...f, [lf.key]: e.target.value }))}
+                onInput={e => sanitizeDigitsInput(e)}
+                onChange={e => setForm(f => ({ ...f, [lf.key]: digitsOnly(e.target.value) }))}
                 className="h-8 text-xs"
               />
             </div>
@@ -1210,7 +1214,7 @@ export default function AdminPackagesPage() {
               </div>
               <div>
                 <Label>Sort Order</Label>
-                <Input type="number" value={marketForm.sortOrder} onChange={e => setMarketForm(f => ({ ...f, sortOrder: Number(e.target.value || 0) }))} />
+                <Input {...digitsInputProps} value={marketForm.sortOrder} onInput={e => sanitizeDigitsInput(e)} onChange={e => setMarketForm(f => ({ ...f, sortOrder: Number(digitsOnly(e.target.value) || 0) }))} />
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-4">

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { HOW_HEARD, AGE_BRACKETS } from './constants';
+import { digitsInputProps, digitsOnly, phoneInputProps, phoneInputValue, sanitizeDigitsInput, sanitizePhoneInput } from '@/lib/numeric-input';
 
 interface Props {
   onSubmit: (data: any) => void;
@@ -123,8 +124,8 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
       {!summaryLocked && <div>
         <Label className="text-sm font-medium">Gender Breakdown *</Label>
         <div className="grid grid-cols-2 gap-4 mt-2">
-          <div><Label className="text-xs sm:text-sm">Male *</Label><Input type="number" min={0} value={maleCount} onChange={e => setMaleCount(e.target.value)} required /></div>
-          <div><Label className="text-xs sm:text-sm">Female *</Label><Input type="number" min={0} value={femaleCount} onChange={e => setFemaleCount(e.target.value)} required /></div>
+          <div><Label className="text-xs sm:text-sm">Male *</Label><Input {...digitsInputProps} min={0} value={maleCount} onInput={e => sanitizeDigitsInput(e)} onChange={e => setMaleCount(digitsOnly(e.target.value))} required /></div>
+          <div><Label className="text-xs sm:text-sm">Female *</Label><Input {...digitsInputProps} min={0} value={femaleCount} onInput={e => sanitizeDigitsInput(e)} onChange={e => setFemaleCount(digitsOnly(e.target.value))} required /></div>
         </div>
       </div>}
 
@@ -136,11 +137,11 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
       {!summaryLocked && <div>
         <Label className="text-sm font-medium">Age Groups <span className="text-muted-foreground text-xs sm:text-sm font-normal">(optional)</span></Label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
-          <div><Label className="text-xs sm:text-sm">Children (0-12)</Label><Input type="number" min={0} value={children} onChange={e => setChildren(e.target.value)} /></div>
-          <div><Label className="text-xs sm:text-sm">Youth (13-17)</Label><Input type="number" min={0} value={youth} onChange={e => setYouth(e.target.value)} /></div>
-          <div><Label className="text-xs sm:text-sm">Young Adults (18-35)</Label><Input type="number" min={0} value={youngAdults} onChange={e => setYoungAdults(e.target.value)} /></div>
-          <div><Label className="text-xs sm:text-sm">Adults (36-59)</Label><Input type="number" min={0} value={adults} onChange={e => setAdults(e.target.value)} /></div>
-          <div><Label className="text-xs sm:text-sm">Seniors (60+)</Label><Input type="number" min={0} value={seniors} onChange={e => setSeniors(e.target.value)} /></div>
+          <div><Label className="text-xs sm:text-sm">Children (0-12)</Label><Input {...digitsInputProps} min={0} value={children} onInput={e => sanitizeDigitsInput(e)} onChange={e => setChildren(digitsOnly(e.target.value))} /></div>
+          <div><Label className="text-xs sm:text-sm">Youth (13-17)</Label><Input {...digitsInputProps} min={0} value={youth} onInput={e => sanitizeDigitsInput(e)} onChange={e => setYouth(digitsOnly(e.target.value))} /></div>
+          <div><Label className="text-xs sm:text-sm">Young Adults (18-35)</Label><Input {...digitsInputProps} min={0} value={youngAdults} onInput={e => sanitizeDigitsInput(e)} onChange={e => setYoungAdults(digitsOnly(e.target.value))} /></div>
+          <div><Label className="text-xs sm:text-sm">Adults (36-59)</Label><Input {...digitsInputProps} min={0} value={adults} onInput={e => sanitizeDigitsInput(e)} onChange={e => setAdults(digitsOnly(e.target.value))} /></div>
+          <div><Label className="text-xs sm:text-sm">Seniors (60+)</Label><Input {...digitsInputProps} min={0} value={seniors} onInput={e => sanitizeDigitsInput(e)} onChange={e => setSeniors(digitsOnly(e.target.value))} /></div>
         </div>
         {ageGroupMismatch && <p className="text-xs text-destructive mt-2">Age groups total ({ageGroupTotal}) must equal total attendees ({totalAttendees})</p>}
       </div>}
@@ -182,7 +183,7 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label className="text-xs sm:text-sm">Full Name *</Label><Input className="h-9 sm:h-8 text-sm mt-0.5" placeholder="e.g. John Banda" value={v.name} onChange={e => updateVisitor(i, 'name', e.target.value)} /></div>
-              <div><Label className="text-xs sm:text-sm">Phone</Label><Input className="h-9 sm:h-8 text-sm mt-0.5" placeholder="+265 ..." value={v.phone ?? ''} onChange={e => updateVisitor(i, 'phone', e.target.value)} /></div>
+              <div><Label className="text-xs sm:text-sm">Phone</Label><Input {...phoneInputProps} className="h-9 sm:h-8 text-sm mt-0.5" placeholder="+265 ..." value={v.phone ?? ''} onInput={sanitizePhoneInput} onChange={e => updateVisitor(i, 'phone', phoneInputValue(e.target.value))} /></div>
               <div><Label className="text-xs sm:text-sm">Email</Label><Input className="h-9 sm:h-8 text-sm mt-0.5" type="email" placeholder="john@example.com" value={v.email ?? ''} onChange={e => updateVisitor(i, 'email', e.target.value)} /></div>
               <div><Label className="text-xs sm:text-sm">Residential Area</Label><Input className="h-9 sm:h-8 text-sm mt-0.5" placeholder="e.g. Area 25, Lilongwe" value={v.residentialArea ?? ''} onChange={e => updateVisitor(i, 'residentialArea', e.target.value)} /></div>
             </div>
