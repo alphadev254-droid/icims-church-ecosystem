@@ -68,7 +68,6 @@ export default function FeaturesPage() {
     title: '20 Integrated Modules & Features',
     description: 'Explore all 20 ICIMS modules: membership, children and dependents, QR code attendance, giving, pledges, events, communication, public church websites, revenue management, performance KPIs and more.',
     canonical: 'https://churchcentral.church/features',
-    ogImage: 'https://media.aircnc.co.ke/media-images/20e847ba-fb2d-45f8-ad77-95b615ef85c8.webp',
   });
 
   return (

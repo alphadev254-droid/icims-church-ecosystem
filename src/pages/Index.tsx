@@ -89,7 +89,6 @@ export default function LandingPage() {
     title: 'The Complete Church Management Ecosystem',
     description: 'ICIMS is a cloud-based church management platform with integrated modules for membership, children and dependents, giving, attendance, events, communication and more.',
     canonical: 'https://churchcentral.church/',
-    ogImage: 'https://media.aircnc.co.ke/media-images/420984ab-7d48-40fc-b653-a09eb1428d14.webp',
   });
 
   return (

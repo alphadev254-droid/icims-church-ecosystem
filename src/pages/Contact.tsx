@@ -49,7 +49,6 @@ export default function ContactPage() {
     title: 'Contact Us',
     description: 'Get in touch with the ICIMS team. Reach our sales, support or technical departments.',
     canonical: 'https://churchcentral.church/contact',
-    ogImage: 'https://media.aircnc.co.ke/media-images/3e642cc8-1e30-4664-9b14-a782f63550f9.webp',
   });
 
   const [loading, setLoading] = useState(false);

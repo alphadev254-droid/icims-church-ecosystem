@@ -8,7 +8,7 @@ interface PageMetaOptions {
 }
 
 
-export function usePageMeta({ title, description, canonical, ogImage = 'https://media.aircnc.co.ke/media-images/420984ab-7d48-40fc-b653-a09eb1428d14.webp' }: PageMetaOptions) {
+export function usePageMeta({ title, description, canonical, ogImage = 'https://churchcentral.church/og-image.png' }: PageMetaOptions) {
   useEffect(() => {
     const fullTitle = `${title} | ICIMS`;
 

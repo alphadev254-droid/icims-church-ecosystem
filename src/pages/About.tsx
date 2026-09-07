@@ -61,7 +61,6 @@ export default function AboutPage() {
     title: 'About ICIMS',
     description: 'Learn about ICIMS — the Integrated Church Management System. Our mission, vision, values and the story behind the platform.',
     canonical: 'https://churchcentral.church/about',
-    ogImage: 'https://media.aircnc.co.ke/media-images/420984ab-7d48-40fc-b653-a09eb1428d14.webp',
   });
 
   return (
