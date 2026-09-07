@@ -33,9 +33,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Obtain the FCM token once on mount — persists across sessions
   useEffect(() => {
-    getFcmToken(VAPID_KEY).then(token => {
-      if (token) fcmTokenRef.current = token;
-    });
+    getFcmToken(VAPID_KEY)
+      .then(token => {
+        if (token) fcmTokenRef.current = token;
+      })
+      .catch(error => console.warn('[Auth] Push token lookup skipped:', error));
   }, []);
 
   // Register/refresh token with backend when user becomes available (login)

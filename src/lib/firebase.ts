@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/messaging';
+import { getMessaging, getToken, isSupported, onMessage, type Messaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,11 +14,40 @@ const firebaseConfig = {
 // Initialize Firebase (only once)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-let messaging: Messaging | null = null;
-try {
-  messaging = getMessaging(app);
-} catch {
-  console.warn('[Firebase] Messaging not supported in this browser');
+let messagingPromise: Promise<Messaging | null> | null = null;
+
+function isExpectedMessagingError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
+  const message = error.message.toLowerCase();
+  return (
+    error.name === 'AbortError' ||
+    message.includes('indexeddb') ||
+    message.includes('unsupported browser') ||
+    message.includes('messaging/unsupported-browser')
+  );
+}
+
+function logMessagingError(context: string, error: unknown) {
+  if (isExpectedMessagingError(error)) {
+    console.warn(`[Firebase] ${context}. Push notifications will be skipped in this browser.`, error);
+    return;
+  }
+
+  console.error(`[Firebase] ${context}:`, error);
+}
+
+async function getMessagingInstance(): Promise<Messaging | null> {
+  if (messagingPromise) return messagingPromise;
+
+  messagingPromise = isSupported()
+    .then((supported) => (supported ? getMessaging(app) : null))
+    .catch((error) => {
+      logMessagingError('Messaging support check failed', error);
+      return null;
+    });
+
+  return messagingPromise;
 }
 
 /**
@@ -27,6 +56,9 @@ try {
  * @returns The FCM token string, or null if permission denied / error.
  */
 export async function getFcmToken(vapidKey: string): Promise<string | null> {
+  if (!('Notification' in window)) return null;
+
+  const messaging = await getMessagingInstance();
   if (!messaging) return null;
 
   try {
@@ -40,7 +72,7 @@ export async function getFcmToken(vapidKey: string): Promise<string | null> {
     const token = await getToken(messaging, { vapidKey });
     return token;
   } catch (error) {
-    console.error('[Firebase] Failed to get FCM token:', error);
+    logMessagingError('Failed to get FCM token', error);
     return null;
   }
 }
@@ -50,12 +82,23 @@ export async function getFcmToken(vapidKey: string): Promise<string | null> {
  * Returns an unsubscribe function.
  */
 export function onForegroundMessage(callback: (payload: any) => void): () => void {
-  if (!messaging) return () => {};
+  let unsubscribe: (() => void) | null = null;
+  let cancelled = false;
 
-  const unsubscribe = onMessage(messaging, (payload) => {
-    callback(payload);
-  });
-  return unsubscribe;
+  getMessagingInstance()
+    .then((messaging) => {
+      if (!messaging || cancelled) return;
+
+      unsubscribe = onMessage(messaging, (payload) => {
+        callback(payload);
+      });
+    })
+    .catch((error) => {
+      logMessagingError('Foreground listener registration failed', error);
+    });
+
+  return () => {
+    cancelled = true;
+    unsubscribe?.();
+  };
 }
-
-export { messaging };
