@@ -17,6 +17,7 @@ import { ArrowLeft, Plus, Trash2, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
+import { decimalInputProps, sanitizeDecimalInput } from '@/lib/numeric-input';
 
 type AttendanceStatus = 'present' | 'absent' | 'excused';
 type FilterType = 'all' | 'present' | 'absent' | 'excused' | 'guest' | 'first_time_guest' | 'new_convert';
