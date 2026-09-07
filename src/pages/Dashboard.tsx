@@ -259,7 +259,7 @@ export default function DashboardPage() {
         {hasPermission('giving:read') && stats.monthlyGiving && stats.monthlyGiving.length > 0 && (
           <Card>
             <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="text-sm sm:text-base">Monthly Giving (MWK)</CardTitle>
+              <CardTitle className="text-sm sm:text-base">Monthly Giving ({stats.currency ?? 'MWK'})</CardTitle>
             </CardHeader>
             <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
               <ResponsiveContainer width="100%" height={220}>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-xl sm:text-3xl font-bold font-heading text-accent">
-                    MWK {Number(stats.totalDonations ?? 0).toLocaleString()}
+                    {stats.currency ?? 'MWK'} {Number(stats.totalDonations ?? 0).toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Total Giving</p>
                 </div>

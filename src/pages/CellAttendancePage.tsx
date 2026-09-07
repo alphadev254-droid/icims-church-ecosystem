@@ -335,6 +335,8 @@ export default function CellAttendancePage() {
   const flatOfferingCampaigns: any[] = Array.isArray(offeringCampaigns) && (offeringCampaigns as any[])[0]?.label
     ? (offeringCampaigns as any[]).flatMap((g: any) => g.posts || [])
     : (offeringCampaigns as any[]);
+  const selectedOfferingCampaign = flatOfferingCampaigns.find((campaign: any) => campaign.id === offeringCampaignId);
+  const offeringCurrency = selectedOfferingCampaign?.currency || 'MWK';
   const attendanceGuestRows = rows.filter(row => row.isGuest);
   const inviterOptions = members
     .filter(member => member.status === 'active' && member.userId && member.user)
@@ -377,7 +379,7 @@ export default function CellAttendancePage() {
       guestEmail: offeringDonorType === 'guest' ? (offeringGuestEmail || undefined) : undefined,
       guestPhone: offeringDonorType === 'guest' ? (offeringGuestPhone || undefined) : undefined,
       amount: parseFloat(offeringAmount),
-      currency: 'MWK',
+      currency: offeringCurrency,
       date: meeting ? new Date(meeting.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       notes: offeringNotes || undefined,
       cellId: cellId!,
@@ -891,16 +893,25 @@ export default function CellAttendancePage() {
             )}
 
             {/* Amount */}
-            <div className="space-y-1.5">
-              <Label className="text-sm">Amount (MWK) <span className="text-destructive">*</span></Label>
-              <Input
-                type="number"
-                min="1"
-                step="any"
-                placeholder="0.00"
-                value={offeringAmount}
-                onChange={e => setOfferingAmount(e.target.value)}
-              />
+            <div className="grid grid-cols-[1fr_auto] gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Amount <span className="text-destructive">*</span></Label>
+                <Input
+                  {...decimalInputProps}
+                  min="1"
+                  step="any"
+                  placeholder="0.00"
+                  value={offeringAmount}
+                  onInput={sanitizeDecimalInput}
+                  onChange={e => setOfferingAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Currency</Label>
+                <div className="flex h-10 min-w-20 items-center rounded-md border bg-muted/40 px-3 text-sm text-muted-foreground">
+                  {offeringCurrency}
+                </div>
+              </div>
             </div>
 
             {/* Notes */}

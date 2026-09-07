@@ -161,7 +161,6 @@ function CashDonationDialog({
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState(defaultCurrency);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [reference, setReference] = useState('');
   const [notes, setNotes] = useState('');
@@ -212,7 +211,7 @@ function CashDonationDialog({
       guestEmail: donorType === 'guest' ? (guestEmail || undefined) : undefined,
       guestPhone: donorType === 'guest' ? (guestPhone || undefined) : undefined,
       amount: parseFloat(amount),
-      currency,
+      currency: defaultCurrency,
       date,
       reference: reference || undefined,
       notes: notes || undefined,
@@ -360,7 +359,7 @@ function CashDonationDialog({
             </div>
           )}
 
-          {/* Amount + currency */}
+          {/* Amount + market currency */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Amount <span className="text-destructive">*</span></Label>
@@ -368,13 +367,9 @@ function CashDonationDialog({
             </div>
             <div className="space-y-1.5">
               <Label>Currency</Label>
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MWK">MWK</SelectItem>
-                  <SelectItem value="KES">KES</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex h-10 items-center rounded-md border bg-muted/40 px-3 text-sm text-muted-foreground">
+                {defaultCurrency}
+              </div>
             </div>
           </div>
 

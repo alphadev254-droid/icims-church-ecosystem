@@ -68,7 +68,7 @@ const campaignSchema = z.object({
     },
     z.number().positive().optional()
   ),
-  currency: z.enum(['MWK', 'KES']).default('MWK'),
+  currency: z.enum(['USD', 'KES', 'MWK']).optional(),
   endDate: z.preprocess(value => value ?? undefined, z.string().optional()),
   allowPublicDonations: z.boolean().default(false),
   allowPledging: z.boolean().default(false),
@@ -146,7 +146,7 @@ function CampaignForm({
 }) {
   const { register, handleSubmit, setValue, watch, formState: { errors, isValid } } = useForm<CampaignFormValues>({
     resolver: zodResolver(campaignSchema),
-    defaultValues: { category: 'tithe', currency: 'MWK', allowPublicDonations: false, allowPledging: false, ...defaultValues },
+    defaultValues: { category: 'tithe', allowPublicDonations: false, allowPledging: false, ...defaultValues },
   });
 
   const churchId = watch('churchId');
@@ -266,15 +266,11 @@ function CampaignForm({
           <Label className="text-xs sm:text-sm">Target Amount (Optional)</Label>
           <Input className="h-8 text-xs sm:h-10 sm:text-sm" {...decimalInputProps} {...register('targetAmount')} onInput={sanitizeDecimalInput} placeholder="" />
         </div>
-        <div>
-          <Label className="text-xs sm:text-sm">Currency*</Label>
-          <Select defaultValue={defaultValues?.currency ?? 'MWK'} onValueChange={v => setValue('currency', v as any)}>
-            <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="MWK">MWK</SelectItem>
-              <SelectItem value="KES">KES</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="space-y-1">
+          <Label className="text-xs sm:text-sm">Currency</Label>
+          <div className="flex h-8 items-center rounded-md border bg-muted/40 px-3 text-xs text-muted-foreground sm:h-10 sm:text-sm">
+            {defaultValues?.currency || 'Set automatically from ministry market'}
+          </div>
         </div>
       </div>
 
@@ -631,6 +627,7 @@ export default function GivingPage() {
   const totalDonors = campaigns.reduce((sum, c) => sum + (c.donorCount || 0), 0);
   const summaryTotalRaised = givingSummary?.totalRaised ?? totalRaised;
   const summaryDonorCount = givingSummary?.donorCount ?? totalDonors;
+  const summaryCurrency = givingSummary?.topCampaigns?.[0]?.currency || campaigns[0]?.currency || 'MWK';
   const summaryRangeLabel = summaryDateRange.startDate && summaryDateRange.endDate
     ? `${summaryDateRange.startDate} to ${summaryDateRange.endDate}`
     : 'Choose a custom date range';
@@ -929,7 +926,8 @@ export default function GivingPage() {
                 <CampaignForm
                   onSubmit={v => {
                     console.log('Campaign form values:', v);
-                    createMutation.mutate(v as any);
+                    const { currency, ...dto } = v;
+                    createMutation.mutate(dto as any);
                   }}
                   isPending={createMutation.isPending}
                   submitLabel="Create"
@@ -954,7 +952,7 @@ export default function GivingPage() {
                     <p className="text-xs sm:text-sm text-muted-foreground">Total Raised</p>
                     <HandCoins className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <p className="break-words text-xl font-bold sm:text-2xl">MWK {summaryTotalRaised.toLocaleString()}</p>
+                  <p className="break-words text-xl font-bold sm:text-2xl">{summaryCurrency} {summaryTotalRaised.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">{summaryRangeLabel}</p>
                 </div>
                 <div className="min-w-0 flex flex-col gap-2 sm:flex-row md:justify-end">
@@ -1180,7 +1178,7 @@ export default function GivingPage() {
                 category: editCampaign.category,
                 subcategory: editCampaign.subcategory,
                 targetAmount: editCampaign.targetAmount,
-                currency: editCampaign.currency as 'MWK' | 'KES',
+                currency: editCampaign.currency as 'USD' | 'KES' | 'MWK',
                 endDate: editCampaign.endDate ? new Date(editCampaign.endDate).toISOString().split('T')[0] : undefined,
                 allowPublicDonations: editCampaign.allowPublicDonations,
                 allowPledging: editCampaign.allowPledging,
@@ -1196,7 +1194,6 @@ export default function GivingPage() {
                   category: v.category,
                   subcategory: v.category === 'tithe' || v.category === 'offering' ? undefined : v.subcategory || undefined,
                   targetAmount: v.targetAmount,
-                  currency: v.currency,
                   endDate: v.endDate || null,
                   allowPublicDonations: Boolean(v.allowPublicDonations),
                   allowPledging: Boolean(v.allowPledging),
