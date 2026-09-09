@@ -12,6 +12,7 @@ export interface CellMeetingRecurrenceRule {
 }
 
 export type CellMeetingDeliveryMode = 'now' | 'scheduled';
+export type CellMeetingSchedulePattern = 'repeat' | 'custom_dates';
 
 export interface Cell {
   id: string;
@@ -74,6 +75,11 @@ export interface CellMeeting {
     status: string;
     recurrenceRuleId?: string | null;
     recurrenceRule?: CellMeetingRecurrenceRule | null;
+    occurrences?: Array<{
+      occurrenceStartAt: string;
+      occurrenceEndAt: string;
+      status: string;
+    }>;
   } | null;
   presentCount?: number;
   visitorCount?: number;
@@ -213,12 +219,12 @@ export const cellsService = {
     return data;
   },
 
-  createMeeting: async (cellId: string, dto: { date: string; time?: string; topic?: string; notes?: string; deliveryMode?: CellMeetingDeliveryMode; recurrenceRule?: CellMeetingRecurrenceRule | null }): Promise<CellMeeting> => {
+  createMeeting: async (cellId: string, dto: { date: string; time?: string; topic?: string; notes?: string; deliveryMode?: CellMeetingDeliveryMode; schedulePattern?: CellMeetingSchedulePattern; occurrenceDates?: string[]; recurrenceRule?: CellMeetingRecurrenceRule | null }): Promise<CellMeeting> => {
     const { data } = await apiClient.post(`${BASE}/${cellId}/meetings`, dto);
     return data.data;
   },
 
-  updateMeeting: async (meetingId: string, dto: Partial<{ date: string; time: string; topic: string; notes: string; deliveryMode: CellMeetingDeliveryMode; recurrenceRule: CellMeetingRecurrenceRule | null }>): Promise<CellMeeting> => {
+  updateMeeting: async (meetingId: string, dto: Partial<{ date: string; time: string; topic: string; notes: string; deliveryMode: CellMeetingDeliveryMode; schedulePattern: CellMeetingSchedulePattern; occurrenceDates: string[]; recurrenceRule: CellMeetingRecurrenceRule | null }>): Promise<CellMeeting> => {
     const { data } = await apiClient.put(`${BASE}/meetings/${meetingId}`, dto);
     return data.data;
   },

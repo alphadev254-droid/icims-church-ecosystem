@@ -1,7 +1,7 @@
 import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { cellsService, type CellMember, type CellMeeting, type CellMeetingDeliveryMode } from '@/services/cells';
+import { cellsService, type CellMember, type CellMeeting, type CellMeetingDeliveryMode, type CellMeetingSchedulePattern } from '@/services/cells';
 import { usersService } from '@/services/users';
 import { useRole } from '@/hooks/useRole';
 import { useAuthStore } from '@/stores/authStore';
@@ -38,10 +38,12 @@ const WEEK_DAYS = [
 
 type MeetingFormState = {
   deliveryMode: CellMeetingDeliveryMode;
+  schedulePattern: CellMeetingSchedulePattern;
   date: string;
   time: string;
   topic: string;
   notes: string;
+  occurrenceDates: string[];
   recurrenceRule: {
     frequency: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
     interval: number;
@@ -56,10 +58,12 @@ type MeetingFormState = {
 function emptyMeetingForm(time = ''): MeetingFormState {
   return {
     deliveryMode: 'now',
+    schedulePattern: 'repeat',
     date: '',
     time,
     topic: '',
     notes: '',
+    occurrenceDates: [],
     recurrenceRule: {
       frequency: 'none',
       interval: 1,
@@ -83,18 +87,26 @@ function dateFromInputValue(value?: string | null) {
   return new Date(year, month - 1, day);
 }
 
-function recurrencePickerDate(monthOfYear: number | null | undefined, dayOfMonth: number | null | undefined) {
-  if (!dayOfMonth) return undefined;
-  return new Date(2026, Math.max(0, (monthOfYear ?? 1) - 1), dayOfMonth);
+function inputValueFromDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-function formatRecurrenceDay(monthOfYear: number | null | undefined, dayOfMonth: number | null | undefined) {
-  if (!dayOfMonth) return 'No day selected';
-  const date = recurrencePickerDate(monthOfYear, dayOfMonth);
-  if (!date) return 'No day selected';
-  return monthOfYear
-    ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-    : `Day ${dayOfMonth}`;
+function selectedDatesFromInputValues(values: string[]): Date[] {
+  return values
+    .map(value => dateFromInputValue(value))
+    .filter((date): date is Date => Boolean(date));
+}
+
+function sortedUniqueDateValues(values: string[]): string[] {
+  return [...new Set(values)].sort();
+}
+
+function formatSelectedScheduleDate(value: string) {
+  const date = dateFromInputValue(value);
+  return date ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : value;
 }
 
 export default function CellDetailPage() {
@@ -379,13 +391,19 @@ export default function CellDetailPage() {
   };
 
   const openEditMeetingDialog = (meeting: CellMeeting) => {
+    const savedOccurrenceDates = sortedUniqueDateValues(
+      (meeting.scheduledEvent?.occurrences ?? []).map(occurrence => dateInputValue(occurrence.occurrenceStartAt)),
+    );
+    const hasExactDateSchedule = meeting.scheduledEvent && !meeting.scheduledEvent.recurrenceRuleId && savedOccurrenceDates.length > 0;
     setEditMeeting(meeting);
     setEditMeetingForm({
       deliveryMode: meeting.scheduledEvent ? 'scheduled' : 'now',
+      schedulePattern: hasExactDateSchedule ? 'custom_dates' : 'repeat',
       date: dateInputValue(meeting.date),
       time: meeting.time ?? cell.meetingTime ?? '',
       topic: meeting.topic ?? '',
       notes: meeting.notes ?? '',
+      occurrenceDates: savedOccurrenceDates,
       recurrenceRule: {
         ...emptyMeetingForm().recurrenceRule,
         ...(meeting.scheduledEvent?.recurrenceRule ?? meeting.recurrenceRule ?? {}),
@@ -405,8 +423,39 @@ export default function CellDetailPage() {
   ) => {
     const recurrence = form.recurrenceRule;
     const isScheduledMode = form.deliveryMode === 'scheduled';
+    const isExactDateSchedule = isScheduledMode && form.schedulePattern === 'custom_dates';
+    const selectedExactDates = selectedDatesFromInputValues(form.occurrenceDates);
+    const hasRequiredScheduleDate = isExactDateSchedule ? form.occurrenceDates.length > 0 : Boolean(form.date);
     const setRecurrence = (next: Partial<MeetingFormState['recurrenceRule']>) => {
       setForm(current => ({ ...current, recurrenceRule: { ...current.recurrenceRule, ...next } }));
+    };
+    const setSchedulePattern = (schedulePattern: CellMeetingSchedulePattern) => {
+      setForm(current => ({
+        ...current,
+        schedulePattern,
+        recurrenceRule: schedulePattern === 'repeat' ? current.recurrenceRule : emptyMeetingForm().recurrenceRule,
+        occurrenceDates: schedulePattern === 'custom_dates'
+          ? sortedUniqueDateValues(current.occurrenceDates.length > 0 ? current.occurrenceDates : current.date ? [current.date] : [])
+          : [],
+      }));
+    };
+    const setExactDates = (dates: Date[] | undefined) => {
+      const occurrenceDates = sortedUniqueDateValues((dates ?? []).map(inputValueFromDate));
+      setForm(current => ({
+        ...current,
+        occurrenceDates,
+        date: occurrenceDates[0] ?? current.date,
+      }));
+    };
+    const removeExactDate = (value: string) => {
+      setForm(current => {
+        const occurrenceDates = current.occurrenceDates.filter(date => date !== value);
+        return {
+          ...current,
+          occurrenceDates,
+          date: current.date === value ? occurrenceDates[0] ?? '' : current.date,
+        };
+      });
     };
 
     return (
@@ -422,6 +471,7 @@ export default function CellDetailPage() {
               ...current,
               deliveryMode: value as CellMeetingDeliveryMode,
               recurrenceRule: value === 'scheduled' ? current.recurrenceRule : emptyMeetingForm().recurrenceRule,
+              occurrenceDates: value === 'scheduled' ? current.occurrenceDates : [],
             }))}
           >
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
@@ -437,8 +487,12 @@ export default function CellDetailPage() {
             <p className="mt-1 text-xs text-destructive">This meeting has a schedule, but your role or package cannot modify schedules.</p>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><Label>{isScheduledMode ? 'Start date *' : 'Date *'}</Label><Input className="mt-1" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>{isScheduledMode ? 'Start date *' : 'Date *'}</Label>
+            {isExactDateSchedule && <p className="mb-1 text-xs text-muted-foreground">Auto-fills from the first selected date.</p>}
+            <Input className="mt-1" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+          </div>
           <div><Label>Time</Label><Input className="mt-1" type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
         </div>
         <div><Label>Topic</Label><Input className="mt-1" value={form.topic} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} placeholder="Meeting topic" /></div>
@@ -446,7 +500,63 @@ export default function CellDetailPage() {
 
         {isScheduledMode && (
           <div className="space-y-3 rounded-md border border-border p-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Schedule Type</Label>
+              <p className="mb-2 text-xs text-muted-foreground">Use a repeat rule, or pick the exact dates this meeting should happen.</p>
+              <div className="grid grid-cols-2 overflow-hidden rounded-md border border-border">
+                <Button
+                  type="button"
+                  variant={form.schedulePattern === 'repeat' ? 'secondary' : 'ghost'}
+                  className="h-9 rounded-none"
+                  onClick={() => setSchedulePattern('repeat')}
+                >
+                  Repeat pattern
+                </Button>
+                <Button
+                  type="button"
+                  variant={form.schedulePattern === 'custom_dates' ? 'secondary' : 'ghost'}
+                  className="h-9 rounded-none border-l border-border"
+                  onClick={() => setSchedulePattern('custom_dates')}
+                >
+                  Choose dates
+                </Button>
+              </div>
+            </div>
+
+            {form.schedulePattern === 'custom_dates' && (
+              <div>
+                <Label>Meeting Dates</Label>
+                <p className="mb-2 text-xs text-muted-foreground">Select every calendar date when this meeting should be created.</p>
+                <div className="rounded-md border border-border bg-background/40">
+                  <CalendarPicker
+                    mode="multiple"
+                    selected={selectedExactDates}
+                    defaultMonth={selectedExactDates[0] ?? dateFromInputValue(form.date)}
+                    onSelect={setExactDates}
+                    className="mx-auto w-fit"
+                  />
+                  <div className="space-y-2 border-t px-3 py-2">
+                    <p className="text-xs text-muted-foreground">{form.occurrenceDates.length} date{form.occurrenceDates.length === 1 ? '' : 's'} selected</p>
+                    {form.occurrenceDates.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {form.occurrenceDates.map(date => (
+                          <Badge key={date} variant="secondary" className="gap-1">
+                            {formatSelectedScheduleDate(date)}
+                            <button type="button" className="ml-1 text-muted-foreground hover:text-foreground" onClick={() => removeExactDate(date)}>
+                              x
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {form.schedulePattern === 'repeat' && (
+              <>
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label>Repeat</Label>
                 <p className="mb-1 text-xs text-muted-foreground">Use None for a one-time meeting.</p>
@@ -503,50 +613,67 @@ export default function CellDetailPage() {
               </div>
             )}
 
+            {['monthly', 'yearly'].includes(recurrence.frequency) && (
+              <p className="text-xs text-muted-foreground">
+                For exact dates across different weeks or months, switch Schedule Type to Choose dates.
+              </p>
+            )}
+
             {recurrence.frequency === 'monthly' && (
               <div>
                 <Label>Day of month</Label>
-                <p className="mb-2 text-xs text-muted-foreground">Choose a day from 1 to 28 so this schedule works every month.</p>
-                <div className="rounded-md border border-border bg-background/40">
-                  <CalendarPicker
-                    mode="single"
-                    selected={recurrencePickerDate(null, recurrence.dayOfMonth)}
-                    defaultMonth={dateFromInputValue(form.date)}
-                    disabled={date => date.getDate() > 28}
-                    onSelect={date => setRecurrence({ dayOfMonth: date ? date.getDate() : null })}
-                    className="mx-auto w-fit"
-                  />
-                  <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-                    Selected: <span className="font-medium text-foreground">{formatRecurrenceDay(null, recurrence.dayOfMonth)}</span>
-                  </div>
-                </div>
+                <p className="mb-1 text-xs text-muted-foreground">Enter a day from 1 to 28 so this schedule works every month.</p>
+                <Input
+                  type="number"
+                  min={1}
+                  max={28}
+                  className="mt-1"
+                  value={recurrence.dayOfMonth ?? ''}
+                  onChange={e => {
+                    const value = e.target.value ? Math.min(28, Math.max(1, Number(e.target.value))) : null;
+                    setRecurrence({ dayOfMonth: value });
+                  }}
+                />
               </div>
             )}
 
             {recurrence.frequency === 'yearly' && (
-              <div>
-                <Label>Repeat date</Label>
-                <p className="mb-2 text-xs text-muted-foreground">Choose the month and day this meeting should repeat every year.</p>
-                <div className="rounded-md border border-border bg-background/40">
-                  <CalendarPicker
-                    mode="single"
-                    selected={recurrencePickerDate(recurrence.monthOfYear, recurrence.dayOfMonth)}
-                    defaultMonth={recurrencePickerDate(recurrence.monthOfYear, recurrence.dayOfMonth) ?? dateFromInputValue(form.date)}
-                    onSelect={date => setRecurrence({
-                      monthOfYear: date ? date.getMonth() + 1 : null,
-                      dayOfMonth: date ? date.getDate() : null,
-                    })}
-                    className="mx-auto w-fit"
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Month</Label>
+                  <p className="mb-1 text-xs text-muted-foreground">Month number, 1 to 12.</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={12}
+                    className="mt-1"
+                    value={recurrence.monthOfYear ?? ''}
+                    onChange={e => {
+                      const value = e.target.value ? Math.min(12, Math.max(1, Number(e.target.value))) : null;
+                      setRecurrence({ monthOfYear: value });
+                    }}
                   />
-                  <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-                    Selected: <span className="font-medium text-foreground">{formatRecurrenceDay(recurrence.monthOfYear, recurrence.dayOfMonth)}</span>
-                  </div>
+                </div>
+                <div>
+                  <Label>Day</Label>
+                  <p className="mb-1 text-xs text-muted-foreground">Day number for that month.</p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={31}
+                    className="mt-1"
+                    value={recurrence.dayOfMonth ?? ''}
+                    onChange={e => {
+                      const value = e.target.value ? Math.min(31, Math.max(1, Number(e.target.value))) : null;
+                      setRecurrence({ dayOfMonth: value });
+                    }}
+                  />
                 </div>
               </div>
             )}
 
             {recurrence.frequency !== 'none' && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label>End date</Label>
                   <p className="mb-1 text-xs text-muted-foreground">Stop repeating after this date.</p>
@@ -559,10 +686,12 @@ export default function CellDetailPage() {
                 </div>
               </div>
             )}
+              </>
+            )}
           </div>
         )}
 
-        <Button className="w-full" disabled={!form.date || isSaving} onClick={onSubmit}>
+        <Button className="w-full" disabled={!hasRequiredScheduleDate || isSaving} onClick={onSubmit}>
           {isSaving ? 'Saving...' : submitLabel}
         </Button>
       </div>
@@ -1633,14 +1762,14 @@ export default function CellDetailPage() {
 
       {/* New Meeting Dialog */}
       <Dialog open={newMeetingOpen} onOpenChange={setNewMeetingOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-3xl max-h-[calc(100svh-1.5rem)] overflow-y-auto">
           <DialogHeader><DialogTitle>Record Meeting</DialogTitle></DialogHeader>
           {renderMeetingForm(meetingForm, setMeetingForm, createMeetingMutation.isPending, 'Create Meeting', () => createMeetingMutation.mutate())}
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!editMeeting} onOpenChange={open => { if (!open) setEditMeeting(null); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-3xl max-h-[calc(100svh-1.5rem)] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Meeting</DialogTitle></DialogHeader>
           {renderMeetingForm(editMeetingForm, setEditMeetingForm, updateMeetingMutation.isPending, 'Save Changes', () => updateMeetingMutation.mutate())}
         </DialogContent>
