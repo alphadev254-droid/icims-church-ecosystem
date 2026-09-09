@@ -47,7 +47,7 @@ export interface CreateTeamCommunicationData {
   content: string;
   teamId: string;
   mediaUrls?: { url: string; type: string; name: string; size: number }[];
-  deliveryMode?: 'draft' | 'now' | 'scheduled';
+  deliveryMode?: 'now' | 'scheduled';
   scheduledAt?: string | null;
   recurrenceRule?: TeamCommunicationRecurrenceRule | null;
 }

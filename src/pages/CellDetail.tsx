@@ -15,7 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Users, Calendar, MapPin, UserPlus, Plus, Trash2, ClipboardList, ChevronLeft, ChevronRight, Search, AlertTriangle, TrendingUp, TrendingDown, Minus, Pencil, Eye } from 'lucide-react';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { ArrowLeft, Users, Calendar as CalendarIcon, MapPin, UserPlus, Plus, Trash2, ClipboardList, ChevronLeft, ChevronRight, Search, AlertTriangle, TrendingUp, TrendingDown, Minus, Pencil, Eye } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -73,6 +74,27 @@ function emptyMeetingForm(time = ''): MeetingFormState {
 
 function dateInputValue(value?: string | null): string {
   return value ? new Date(value).toISOString().slice(0, 10) : '';
+}
+
+function dateFromInputValue(value?: string | null) {
+  if (!value) return undefined;
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
+}
+
+function recurrencePickerDate(monthOfYear: number | null | undefined, dayOfMonth: number | null | undefined) {
+  if (!dayOfMonth) return undefined;
+  return new Date(2026, Math.max(0, (monthOfYear ?? 1) - 1), dayOfMonth);
+}
+
+function formatRecurrenceDay(monthOfYear: number | null | undefined, dayOfMonth: number | null | undefined) {
+  if (!dayOfMonth) return 'No day selected';
+  const date = recurrencePickerDate(monthOfYear, dayOfMonth);
+  if (!date) return 'No day selected';
+  return monthOfYear
+    ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+    : `Day ${dayOfMonth}`;
 }
 
 export default function CellDetailPage() {
@@ -392,7 +414,7 @@ export default function CellDetailPage() {
         <div>
           <Label>Meeting Mode</Label>
           <p className="mb-1 text-xs text-muted-foreground">
-            Choose whether this meeting is just recorded, created now, or scheduled for follow-up automation.
+            Choose whether this meeting is created now or scheduled for automation.
           </p>
           <Select
             value={form.deliveryMode}
@@ -404,7 +426,6 @@ export default function CellDetailPage() {
           >
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="draft">Draft / Do not schedule yet</SelectItem>
               <SelectItem value="now">Create now</SelectItem>
               {(canCreateSchedule || form.deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
             </SelectContent>
@@ -417,7 +438,7 @@ export default function CellDetailPage() {
           )}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Date *</Label><Input className="mt-1" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
+          <div><Label>{isScheduledMode ? 'Start date *' : 'Date *'}</Label><Input className="mt-1" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
           <div><Label>Time</Label><Input className="mt-1" type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
         </div>
         <div><Label>Topic</Label><Input className="mt-1" value={form.topic} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} placeholder="Meeting topic" /></div>
@@ -485,22 +506,41 @@ export default function CellDetailPage() {
             {recurrence.frequency === 'monthly' && (
               <div>
                 <Label>Day of month</Label>
-                <p className="mb-1 text-xs text-muted-foreground">The date number to repeat on each month.</p>
-                <Input type="number" min={1} max={31} className="mt-1" value={recurrence.dayOfMonth ?? ''} onChange={e => setRecurrence({ dayOfMonth: e.target.value ? Number(e.target.value) : null })} />
+                <p className="mb-2 text-xs text-muted-foreground">Choose a day from 1 to 28 so this schedule works every month.</p>
+                <div className="rounded-md border border-border bg-background/40">
+                  <CalendarPicker
+                    mode="single"
+                    selected={recurrencePickerDate(null, recurrence.dayOfMonth)}
+                    defaultMonth={dateFromInputValue(form.date)}
+                    disabled={date => date.getDate() > 28}
+                    onSelect={date => setRecurrence({ dayOfMonth: date ? date.getDate() : null })}
+                    className="mx-auto w-fit"
+                  />
+                  <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+                    Selected: <span className="font-medium text-foreground">{formatRecurrenceDay(null, recurrence.dayOfMonth)}</span>
+                  </div>
+                </div>
               </div>
             )}
 
             {recurrence.frequency === 'yearly' && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Month</Label>
-                  <p className="mb-1 text-xs text-muted-foreground">Month number, 1 to 12.</p>
-                  <Input type="number" min={1} max={12} className="mt-1" value={recurrence.monthOfYear ?? ''} onChange={e => setRecurrence({ monthOfYear: e.target.value ? Number(e.target.value) : null })} />
-                </div>
-                <div>
-                  <Label>Day</Label>
-                  <p className="mb-1 text-xs text-muted-foreground">Day number, 1 to 31.</p>
-                  <Input type="number" min={1} max={31} className="mt-1" value={recurrence.dayOfMonth ?? ''} onChange={e => setRecurrence({ dayOfMonth: e.target.value ? Number(e.target.value) : null })} />
+              <div>
+                <Label>Repeat date</Label>
+                <p className="mb-2 text-xs text-muted-foreground">Choose the month and day this meeting should repeat every year.</p>
+                <div className="rounded-md border border-border bg-background/40">
+                  <CalendarPicker
+                    mode="single"
+                    selected={recurrencePickerDate(recurrence.monthOfYear, recurrence.dayOfMonth)}
+                    defaultMonth={recurrencePickerDate(recurrence.monthOfYear, recurrence.dayOfMonth) ?? dateFromInputValue(form.date)}
+                    onSelect={date => setRecurrence({
+                      monthOfYear: date ? date.getMonth() + 1 : null,
+                      dayOfMonth: date ? date.getDate() : null,
+                    })}
+                    className="mx-auto w-fit"
+                  />
+                  <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+                    Selected: <span className="font-medium text-foreground">{formatRecurrenceDay(recurrence.monthOfYear, recurrence.dayOfMonth)}</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -543,7 +583,7 @@ export default function CellDetailPage() {
           </div>
           <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
             {cell.zone && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{cell.zone}</span>}
-            {cell.meetingDay && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{cell.meetingDay}{cell.meetingTime ? ` · ${cell.meetingTime}` : ''}</span>}
+            {cell.meetingDay && <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" />{cell.meetingDay}{cell.meetingTime ? ` · ${cell.meetingTime}` : ''}</span>}
             {cell.church && <span className="flex items-center gap-1"><Users className="h-3 w-3" />{cell.church.name}</span>}
           </div>
         </div>

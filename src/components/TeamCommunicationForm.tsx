@@ -64,7 +64,7 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
   const [title, setTitle] = useState(initialData?.title || '');
   const [content, setContent] = useState(initialData?.content || '');
   const [teamId, setTeamId] = useState(initialData?.teamId || '');
-  const [deliveryMode, setDeliveryMode] = useState<'draft' | 'now' | 'scheduled'>(initialData?.scheduledEvent ? 'scheduled' : 'now');
+  const [deliveryMode, setDeliveryMode] = useState<'now' | 'scheduled'>(initialData?.scheduledEvent ? 'scheduled' : 'now');
   const [scheduledDate, setScheduledDate] = useState(toDateInputValue(initialData?.scheduledEvent?.startAt));
   const [scheduledTime, setScheduledTime] = useState(toTimeInputValue(initialData?.scheduledEvent?.startAt));
   const [recurrenceRule, setRecurrenceRule] = useState<TeamCommunicationRecurrenceRule>(
@@ -174,17 +174,16 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
           <Label>Delivery</Label>
         </div>
         <p className="text-xs text-muted-foreground">
-          Choose whether this team post should be sent immediately, saved without sending, or sent later.
+          Choose whether this team post should be sent immediately or sent later.
         </p>
         <Select value={deliveryMode} onValueChange={value => {
-          setDeliveryMode(value as 'draft' | 'now' | 'scheduled');
+          setDeliveryMode(value as 'now' | 'scheduled');
           if (value !== 'scheduled') setRecurrenceRule(defaultRecurrenceRule());
         }}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="draft">Draft / Do not send yet</SelectItem>
             <SelectItem value="now">Send now</SelectItem>
             {(canCreateSchedule || deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
           </SelectContent>

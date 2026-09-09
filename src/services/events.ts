@@ -70,7 +70,7 @@ export interface CreateEventDto {
   churchId: string;
   scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
   churchIds?: string[];
-  deliveryMode?: 'draft' | 'now' | 'scheduled';
+  deliveryMode?: 'now' | 'scheduled';
   recurrenceRule?: RecurrenceRulePayload | null;
 }
 

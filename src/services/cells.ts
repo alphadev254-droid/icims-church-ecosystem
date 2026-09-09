@@ -11,7 +11,7 @@ export interface CellMeetingRecurrenceRule {
   count?: number | null;
 }
 
-export type CellMeetingDeliveryMode = 'draft' | 'now' | 'scheduled';
+export type CellMeetingDeliveryMode = 'now' | 'scheduled';
 
 export interface Cell {
   id: string;

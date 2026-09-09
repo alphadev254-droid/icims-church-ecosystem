@@ -76,7 +76,7 @@ const schema = z.object({
   imageUrl: z.string().nullable().optional(),
   scopeType: z.enum(['one_church', 'selected_churches', 'all_churches']).default('one_church'),
   churchIds: z.array(z.string()).default([]),
-  deliveryMode: z.enum(['draft', 'now', 'scheduled']).default('now'),
+  deliveryMode: z.enum(['now', 'scheduled']).default('now'),
   recurrenceRule: z.object({
     frequency: z.enum(['none', 'daily', 'weekly', 'monthly', 'yearly']).default('none'),
     interval: z.number().int().positive().default(1),
@@ -411,7 +411,7 @@ function EventForm({
           <Label className="text-xs sm:text-sm">Event Mode</Label>
         </div>
         <p className="text-xs text-muted-foreground">
-          Choose whether this event is saved as a draft, published now, or added to the scheduler.
+          Choose whether this event is published now or added to the scheduler.
         </p>
         <Select value={deliveryMode} onValueChange={value => {
           setValue('deliveryMode', value as FormValues['deliveryMode'], { shouldDirty: true, shouldValidate: true });
@@ -419,7 +419,6 @@ function EventForm({
         }}>
           <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="draft">Draft / Do not schedule yet</SelectItem>
             <SelectItem value="now">Publish now</SelectItem>
             {(canCreateSchedule || deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
           </SelectContent>

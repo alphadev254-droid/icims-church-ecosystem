@@ -51,7 +51,7 @@ export interface CreateAnnouncementDto {
   priority?: Announcement['priority'];
   churchId: string;
   attachments?: string;
-  deliveryMode?: 'draft' | 'now' | 'scheduled';
+  deliveryMode?: 'now' | 'scheduled';
   scheduledAt?: string | null;
   recurrenceRule?: RecurrenceRulePayload | null;
 }

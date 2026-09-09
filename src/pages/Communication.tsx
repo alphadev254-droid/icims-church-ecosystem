@@ -33,7 +33,7 @@ const schema = z.object({
   type: z.enum(['announcement', 'prayer_request', 'newsletter']),
   priority: z.enum(['normal', 'urgent']).default('normal'),
   churchId: z.string().min(1, 'Church selection required'),
-  deliveryMode: z.enum(['draft', 'now', 'scheduled']).default('now'),
+  deliveryMode: z.enum(['now', 'scheduled']).default('now'),
   scheduledDate: z.string().optional(),
   scheduledTime: z.string().optional(),
   recurrenceRule: z.object({
@@ -302,7 +302,7 @@ export default function CommunicationPage() {
   }: {
     registerForm: any;
     setFormValue: any;
-    mode: 'draft' | 'now' | 'scheduled';
+    mode: 'now' | 'scheduled';
     rule: NonNullable<FormValues['recurrenceRule']>;
     frequency: string;
     selectedDays: string[];
@@ -314,7 +314,7 @@ export default function CommunicationPage() {
         <Label className="text-xs sm:text-sm">Delivery</Label>
       </div>
       <p className="text-xs text-muted-foreground">
-        Choose whether this post should be sent immediately, saved without sending, or sent later.
+        Choose whether this post should be sent immediately or sent later.
       </p>
       <Select value={mode} onValueChange={value => {
         setFormValue('deliveryMode', value, { shouldDirty: true, shouldValidate: true });
@@ -322,7 +322,6 @@ export default function CommunicationPage() {
       }}>
         <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
         <SelectContent>
-          <SelectItem value="draft">Draft / Do not send yet</SelectItem>
           <SelectItem value="now">Send now</SelectItem>
           {(canCreateSchedule || mode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
         </SelectContent>
