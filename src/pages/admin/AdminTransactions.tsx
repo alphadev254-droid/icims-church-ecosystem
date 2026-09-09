@@ -280,6 +280,8 @@ function CountPill({ label, value }: { label: string; value: number }) {
   );
 }
 
+const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -379,8 +381,6 @@ export default function AdminTransactions() {
     t.isGuest ? (t.guestName ?? 'Guest') : t.user ? `${t.user.firstName} ${t.user.lastName}` : 'Anonymous';
   const donorEmail = (t: AdminSystemTransaction) =>
     t.isGuest ? (t.guestEmail ?? '') : (t.user?.email ?? '');
-
-  const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const givingLinesLabel = (t: AdminSystemTransaction) => {
     if (!t.donationLines?.length) return t.campaignName ?? '';
