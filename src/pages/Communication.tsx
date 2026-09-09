@@ -9,6 +9,7 @@ import { churchesService, Church } from '@/services/churches';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useAuth } from '@/contexts/AuthContext';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +33,7 @@ const schema = z.object({
   type: z.enum(['announcement', 'prayer_request', 'newsletter']),
   priority: z.enum(['normal', 'urgent']).default('normal'),
   churchId: z.string().min(1, 'Church selection required'),
-  deliveryMode: z.enum(['now', 'scheduled']).default('now'),
+  deliveryMode: z.enum(['draft', 'now', 'scheduled']).default('now'),
   scheduledDate: z.string().optional(),
   scheduledTime: z.string().optional(),
   recurrenceRule: z.object({
@@ -131,6 +132,10 @@ export default function CommunicationPage() {
   const { hasPermission, role } = useRole();
   const qc = useQueryClient();
   const isMember = role === 'member';
+  const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
+  const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
+  const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
+  const canUseRecurringSchedules = canCreateSchedule && hasSchedulerRecurringFeature;
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['announcements', selectedChurch],
@@ -297,7 +302,7 @@ export default function CommunicationPage() {
   }: {
     registerForm: any;
     setFormValue: any;
-    mode: 'now' | 'scheduled';
+    mode: 'draft' | 'now' | 'scheduled';
     rule: NonNullable<FormValues['recurrenceRule']>;
     frequency: string;
     selectedDays: string[];
@@ -308,24 +313,39 @@ export default function CommunicationPage() {
         <CalendarClock className="h-4 w-4 text-accent" />
         <Label className="text-xs sm:text-sm">Delivery</Label>
       </div>
-      <Select value={mode} onValueChange={value => setFormValue('deliveryMode', value, { shouldDirty: true, shouldValidate: true })}>
+      <p className="text-xs text-muted-foreground">
+        Choose whether this post should be sent immediately, saved without sending, or sent later.
+      </p>
+      <Select value={mode} onValueChange={value => {
+        setFormValue('deliveryMode', value, { shouldDirty: true, shouldValidate: true });
+        if (value !== 'scheduled') setFormValue('recurrenceRule', defaultRecurrenceRule(), { shouldDirty: true });
+      }}>
         <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
         <SelectContent>
+          <SelectItem value="draft">Draft / Do not send yet</SelectItem>
           <SelectItem value="now">Send now</SelectItem>
-          <SelectItem value="scheduled">Schedule</SelectItem>
+          {(canCreateSchedule || mode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
         </SelectContent>
       </Select>
+      {!canCreateSchedule && mode !== 'scheduled' && (
+        <p className="text-xs text-muted-foreground">Scheduling is not enabled for your role or package.</p>
+      )}
+      {!canCreateSchedule && mode === 'scheduled' && (
+        <p className="text-xs text-destructive">This post has a schedule, but your role or package cannot modify schedules.</p>
+      )}
 
       {mode === 'scheduled' && (
         <>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs sm:text-sm">Send date</Label>
+              <p className="mb-1 text-xs text-muted-foreground">The calendar day this post should be delivered.</p>
               <Input type="date" {...registerForm('scheduledDate')} className="h-8 text-xs sm:h-10 sm:text-sm" />
               {formErrors.scheduledDate && <p className="text-xs text-destructive mt-1">{formErrors.scheduledDate.message}</p>}
             </div>
             <div>
               <Label className="text-xs sm:text-sm">Send time</Label>
+              <p className="mb-1 text-xs text-muted-foreground">The time of day to send it.</p>
               <Input type="time" {...registerForm('scheduledTime')} className="h-8 text-xs sm:h-10 sm:text-sm" />
               {formErrors.scheduledTime && <p className="text-xs text-destructive mt-1">{formErrors.scheduledTime.message}</p>}
             </div>
@@ -334,26 +354,36 @@ export default function CommunicationPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs sm:text-sm">Repeat</Label>
+              <p className="mb-1 text-xs text-muted-foreground">Use None for one-time delivery.</p>
               <Select
                 value={frequency}
                 onValueChange={value => setFormValue('recurrenceRule', { ...defaultRecurrenceRule(), ...rule, frequency: value }, { shouldDirty: true })}
+                disabled={!canUseRecurringSchedules}
               >
                 <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
+                  {(canUseRecurringSchedules || frequency !== 'none') && (
+                    <>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
+              {!canUseRecurringSchedules && (
+                <p className="mt-1 text-xs text-muted-foreground">Recurring schedules are not enabled for your package.</p>
+              )}
             </div>
             <div>
               <Label className="text-xs sm:text-sm">Every</Label>
+              <p className="mb-1 text-xs text-muted-foreground">How often to repeat, for example every 2 weeks.</p>
               <Input
                 type="number"
                 min={1}
-                disabled={frequency === 'none'}
+                disabled={frequency === 'none' || !canUseRecurringSchedules}
                 value={rule.interval ?? 1}
                 onChange={event => setFormValue('recurrenceRule', { ...rule, interval: Math.max(1, Number(event.target.value || 1)) }, { shouldDirty: true })}
                 className="h-8 text-xs sm:h-10 sm:text-sm"
@@ -361,9 +391,10 @@ export default function CommunicationPage() {
             </div>
           </div>
 
-          {frequency === 'weekly' && (
+          {frequency === 'weekly' && canUseRecurringSchedules && (
             <div>
               <Label className="text-xs sm:text-sm">Repeat on</Label>
+              <p className="mb-1 text-xs text-muted-foreground">Pick the weekdays when this should repeat.</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {WEEK_DAYS.map(day => {
                   const checked = selectedDays.includes(day.value);
@@ -387,9 +418,10 @@ export default function CommunicationPage() {
             </div>
           )}
 
-          {frequency === 'monthly' && (
+          {frequency === 'monthly' && canUseRecurringSchedules && (
             <div>
               <Label className="text-xs sm:text-sm">Day of month</Label>
+              <p className="mb-1 text-xs text-muted-foreground">The date number to repeat on each month.</p>
               <Input
                 type="number"
                 min={1}
@@ -401,10 +433,11 @@ export default function CommunicationPage() {
             </div>
           )}
 
-          {frequency === 'yearly' && (
+          {frequency === 'yearly' && canUseRecurringSchedules && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs sm:text-sm">Month</Label>
+                <p className="mb-1 text-xs text-muted-foreground">Month number, 1 to 12.</p>
                 <Input
                   type="number"
                   min={1}
@@ -416,6 +449,7 @@ export default function CommunicationPage() {
               </div>
               <div>
                 <Label className="text-xs sm:text-sm">Day</Label>
+                <p className="mb-1 text-xs text-muted-foreground">Day number, 1 to 31.</p>
                 <Input
                   type="number"
                   min={1}
@@ -428,10 +462,11 @@ export default function CommunicationPage() {
             </div>
           )}
 
-          {frequency !== 'none' && (
+          {frequency !== 'none' && canUseRecurringSchedules && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs sm:text-sm">End date</Label>
+                <p className="mb-1 text-xs text-muted-foreground">Stop repeating after this date.</p>
                 <Input
                   type="date"
                   value={rule.endsAt ? String(rule.endsAt).slice(0, 10) : ''}
@@ -441,6 +476,7 @@ export default function CommunicationPage() {
               </div>
               <div>
                 <Label className="text-xs sm:text-sm">Or after</Label>
+                <p className="mb-1 text-xs text-muted-foreground">Stop after this many sent occurrences.</p>
                 <Input
                   type="number"
                   min={1}

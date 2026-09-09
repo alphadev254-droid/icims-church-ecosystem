@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, ChevronRight, Loader2, Search, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { HOW_HEARD } from './constants';
 
 const PAGE_SIZE = 70;
 
@@ -114,6 +115,8 @@ export function AddAttendeesDialog({
       guestPhone: visitorForm.guestPhone.trim() || undefined,
       guestGender: visitorForm.guestGender || undefined,
       guestAgeBracket: visitorForm.guestAgeBracket || undefined,
+      guestResidentialArea: visitorForm.guestResidentialArea.trim() || undefined,
+      guestHowHeard: visitorForm.guestHowHeard || undefined,
       guestFirstTime: visitorType === 'guest' ? visitorForm.guestFirstTime : false,
       isNewConvert: visitorType === 'guest' ? visitorForm.isNewConvert : false,
       invitedByUserId: visitorType === 'guest' ? visitorForm.invitedByUserId || undefined : undefined,
@@ -325,6 +328,21 @@ export function AddAttendeesDialog({
                 <div className="space-y-1.5">
                   <Label>Email *</Label>
                   <Input type="email" required value={visitorForm.guestEmail} onChange={event => setVisitorForm(form => ({ ...form, guestEmail: event.target.value }))} />
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Residential Area</Label>
+                  <Input value={visitorForm.guestResidentialArea} onChange={event => setVisitorForm(form => ({ ...form, guestResidentialArea: event.target.value }))} placeholder="e.g. Area 25" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>How did you hear?</Label>
+                  <Select value={visitorForm.guestHowHeard || undefined} onValueChange={value => setVisitorForm(form => ({ ...form, guestHowHeard: value }))}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      {HOW_HEARD.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               {visitorType === 'guest' && (

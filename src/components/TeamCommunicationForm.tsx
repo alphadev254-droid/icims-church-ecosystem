@@ -8,6 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarClock, Upload, X, FileText, Video, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 
 interface TeamCommunicationFormProps {
   teams: Team[];
@@ -53,10 +56,15 @@ function buildScheduledAt(date: string, time: string) {
 }
 
 export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending }: TeamCommunicationFormProps) {
+  const { hasPermission } = useRole();
+  const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
+  const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
+  const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
+  const canUseRecurringSchedules = canCreateSchedule && hasSchedulerRecurringFeature;
   const [title, setTitle] = useState(initialData?.title || '');
   const [content, setContent] = useState(initialData?.content || '');
   const [teamId, setTeamId] = useState(initialData?.teamId || '');
-  const [deliveryMode, setDeliveryMode] = useState<'now' | 'scheduled'>(initialData?.scheduledEvent ? 'scheduled' : 'now');
+  const [deliveryMode, setDeliveryMode] = useState<'draft' | 'now' | 'scheduled'>(initialData?.scheduledEvent ? 'scheduled' : 'now');
   const [scheduledDate, setScheduledDate] = useState(toDateInputValue(initialData?.scheduledEvent?.startAt));
   const [scheduledTime, setScheduledTime] = useState(toTimeInputValue(initialData?.scheduledEvent?.startAt));
   const [recurrenceRule, setRecurrenceRule] = useState<TeamCommunicationRecurrenceRule>(
@@ -165,25 +173,40 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
           <CalendarClock className="h-4 w-4 text-accent" />
           <Label>Delivery</Label>
         </div>
-        <Select value={deliveryMode} onValueChange={value => setDeliveryMode(value as 'now' | 'scheduled')}>
+        <p className="text-xs text-muted-foreground">
+          Choose whether this team post should be sent immediately, saved without sending, or sent later.
+        </p>
+        <Select value={deliveryMode} onValueChange={value => {
+          setDeliveryMode(value as 'draft' | 'now' | 'scheduled');
+          if (value !== 'scheduled') setRecurrenceRule(defaultRecurrenceRule());
+        }}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="draft">Draft / Do not send yet</SelectItem>
             <SelectItem value="now">Send now</SelectItem>
-            <SelectItem value="scheduled">Schedule</SelectItem>
+            {(canCreateSchedule || deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
           </SelectContent>
         </Select>
+        {!canCreateSchedule && deliveryMode !== 'scheduled' && (
+          <p className="text-xs text-muted-foreground">Scheduling is not enabled for your role or package.</p>
+        )}
+        {!canCreateSchedule && deliveryMode === 'scheduled' && (
+          <p className="text-xs text-destructive">This post has a schedule, but your role or package cannot modify schedules.</p>
+        )}
 
         {deliveryMode === 'scheduled' && (
           <>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Send date</Label>
+                <p className="text-xs text-muted-foreground">The calendar day this post should be delivered.</p>
                 <Input type="date" value={scheduledDate} onChange={event => setScheduledDate(event.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Send time</Label>
+                <p className="text-xs text-muted-foreground">The time of day to send it.</p>
                 <Input type="time" value={scheduledTime} onChange={event => setScheduledTime(event.target.value)} />
               </div>
             </div>
@@ -191,37 +214,48 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Repeat</Label>
+                <p className="text-xs text-muted-foreground">Use None for one-time delivery.</p>
                 <Select
                   value={recurrenceFrequency || 'none'}
                   onValueChange={frequency => setRecurrenceRule(prev => ({ ...defaultRecurrenceRule(), ...prev, frequency: frequency as TeamCommunicationRecurrenceRule['frequency'] }))}
+                  disabled={!canUseRecurringSchedules}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
+                    {(canUseRecurringSchedules || recurrenceFrequency !== 'none') && (
+                      <>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="yearly">Yearly</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
+                {!canUseRecurringSchedules && (
+                  <p className="text-xs text-muted-foreground">Recurring schedules are not enabled for your package.</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Every</Label>
+                <p className="text-xs text-muted-foreground">How often to repeat, for example every 2 weeks.</p>
                 <Input
                   type="number"
                   min={1}
-                  disabled={recurrenceFrequency === 'none'}
+                  disabled={recurrenceFrequency === 'none' || !canUseRecurringSchedules}
                   value={recurrenceRule.interval ?? 1}
                   onChange={event => setRecurrenceRule(prev => ({ ...prev, interval: Math.max(1, Number(event.target.value || 1)) }))}
                 />
               </div>
             </div>
 
-            {recurrenceFrequency === 'weekly' && (
+            {recurrenceFrequency === 'weekly' && canUseRecurringSchedules && (
               <div className="space-y-2">
                 <Label>Repeat on</Label>
+                <p className="text-xs text-muted-foreground">Pick the weekdays when this should repeat.</p>
                 <div className="flex flex-wrap gap-2">
                   {WEEK_DAYS.map(day => {
                     const checked = recurrenceDays.includes(day.value);
@@ -245,9 +279,10 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
               </div>
             )}
 
-            {recurrenceFrequency === 'monthly' && (
+            {recurrenceFrequency === 'monthly' && canUseRecurringSchedules && (
               <div className="space-y-2">
                 <Label>Day of month</Label>
+                <p className="text-xs text-muted-foreground">The date number to repeat on each month.</p>
                 <Input
                   type="number"
                   min={1}
@@ -258,10 +293,11 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
               </div>
             )}
 
-            {recurrenceFrequency === 'yearly' && (
+            {recurrenceFrequency === 'yearly' && canUseRecurringSchedules && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Month</Label>
+                  <p className="text-xs text-muted-foreground">Month number, 1 to 12.</p>
                   <Input
                     type="number"
                     min={1}
@@ -272,6 +308,7 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
                 </div>
                 <div className="space-y-2">
                   <Label>Day</Label>
+                  <p className="text-xs text-muted-foreground">Day number, 1 to 31.</p>
                   <Input
                     type="number"
                     min={1}
@@ -283,10 +320,11 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
               </div>
             )}
 
-            {recurrenceFrequency !== 'none' && (
+            {recurrenceFrequency !== 'none' && canUseRecurringSchedules && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>End date</Label>
+                  <p className="text-xs text-muted-foreground">Stop repeating after this date.</p>
                   <Input
                     type="date"
                     value={recurrenceRule.endsAt ? String(recurrenceRule.endsAt).slice(0, 10) : ''}
@@ -295,6 +333,7 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
                 </div>
                 <div className="space-y-2">
                   <Label>Or after</Label>
+                  <p className="text-xs text-muted-foreground">Stop after this many sent occurrences.</p>
                   <Input
                     type="number"
                     min={1}

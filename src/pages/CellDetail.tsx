@@ -1,10 +1,12 @@
 import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { cellsService, type CellMember, type CellMeeting } from '@/services/cells';
+import { cellsService, type CellMember, type CellMeeting, type CellMeetingDeliveryMode } from '@/services/cells';
 import { usersService } from '@/services/users';
 import { useRole } from '@/hooks/useRole';
 import { useAuthStore } from '@/stores/authStore';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +36,7 @@ const WEEK_DAYS = [
 ];
 
 type MeetingFormState = {
+  deliveryMode: CellMeetingDeliveryMode;
   date: string;
   time: string;
   topic: string;
@@ -51,6 +54,7 @@ type MeetingFormState = {
 
 function emptyMeetingForm(time = ''): MeetingFormState {
   return {
+    deliveryMode: 'now',
     date: '',
     time,
     topic: '',
@@ -78,6 +82,10 @@ export default function CellDetailPage() {
   const { hasPermission, role } = useRole();
   const currentUserId = useAuthStore(s => s.user?.id);
   const canManage = hasPermission('cells:update');
+  const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
+  const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
+  const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
+  const canUseRecurringSchedules = canCreateSchedule && hasSchedulerRecurringFeature;
   const isMember = role === 'member';
 
   const [tab, setTab] = useState<'members' | 'meetings' | 'stats' | 'transactions'>('members');
@@ -351,14 +359,17 @@ export default function CellDetailPage() {
   const openEditMeetingDialog = (meeting: CellMeeting) => {
     setEditMeeting(meeting);
     setEditMeetingForm({
+      deliveryMode: meeting.scheduledEvent ? 'scheduled' : 'now',
       date: dateInputValue(meeting.date),
       time: meeting.time ?? cell.meetingTime ?? '',
       topic: meeting.topic ?? '',
       notes: meeting.notes ?? '',
       recurrenceRule: {
         ...emptyMeetingForm().recurrenceRule,
-        ...(meeting.recurrenceRule ?? {}),
-        endsAt: meeting.recurrenceRule?.endsAt ? dateInputValue(meeting.recurrenceRule.endsAt) : null,
+        ...(meeting.scheduledEvent?.recurrenceRule ?? meeting.recurrenceRule ?? {}),
+        endsAt: (meeting.scheduledEvent?.recurrenceRule ?? meeting.recurrenceRule)?.endsAt
+          ? dateInputValue((meeting.scheduledEvent?.recurrenceRule ?? meeting.recurrenceRule)?.endsAt)
+          : null,
       },
     });
   };
@@ -371,12 +382,40 @@ export default function CellDetailPage() {
     onSubmit: () => void,
   ) => {
     const recurrence = form.recurrenceRule;
+    const isScheduledMode = form.deliveryMode === 'scheduled';
     const setRecurrence = (next: Partial<MeetingFormState['recurrenceRule']>) => {
       setForm(current => ({ ...current, recurrenceRule: { ...current.recurrenceRule, ...next } }));
     };
 
     return (
       <div className="space-y-3">
+        <div>
+          <Label>Meeting Mode</Label>
+          <p className="mb-1 text-xs text-muted-foreground">
+            Choose whether this meeting is just recorded, created now, or scheduled for follow-up automation.
+          </p>
+          <Select
+            value={form.deliveryMode}
+            onValueChange={value => setForm(current => ({
+              ...current,
+              deliveryMode: value as CellMeetingDeliveryMode,
+              recurrenceRule: value === 'scheduled' ? current.recurrenceRule : emptyMeetingForm().recurrenceRule,
+            }))}
+          >
+            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="draft">Draft / Do not schedule yet</SelectItem>
+              <SelectItem value="now">Create now</SelectItem>
+              {(canCreateSchedule || form.deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
+            </SelectContent>
+          </Select>
+          {!canCreateSchedule && form.deliveryMode !== 'scheduled' && (
+            <p className="mt-1 text-xs text-muted-foreground">Scheduling is not enabled for your role or package.</p>
+          )}
+          {!canCreateSchedule && form.deliveryMode === 'scheduled' && (
+            <p className="mt-1 text-xs text-destructive">This meeting has a schedule, but your role or package cannot modify schedules.</p>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Date *</Label><Input className="mt-1" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
           <div><Label>Time</Label><Input className="mt-1" type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
@@ -384,71 +423,104 @@ export default function CellDetailPage() {
         <div><Label>Topic</Label><Input className="mt-1" value={form.topic} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} placeholder="Meeting topic" /></div>
         <div><Label>Notes</Label><Textarea className="mt-1" rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
 
-        <div className="space-y-3 rounded-md border border-border p-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Repeat</Label>
-              <Select value={recurrence.frequency} onValueChange={value => setRecurrence({ frequency: value as MeetingFormState['recurrenceRule']['frequency'] })}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Every</Label>
-              <Input type="number" min={1} disabled={recurrence.frequency === 'none'} className="mt-1" value={recurrence.interval} onChange={e => setRecurrence({ interval: Math.max(1, Number(e.target.value || 1)) })} />
-            </div>
-          </div>
-
-          {recurrence.frequency === 'weekly' && (
-            <div>
-              <Label>Repeat on</Label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {WEEK_DAYS.map(day => {
-                  const checked = recurrence.daysOfWeek.includes(day.value);
-                  return (
-                    <Button
-                      key={day.value}
-                      type="button"
-                      size="sm"
-                      variant={checked ? 'default' : 'outline'}
-                      className="h-8 w-9 p-0 text-xs"
-                      onClick={() => setRecurrence({ daysOfWeek: checked ? recurrence.daysOfWeek.filter(value => value !== day.value) : [...recurrence.daysOfWeek, day.value] })}
-                    >
-                      {day.label}
-                    </Button>
-                  );
-                })}
+        {isScheduledMode && (
+          <div className="space-y-3 rounded-md border border-border p-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Repeat</Label>
+                <p className="mb-1 text-xs text-muted-foreground">Use None for a one-time meeting.</p>
+                <Select
+                  value={recurrence.frequency}
+                  onValueChange={value => setRecurrence({ frequency: value as MeetingFormState['recurrenceRule']['frequency'] })}
+                  disabled={!canUseRecurringSchedules}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {(canUseRecurringSchedules || recurrence.frequency !== 'none') && (
+                      <>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="yearly">Yearly</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+                {!canUseRecurringSchedules && (
+                  <p className="mt-1 text-xs text-muted-foreground">Recurring schedules are not enabled for your package.</p>
+                )}
+              </div>
+              <div>
+                <Label>Every</Label>
+                <p className="mb-1 text-xs text-muted-foreground">How often to repeat, for example every 2 weeks.</p>
+                <Input type="number" min={1} disabled={recurrence.frequency === 'none' || !canUseRecurringSchedules} className="mt-1" value={recurrence.interval} onChange={e => setRecurrence({ interval: Math.max(1, Number(e.target.value || 1)) })} />
               </div>
             </div>
-          )}
 
-          {recurrence.frequency === 'monthly' && (
-            <div>
-              <Label>Day of month</Label>
-              <Input type="number" min={1} max={31} className="mt-1" value={recurrence.dayOfMonth ?? ''} onChange={e => setRecurrence({ dayOfMonth: e.target.value ? Number(e.target.value) : null })} />
-            </div>
-          )}
+            {recurrence.frequency === 'weekly' && (
+              <div>
+                <Label>Repeat on</Label>
+                <p className="mb-1 text-xs text-muted-foreground">Pick the weekdays when this meeting should repeat.</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {WEEK_DAYS.map(day => {
+                    const checked = recurrence.daysOfWeek.includes(day.value);
+                    return (
+                      <Button
+                        key={day.value}
+                        type="button"
+                        size="sm"
+                        variant={checked ? 'default' : 'outline'}
+                        className="h-8 w-9 p-0 text-xs"
+                        onClick={() => setRecurrence({ daysOfWeek: checked ? recurrence.daysOfWeek.filter(value => value !== day.value) : [...recurrence.daysOfWeek, day.value] })}
+                      >
+                        {day.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-          {recurrence.frequency === 'yearly' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Month</Label><Input type="number" min={1} max={12} className="mt-1" value={recurrence.monthOfYear ?? ''} onChange={e => setRecurrence({ monthOfYear: e.target.value ? Number(e.target.value) : null })} /></div>
-              <div><Label>Day</Label><Input type="number" min={1} max={31} className="mt-1" value={recurrence.dayOfMonth ?? ''} onChange={e => setRecurrence({ dayOfMonth: e.target.value ? Number(e.target.value) : null })} /></div>
-            </div>
-          )}
+            {recurrence.frequency === 'monthly' && (
+              <div>
+                <Label>Day of month</Label>
+                <p className="mb-1 text-xs text-muted-foreground">The date number to repeat on each month.</p>
+                <Input type="number" min={1} max={31} className="mt-1" value={recurrence.dayOfMonth ?? ''} onChange={e => setRecurrence({ dayOfMonth: e.target.value ? Number(e.target.value) : null })} />
+              </div>
+            )}
 
-          {recurrence.frequency !== 'none' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>End date</Label><Input type="date" className="mt-1" value={recurrence.endsAt ?? ''} onChange={e => setRecurrence({ endsAt: e.target.value || null, count: null })} /></div>
-              <div><Label>Or after</Label><Input type="number" min={1} placeholder="Occurrences" className="mt-1" value={recurrence.count ?? ''} onChange={e => setRecurrence({ count: e.target.value ? Number(e.target.value) : null, endsAt: null })} /></div>
-            </div>
-          )}
-        </div>
+            {recurrence.frequency === 'yearly' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Month</Label>
+                  <p className="mb-1 text-xs text-muted-foreground">Month number, 1 to 12.</p>
+                  <Input type="number" min={1} max={12} className="mt-1" value={recurrence.monthOfYear ?? ''} onChange={e => setRecurrence({ monthOfYear: e.target.value ? Number(e.target.value) : null })} />
+                </div>
+                <div>
+                  <Label>Day</Label>
+                  <p className="mb-1 text-xs text-muted-foreground">Day number, 1 to 31.</p>
+                  <Input type="number" min={1} max={31} className="mt-1" value={recurrence.dayOfMonth ?? ''} onChange={e => setRecurrence({ dayOfMonth: e.target.value ? Number(e.target.value) : null })} />
+                </div>
+              </div>
+            )}
+
+            {recurrence.frequency !== 'none' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>End date</Label>
+                  <p className="mb-1 text-xs text-muted-foreground">Stop repeating after this date.</p>
+                  <Input type="date" className="mt-1" value={recurrence.endsAt ?? ''} onChange={e => setRecurrence({ endsAt: e.target.value || null, count: null })} />
+                </div>
+                <div>
+                  <Label>Or after</Label>
+                  <p className="mb-1 text-xs text-muted-foreground">Stop after this many meeting occurrences.</p>
+                  <Input type="number" min={1} placeholder="Occurrences" className="mt-1" value={recurrence.count ?? ''} onChange={e => setRecurrence({ count: e.target.value ? Number(e.target.value) : null, endsAt: null })} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <Button className="w-full" disabled={!form.date || isSaving} onClick={onSubmit}>
           {isSaving ? 'Saving...' : submitLabel}
@@ -680,7 +752,7 @@ export default function CellDetailPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     <p className="text-xs text-muted-foreground">
-                      {[m.time, m.topic, m.recurrenceRule?.frequency && m.recurrenceRule.frequency !== 'none' ? `Repeats ${m.recurrenceRule.frequency}` : null].filter(Boolean).join(' · ')}
+                      {[m.time, m.topic, m.scheduledEvent ? 'Scheduled' : null, (m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency && (m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency !== 'none' ? `Repeats ${(m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency}` : null].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground shrink-0">

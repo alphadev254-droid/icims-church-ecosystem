@@ -35,6 +35,7 @@ import {
   Plus, Calendar, MapPin, Clock, Pencil, Trash2, Ticket,
   Upload, X, Eye, Wallet, Lock, Copy, Check, MoreHorizontal,
   Share2, QrCode, Download, ImageIcon, FileText, ChevronDown,
+  CalendarClock,
 } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
@@ -75,6 +76,7 @@ const schema = z.object({
   imageUrl: z.string().nullable().optional(),
   scopeType: z.enum(['one_church', 'selected_churches', 'all_churches']).default('one_church'),
   churchIds: z.array(z.string()).default([]),
+  deliveryMode: z.enum(['draft', 'now', 'scheduled']).default('now'),
   recurrenceRule: z.object({
     frequency: z.enum(['none', 'daily', 'weekly', 'monthly', 'yearly']).default('none'),
     interval: z.number().int().positive().default(1),
@@ -167,6 +169,8 @@ interface EventFormProps {
   canUsePublicLinks?: boolean;
   canUseGuestBooking?: boolean;
   canUseOnlinePayments?: boolean;
+  canCreateSchedule?: boolean;
+  canUseRecurringSchedules?: boolean;
 }
 
 function EventForm({
@@ -179,6 +183,8 @@ function EventForm({
   canUsePublicLinks = true,
   canUseGuestBooking = true,
   canUseOnlinePayments = true,
+  canCreateSchedule = false,
+  canUseRecurringSchedules = false,
 }: EventFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const imageFileRef = useRef<File | null>(null);
@@ -201,6 +207,7 @@ function EventForm({
       currency: 'MWK',
       scopeType: 'one_church',
       churchIds: [],
+      deliveryMode: 'now',
       recurrenceRule: defaultRecurrenceRule(),
       ...defaultValues,
     },
@@ -214,6 +221,7 @@ function EventForm({
     if (defaultValues?.currency) setValue('currency', defaultValues.currency);
     if (defaultValues?.scopeType) setValue('scopeType', defaultValues.scopeType);
     if (defaultValues?.churchIds) setValue('churchIds', defaultValues.churchIds);
+    if (defaultValues?.deliveryMode) setValue('deliveryMode', defaultValues.deliveryMode);
     if (defaultValues?.requiresTicket !== undefined) setValue('requiresTicket', defaultValues.requiresTicket);
     if (defaultValues?.isFree !== undefined) setValue('isFree', defaultValues.isFree);
     if (defaultValues?.allowPublicTicketing !== undefined) setValue('allowPublicTicketing', defaultValues.allowPublicTicketing);
@@ -227,6 +235,7 @@ function EventForm({
   const requiresTicket = watch('requiresTicket');
   const isFree = watch('isFree');
   const imageUrl = watch('imageUrl');
+  const deliveryMode = watch('deliveryMode') || 'now';
   const recurrenceRule = watch('recurrenceRule') ?? defaultRecurrenceRule();
   const recurrenceFrequency = recurrenceRule.frequency ?? 'none';
   const recurrenceDays = recurrenceRule.daysOfWeek ?? [];
@@ -275,7 +284,12 @@ function EventForm({
     } else if (values.imageUrl?.startsWith('data:')) {
       values.imageUrl = '';
     }
-    onSubmit(values);
+    onSubmit({
+      ...values,
+      recurrenceRule: values.deliveryMode === 'scheduled'
+        ? { ...defaultRecurrenceRule(), ...values.recurrenceRule }
+        : null,
+    });
   };
 
   const busy = isPending || isUploading;
@@ -392,28 +406,72 @@ function EventForm({
       </div>
 
       <div className="space-y-3 rounded-md border border-border p-3">
+        <div className="flex items-center gap-2">
+          <CalendarClock className="h-4 w-4 text-accent" />
+          <Label className="text-xs sm:text-sm">Event Mode</Label>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Choose whether this event is saved as a draft, published now, or added to the scheduler.
+        </p>
+        <Select value={deliveryMode} onValueChange={value => {
+          setValue('deliveryMode', value as FormValues['deliveryMode'], { shouldDirty: true, shouldValidate: true });
+          if (value !== 'scheduled') setValue('recurrenceRule', defaultRecurrenceRule(), { shouldDirty: true });
+        }}>
+          <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="draft">Draft / Do not schedule yet</SelectItem>
+            <SelectItem value="now">Publish now</SelectItem>
+            {(canCreateSchedule || deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
+          </SelectContent>
+        </Select>
+        {!canCreateSchedule && deliveryMode !== 'scheduled' && (
+          <p className="text-xs text-muted-foreground">Scheduling is not enabled for your role or package.</p>
+        )}
+        {!canCreateSchedule && deliveryMode === 'scheduled' && (
+          <p className="text-xs text-destructive">This event has a schedule, but your role or package cannot modify schedules.</p>
+        )}
+      </div>
+
+      {deliveryMode === 'scheduled' && (
+      <div className="space-y-3 rounded-md border border-border p-3">
+        <div>
+          <Label className="text-xs sm:text-sm">Schedule</Label>
+          <p className="text-xs text-muted-foreground">
+            Use None for a normal one-time event, or repeat the event on a regular pattern.
+          </p>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs sm:text-sm">Repeat</Label>
+            <p className="mb-1 text-xs text-muted-foreground">Choose how this event repeats.</p>
             <Select
               value={recurrenceFrequency}
               onValueChange={(frequency) => setValue('recurrenceRule', { ...defaultRecurrenceRule(), ...recurrenceRule, frequency: frequency as any }, { shouldDirty: true })}
+              disabled={!canUseRecurringSchedules}
             >
               <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">None</SelectItem>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="yearly">Yearly</SelectItem>
+                {(canUseRecurringSchedules || recurrenceFrequency !== 'none') && (
+                  <>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
+            {!canUseRecurringSchedules && (
+              <p className="mt-1 text-xs text-muted-foreground">Recurring schedules are not enabled for your package.</p>
+            )}
           </div>
           <div>
             <Label className="text-xs sm:text-sm">Every</Label>
+            <p className="mb-1 text-xs text-muted-foreground">How often to repeat, for example every 2 weeks.</p>
             <Input
               {...digitsInputProps}
-              disabled={recurrenceFrequency === 'none'}
+              disabled={recurrenceFrequency === 'none' || !canUseRecurringSchedules}
               value={String(recurrenceRule.interval ?? 1)}
               onInput={e => sanitizeDigitsInput(e)}
               onChange={e => setValue('recurrenceRule', { ...recurrenceRule, interval: Math.max(1, Number(e.target.value || 1)) }, { shouldDirty: true })}
@@ -422,9 +480,10 @@ function EventForm({
           </div>
         </div>
 
-        {recurrenceFrequency === 'weekly' && (
+        {recurrenceFrequency === 'weekly' && canUseRecurringSchedules && (
           <div>
             <Label className="text-xs sm:text-sm">Repeat on</Label>
+            <p className="mb-1 text-xs text-muted-foreground">Pick the weekdays when this event should repeat.</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {WEEK_DAYS.map(day => {
                 const checked = recurrenceDays.includes(day.value);
@@ -448,9 +507,10 @@ function EventForm({
           </div>
         )}
 
-        {recurrenceFrequency === 'monthly' && (
+        {recurrenceFrequency === 'monthly' && canUseRecurringSchedules && (
           <div>
             <Label className="text-xs sm:text-sm">Day of month</Label>
+            <p className="mb-1 text-xs text-muted-foreground">The date number to repeat on each month.</p>
             <Input
               {...digitsInputProps}
               value={recurrenceRule.dayOfMonth ?? ''}
@@ -461,10 +521,11 @@ function EventForm({
           </div>
         )}
 
-        {recurrenceFrequency === 'yearly' && (
+        {recurrenceFrequency === 'yearly' && canUseRecurringSchedules && (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs sm:text-sm">Month</Label>
+              <p className="mb-1 text-xs text-muted-foreground">Month number, 1 to 12.</p>
               <Input
                 {...digitsInputProps}
                 value={recurrenceRule.monthOfYear ?? ''}
@@ -475,6 +536,7 @@ function EventForm({
             </div>
             <div>
               <Label className="text-xs sm:text-sm">Day</Label>
+              <p className="mb-1 text-xs text-muted-foreground">Day number, 1 to 31.</p>
               <Input
                 {...digitsInputProps}
                 value={recurrenceRule.dayOfMonth ?? ''}
@@ -486,10 +548,11 @@ function EventForm({
           </div>
         )}
 
-        {recurrenceFrequency !== 'none' && (
+        {recurrenceFrequency !== 'none' && canUseRecurringSchedules && (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs sm:text-sm">End date</Label>
+              <p className="mb-1 text-xs text-muted-foreground">Stop repeating after this date.</p>
               <Input
                 type="date"
                 value={recurrenceEndsAt ? String(recurrenceEndsAt).slice(0, 10) : ''}
@@ -499,6 +562,7 @@ function EventForm({
             </div>
             <div>
               <Label className="text-xs sm:text-sm">Or after</Label>
+              <p className="mb-1 text-xs text-muted-foreground">Stop after this many event occurrences.</p>
               <Input
                 {...digitsInputProps}
                 placeholder="Occurrences"
@@ -511,6 +575,7 @@ function EventForm({
           </div>
         )}
       </div>
+      )}
 
       {/* Location */}
       <div>
@@ -730,6 +795,8 @@ export default function EventsPage() {
   const hasEventTicketingFeature = useHasFeature(PACKAGE_FEATURES.EVENT_TICKETING);
   const hasEventOnlinePaymentsFeature = useHasFeature(PACKAGE_FEATURES.EVENT_ONLINE_PAYMENTS);
   const hasEventReportsFeature = useHasFeature(PACKAGE_FEATURES.EVENT_REPORTS);
+  const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
+  const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
   const user = useAuthStore((state) => state.user);
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -813,6 +880,8 @@ export default function EventsPage() {
   const canViewAllTickets = hasPermission('tickets:create') && hasEventReportsFeature;
   const canSharePublicEvents = hasEventPublicLinksFeature && hasEventGuestBookingFeature;
   const canGenerateEventQr = hasEventQrCodesFeature && canSharePublicEvents;
+  const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
+  const canUseRecurringSchedules = canCreateSchedule && hasSchedulerRecurringFeature;
 
   // Feature gate
   if (!isMember && !hasEventsFeature) {
@@ -1014,6 +1083,7 @@ export default function EventsPage() {
     imageUrl: e.imageUrl ?? undefined,
     scopeType: e.scopeType || 'one_church',
     churchIds: e.availableChurchIds || e.linkedChurches?.map(link => link.churchId) || [],
+    deliveryMode: e.recurrenceRule ? 'scheduled' : 'now',
     recurrenceRule: e.recurrenceRule ? { ...defaultRecurrenceRule(), ...e.recurrenceRule } : defaultRecurrenceRule(),
   });
 
@@ -1136,6 +1206,8 @@ export default function EventsPage() {
                   canUsePublicLinks={hasEventPublicLinksFeature}
                   canUseGuestBooking={hasEventGuestBookingFeature}
                   canUseOnlinePayments={hasEventOnlinePaymentsFeature}
+                  canCreateSchedule={canCreateSchedule}
+                  canUseRecurringSchedules={canUseRecurringSchedules}
                   onSubmit={(v) => {
                     console.log('Event form values:', v);
                     createMutation.mutate(v);
@@ -1426,9 +1498,11 @@ export default function EventsPage() {
               churches={churches}
               defaultValues={buildEditDefaults(editEvent)}
               canUseTicketing={hasEventTicketingFeature}
-              canUsePublicLinks={hasEventPublicLinksFeature}
-              canUseGuestBooking={hasEventGuestBookingFeature}
-              canUseOnlinePayments={hasEventOnlinePaymentsFeature}
+                      canUsePublicLinks={hasEventPublicLinksFeature}
+                      canUseGuestBooking={hasEventGuestBookingFeature}
+                      canUseOnlinePayments={hasEventOnlinePaymentsFeature}
+                      canCreateSchedule={canCreateSchedule}
+                      canUseRecurringSchedules={canUseRecurringSchedules}
               onSubmit={(v) => updateMutation.mutate({ id: editEvent.id, dto: v })}
               isPending={updateMutation.isPending}
               submitLabel="Save Changes"

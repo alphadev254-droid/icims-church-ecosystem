@@ -21,7 +21,6 @@ export interface Transaction {
   churchId: string;
   type: 'event_ticket' | 'donation' | 'subscription';
   isManual: boolean;
-  systemFeeAmount?: number;
   subaccountName?: string;
   cardLast4?: string;
   cardBank?: string;

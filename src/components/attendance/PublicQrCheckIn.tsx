@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type React from 'react';
 import { attendanceService, type QrCheckInSession } from '@/services/attendance';
+import { HOW_HEARD } from './constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,6 +60,8 @@ export function PublicQrCheckIn({
     guestPhone: '',
     guestGender: '',
     guestAgeBracket: '',
+    guestResidentialArea: '',
+    guestHowHeard: '',
     guestFirstTime: false,
     isNewConvert: false,
     invitedBy: '',
@@ -175,6 +178,8 @@ export function PublicQrCheckIn({
         guestPhone: form.guestPhone.trim() || undefined,
         guestGender: form.guestGender || undefined,
         guestAgeBracket: form.guestAgeBracket || undefined,
+        guestResidentialArea: form.guestResidentialArea.trim() || undefined,
+        guestHowHeard: form.guestHowHeard || undefined,
         guestFirstTime: visitorType === 'guest' ? form.guestFirstTime : false,
         isNewConvert: visitorType === 'guest' ? form.isNewConvert : false,
         invitedBy: visitorType === 'guest' ? form.invitedBy.trim() || undefined : undefined,
@@ -271,47 +276,43 @@ export function PublicQrCheckIn({
                 <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-muted-foreground">or guest check-in</span></div>
               </div>
 
-              <form onSubmit={checkInGuest} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Check-in type</Label>
+              <form onSubmit={checkInGuest} className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Check-in type</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <label
-                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                    <label className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors ${
                         visitorType === 'guest' ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:bg-muted/40'
-                      }`}
-                    >
+                      }`}>
                       <Checkbox checked={visitorType === 'guest'} onCheckedChange={() => setVisitorType('guest')} />
                       <span className="min-w-0 truncate">Guest</span>
                     </label>
-                    <label
-                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                    <label className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors ${
                         visitorType === 'ministry_member' ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:bg-muted/40'
-                      }`}
-                    >
+                      }`}>
                       <Checkbox checked={visitorType === 'ministry_member'} onCheckedChange={() => setVisitorType('ministry_member')} />
                       <span className="min-w-0 truncate">Ministry member</span>
                     </label>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Full name *</Label>
-                  <Input value={form.guestName} onChange={e => setForm(f => ({ ...f, guestName: e.target.value }))} />
+                <div className="space-y-1">
+                  <Label className="text-xs">Full name *</Label>
+                  <Input className="h-8 text-sm" value={form.guestName} onChange={e => setForm(f => ({ ...f, guestName: e.target.value }))} />
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label>Email *</Label>
-                    <Input type="email" required value={form.guestEmail} onChange={e => setForm(f => ({ ...f, guestEmail: e.target.value }))} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Email *</Label>
+                    <Input className="h-8 text-sm" type="email" required value={form.guestEmail} onChange={e => setForm(f => ({ ...f, guestEmail: e.target.value }))} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Phone *</Label>
-                    <Input required value={form.guestPhone} onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))} />
+                  <div className="space-y-1">
+                    <Label className="text-xs">Phone *</Label>
+                    <Input className="h-8 text-sm" required value={form.guestPhone} onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Gender *</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Gender *</Label>
                     <Select value={form.guestGender} onValueChange={value => setForm(f => ({ ...f, guestGender: value }))}>
-                      <SelectTrigger><SelectValue placeholder="Gender" /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Gender" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="male">Male</SelectItem>
                         <SelectItem value="female">Female</SelectItem>
@@ -319,10 +320,10 @@ export function PublicQrCheckIn({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Age *</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Age *</Label>
                     <Select value={form.guestAgeBracket} onValueChange={value => setForm(f => ({ ...f, guestAgeBracket: value }))}>
-                      <SelectTrigger><SelectValue placeholder="Age" /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Age" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="0-12">0-12</SelectItem>
                         <SelectItem value="13-17">13-17</SelectItem>
@@ -333,11 +334,26 @@ export function PublicQrCheckIn({
                     </Select>
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Residential Area</Label>
+                    <Input className="h-8 text-sm" value={form.guestResidentialArea} onChange={e => setForm(f => ({ ...f, guestResidentialArea: e.target.value }))} placeholder="e.g. Area 25" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">How did you hear?</Label>
+                    <Select value={form.guestHowHeard} onValueChange={value => setForm(f => ({ ...f, guestHowHeard: value }))}>
+                      <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        {HOW_HEARD.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 {visitorType === 'guest' && (
                   <>
-                    <div className="space-y-1.5">
-                      <Label>Invited by</Label>
-                      <Input value={form.invitedBy} onChange={e => setForm(f => ({ ...f, invitedBy: e.target.value }))} />
+                    <div className="space-y-1">
+                      <Label className="text-xs">Invited by</Label>
+                      <Input className="h-8 text-sm" value={form.invitedBy} onChange={e => setForm(f => ({ ...f, invitedBy: e.target.value }))} placeholder="Name of person who invited you" />
                     </div>
                     <label className="flex items-center gap-2 text-sm">
                       <Checkbox checked={form.guestFirstTime} onCheckedChange={checked => setForm(f => ({ ...f, guestFirstTime: checked === true }))} />
