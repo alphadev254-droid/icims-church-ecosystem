@@ -1,5 +1,16 @@
 import apiClient from '@/lib/api-client';
 
+export interface CellMeetingRecurrenceRule {
+  frequency?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval?: number;
+  daysOfWeek?: string[];
+  dayOfMonth?: number | null;
+  monthOfYear?: number | null;
+  startsAt?: string;
+  endsAt?: string | null;
+  count?: number | null;
+}
+
 export interface Cell {
   id: string;
   churchId: string;
@@ -50,8 +61,11 @@ export interface CellMeeting {
   id: string;
   cellId: string;
   date: string;
+  time?: string | null;
   topic?: string | null;
   notes?: string | null;
+  recurrenceRuleId?: string | null;
+  recurrenceRule?: CellMeetingRecurrenceRule | null;
   presentCount?: number;
   visitorCount?: number;
 }
@@ -190,8 +204,13 @@ export const cellsService = {
     return data;
   },
 
-  createMeeting: async (cellId: string, dto: { date: string; topic?: string; notes?: string }): Promise<CellMeeting> => {
+  createMeeting: async (cellId: string, dto: { date: string; time?: string; topic?: string; notes?: string; recurrenceRule?: CellMeetingRecurrenceRule | null }): Promise<CellMeeting> => {
     const { data } = await apiClient.post(`${BASE}/${cellId}/meetings`, dto);
+    return data.data;
+  },
+
+  updateMeeting: async (meetingId: string, dto: Partial<{ date: string; time: string; topic: string; notes: string; recurrenceRule: CellMeetingRecurrenceRule | null }>): Promise<CellMeeting> => {
+    const { data } = await apiClient.put(`${BASE}/meetings/${meetingId}`, dto);
     return data.data;
   },
 

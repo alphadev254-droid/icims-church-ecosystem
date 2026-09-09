@@ -1,5 +1,16 @@
 import apiClient from '@/lib/api-client';
 
+export interface RecurrenceRulePayload {
+  frequency?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval?: number;
+  daysOfWeek?: string[];
+  dayOfMonth?: number | null;
+  monthOfYear?: number | null;
+  startsAt?: string;
+  endsAt?: string | null;
+  count?: number | null;
+}
+
 export interface ChurchEvent {
   id: string;
   title: string;
@@ -29,6 +40,8 @@ export interface ChurchEvent {
   linkedChurches?: Array<{ churchId: string; church?: { id: string; name: string } }>;
   availableChurchIds?: string[];
   availableChurches?: Array<{ id: string; name: string }>;
+  recurrenceRuleId?: string | null;
+  recurrenceRule?: RecurrenceRulePayload | null;
   maxAttendees?: number;
   createdById: string;
   createdAt: string;
@@ -57,6 +70,7 @@ export interface CreateEventDto {
   churchId: string;
   scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
   churchIds?: string[];
+  recurrenceRule?: RecurrenceRulePayload | null;
 }
 
 export type UpdateEventDto = Partial<CreateEventDto>;

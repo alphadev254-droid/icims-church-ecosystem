@@ -10,6 +10,14 @@ export interface TeamCommunication {
   createdAt: string;
   updatedAt: string;
   canEdit?: boolean;
+  scheduledEvent?: {
+    startAt: string;
+    endAt: string;
+    status: string;
+    timezone: string;
+    recurrenceRuleId?: string | null;
+    recurrenceRule?: TeamCommunicationRecurrenceRule | null;
+  } | null;
   team: {
     id: string;
     name: string;
@@ -23,11 +31,25 @@ export interface TeamCommunication {
   };
 }
 
+export interface TeamCommunicationRecurrenceRule {
+  frequency?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | null;
+  interval?: number | null;
+  daysOfWeek?: string[] | null;
+  dayOfMonth?: number | null;
+  monthOfYear?: number | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  count?: number | null;
+}
+
 export interface CreateTeamCommunicationData {
   title: string;
   content: string;
   teamId: string;
   mediaUrls?: { url: string; type: string; name: string; size: number }[];
+  deliveryMode?: 'now' | 'scheduled';
+  scheduledAt?: string | null;
+  recurrenceRule?: TeamCommunicationRecurrenceRule | null;
 }
 
 export const teamCommunicationService = {
@@ -47,6 +69,9 @@ export const teamCommunicationService = {
     formData.append('title', communicationData.title);
     formData.append('content', communicationData.content);
     formData.append('teamId', communicationData.teamId);
+    if (communicationData.deliveryMode) formData.append('deliveryMode', communicationData.deliveryMode);
+    if (communicationData.scheduledAt) formData.append('scheduledAt', communicationData.scheduledAt);
+    if (communicationData.recurrenceRule) formData.append('recurrenceRule', JSON.stringify(communicationData.recurrenceRule));
     
     // Append files if any
     if (communicationData.files) {
@@ -66,6 +91,9 @@ export const teamCommunicationService = {
     
     if (communicationData.title) formData.append('title', communicationData.title);
     if (communicationData.content) formData.append('content', communicationData.content);
+    if (communicationData.deliveryMode) formData.append('deliveryMode', communicationData.deliveryMode);
+    if (communicationData.scheduledAt) formData.append('scheduledAt', communicationData.scheduledAt);
+    if (communicationData.recurrenceRule) formData.append('recurrenceRule', JSON.stringify(communicationData.recurrenceRule));
     
     // Append existing media as JSON
     if (communicationData.existingMedia) {

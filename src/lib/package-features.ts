@@ -21,4 +21,13 @@ export const PACKAGE_FEATURES = {
   EVENT_ATTENDANCE: 'event_attendance',
   EVENT_TICKET_SCANNING: 'event_ticket_scanning',
   EVENT_REPORTS: 'event_reports',
+  SCHEDULER_CALENDAR_VIEW: 'scheduler_calendar_view',
+  SCHEDULER_EVENT_CREATION: 'scheduler_event_creation',
+  SCHEDULER_RECURRING_EVENTS: 'scheduler_recurring_events',
+  SCHEDULER_PARTICIPANTS: 'scheduler_participants',
+  SCHEDULER_RESOURCE_BOOKING: 'scheduler_resource_booking',
+  SCHEDULER_CONFLICT_DETECTION: 'scheduler_conflict_detection',
+  SCHEDULER_APPROVAL_WORKFLOW: 'scheduler_approval_workflow',
+  SCHEDULER_NOTIFICATIONS: 'scheduler_notifications',
+  SCHEDULER_REPORTS: 'scheduler_reports',
 } as const;

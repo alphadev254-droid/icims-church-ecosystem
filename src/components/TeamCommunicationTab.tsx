@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, MessageSquare, Pencil, Trash2, Download, FileText, Video, Image as ImageIcon } from 'lucide-react';
+import { Plus, MessageSquare, Pencil, Trash2, Download, FileText, Video, Image as ImageIcon, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { TeamCommunicationForm } from '@/components/TeamCommunicationForm';
 import { formatDistanceToNow } from 'date-fns';
@@ -201,6 +201,15 @@ export default function TeamCommunicationTab({ churches, isMember }: { churches:
                             {post.team.color && <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: post.team.color }} />}
                             <span className="truncate">{post.team.name}</span>
                           </Badge>
+                          {post.scheduledEvent && (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Badge variant="outline" className="gap-1 text-xs w-fit">
+                                <CalendarClock className="h-3 w-3" />
+                                Sends {new Date(post.scheduledEvent.startAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </Badge>
+                              {post.scheduledEvent.recurrenceRule && <Badge variant="secondary" className="text-xs w-fit">Repeats</Badge>}
+                            </div>
+                          )}
                           {!isMember && (post.team as any).church && (
                             <p className="text-xs text-muted-foreground truncate">
                               {(post.team as any).church.name}
@@ -243,6 +252,13 @@ export default function TeamCommunicationTab({ churches, isMember }: { churches:
                         {viewPost.team.color && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: viewPost.team.color }} />}
                         {viewPost.team.name}
                       </Badge>
+                      {viewPost.scheduledEvent && (
+                        <Badge variant="outline" className="gap-1">
+                          <CalendarClock className="h-3 w-3" />
+                          Sends {new Date(viewPost.scheduledEvent.startAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </Badge>
+                      )}
+                      {viewPost.scheduledEvent?.recurrenceRule && <Badge variant="secondary">Repeats</Badge>}
                       <span className="text-xs">{formatDistanceToNow(new Date(viewPost.createdAt), { addSuffix: true })}</span>
                     </div>
                   </div>

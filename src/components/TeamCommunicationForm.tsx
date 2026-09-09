@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { TeamCommunication } from '@/services/teamCommunication';
+import { TeamCommunication, type TeamCommunicationRecurrenceRule } from '@/services/teamCommunication';
 import { Team } from '@/services/teams';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, X, FileText, Video, Image as ImageIcon } from 'lucide-react';
+import { CalendarClock, Upload, X, FileText, Video, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TeamCommunicationFormProps {
@@ -16,10 +16,54 @@ interface TeamCommunicationFormProps {
   isPending: boolean;
 }
 
+const WEEK_DAYS = [
+  { value: 'sunday', label: 'Su' },
+  { value: 'monday', label: 'Mo' },
+  { value: 'tuesday', label: 'Tu' },
+  { value: 'wednesday', label: 'We' },
+  { value: 'thursday', label: 'Th' },
+  { value: 'friday', label: 'Fr' },
+  { value: 'saturday', label: 'Sa' },
+];
+
+function defaultRecurrenceRule(): TeamCommunicationRecurrenceRule {
+  return {
+    frequency: 'none',
+    interval: 1,
+    daysOfWeek: [],
+    dayOfMonth: null,
+    monthOfYear: null,
+    endsAt: null,
+    count: null,
+  };
+}
+
+function toDateInputValue(value?: string | null) {
+  if (!value) return '';
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function toTimeInputValue(value?: string | null) {
+  if (!value) return '';
+  return new Date(value).toTimeString().slice(0, 5);
+}
+
+function buildScheduledAt(date: string, time: string) {
+  return new Date(`${date}T${time}:00`).toISOString();
+}
+
 export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending }: TeamCommunicationFormProps) {
   const [title, setTitle] = useState(initialData?.title || '');
   const [content, setContent] = useState(initialData?.content || '');
   const [teamId, setTeamId] = useState(initialData?.teamId || '');
+  const [deliveryMode, setDeliveryMode] = useState<'now' | 'scheduled'>(initialData?.scheduledEvent ? 'scheduled' : 'now');
+  const [scheduledDate, setScheduledDate] = useState(toDateInputValue(initialData?.scheduledEvent?.startAt));
+  const [scheduledTime, setScheduledTime] = useState(toTimeInputValue(initialData?.scheduledEvent?.startAt));
+  const [recurrenceRule, setRecurrenceRule] = useState<TeamCommunicationRecurrenceRule>(
+    initialData?.scheduledEvent?.recurrenceRule
+      ? { ...defaultRecurrenceRule(), ...initialData.scheduledEvent.recurrenceRule }
+      : defaultRecurrenceRule()
+  );
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [existingMedia, setExistingMedia] = useState<{ url: string; type: string; name: string; size: number }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,6 +71,17 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
   useEffect(() => {
     if (initialData?.mediaUrls) {
       setExistingMedia(initialData.mediaUrls);
+    }
+    if (initialData) {
+      setTitle(initialData.title || '');
+      setContent(initialData.content || '');
+      setTeamId(initialData.teamId || '');
+      setDeliveryMode(initialData.scheduledEvent ? 'scheduled' : 'now');
+      setScheduledDate(toDateInputValue(initialData.scheduledEvent?.startAt));
+      setScheduledTime(toTimeInputValue(initialData.scheduledEvent?.startAt));
+      setRecurrenceRule(initialData.scheduledEvent?.recurrenceRule
+        ? { ...defaultRecurrenceRule(), ...initialData.scheduledEvent.recurrenceRule }
+        : defaultRecurrenceRule());
     }
   }, [initialData]);
 
@@ -58,7 +113,22 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
       toast.error('Please fill in all required fields');
       return;
     }
-    onSubmit({ title, content, teamId, files: selectedFiles, existingMedia });
+    if (deliveryMode === 'scheduled' && (!scheduledDate || !scheduledTime)) {
+      toast.error('Please select schedule date and time');
+      return;
+    }
+
+    const scheduledAt = deliveryMode === 'scheduled' ? buildScheduledAt(scheduledDate, scheduledTime) : null;
+    onSubmit({
+      title,
+      content,
+      teamId,
+      files: selectedFiles,
+      existingMedia,
+      deliveryMode,
+      scheduledAt,
+      recurrenceRule: deliveryMode === 'scheduled' ? { ...recurrenceRule, startsAt: scheduledAt } : null,
+    });
   };
 
   const getMediaIcon = (type: string) => {
@@ -68,6 +138,8 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
   };
 
   const totalMediaCount = existingMedia.length + selectedFiles.length;
+  const recurrenceFrequency = recurrenceRule.frequency ?? 'none';
+  const recurrenceDays = recurrenceRule.daysOfWeek ?? [];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -86,6 +158,155 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-3 rounded-md border border-border p-3">
+        <div className="flex items-center gap-2">
+          <CalendarClock className="h-4 w-4 text-accent" />
+          <Label>Delivery</Label>
+        </div>
+        <Select value={deliveryMode} onValueChange={value => setDeliveryMode(value as 'now' | 'scheduled')}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="now">Send now</SelectItem>
+            <SelectItem value="scheduled">Schedule</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {deliveryMode === 'scheduled' && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Send date</Label>
+                <Input type="date" value={scheduledDate} onChange={event => setScheduledDate(event.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Send time</Label>
+                <Input type="time" value={scheduledTime} onChange={event => setScheduledTime(event.target.value)} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Repeat</Label>
+                <Select
+                  value={recurrenceFrequency || 'none'}
+                  onValueChange={frequency => setRecurrenceRule(prev => ({ ...defaultRecurrenceRule(), ...prev, frequency: frequency as TeamCommunicationRecurrenceRule['frequency'] }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Every</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  disabled={recurrenceFrequency === 'none'}
+                  value={recurrenceRule.interval ?? 1}
+                  onChange={event => setRecurrenceRule(prev => ({ ...prev, interval: Math.max(1, Number(event.target.value || 1)) }))}
+                />
+              </div>
+            </div>
+
+            {recurrenceFrequency === 'weekly' && (
+              <div className="space-y-2">
+                <Label>Repeat on</Label>
+                <div className="flex flex-wrap gap-2">
+                  {WEEK_DAYS.map(day => {
+                    const checked = recurrenceDays.includes(day.value);
+                    return (
+                      <Button
+                        key={day.value}
+                        type="button"
+                        size="sm"
+                        variant={checked ? 'default' : 'outline'}
+                        className="h-8 w-9 p-0 text-xs"
+                        onClick={() => {
+                          const nextDays = checked ? recurrenceDays.filter(value => value !== day.value) : [...recurrenceDays, day.value];
+                          setRecurrenceRule(prev => ({ ...prev, daysOfWeek: nextDays }));
+                        }}
+                      >
+                        {day.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {recurrenceFrequency === 'monthly' && (
+              <div className="space-y-2">
+                <Label>Day of month</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={recurrenceRule.dayOfMonth ?? ''}
+                  onChange={event => setRecurrenceRule(prev => ({ ...prev, dayOfMonth: event.target.value ? Number(event.target.value) : null }))}
+                />
+              </div>
+            )}
+
+            {recurrenceFrequency === 'yearly' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Month</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={recurrenceRule.monthOfYear ?? ''}
+                    onChange={event => setRecurrenceRule(prev => ({ ...prev, monthOfYear: event.target.value ? Number(event.target.value) : null }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Day</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={recurrenceRule.dayOfMonth ?? ''}
+                    onChange={event => setRecurrenceRule(prev => ({ ...prev, dayOfMonth: event.target.value ? Number(event.target.value) : null }))}
+                  />
+                </div>
+              </div>
+            )}
+
+            {recurrenceFrequency !== 'none' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>End date</Label>
+                  <Input
+                    type="date"
+                    value={recurrenceRule.endsAt ? String(recurrenceRule.endsAt).slice(0, 10) : ''}
+                    onChange={event => setRecurrenceRule(prev => ({ ...prev, endsAt: event.target.value || null, count: null }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Or after</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Occurrences"
+                    value={recurrenceRule.count ?? ''}
+                    onChange={event => setRecurrenceRule(prev => ({ ...prev, count: event.target.value ? Number(event.target.value) : null, endsAt: null }))}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <div className="space-y-2">

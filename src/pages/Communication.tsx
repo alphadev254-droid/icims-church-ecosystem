@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { communicationService, type Announcement } from '@/services/communication';
+import { communicationService, type Announcement, type RecurrenceRulePayload } from '@/services/communication';
 import { uploadService } from '@/services/upload';
 import { churchesService, Church } from '@/services/churches';
 import { useRole } from '@/hooks/useRole';
@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChurchSelect } from '@/components/ChurchSelect';
 import TeamCommunicationTab from '@/components/TeamCommunicationTab';
-import { Plus, MessageSquare, Bell, Trash2, HandHeart, Pencil, Eye, Paperclip, X, FileText, Image as ImageIcon, Download, Lock, Users, Search } from 'lucide-react';
+import { Plus, MessageSquare, Bell, Trash2, HandHeart, Pencil, Eye, Paperclip, X, FileText, Image as ImageIcon, Download, Lock, Users, Search, CalendarClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -32,6 +32,25 @@ const schema = z.object({
   type: z.enum(['announcement', 'prayer_request', 'newsletter']),
   priority: z.enum(['normal', 'urgent']).default('normal'),
   churchId: z.string().min(1, 'Church selection required'),
+  deliveryMode: z.enum(['now', 'scheduled']).default('now'),
+  scheduledDate: z.string().optional(),
+  scheduledTime: z.string().optional(),
+  recurrenceRule: z.object({
+    frequency: z.enum(['none', 'daily', 'weekly', 'monthly', 'yearly']).default('none'),
+    interval: z.number().int().positive().default(1),
+    daysOfWeek: z.array(z.string()).default([]),
+    dayOfMonth: z.number().int().min(1).max(31).nullable().optional(),
+    monthOfYear: z.number().int().min(1).max(12).nullable().optional(),
+    endsAt: z.string().nullable().optional(),
+    count: z.number().int().positive().nullable().optional(),
+  }).nullable().optional(),
+}).superRefine((data, ctx) => {
+  if (data.deliveryMode === 'scheduled' && !data.scheduledDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['scheduledDate'], message: 'Schedule date required' });
+  }
+  if (data.deliveryMode === 'scheduled' && !data.scheduledTime) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['scheduledTime'], message: 'Schedule time required' });
+  }
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -47,6 +66,57 @@ const TYPE_LABEL: Record<string, string> = {
   prayer_request: 'Prayer Request',
   newsletter: 'Newsletter',
 };
+
+const WEEK_DAYS = [
+  { value: 'sunday', label: 'Su' },
+  { value: 'monday', label: 'Mo' },
+  { value: 'tuesday', label: 'Tu' },
+  { value: 'wednesday', label: 'We' },
+  { value: 'thursday', label: 'Th' },
+  { value: 'friday', label: 'Fr' },
+  { value: 'saturday', label: 'Sa' },
+];
+
+function defaultRecurrenceRule(): NonNullable<FormValues['recurrenceRule']> {
+  return {
+    frequency: 'none',
+    interval: 1,
+    daysOfWeek: [],
+    dayOfMonth: null,
+    monthOfYear: null,
+    endsAt: null,
+    count: null,
+  };
+}
+
+function buildScheduledAt(date?: string, time?: string) {
+  if (!date || !time) return null;
+  return new Date(`${date}T${time}:00`).toISOString();
+}
+
+function toDateInputValue(value?: string | null) {
+  if (!value) return '';
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function toTimeInputValue(value?: string | null) {
+  if (!value) return '';
+  return new Date(value).toTimeString().slice(0, 5);
+}
+
+function buildAnnouncementPayload(values: FormValues) {
+  const { scheduledDate, scheduledTime, recurrenceRule, ...payload } = values;
+  const scheduledAt = values.deliveryMode === 'scheduled' ? buildScheduledAt(scheduledDate, scheduledTime) : null;
+  const normalizedRecurrence: RecurrenceRulePayload | null = values.deliveryMode === 'scheduled'
+    ? { ...defaultRecurrenceRule(), ...recurrenceRule, startsAt: scheduledAt }
+    : null;
+
+  return {
+    ...payload,
+    scheduledAt,
+    recurrenceRule: normalizedRecurrence,
+  };
+}
 
 export default function CommunicationPage() {
   const hasCommunication = useHasFeature('communication');
@@ -76,40 +146,33 @@ export default function CommunicationPage() {
     enabled: !isMember,
   });
 
-  if (!isMember && !hasCommunication) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Communication</h1>
-          <p className="text-sm text-muted-foreground">Announcements, newsletters, and prayer requests</p>
-        </div>
-        <Alert className="border-amber-200 bg-amber-50">
-          <Lock className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-800">
-            Communication & Announcements is not available in your current package.{' '}
-            <Link to="/dashboard/packages" className="font-medium underline">
-              Upgrade now
-            </Link>{' '}
-            to unlock communication features.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       type: 'announcement',
       priority: 'normal',
+      deliveryMode: 'now',
+      recurrenceRule: defaultRecurrenceRule(),
     },
   });
 
-  const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, setValue: setValueEdit, formState: { errors: errorsEdit } } = useForm<FormValues>({
+  const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, setValue: setValueEdit, watch: watchEdit, formState: { errors: errorsEdit } } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      deliveryMode: 'now',
+      recurrenceRule: defaultRecurrenceRule(),
+    },
   });
 
   const churchId = watch('churchId');
+  const deliveryMode = watch('deliveryMode') || 'now';
+  const recurrenceRule = watch('recurrenceRule') ?? defaultRecurrenceRule();
+  const recurrenceFrequency = recurrenceRule.frequency ?? 'none';
+  const recurrenceDays = recurrenceRule.daysOfWeek ?? [];
+  const editDeliveryMode = watchEdit('deliveryMode') || 'now';
+  const editRecurrenceRule = watchEdit('recurrenceRule') ?? defaultRecurrenceRule();
+  const editRecurrenceFrequency = editRecurrenceRule.frequency ?? 'none';
+  const editRecurrenceDays = editRecurrenceRule.daysOfWeek ?? [];
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -120,7 +183,7 @@ export default function CommunicationPage() {
       }
       // Create announcement with uploaded files
       return communicationService.create({
-        ...data,
+        ...buildAnnouncementPayload(data),
         attachments: uploadedFiles.length > 0 ? JSON.stringify(uploadedFiles) : undefined,
       });
     },
@@ -129,7 +192,7 @@ export default function CommunicationPage() {
       qc.invalidateQueries({ queryKey: ['announcements'] });
       setDialogOpen(false);
       setSelectedFiles([]);
-      reset();
+      reset({ type: 'announcement', priority: 'normal', deliveryMode: 'now', recurrenceRule: defaultRecurrenceRule() });
       setFormType('announcement');
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to post'),
@@ -145,7 +208,7 @@ export default function CommunicationPage() {
       // Merge existing and new files
       const allFiles = [...existingFiles, ...uploadedFiles];
       return communicationService.update(id, {
-        ...dto,
+        ...buildAnnouncementPayload(dto),
         attachments: allFiles.length > 0 ? JSON.stringify(allFiles) : undefined,
       });
     },
@@ -223,6 +286,198 @@ export default function CommunicationPage() {
     staleTime: 0,
   });
 
+  const renderScheduleFields = ({
+    registerForm,
+    setFormValue,
+    mode,
+    rule,
+    frequency,
+    selectedDays,
+    formErrors,
+  }: {
+    registerForm: any;
+    setFormValue: any;
+    mode: 'now' | 'scheduled';
+    rule: NonNullable<FormValues['recurrenceRule']>;
+    frequency: string;
+    selectedDays: string[];
+    formErrors: any;
+  }) => (
+    <div className="space-y-3 rounded-md border border-border p-3">
+      <div className="flex items-center gap-2">
+        <CalendarClock className="h-4 w-4 text-accent" />
+        <Label className="text-xs sm:text-sm">Delivery</Label>
+      </div>
+      <Select value={mode} onValueChange={value => setFormValue('deliveryMode', value, { shouldDirty: true, shouldValidate: true })}>
+        <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="now">Send now</SelectItem>
+          <SelectItem value="scheduled">Schedule</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {mode === 'scheduled' && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs sm:text-sm">Send date</Label>
+              <Input type="date" {...registerForm('scheduledDate')} className="h-8 text-xs sm:h-10 sm:text-sm" />
+              {formErrors.scheduledDate && <p className="text-xs text-destructive mt-1">{formErrors.scheduledDate.message}</p>}
+            </div>
+            <div>
+              <Label className="text-xs sm:text-sm">Send time</Label>
+              <Input type="time" {...registerForm('scheduledTime')} className="h-8 text-xs sm:h-10 sm:text-sm" />
+              {formErrors.scheduledTime && <p className="text-xs text-destructive mt-1">{formErrors.scheduledTime.message}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs sm:text-sm">Repeat</Label>
+              <Select
+                value={frequency}
+                onValueChange={value => setFormValue('recurrenceRule', { ...defaultRecurrenceRule(), ...rule, frequency: value }, { shouldDirty: true })}
+              >
+                <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs sm:text-sm">Every</Label>
+              <Input
+                type="number"
+                min={1}
+                disabled={frequency === 'none'}
+                value={rule.interval ?? 1}
+                onChange={event => setFormValue('recurrenceRule', { ...rule, interval: Math.max(1, Number(event.target.value || 1)) }, { shouldDirty: true })}
+                className="h-8 text-xs sm:h-10 sm:text-sm"
+              />
+            </div>
+          </div>
+
+          {frequency === 'weekly' && (
+            <div>
+              <Label className="text-xs sm:text-sm">Repeat on</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {WEEK_DAYS.map(day => {
+                  const checked = selectedDays.includes(day.value);
+                  return (
+                    <Button
+                      key={day.value}
+                      type="button"
+                      size="sm"
+                      variant={checked ? 'default' : 'outline'}
+                      className="h-8 w-9 p-0 text-xs"
+                      onClick={() => {
+                        const nextDays = checked ? selectedDays.filter(value => value !== day.value) : [...selectedDays, day.value];
+                        setFormValue('recurrenceRule', { ...rule, daysOfWeek: nextDays }, { shouldDirty: true });
+                      }}
+                    >
+                      {day.label}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {frequency === 'monthly' && (
+            <div>
+              <Label className="text-xs sm:text-sm">Day of month</Label>
+              <Input
+                type="number"
+                min={1}
+                max={31}
+                value={rule.dayOfMonth ?? ''}
+                onChange={event => setFormValue('recurrenceRule', { ...rule, dayOfMonth: event.target.value ? Number(event.target.value) : null }, { shouldDirty: true })}
+                className="h-8 text-xs sm:h-10 sm:text-sm"
+              />
+            </div>
+          )}
+
+          {frequency === 'yearly' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs sm:text-sm">Month</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={rule.monthOfYear ?? ''}
+                  onChange={event => setFormValue('recurrenceRule', { ...rule, monthOfYear: event.target.value ? Number(event.target.value) : null }, { shouldDirty: true })}
+                  className="h-8 text-xs sm:h-10 sm:text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-xs sm:text-sm">Day</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={rule.dayOfMonth ?? ''}
+                  onChange={event => setFormValue('recurrenceRule', { ...rule, dayOfMonth: event.target.value ? Number(event.target.value) : null }, { shouldDirty: true })}
+                  className="h-8 text-xs sm:h-10 sm:text-sm"
+                />
+              </div>
+            </div>
+          )}
+
+          {frequency !== 'none' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs sm:text-sm">End date</Label>
+                <Input
+                  type="date"
+                  value={rule.endsAt ? String(rule.endsAt).slice(0, 10) : ''}
+                  onChange={event => setFormValue('recurrenceRule', { ...rule, endsAt: event.target.value || null, count: null }, { shouldDirty: true })}
+                  className="h-8 text-xs sm:h-10 sm:text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-xs sm:text-sm">Or after</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="Occurrences"
+                  value={rule.count ?? ''}
+                  onChange={event => setFormValue('recurrenceRule', { ...rule, count: event.target.value ? Number(event.target.value) : null, endsAt: null }, { shouldDirty: true })}
+                  className="h-8 text-xs sm:h-10 sm:text-sm"
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  if (!isMember && !hasCommunication) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Communication</h1>
+          <p className="text-sm text-muted-foreground">Announcements, newsletters, and prayer requests</p>
+        </div>
+        <Alert className="border-amber-200 bg-amber-50">
+          <Lock className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Communication & Announcements is not available in your current package.{' '}
+            <Link to="/dashboard/packages" className="font-medium underline">
+              Upgrade now
+            </Link>{' '}
+            to unlock communication features.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const ItemCard = ({ item }: { item: any }) => {
     const Icon = TYPE_ICON[item.type] ?? Bell;
     const attachments = item.attachments ? JSON.parse(item.attachments) : [];
@@ -238,6 +493,8 @@ export default function CommunicationPage() {
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <span className="font-heading font-semibold text-foreground">{item.title}</span>
                   {item.priority === 'urgent' && <Badge variant="destructive" className="text-xs">Urgent</Badge>}
+                  {item.scheduledEvent && <Badge variant="outline" className="text-xs">Scheduled</Badge>}
+                  {item.scheduledEvent?.recurrenceRule && <Badge variant="secondary" className="text-xs">Repeats</Badge>}
                   {attachments.length > 0 && <Paperclip className="h-3 w-3 text-muted-foreground" />}
                 </div>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-2">{item.content}</p>
@@ -250,6 +507,11 @@ export default function CommunicationPage() {
                   <p className="text-xs text-muted-foreground">
                     {new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
+                  {item.scheduledEvent && (
+                    <p className="text-xs text-muted-foreground">
+                      Sends {new Date(item.scheduledEvent.startAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
                   <button
                     onClick={() => {
                       setViewItem(item);
@@ -276,6 +538,12 @@ export default function CommunicationPage() {
                         content: item.content,
                         type: item.type,
                         priority: item.priority,
+                        deliveryMode: item.scheduledEvent ? 'scheduled' : 'now',
+                        scheduledDate: toDateInputValue(item.scheduledEvent?.startAt),
+                        scheduledTime: toTimeInputValue(item.scheduledEvent?.startAt),
+                        recurrenceRule: item.scheduledEvent?.recurrenceRule
+                          ? { ...defaultRecurrenceRule(), ...item.scheduledEvent.recurrenceRule }
+                          : defaultRecurrenceRule(),
                       });
                     }}
                     className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
@@ -394,6 +662,15 @@ export default function CommunicationPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {renderScheduleFields({
+                      registerForm: register,
+                      setFormValue: setValue,
+                      mode: deliveryMode,
+                      rule: recurrenceRule,
+                      frequency: recurrenceFrequency,
+                      selectedDays: recurrenceDays,
+                      formErrors: errors,
+                    })}
                     <div>
                       <Label className="text-xs sm:text-sm">Title</Label>
                       <Input {...register('title')} className="h-8 text-xs sm:h-10 sm:text-sm" />
@@ -649,6 +926,15 @@ export default function CommunicationPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {renderScheduleFields({
+                registerForm: registerEdit,
+                setFormValue: setValueEdit,
+                mode: editDeliveryMode,
+                rule: editRecurrenceRule,
+                frequency: editRecurrenceFrequency,
+                selectedDays: editRecurrenceDays,
+                formErrors: errorsEdit,
+              })}
               <div>
                 <Label className="text-xs sm:text-sm">Title</Label>
                 <Input {...registerEdit('title')} className="h-8 text-xs sm:h-10 sm:text-sm" />

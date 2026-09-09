@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cellsService, type CellMember, type CellMeeting } from '@/services/cells';
@@ -23,6 +23,54 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 
+const WEEK_DAYS = [
+  { value: 'sunday', label: 'Su' },
+  { value: 'monday', label: 'Mo' },
+  { value: 'tuesday', label: 'Tu' },
+  { value: 'wednesday', label: 'We' },
+  { value: 'thursday', label: 'Th' },
+  { value: 'friday', label: 'Fr' },
+  { value: 'saturday', label: 'Sa' },
+];
+
+type MeetingFormState = {
+  date: string;
+  time: string;
+  topic: string;
+  notes: string;
+  recurrenceRule: {
+    frequency: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+    interval: number;
+    daysOfWeek: string[];
+    dayOfMonth: number | null;
+    monthOfYear: number | null;
+    endsAt: string | null;
+    count: number | null;
+  };
+};
+
+function emptyMeetingForm(time = ''): MeetingFormState {
+  return {
+    date: '',
+    time,
+    topic: '',
+    notes: '',
+    recurrenceRule: {
+      frequency: 'none',
+      interval: 1,
+      daysOfWeek: [],
+      dayOfMonth: null,
+      monthOfYear: null,
+      endsAt: null,
+      count: null,
+    },
+  };
+}
+
+function dateInputValue(value?: string | null): string {
+  return value ? new Date(value).toISOString().slice(0, 10) : '';
+}
+
 export default function CellDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -42,7 +90,7 @@ export default function CellDetailPage() {
   const [selectedUserId, setSelectedUserId] = useState('');
   const debouncedAddMemberQuery = useDebounce(addMemberQuery, 300);  const [isLeader, setIsLeader] = useState(false);
   const [isAssistant, setIsAssistant] = useState(false);
-  const [meetingForm, setMeetingForm] = useState({ date: '', topic: '', notes: '' });
+  const [meetingForm, setMeetingForm] = useState<MeetingFormState>(() => emptyMeetingForm());
 
   // Transactions tab state
   const [txSearch, setTxSearch] = useState('');
@@ -65,6 +113,8 @@ export default function CellDetailPage() {
   const [meetingDateTo, setMeetingDateTo] = useState('');
   const [meetingPage, setMeetingPage] = useState(1);
   const [deleteMeeting, setDeleteMeeting] = useState<CellMeeting | null>(null);
+  const [editMeeting, setEditMeeting] = useState<CellMeeting | null>(null);
+  const [editMeetingForm, setEditMeetingForm] = useState<MeetingFormState>(() => emptyMeetingForm());
 
   const { data: cell, isLoading } = useQuery({
     queryKey: ['cell-detail', id],
@@ -185,9 +235,21 @@ export default function CellDetailPage() {
       qc.invalidateQueries({ queryKey: ['cell-meetings', id] });
       qc.invalidateQueries({ queryKey: ['cell-detail', id] });
       setNewMeetingOpen(false);
-      setMeetingForm({ date: '', topic: '', notes: '' });
+      setMeetingForm(emptyMeetingForm(cell?.meetingTime ?? ''));
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create meeting'),
+  });
+
+  const updateMeetingMutation = useMutation({
+    mutationFn: () => cellsService.updateMeeting(editMeeting!.id, editMeetingForm),
+    onSuccess: () => {
+      toast.success('Meeting updated');
+      qc.invalidateQueries({ queryKey: ['cell-meetings', id] });
+      qc.invalidateQueries({ queryKey: ['cell-detail', id] });
+      setEditMeeting(null);
+      setEditMeetingForm(emptyMeetingForm(cell?.meetingTime ?? ''));
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update meeting'),
   });
 
   const deleteMeetingMutation = useMutation({
@@ -280,6 +342,120 @@ export default function CellDetailPage() {
 
   // Normal members (non-leader) only see Meetings tab, read-only
   const isReadOnlyMember = isMember && !isLeaderOfThisCell;
+
+  const openNewMeetingDialog = () => {
+    setMeetingForm(emptyMeetingForm(cell.meetingTime ?? ''));
+    setNewMeetingOpen(true);
+  };
+
+  const openEditMeetingDialog = (meeting: CellMeeting) => {
+    setEditMeeting(meeting);
+    setEditMeetingForm({
+      date: dateInputValue(meeting.date),
+      time: meeting.time ?? cell.meetingTime ?? '',
+      topic: meeting.topic ?? '',
+      notes: meeting.notes ?? '',
+      recurrenceRule: {
+        ...emptyMeetingForm().recurrenceRule,
+        ...(meeting.recurrenceRule ?? {}),
+        endsAt: meeting.recurrenceRule?.endsAt ? dateInputValue(meeting.recurrenceRule.endsAt) : null,
+      },
+    });
+  };
+
+  const renderMeetingForm = (
+    form: MeetingFormState,
+    setForm: Dispatch<SetStateAction<MeetingFormState>>,
+    isSaving: boolean,
+    submitLabel: string,
+    onSubmit: () => void,
+  ) => {
+    const recurrence = form.recurrenceRule;
+    const setRecurrence = (next: Partial<MeetingFormState['recurrenceRule']>) => {
+      setForm(current => ({ ...current, recurrenceRule: { ...current.recurrenceRule, ...next } }));
+    };
+
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div><Label>Date *</Label><Input className="mt-1" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
+          <div><Label>Time</Label><Input className="mt-1" type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
+        </div>
+        <div><Label>Topic</Label><Input className="mt-1" value={form.topic} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} placeholder="Meeting topic" /></div>
+        <div><Label>Notes</Label><Textarea className="mt-1" rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
+
+        <div className="space-y-3 rounded-md border border-border p-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Repeat</Label>
+              <Select value={recurrence.frequency} onValueChange={value => setRecurrence({ frequency: value as MeetingFormState['recurrenceRule']['frequency'] })}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Every</Label>
+              <Input type="number" min={1} disabled={recurrence.frequency === 'none'} className="mt-1" value={recurrence.interval} onChange={e => setRecurrence({ interval: Math.max(1, Number(e.target.value || 1)) })} />
+            </div>
+          </div>
+
+          {recurrence.frequency === 'weekly' && (
+            <div>
+              <Label>Repeat on</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {WEEK_DAYS.map(day => {
+                  const checked = recurrence.daysOfWeek.includes(day.value);
+                  return (
+                    <Button
+                      key={day.value}
+                      type="button"
+                      size="sm"
+                      variant={checked ? 'default' : 'outline'}
+                      className="h-8 w-9 p-0 text-xs"
+                      onClick={() => setRecurrence({ daysOfWeek: checked ? recurrence.daysOfWeek.filter(value => value !== day.value) : [...recurrence.daysOfWeek, day.value] })}
+                    >
+                      {day.label}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {recurrence.frequency === 'monthly' && (
+            <div>
+              <Label>Day of month</Label>
+              <Input type="number" min={1} max={31} className="mt-1" value={recurrence.dayOfMonth ?? ''} onChange={e => setRecurrence({ dayOfMonth: e.target.value ? Number(e.target.value) : null })} />
+            </div>
+          )}
+
+          {recurrence.frequency === 'yearly' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Month</Label><Input type="number" min={1} max={12} className="mt-1" value={recurrence.monthOfYear ?? ''} onChange={e => setRecurrence({ monthOfYear: e.target.value ? Number(e.target.value) : null })} /></div>
+              <div><Label>Day</Label><Input type="number" min={1} max={31} className="mt-1" value={recurrence.dayOfMonth ?? ''} onChange={e => setRecurrence({ dayOfMonth: e.target.value ? Number(e.target.value) : null })} /></div>
+            </div>
+          )}
+
+          {recurrence.frequency !== 'none' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>End date</Label><Input type="date" className="mt-1" value={recurrence.endsAt ?? ''} onChange={e => setRecurrence({ endsAt: e.target.value || null, count: null })} /></div>
+              <div><Label>Or after</Label><Input type="number" min={1} placeholder="Occurrences" className="mt-1" value={recurrence.count ?? ''} onChange={e => setRecurrence({ count: e.target.value ? Number(e.target.value) : null, endsAt: null })} /></div>
+            </div>
+          )}
+        </div>
+
+        <Button className="w-full" disabled={!form.date || isSaving} onClick={onSubmit}>
+          {isSaving ? 'Saving...' : submitLabel}
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -481,7 +657,7 @@ export default function CellDetailPage() {
             <span className="text-xs text-muted-foreground">–</span>
             <Input type="date" className="h-8 w-32 text-xs" value={meetingDateTo} onChange={e => { setMeetingDateTo(e.target.value); setMeetingPage(1); }} />
             {effectiveCanManage && (
-              <Button size="sm" variant="outline" className="gap-1.5 h-8 ml-auto" onClick={() => setNewMeetingOpen(true)}>
+              <Button size="sm" variant="outline" className="gap-1.5 h-8 ml-auto" onClick={openNewMeetingDialog}>
                 <Plus className="h-3.5 w-3.5" /> <span className="hidden sm:inline">New Meeting</span>
               </Button>
             )}
@@ -503,7 +679,9 @@ export default function CellDetailPage() {
                 <div key={m.id} className="flex items-center justify-between px-4 py-3 gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                    {m.topic && <p className="text-xs text-muted-foreground">{m.topic}</p>}
+                    <p className="text-xs text-muted-foreground">
+                      {[m.time, m.topic, m.recurrenceRule?.frequency && m.recurrenceRule.frequency !== 'none' ? `Repeats ${m.recurrenceRule.frequency}` : null].filter(Boolean).join(' · ')}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground shrink-0">
                     <span className="text-green-600 font-medium">{m.presentCount ?? 0} present</span>
@@ -517,15 +695,26 @@ export default function CellDetailPage() {
                       </Button>
                     )}
                     {effectiveCanManage && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
-                        title="Delete meeting"
-                        onClick={() => setDeleteMeeting(m)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 w-7 p-0"
+                          title="Edit meeting"
+                          onClick={() => openEditMeetingDialog(m)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                          title="Delete meeting"
+                          onClick={() => setDeleteMeeting(m)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -1332,16 +1521,16 @@ export default function CellDetailPage() {
 
       {/* New Meeting Dialog */}
       <Dialog open={newMeetingOpen} onOpenChange={setNewMeetingOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Record Meeting</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div><Label>Date *</Label><Input className="mt-1" type="date" value={meetingForm.date} onChange={e => setMeetingForm(f => ({ ...f, date: e.target.value }))} /></div>
-            <div><Label>Topic</Label><Input className="mt-1" value={meetingForm.topic} onChange={e => setMeetingForm(f => ({ ...f, topic: e.target.value }))} placeholder="Meeting topic" /></div>
-            <div><Label>Notes</Label><Textarea className="mt-1" rows={3} value={meetingForm.notes} onChange={e => setMeetingForm(f => ({ ...f, notes: e.target.value }))} /></div>
-            <Button className="w-full" disabled={!meetingForm.date || createMeetingMutation.isPending} onClick={() => createMeetingMutation.mutate()}>
-              {createMeetingMutation.isPending ? 'Saving...' : 'Create Meeting'}
-            </Button>
-          </div>
+          {renderMeetingForm(meetingForm, setMeetingForm, createMeetingMutation.isPending, 'Create Meeting', () => createMeetingMutation.mutate())}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editMeeting} onOpenChange={open => { if (!open) setEditMeeting(null); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit Meeting</DialogTitle></DialogHeader>
+          {renderMeetingForm(editMeetingForm, setEditMeetingForm, updateMeetingMutation.isPending, 'Save Changes', () => updateMeetingMutation.mutate())}
         </DialogContent>
       </Dialog>
 

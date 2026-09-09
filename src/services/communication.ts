@@ -23,6 +23,25 @@ export interface Announcement {
     id: string;
     name: string;
   };
+  scheduledEvent?: {
+    startAt: string;
+    endAt: string;
+    status: string;
+    timezone: string;
+    recurrenceRuleId?: string | null;
+    recurrenceRule?: RecurrenceRulePayload | null;
+  } | null;
+}
+
+export interface RecurrenceRulePayload {
+  frequency?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | null;
+  interval?: number | null;
+  daysOfWeek?: string[] | null;
+  dayOfMonth?: number | null;
+  monthOfYear?: number | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  count?: number | null;
 }
 
 export interface CreateAnnouncementDto {
@@ -31,6 +50,10 @@ export interface CreateAnnouncementDto {
   type: Announcement['type'];
   priority?: Announcement['priority'];
   churchId: string;
+  attachments?: string;
+  deliveryMode?: 'now' | 'scheduled';
+  scheduledAt?: string | null;
+  recurrenceRule?: RecurrenceRulePayload | null;
 }
 
 export type UpdateAnnouncementDto = Partial<CreateAnnouncementDto>;

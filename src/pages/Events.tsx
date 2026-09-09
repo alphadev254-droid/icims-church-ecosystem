@@ -75,6 +75,16 @@ const schema = z.object({
   imageUrl: z.string().nullable().optional(),
   scopeType: z.enum(['one_church', 'selected_churches', 'all_churches']).default('one_church'),
   churchIds: z.array(z.string()).default([]),
+  recurrenceRule: z.object({
+    frequency: z.enum(['none', 'daily', 'weekly', 'monthly', 'yearly']).default('none'),
+    interval: z.number().int().positive().default(1),
+    daysOfWeek: z.array(z.string()).default([]),
+    dayOfMonth: z.number().int().min(1).max(31).nullable().optional(),
+    monthOfYear: z.number().int().min(1).max(12).nullable().optional(),
+    startsAt: z.string().optional(),
+    endsAt: z.string().nullable().optional(),
+    count: z.number().int().positive().nullable().optional(),
+  }).nullable().optional(),
 }).superRefine((data, ctx) => {
   if (new Date(data.endDate) < new Date(data.date)) {
     ctx.addIssue({
@@ -92,6 +102,29 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
+
+const WEEK_DAYS = [
+  { value: 'sunday', label: 'Su' },
+  { value: 'monday', label: 'Mo' },
+  { value: 'tuesday', label: 'Tu' },
+  { value: 'wednesday', label: 'We' },
+  { value: 'thursday', label: 'Th' },
+  { value: 'friday', label: 'Fr' },
+  { value: 'saturday', label: 'Sa' },
+];
+
+function defaultRecurrenceRule(): NonNullable<FormValues['recurrenceRule']> {
+  return {
+    frequency: 'none',
+    interval: 1,
+    daysOfWeek: [],
+    dayOfMonth: null,
+    monthOfYear: null,
+    startsAt: '',
+    endsAt: null,
+    count: null,
+  };
+}
 
 function safeFileName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'event';
@@ -168,6 +201,7 @@ function EventForm({
       currency: 'MWK',
       scopeType: 'one_church',
       churchIds: [],
+      recurrenceRule: defaultRecurrenceRule(),
       ...defaultValues,
     },
   });
@@ -184,6 +218,7 @@ function EventForm({
     if (defaultValues?.isFree !== undefined) setValue('isFree', defaultValues.isFree);
     if (defaultValues?.allowPublicTicketing !== undefined) setValue('allowPublicTicketing', defaultValues.allowPublicTicketing);
     if (defaultValues?.imageUrl) setValue('imageUrl', defaultValues.imageUrl);
+    if (defaultValues?.recurrenceRule) setValue('recurrenceRule', defaultValues.recurrenceRule);
   }, []); // run once on mount — defaultValues won't change between mounts
 
   const churchId = watch('churchId');
@@ -192,6 +227,10 @@ function EventForm({
   const requiresTicket = watch('requiresTicket');
   const isFree = watch('isFree');
   const imageUrl = watch('imageUrl');
+  const recurrenceRule = watch('recurrenceRule') ?? defaultRecurrenceRule();
+  const recurrenceFrequency = recurrenceRule.frequency ?? 'none';
+  const recurrenceDays = recurrenceRule.daysOfWeek ?? [];
+  const recurrenceEndsAt = recurrenceRule.endsAt ?? '';
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -350,6 +389,127 @@ function EventForm({
         <Label className="text-xs sm:text-sm">Time</Label>
         <Input type="time" {...register('time')} className="h-8 text-xs sm:h-10 sm:text-sm" />
         {errors.time && <p className="text-xs text-destructive mt-1">{errors.time.message}</p>}
+      </div>
+
+      <div className="space-y-3 rounded-md border border-border p-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs sm:text-sm">Repeat</Label>
+            <Select
+              value={recurrenceFrequency}
+              onValueChange={(frequency) => setValue('recurrenceRule', { ...defaultRecurrenceRule(), ...recurrenceRule, frequency: frequency as any }, { shouldDirty: true })}
+            >
+              <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs sm:text-sm">Every</Label>
+            <Input
+              {...digitsInputProps}
+              disabled={recurrenceFrequency === 'none'}
+              value={String(recurrenceRule.interval ?? 1)}
+              onInput={e => sanitizeDigitsInput(e)}
+              onChange={e => setValue('recurrenceRule', { ...recurrenceRule, interval: Math.max(1, Number(e.target.value || 1)) }, { shouldDirty: true })}
+              className="h-8 text-xs sm:h-10 sm:text-sm"
+            />
+          </div>
+        </div>
+
+        {recurrenceFrequency === 'weekly' && (
+          <div>
+            <Label className="text-xs sm:text-sm">Repeat on</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {WEEK_DAYS.map(day => {
+                const checked = recurrenceDays.includes(day.value);
+                return (
+                  <Button
+                    key={day.value}
+                    type="button"
+                    size="sm"
+                    variant={checked ? 'default' : 'outline'}
+                    className="h-8 w-9 p-0 text-xs"
+                    onClick={() => {
+                      const nextDays = checked ? recurrenceDays.filter(value => value !== day.value) : [...recurrenceDays, day.value];
+                      setValue('recurrenceRule', { ...recurrenceRule, daysOfWeek: nextDays }, { shouldDirty: true });
+                    }}
+                  >
+                    {day.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {recurrenceFrequency === 'monthly' && (
+          <div>
+            <Label className="text-xs sm:text-sm">Day of month</Label>
+            <Input
+              {...digitsInputProps}
+              value={recurrenceRule.dayOfMonth ?? ''}
+              onInput={e => sanitizeDigitsInput(e, 2)}
+              onChange={e => setValue('recurrenceRule', { ...recurrenceRule, dayOfMonth: e.target.value ? Number(e.target.value) : null }, { shouldDirty: true })}
+              className="h-8 text-xs sm:h-10 sm:text-sm"
+            />
+          </div>
+        )}
+
+        {recurrenceFrequency === 'yearly' && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs sm:text-sm">Month</Label>
+              <Input
+                {...digitsInputProps}
+                value={recurrenceRule.monthOfYear ?? ''}
+                onInput={e => sanitizeDigitsInput(e, 2)}
+                onChange={e => setValue('recurrenceRule', { ...recurrenceRule, monthOfYear: e.target.value ? Number(e.target.value) : null }, { shouldDirty: true })}
+                className="h-8 text-xs sm:h-10 sm:text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-xs sm:text-sm">Day</Label>
+              <Input
+                {...digitsInputProps}
+                value={recurrenceRule.dayOfMonth ?? ''}
+                onInput={e => sanitizeDigitsInput(e, 2)}
+                onChange={e => setValue('recurrenceRule', { ...recurrenceRule, dayOfMonth: e.target.value ? Number(e.target.value) : null }, { shouldDirty: true })}
+                className="h-8 text-xs sm:h-10 sm:text-sm"
+              />
+            </div>
+          </div>
+        )}
+
+        {recurrenceFrequency !== 'none' && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs sm:text-sm">End date</Label>
+              <Input
+                type="date"
+                value={recurrenceEndsAt ? String(recurrenceEndsAt).slice(0, 10) : ''}
+                onChange={e => setValue('recurrenceRule', { ...recurrenceRule, endsAt: e.target.value || null, count: null }, { shouldDirty: true })}
+                className="h-8 text-xs sm:h-10 sm:text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-xs sm:text-sm">Or after</Label>
+              <Input
+                {...digitsInputProps}
+                placeholder="Occurrences"
+                value={recurrenceRule.count ?? ''}
+                onInput={e => sanitizeDigitsInput(e, 3)}
+                onChange={e => setValue('recurrenceRule', { ...recurrenceRule, count: e.target.value ? Number(e.target.value) : null, endsAt: null }, { shouldDirty: true })}
+                className="h-8 text-xs sm:h-10 sm:text-sm"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Location */}
@@ -854,6 +1014,7 @@ export default function EventsPage() {
     imageUrl: e.imageUrl ?? undefined,
     scopeType: e.scopeType || 'one_church',
     churchIds: e.availableChurchIds || e.linkedChurches?.map(link => link.churchId) || [],
+    recurrenceRule: e.recurrenceRule ? { ...defaultRecurrenceRule(), ...e.recurrenceRule } : defaultRecurrenceRule(),
   });
 
   return (
