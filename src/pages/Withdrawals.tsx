@@ -274,7 +274,7 @@ export default function WithdrawalsPage() {
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const canRequestManualWithdrawal = user?.accountCountry === 'Malawi' && hasWithdrawalsFeature;
 
-  const { data: financialSummary } = useQuery({
+  const { data: financialSummary, isLoading: isFinancialSummaryLoading } = useQuery({
     queryKey: ['wallet-financial-summary'],
     queryFn: walletService.getFinancialSummary,
     enabled: hasWalletsFeature,
@@ -376,22 +376,53 @@ export default function WithdrawalsPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Available Balance</CardTitle>
-          <Wallet className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-xl sm:text-2xl font-bold font-heading">
-            {formatCurrency(balance?.effectiveAvailableBalance ?? 0, balance?.currency)}
+      <div className="space-y-3">
+        {(financialSummary?.currencies ?? []).map(item => (
+          <div key={item.currency} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {user?.accountCountry === 'Kenya' ? 'Not Yet Received' : 'Available to Withdraw'}
+                </CardTitle>
+                <Wallet className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold font-heading">{formatCurrency(item.effectiveAvailableBalance, item.currency)}</div>
+                <p className="mt-1 text-xs text-muted-foreground">Spendable after reservations and confirmed gateway payouts</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Ledger Balance</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold font-heading">{formatCurrency(item.postedBalance, item.currency)}</div>
+                <p className="mt-1 text-xs text-muted-foreground">Credits minus finalized ledger debits</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Paid to Payout Account</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold font-heading">{formatCurrency(item.providerConfirmedPayoutAmount, item.currency)}</div>
+                <p className="mt-1 text-xs text-muted-foreground">Confirmed completed by the gateway</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Pending Accounting</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold font-heading">{formatCurrency(item.unreconciledPayoutAmount + item.reservedBalance, item.currency)}</div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatCurrency(item.unreconciledPayoutAmount, item.currency)} awaiting matching · {formatCurrency(item.reservedBalance, item.currency)} reserved
+                </p>
+              </CardContent>
+            </Card>
           </div>
-          {balance && balance.unreconciledPayoutAmount > 0 && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {formatCurrency(balance.unreconciledPayoutAmount, balance.currency)} confirmed paid by the gateway and awaiting transaction-level reconciliation.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        ))}
+        {isFinancialSummaryLoading && (
+          <Card><CardContent className="py-6"><div className="h-8 animate-pulse rounded bg-muted" /></CardContent></Card>
+        )}
+        {!isFinancialSummaryLoading && !financialSummary?.currencies?.length && (
+          <Card><CardContent className="py-6 text-sm text-muted-foreground">No wallet ledger is available yet.</CardContent></Card>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">

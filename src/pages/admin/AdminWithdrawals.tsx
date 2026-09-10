@@ -1,6 +1,6 @@
 import { useState, type ElementType } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Banknote, CreditCard, Eye, RefreshCw, Search, TrendingUp, Wallet, Zap } from 'lucide-react';
+import { Banknote, CreditCard, Eye, RefreshCw, Search, Wallet, Zap } from 'lucide-react';
 import { adminApi, type AdminWithdrawal } from '@/services/adminApi';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -164,13 +164,14 @@ function WithdrawalDetailDialog({ withdrawal, onClose }: { withdrawal: AdminWith
     ['Church', withdrawal.church?.name ?? '-'],
     ['Ministry', withdrawal.ministryAdmin?.ministryName ?? (withdrawal.ministryAdmin ? `${withdrawal.ministryAdmin.firstName} ${withdrawal.ministryAdmin.lastName}` : '-')],
     ['Initiated By', withdrawal.initiatedByUser ? `${withdrawal.initiatedByUser.firstName} ${withdrawal.initiatedByUser.lastName} (${withdrawal.initiatedByUser.email})` : '-'],
-    ['Requested Amount', money(withdrawal.currency, withdrawal.amount)],
+    ['Gross Processed', money(withdrawal.currency, withdrawal.amount)],
+    ['Provider Deductions', money(withdrawal.currency, withdrawal.providerDeductionAmount)],
     ['Total Fee', money(withdrawal.currency, withdrawal.fee)],
     ['Gateway Fee', money(withdrawal.currency, withdrawal.gatewayFeeAmount)],
     ['Bank Fixed Fee', money(withdrawal.currency, withdrawal.bankFixedFeeAmount)],
     ['ICIMS Fee', money(withdrawal.currency, withdrawal.systemFeeAmount)],
-    ['Net Amount', money(withdrawal.currency, withdrawal.netAmount)],
-    ['Payout Sent', money(withdrawal.currency, withdrawal.payoutAmount)],
+    ['Total Debited', withdrawal.payoutType === 'manual_withdrawal' ? money(withdrawal.currency, withdrawal.netAmount) : '-'],
+    ['Paid to Account', money(withdrawal.currency, withdrawal.payoutAmount)],
     ['Gateway Fee Rate', withdrawal.gatewayFeeRate != null ? String(withdrawal.gatewayFeeRate) : '-'],
     ['ICIMS Fee Rate', withdrawal.systemFeeRate != null ? String(withdrawal.systemFeeRate) : '-'],
     ['Mobile Operator', withdrawal.mobileOperator ?? '-'],
@@ -325,11 +326,12 @@ export default function AdminWithdrawals() {
             payoutType: w.payoutType ?? '',
             reconciliationStatus: w.reconciliationStatus ?? '',
             amount: w.amount,
-            totalFee: w.fee,
-            gatewayFee: w.gatewayFeeAmount ?? 0,
-            bankFixedFee: w.bankFixedFeeAmount ?? 0,
+            totalFee: w.payoutType === 'manual_withdrawal' ? w.fee : '',
+            gatewayFee: w.payoutType === 'manual_withdrawal' ? (w.gatewayFeeAmount ?? 0) : '',
+            providerDeductions: w.providerDeductionAmount ?? 0,
+            bankFixedFee: w.payoutType === 'manual_withdrawal' ? (w.bankFixedFeeAmount ?? 0) : '',
             systemFee: w.systemFeeAmount ?? 0,
-            netAmount: w.netAmount,
+            netAmount: w.payoutType === 'manual_withdrawal' ? w.netAmount : '',
             payoutAmount: w.payoutAmount ?? 0,
             currency: w.currency,
             chargeId: w.chargeId ?? '',
@@ -345,64 +347,90 @@ export default function AdminWithdrawals() {
             { label: 'Gateway', key: 'gateway' },
             { label: 'Payout Type', key: 'payoutType' },
             { label: 'Reconciliation', key: 'reconciliationStatus' },
-            { label: 'Amount Without Fees', key: 'amount' },
+            { label: 'Gross Processed', key: 'amount' },
+            { label: 'Provider Deductions', key: 'providerDeductions' },
             { label: 'Total Fee', key: 'totalFee' },
             { label: 'Gateway Fee', key: 'gatewayFee' },
             { label: 'Bank Fixed Fee (Included in Gateway Fee)', key: 'bankFixedFee' },
             { label: 'System Fee', key: 'systemFee' },
-            { label: 'Total With Fees', key: 'netAmount' },
-            { label: 'Amount Sent', key: 'payoutAmount' },
+            { label: 'Total Debited (Manual Withdrawal)', key: 'netAmount' },
+            { label: 'Paid to Account', key: 'payoutAmount' },
             { label: 'Currency', key: 'currency' },
             { label: 'Charge ID', key: 'chargeId' },
             { label: 'Initiated By', key: 'initiatedBy' },
             { label: 'Created At', key: 'createdAt' },
             { label: 'Processed At', key: 'processedAt' },
           ]}
-          pdfColumns={['Church', 'Ministry', 'Method', 'Status', 'Gateway', 'Payout Type', 'Reconciliation', 'Amount Without Fees', 'Total Fee', 'Gateway Fee', 'Bank Fixed Fee (Included)', 'System Fee', 'Total With Fees', 'Amount Sent', 'Currency', 'Charge ID', 'Initiated By', 'Created At', 'Processed At']}
+          pdfColumns={['Church', 'Ministry', 'Method', 'Status', 'Gateway', 'Payout Type', 'Reconciliation', 'Gross Processed', 'Provider Deductions', 'Total Fee', 'Gateway Fee', 'Bank Fixed Fee (Included)', 'System Fee', 'Total Debited (Manual Withdrawal)', 'Paid to Account', 'Currency', 'Charge ID', 'Initiated By', 'Created At', 'Processed At']}
         />
       </div>
 
       {summary && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <CountPill label="Total" value={summary.total} />
             <CountPill label="Pending" value={summary.byStatus?.pending ?? 0} />
             <CountPill label="Processing" value={summary.byStatus?.processing ?? 0} />
-            <CountPill label="Review" value={(summary.byReconciliation?.needs_review ?? 0) + (summary.byStatus?.review_required ?? 0)} />
             <CountPill label="Completed" value={summary.byStatus?.completed ?? 0} />
             <CountPill label="Failed" value={summary.byStatus?.failed ?? 0} />
           </div>
-          {summary.walletBalances.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {summary.walletBalances.map(w => (
-                <SummaryCard
-                  key={w.currency}
-                  label={`${w.currency} Wallet Balance`}
-                  value={money(w.currency, w.balance)}
-                  sub={`${w.walletCount.toLocaleString()} ministry wallet(s)${ministry ? ' in selected ministry' : ' across system'}`}
-                  icon={Wallet}
-                  color="bg-emerald-100 text-emerald-700"
-                />
+          <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
+            <div>
+              <p className="text-sm font-semibold">Reconciliation health</p>
+              <p className="text-xs text-muted-foreground">Accounting checks are separate from payout delivery status.</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {summary.reconciliation.map(item => (
+                <div key={item.status} className="rounded-lg border bg-card px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{item.status.replaceAll('_', ' ')}</p>
+                  <p className="text-lg font-bold leading-tight">{item.count.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">Payout value shown by currency below</p>
+                </div>
               ))}
             </div>
-          )}
+          </div>
           {summary.byCurrency.map(c => (
             <div key={c.currency} className="rounded-xl border bg-muted/20 p-3 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold">{c.currency} Payouts</p>
-                  <p className="text-xs text-muted-foreground">{c.count.toLocaleString()} matching payout(s)</p>
+                  <p className="text-xs text-muted-foreground">{c.count.toLocaleString()} completed payout(s) only</p>
                 </div>
                 <Badge variant="outline" className="text-xs">{c.currency}</Badge>
               </div>
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                <SummaryCard label="Requested" value={money(c.currency, c.totalRequested)} sub="Amount requested by churches" icon={Wallet} color="bg-accent/10 text-accent" />
-                <SummaryCard label="Payout Sent" value={money(c.currency, c.payoutAmount)} sub="Amount sent to bank/mobile" icon={Banknote} color="bg-green-100 text-green-700" />
-                <SummaryCard label="Total Fees" value={money(c.currency, c.totalFee)} sub="Gateway + bank + ICIMS" icon={CreditCard} color="bg-blue-100 text-blue-700" />
-                <SummaryCard label="ICIMS Fee" value={money(c.currency, c.systemFee)} sub={`Completed revenue ${money(c.currency, c.completedSystemRevenue)}`} icon={Zap} color="bg-purple-100 text-purple-700" />
-                <SummaryCard label="Gateway/Bank Cost" value={money(c.currency, c.gatewayFee)} sub={`Includes fixed bank fee ${money(c.currency, c.bankFixedFee)}`} icon={TrendingUp} color="bg-yellow-100 text-yellow-700" />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <SummaryCard label="Gross Processed" value={money(c.currency, c.grossProcessed)} sub="Value processed before provider deductions" icon={Wallet} color="bg-accent/10 text-accent" />
+                <SummaryCard label="Paid to Accounts" value={money(c.currency, c.paidToAccounts)} sub="Confirmed sent to bank or mobile accounts" icon={Banknote} color="bg-green-100 text-green-700" />
+                <SummaryCard label="Provider Deductions" value={money(c.currency, c.providerDeductions)} sub="Amount retained by the payment provider" icon={CreditCard} color="bg-blue-100 text-blue-700" />
+                <SummaryCard label="ICIMS Revenue" value={money(c.currency, c.icimsRevenue)} sub="Platform fees from completed payouts" icon={Zap} color="bg-purple-100 text-purple-700" />
               </div>
             </div>
           ))}
+          {summary.byGateway.length > 0 && (
+            <div className="rounded-xl border overflow-x-auto">
+              <div className="px-3 py-2 border-b bg-muted/20">
+                <p className="text-sm font-semibold">Completed payouts by gateway</p>
+              </div>
+              <table className="w-full text-xs">
+                <thead className="bg-muted/30 text-left">
+                  <tr><th className="p-3">Gateway</th><th className="p-3">Type</th><th className="p-3">Count</th><th className="p-3">Gross Processed</th><th className="p-3">Paid to Accounts</th><th className="p-3">Provider Deductions</th><th className="p-3">ICIMS Revenue</th></tr>
+                </thead>
+                <tbody>
+                  {summary.byGateway.map(item => (
+                    <tr key={`${item.currency}-${item.gateway}-${item.payoutType}`} className="border-t">
+                      <td className="p-3 capitalize">{item.gateway}</td>
+                      <td className="p-3 capitalize">{item.payoutType.replaceAll('_', ' ')}</td>
+                      <td className="p-3">{item.count.toLocaleString()}</td>
+                      <td className="p-3">{money(item.currency, item.grossProcessed)}</td>
+                      <td className="p-3">{money(item.currency, item.paidToAccounts)}</td>
+                      <td className="p-3">{money(item.currency, item.providerDeductions)}</td>
+                      <td className="p-3">{money(item.currency, item.icimsRevenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -470,13 +498,14 @@ export default function AdminWithdrawals() {
                 <th className="text-left p-3 font-medium">Church</th>
                 <th className="text-left p-3 font-medium">Method</th>
                 <th className="text-left p-3 font-medium">Gateway</th>
-                <th className="text-right p-3 font-medium whitespace-nowrap">Amount Without Fees</th>
-                <th className="text-right p-3 font-medium whitespace-nowrap">Gateway Fee</th>
-                <th className="text-right p-3 font-medium whitespace-nowrap" title="This component is already included in Gateway Fee">Fixed Fee (Included)</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Gross Processed</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Provider Deductions</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Gateway Fee (Withdrawal)</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap" title="This component is already included in Gateway Fee">Fixed Fee (Withdrawal)</th>
                 <th className="text-right p-3 font-medium">ICIMS Fee</th>
-                <th className="text-right p-3 font-medium whitespace-nowrap">Total Fee</th>
-                <th className="text-right p-3 font-medium whitespace-nowrap">Total With Fees</th>
-                <th className="text-right p-3 font-medium whitespace-nowrap">Amount Sent</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Total Fee (Withdrawal)</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Total Debited (Withdrawal)</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Paid to Account</th>
                 <th className="text-left p-3 font-medium">Status</th>
                 <th className="text-left p-3 font-medium">Reconciliation</th>
                 <th className="text-left p-3 font-medium">Initiator</th>
@@ -488,10 +517,10 @@ export default function AdminWithdrawals() {
             <tbody className="divide-y">
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i}><td colSpan={16} className="p-3"><div className="h-8 bg-muted animate-pulse rounded" /></td></tr>
+                  <tr key={i}><td colSpan={17} className="p-3"><div className="h-8 bg-muted animate-pulse rounded" /></td></tr>
                 ))
               ) : withdrawals.length === 0 ? (
-                <tr><td colSpan={16} className="p-8 text-center text-sm text-muted-foreground">No payouts found</td></tr>
+                <tr><td colSpan={17} className="p-8 text-center text-sm text-muted-foreground">No payouts found</td></tr>
               ) : withdrawals.map(w => (
                 <tr key={w.id} className="hover:bg-muted/30">
                   <td className="p-3 min-w-44">
@@ -504,11 +533,12 @@ export default function AdminWithdrawals() {
                     <p className="text-muted-foreground">{w.payoutType?.replaceAll('_', ' ') ?? ''}</p>
                   </td>
                   <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.amount)}</td>
-                  <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.gatewayFeeAmount)}</td>
-                  <td className="p-3 text-right font-mono text-xs" title="Included in gateway fee">{money(w.currency, w.bankFixedFeeAmount)}</td>
+                  <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.providerDeductionAmount)}</td>
+                  <td className="p-3 text-right font-mono text-xs">{w.payoutType === 'manual_withdrawal' ? money(w.currency, w.gatewayFeeAmount) : '-'}</td>
+                  <td className="p-3 text-right font-mono text-xs" title="Included in gateway fee">{w.payoutType === 'manual_withdrawal' ? money(w.currency, w.bankFixedFeeAmount) : '-'}</td>
                   <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.systemFeeAmount)}</td>
-                  <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.fee)}</td>
-                  <td className="p-3 text-right font-mono text-xs font-semibold">{money(w.currency, w.netAmount)}</td>
+                  <td className="p-3 text-right font-mono text-xs">{w.payoutType === 'manual_withdrawal' ? money(w.currency, w.fee) : '-'}</td>
+                  <td className="p-3 text-right font-mono text-xs font-semibold">{w.payoutType === 'manual_withdrawal' ? money(w.currency, w.netAmount) : '-'}</td>
                   <td className="p-3 text-right font-mono text-xs font-semibold">{money(w.currency, w.payoutAmount ?? w.amount)}</td>
                   <td className="p-3">{statusBadge(w.status)}</td>
                   <td className="p-3 text-xs capitalize">{w.reconciliationStatus?.replaceAll('_', ' ') ?? '-'}</td>

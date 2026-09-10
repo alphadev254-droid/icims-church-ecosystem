@@ -95,7 +95,7 @@ export default function RequestWithdrawalPage() {
     onSuccess: () => {
       setSubmissionError(null);
       toast.success('Withdrawal request submitted successfully');
-      qc.invalidateQueries({ queryKey: ['wallet-balance'] });
+      qc.invalidateQueries({ queryKey: ['wallet-financial-summary'] });
       qc.invalidateQueries({ queryKey: ['withdrawals'] });
       navigate('/dashboard/withdrawals');
     },

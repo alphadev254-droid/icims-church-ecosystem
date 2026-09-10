@@ -405,6 +405,7 @@ export interface AdminWithdrawal {
   amount: number;
   fee: number;
   gatewayFeeAmount?: number;
+  providerDeductionAmount?: number;
   gatewayFeeRate?: number | null;
   bankFixedFeeAmount?: number;
   systemFeeAmount?: number;
@@ -440,25 +441,32 @@ export interface AdminWithdrawalSummary {
   total: number;
   byStatus: Record<string, number>;
   byReconciliation?: Record<string, number>;
+  reconciliation: Array<{
+    status: string;
+    count: number;
+    payoutAmount: number;
+  }>;
   byMethod: Record<string, number>;
   byCurrencyCount: Record<string, number>;
-  walletBalances: Array<{
-    currency: string;
-    balance: number;
-    walletCount: number;
-  }>;
   byCurrency: Array<{
     currency: string;
     count: number;
-    totalRequested: number;
-    totalFee: number;
+    grossProcessed: number;
+    paidToAccounts: number;
+    providerDeductions: number;
     gatewayFee: number;
     bankFixedFee: number;
-    systemFee: number;
-    netAmount: number;
-    payoutAmount: number;
-    completedSystemRevenue: number;
-    completedCount: number;
+    icimsRevenue: number;
+  }>;
+  byGateway: Array<{
+    currency: string;
+    gateway: string;
+    payoutType: string;
+    count: number;
+    grossProcessed: number;
+    paidToAccounts: number;
+    providerDeductions: number;
+    icimsRevenue: number;
   }>;
 }
 
