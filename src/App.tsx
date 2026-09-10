@@ -184,6 +184,7 @@ const App = () => {
                 <Route path="invoices" element={<AdminInvoices />} />
                 <Route path="transactions" element={<AdminTransactions />} />
                 <Route path="withdrawals" element={<AdminWithdrawals />} />
+                <Route path="payouts" element={<AdminWithdrawals />} />
                 <Route path="treasury" element={<AdminTreasury />} />
                 <Route path="packages" element={<AdminPackages />} />
                 <Route path="payment-metadata" element={<AdminPendingTransactions />} />

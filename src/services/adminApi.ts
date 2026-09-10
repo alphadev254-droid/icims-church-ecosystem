@@ -413,6 +413,11 @@ export interface AdminWithdrawal {
   payoutAmount?: number;
   method: string;
   status: string;
+  gateway?: string;
+  payoutType?: string;
+  legacyWithdrawalId?: string | null;
+  reconciliationStatus?: string;
+  reconciliationDifference?: number | null;
   mobileOperator?: string | null;
   mobileNumber?: string | null;
   bankCode?: string | null;
@@ -434,6 +439,7 @@ export interface AdminWithdrawal {
 export interface AdminWithdrawalSummary {
   total: number;
   byStatus: Record<string, number>;
+  byReconciliation?: Record<string, number>;
   byMethod: Record<string, number>;
   byCurrencyCount: Record<string, number>;
   walletBalances: Array<{
@@ -707,7 +713,7 @@ export const adminApi = {
     data: AdminWithdrawal[];
     pagination: Pagination;
     summary: AdminWithdrawalSummary;
-  }>('/admin/withdrawals', { params }),
+  }>('/admin/payouts', { params }),
 
   getTreasurySummary: () =>
     apiClient.get<{ success: boolean; data: AdminTreasurySummary }>('/admin/treasury/summary'),

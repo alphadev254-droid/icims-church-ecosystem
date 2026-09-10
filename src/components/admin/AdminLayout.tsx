@@ -12,7 +12,7 @@ const NAV = [
   { to: '/admin/transactions', label: 'Transactions', icon: Receipt, end: false },
   { to: '/admin/payments', label: 'Payments', icon: CreditCard, end: false },
   { to: '/admin/invoices', label: 'Invoices', icon: FileText, end: false },
-  { to: '/admin/withdrawals', label: 'Withdrawals', icon: Wallet, end: false },
+  { to: '/admin/payouts', label: 'Payouts', icon: Wallet, end: false },
   { to: '/admin/treasury', label: 'Treasury', icon: Landmark, end: false },
   { to: '/admin/packages', label: 'Packages', icon: Package2, end: false },
   { to: '/admin/payment-metadata', label: 'Payment Metadata', icon: DatabaseZap, end: false },

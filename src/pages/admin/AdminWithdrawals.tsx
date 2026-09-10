@@ -308,19 +308,22 @@ export default function AdminWithdrawals() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold">Withdrawals</h1>
+          <h1 className="text-xl font-bold">Payouts</h1>
           <p className="text-sm text-muted-foreground">
-            {pagination ? `${pagination.total.toLocaleString()} withdrawal(s)` : 'System-admin withdrawal tracing'}
+            {pagination ? `${pagination.total.toLocaleString()} payout(s)` : 'PayChangu withdrawals and Paystack settlements'}
           </p>
         </div>
         <ExportImportButtons
-          filename="system-withdrawals"
-          pdfTitle="System Withdrawals Export"
+          filename="system-payouts"
+          pdfTitle="System Payouts Export"
           data={withdrawals.map(w => ({
             church: w.church?.name ?? '',
             ministry: w.ministryAdmin?.ministryName ?? '',
             method: methodLabel(w.method),
             status: w.status,
+            gateway: w.gateway ?? '',
+            payoutType: w.payoutType ?? '',
+            reconciliationStatus: w.reconciliationStatus ?? '',
             amount: w.amount,
             totalFee: w.fee,
             gatewayFee: w.gatewayFeeAmount ?? 0,
@@ -339,6 +342,9 @@ export default function AdminWithdrawals() {
             { label: 'Ministry', key: 'ministry' },
             { label: 'Method', key: 'method' },
             { label: 'Status', key: 'status' },
+            { label: 'Gateway', key: 'gateway' },
+            { label: 'Payout Type', key: 'payoutType' },
+            { label: 'Reconciliation', key: 'reconciliationStatus' },
             { label: 'Amount Without Fees', key: 'amount' },
             { label: 'Total Fee', key: 'totalFee' },
             { label: 'Gateway Fee', key: 'gatewayFee' },
@@ -352,7 +358,7 @@ export default function AdminWithdrawals() {
             { label: 'Created At', key: 'createdAt' },
             { label: 'Processed At', key: 'processedAt' },
           ]}
-          pdfColumns={['Church', 'Ministry', 'Method', 'Status', 'Amount Without Fees', 'Total Fee', 'Gateway Fee', 'Bank Fixed Fee (Included)', 'System Fee', 'Total With Fees', 'Amount Sent', 'Currency', 'Charge ID', 'Initiated By', 'Created At', 'Processed At']}
+          pdfColumns={['Church', 'Ministry', 'Method', 'Status', 'Gateway', 'Payout Type', 'Reconciliation', 'Amount Without Fees', 'Total Fee', 'Gateway Fee', 'Bank Fixed Fee (Included)', 'System Fee', 'Total With Fees', 'Amount Sent', 'Currency', 'Charge ID', 'Initiated By', 'Created At', 'Processed At']}
         />
       </div>
 
@@ -361,7 +367,7 @@ export default function AdminWithdrawals() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <CountPill label="Pending" value={summary.byStatus?.pending ?? 0} />
             <CountPill label="Processing" value={summary.byStatus?.processing ?? 0} />
-            <CountPill label="Review" value={summary.byStatus?.review_required ?? 0} />
+            <CountPill label="Review" value={(summary.byReconciliation?.needs_review ?? 0) + (summary.byStatus?.review_required ?? 0)} />
             <CountPill label="Completed" value={summary.byStatus?.completed ?? 0} />
             <CountPill label="Failed" value={summary.byStatus?.failed ?? 0} />
           </div>
@@ -383,8 +389,8 @@ export default function AdminWithdrawals() {
             <div key={c.currency} className="rounded-xl border bg-muted/20 p-3 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold">{c.currency} Withdrawals</p>
-                  <p className="text-xs text-muted-foreground">{c.count.toLocaleString()} matching withdrawal(s)</p>
+                  <p className="text-sm font-semibold">{c.currency} Payouts</p>
+                  <p className="text-xs text-muted-foreground">{c.count.toLocaleString()} matching payout(s)</p>
                 </div>
                 <Badge variant="outline" className="text-xs">{c.currency}</Badge>
               </div>
@@ -463,6 +469,7 @@ export default function AdminWithdrawals() {
               <tr>
                 <th className="text-left p-3 font-medium">Church</th>
                 <th className="text-left p-3 font-medium">Method</th>
+                <th className="text-left p-3 font-medium">Gateway</th>
                 <th className="text-right p-3 font-medium whitespace-nowrap">Amount Without Fees</th>
                 <th className="text-right p-3 font-medium whitespace-nowrap">Gateway Fee</th>
                 <th className="text-right p-3 font-medium whitespace-nowrap" title="This component is already included in Gateway Fee">Fixed Fee (Included)</th>
@@ -471,6 +478,7 @@ export default function AdminWithdrawals() {
                 <th className="text-right p-3 font-medium whitespace-nowrap">Total With Fees</th>
                 <th className="text-right p-3 font-medium whitespace-nowrap">Amount Sent</th>
                 <th className="text-left p-3 font-medium">Status</th>
+                <th className="text-left p-3 font-medium">Reconciliation</th>
                 <th className="text-left p-3 font-medium">Initiator</th>
                 <th className="text-left p-3 font-medium">Charge</th>
                 <th className="text-left p-3 font-medium">Date</th>
@@ -480,10 +488,10 @@ export default function AdminWithdrawals() {
             <tbody className="divide-y">
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i}><td colSpan={14} className="p-3"><div className="h-8 bg-muted animate-pulse rounded" /></td></tr>
+                  <tr key={i}><td colSpan={16} className="p-3"><div className="h-8 bg-muted animate-pulse rounded" /></td></tr>
                 ))
               ) : withdrawals.length === 0 ? (
-                <tr><td colSpan={14} className="p-8 text-center text-sm text-muted-foreground">No withdrawals found</td></tr>
+                <tr><td colSpan={16} className="p-8 text-center text-sm text-muted-foreground">No payouts found</td></tr>
               ) : withdrawals.map(w => (
                 <tr key={w.id} className="hover:bg-muted/30">
                   <td className="p-3 min-w-44">
@@ -491,6 +499,10 @@ export default function AdminWithdrawals() {
                     <p className="text-xs text-muted-foreground">{w.ministryAdmin?.ministryName ?? w.ministryAdmin?.email ?? '-'}</p>
                   </td>
                   <td className="p-3 text-xs">{methodLabel(w.method)}</td>
+                  <td className="p-3 text-xs capitalize">
+                    <p className="font-medium">{w.gateway ?? '-'}</p>
+                    <p className="text-muted-foreground">{w.payoutType?.replaceAll('_', ' ') ?? ''}</p>
+                  </td>
                   <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.amount)}</td>
                   <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.gatewayFeeAmount)}</td>
                   <td className="p-3 text-right font-mono text-xs" title="Included in gateway fee">{money(w.currency, w.bankFixedFeeAmount)}</td>
@@ -499,6 +511,7 @@ export default function AdminWithdrawals() {
                   <td className="p-3 text-right font-mono text-xs font-semibold">{money(w.currency, w.netAmount)}</td>
                   <td className="p-3 text-right font-mono text-xs font-semibold">{money(w.currency, w.payoutAmount ?? w.amount)}</td>
                   <td className="p-3">{statusBadge(w.status)}</td>
+                  <td className="p-3 text-xs capitalize">{w.reconciliationStatus?.replaceAll('_', ' ') ?? '-'}</td>
                   <td className="p-3 min-w-40">
                     <p className="text-xs font-medium">{w.initiatedByUser ? `${w.initiatedByUser.firstName} ${w.initiatedByUser.lastName}` : '-'}</p>
                     <p className="text-xs text-muted-foreground">{w.initiatedByUser?.email ?? ''}</p>
@@ -507,16 +520,16 @@ export default function AdminWithdrawals() {
                   <td className="p-3 text-xs whitespace-nowrap">{formatDateTime(w.createdAt)}</td>
                   <td className="p-3 text-right">
                     <div className="flex justify-end gap-1">
-                      {['pending', 'processing', 'review_required'].includes(w.status) && (
+                      {w.gateway === 'paychangu' && w.legacyWithdrawalId && ['pending', 'processing', 'review_required'].includes(w.status) && (
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0"
-                          onClick={() => reconcileMutation.mutate(w.id)}
+                          onClick={() => reconcileMutation.mutate(w.legacyWithdrawalId!)}
                           disabled={reconcileMutation.isPending}
                           title={w.chargeId ? 'Reconcile with PayChangu' : 'Mark failed: no PayChangu payout reference'}
                         >
-                          <RefreshCw className={`h-4 w-4 ${reconcilingId === w.id ? 'animate-spin' : ''}`} />
+                          <RefreshCw className={`h-4 w-4 ${reconcilingId === w.legacyWithdrawalId ? 'animate-spin' : ''}`} />
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelected(w)} title="View withdrawal trace">
