@@ -264,6 +264,10 @@ export default function AdminWithdrawals() {
   const withdrawals = data?.data ?? [];
   const pagination = data?.pagination;
   const summary = data?.summary;
+  const reconciliationSummary = summary?.reconciliation ?? Object.entries(summary?.byReconciliation ?? {}).map(([reconciliationStatus, count]) => ({
+    status: reconciliationStatus, count, payoutAmount: 0,
+  }));
+  const gatewaySummary = summary?.byGateway ?? [];
 
   const reconcileMutation = useMutation({
     mutationFn: (id: string) => adminApi.reconcileWithdrawal('ministry', id),
@@ -380,7 +384,7 @@ export default function AdminWithdrawals() {
               <p className="text-xs text-muted-foreground">Accounting checks are separate from payout delivery status.</p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {summary.reconciliation.map(item => (
+              {reconciliationSummary.map(item => (
                 <div key={item.status} className="rounded-lg border bg-card px-3 py-2">
                   <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{item.status.replaceAll('_', ' ')}</p>
                   <p className="text-lg font-bold leading-tight">{item.count.toLocaleString()}</p>
@@ -406,7 +410,7 @@ export default function AdminWithdrawals() {
               </div>
             </div>
           ))}
-          {summary.byGateway.length > 0 && (
+          {gatewaySummary.length > 0 && (
             <div className="rounded-xl border overflow-x-auto">
               <div className="px-3 py-2 border-b bg-muted/20">
                 <p className="text-sm font-semibold">Completed payouts by gateway</p>
@@ -416,7 +420,7 @@ export default function AdminWithdrawals() {
                   <tr><th className="p-3">Gateway</th><th className="p-3">Type</th><th className="p-3">Count</th><th className="p-3">Gross Processed</th><th className="p-3">Paid to Accounts</th><th className="p-3">Provider Deductions</th><th className="p-3">ICIMS Revenue</th></tr>
                 </thead>
                 <tbody>
-                  {summary.byGateway.map(item => (
+                  {gatewaySummary.map(item => (
                     <tr key={`${item.currency}-${item.gateway}-${item.payoutType}`} className="border-t">
                       <td className="p-3 capitalize">{item.gateway}</td>
                       <td className="p-3 capitalize">{item.payoutType.replaceAll('_', ' ')}</td>

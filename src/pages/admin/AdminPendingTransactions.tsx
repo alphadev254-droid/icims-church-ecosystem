@@ -35,6 +35,17 @@ interface PendingTx {
   churchName: string | null;
 }
 
+interface PendingTxSummary {
+  total: number;
+  byStatus: Record<string, number>;
+  byType: Record<string, number>;
+  byCurrency: Array<{ currency: string; count: number; attemptedCheckoutValue: number }>;
+  expiredPendingCount: number;
+  withReferenceCount: number;
+  withoutReferenceCount: number;
+  reconciliationReadyCount: number;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusBadge(status: string) {
@@ -58,6 +69,21 @@ function typeBadge(type: string) {
 
 function isExpired(expiresAt: string) {
   return new Date(expiresAt) < new Date();
+}
+
+function metadataMoney(tx: PendingTx, key: string) {
+  const value = tx.metadataParsed?.[key];
+  return typeof value === 'number' && Number.isFinite(value) ? `${tx.currency} ${value.toLocaleString()}` : '—';
+}
+
+function OperationalMetric({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-lg border bg-card px-3 py-2">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-lg font-bold leading-tight">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+    </div>
+  );
 }
 
 // ─── JSON renderer — collapsible, pretty ─────────────────────────────────────
@@ -136,7 +162,11 @@ function DetailDialog({
     ['Reference (tx_ref)', tx.reference ?? '— not yet assigned'],
     ['Type', tx.type],
     ['Status', tx.status],
-    ['Amount', `${tx.currency} ${tx.amount.toLocaleString()}`],
+    ['Checkout Total', `${tx.currency} ${tx.amount.toLocaleString()}`],
+    ['Church/Package Principal', metadataMoney(tx, 'baseAmount')],
+    ['Gateway Fee Charged', metadataMoney(tx, 'convenienceFee')],
+    ['ICIMS Fee', metadataMoney(tx, 'systemFeeAmount')],
+    ['Rounding', metadataMoney(tx, 'ceilRoundingAmount')],
     ['Gateway', tx.metadataParsed?.gateway ?? '—'],
     ['User', tx.user ? `${tx.user.firstName} ${tx.user.lastName} (${tx.user.email})` : tx.metadataParsed?.isGuest ? `Guest: ${tx.metadataParsed?.guestName ?? '—'} (${tx.metadataParsed?.guestEmail ?? '—'})` : '—'],
     ['Church', tx.churchName ?? '—'],
@@ -272,6 +302,7 @@ export default function AdminPendingTransactions() {
 
   const rows: PendingTx[]  = data?.data ?? [];
   const pagination         = data?.pagination;
+  const summary: PendingTxSummary | undefined = data?.summary;
 
   const reconcileMutation = useMutation({
     mutationFn: (id: string) => adminApi.reconcilePendingTransaction(id),
@@ -315,6 +346,36 @@ export default function AdminPendingTransactions() {
         <span><span className="font-medium text-muted-foreground">abandoned</span> - expired checkout marked by cleanup cron</span>
         <span className="text-orange-500 font-medium">orange expired badge</span> = status pending + past expiresAt, waiting for abandonment cron
       </div>
+
+      {summary && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <OperationalMetric label="Total Attempts" value={summary.total.toLocaleString()} sub="No completed payments" />
+            <OperationalMetric label="Pending" value={(summary.byStatus?.pending ?? 0).toLocaleString()} />
+            <OperationalMetric label="Failed" value={(summary.byStatus?.failed ?? 0).toLocaleString()} />
+            <OperationalMetric label="Abandoned" value={(summary.byStatus?.abandoned ?? 0).toLocaleString()} />
+            <OperationalMetric label="Expired Pending" value={summary.expiredPendingCount.toLocaleString()} sub="Needs cleanup or reconciliation" />
+            <OperationalMetric label="With Reference" value={summary.withReferenceCount.toLocaleString()} sub={`${summary.withoutReferenceCount.toLocaleString()} without gateway reference`} />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {summary.byCurrency.map(item => (
+              <OperationalMetric
+                key={item.currency}
+                label={`${item.currency} Attempted Value`}
+                value={`${item.currency} ${item.attemptedCheckoutValue.toLocaleString()}`}
+                sub={`${item.count.toLocaleString()} unfinished checkout attempt(s); not revenue`}
+              />
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(summary.byType).map(([attemptType, count]) => (
+              <Badge key={attemptType} variant="outline" className="text-xs capitalize">
+                {attemptType.replaceAll('_', ' ')}: {count.toLocaleString()}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
@@ -373,7 +434,9 @@ export default function AdminPendingTransactions() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Type</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">User</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Church</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Amount</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Checkout Total</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Gateway</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Reference</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Expires</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Created</th>
@@ -384,7 +447,7 @@ export default function AdminPendingTransactions() {
               {isLoading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 8 }).map((_, j) => (
+                      {Array.from({ length: 11 }).map((_, j) => (
                         <td key={j} className="px-4 py-3">
                           <div className="h-4 bg-muted animate-pulse rounded w-20" />
                         </td>
@@ -411,7 +474,10 @@ export default function AdminPendingTransactions() {
                               <p className="text-xs text-muted-foreground">{tx.user.email}</p>
                             </>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Guest / anon</span>
+                            <div>
+                              <p className="text-xs font-medium">{String(tx.metadataParsed?.guestName ?? tx.metadataParsed?.donorName ?? 'Guest / anonymous')}</p>
+                              <p className="text-xs text-muted-foreground">{String(tx.metadataParsed?.guestEmail ?? tx.metadataParsed?.donorEmail ?? '')}</p>
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-3 hidden md:table-cell">
@@ -419,6 +485,10 @@ export default function AdminPendingTransactions() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs font-medium">{tx.currency} {tx.amount.toLocaleString()}</span>
+                        </td>
+                        <td className="px-4 py-3"><span className="text-xs capitalize text-muted-foreground">{String(tx.metadataParsed?.gateway ?? '—')}</span></td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs ${tx.reference ? 'text-emerald-600' : 'text-orange-600'}`}>{tx.reference ? 'Available' : 'Missing'}</span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">

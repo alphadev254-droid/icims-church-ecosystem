@@ -120,6 +120,18 @@ function DetailDialog({ row, onClose }: { row: AdminPlatformWithdrawal; onClose:
   );
 }
 
+function ministryCurrencyRows(row: AdminTreasuryMinistryWallet) {
+  return row.byCurrency ?? (row.currency !== 'mixed' ? [{
+    currency: row.currency,
+    ledgerBalance: row.totalBalance,
+    reservedBalance: 0,
+    providerConfirmedPayoutAmount: 0,
+    unreconciledPayoutAmount: 0,
+    effectiveAvailableBalance: row.totalBalance,
+    walletCount: row.walletCount,
+  }] : []);
+}
+
 function MinistryWalletDialog({ row, onClose }: { row: AdminTreasuryMinistryWallet; onClose: () => void }) {
   return (
     <Dialog open onOpenChange={onClose}>
@@ -128,13 +140,16 @@ function MinistryWalletDialog({ row, onClose }: { row: AdminTreasuryMinistryWall
           <DialogTitle className="text-sm">Church Wallets - {row.ministryName}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-3">
-          <SummaryCard
-            label="Total Balance"
-            value={money(row.currency === 'mixed' ? 'MWK' : row.currency, row.totalBalance)}
-            sub={`${row.walletCount} wallet(s)`}
-            icon={Wallet}
-            tone="bg-yellow-100 text-yellow-700"
-          />
+          {ministryCurrencyRows(row).map(item => (
+            <SummaryCard
+              key={item.currency}
+              label={`${item.currency} Available`}
+              value={money(item.currency, item.effectiveAvailableBalance)}
+              sub={`Ledger ${money(item.currency, item.ledgerBalance)} · pending accounting ${money(item.currency, item.unreconciledPayoutAmount)}`}
+              icon={Wallet}
+              tone="bg-yellow-100 text-yellow-700"
+            />
+          ))}
           <SummaryCard
             label="Churches"
             value={row.churchCount.toLocaleString()}
@@ -156,7 +171,10 @@ function MinistryWalletDialog({ row, onClose }: { row: AdminTreasuryMinistryWall
               <tr>
                 <th className="text-left p-3">Church</th>
                 <th className="text-left p-3">Status</th>
-                <th className="text-right p-3">Balance</th>
+                <th className="text-right p-3">Ledger Balance</th>
+                <th className="text-right p-3">Paid to Account</th>
+                <th className="text-right p-3">Pending Accounting</th>
+                <th className="text-right p-3">Available</th>
                 <th className="text-left p-3">Updated</th>
               </tr>
             </thead>
@@ -165,7 +183,10 @@ function MinistryWalletDialog({ row, onClose }: { row: AdminTreasuryMinistryWall
                 <tr key={wallet.id}>
                   <td className="p-3 text-xs font-medium">{wallet.church?.name ?? 'Unknown church'}</td>
                   <td className="p-3 text-xs capitalize">{wallet.church?.status ?? '-'}</td>
-                  <td className="p-3 text-right text-xs font-mono font-semibold">{money(wallet.currency, wallet.balance)}</td>
+                  <td className="p-3 text-right text-xs font-mono">{money(wallet.currency, wallet.ledgerBalance)}</td>
+                  <td className="p-3 text-right text-xs font-mono">{money(wallet.currency, wallet.providerConfirmedPayoutAmount)}</td>
+                  <td className="p-3 text-right text-xs font-mono">{money(wallet.currency, wallet.unreconciledPayoutAmount)}</td>
+                  <td className="p-3 text-right text-xs font-mono font-semibold">{money(wallet.currency, wallet.effectiveAvailableBalance)}</td>
                   <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(wallet.updatedAt).toLocaleString()}</td>
                 </tr>
               ))}
@@ -322,6 +343,13 @@ export default function AdminTreasury() {
   const safePercent = coverageTotal > 0 ? Math.min(100, (summary!.safeAvailableBalance / coverageTotal) * 100) : 0;
   const ministryWalletRows = ministryWalletsData?.data ?? [];
   const ministryWalletSummary = ministryWalletsData?.summary;
+  const ministryCurrencySummary = (ministryWalletSummary?.byCurrency ?? []).map(row => ({
+    ...row,
+    ledgerBalance: row.ledgerBalance ?? row.totalBalance,
+    reservedBalance: row.reservedBalance ?? 0,
+    providerConfirmedPayoutAmount: row.providerConfirmedPayoutAmount ?? 0,
+    unreconciledPayoutAmount: row.unreconciledPayoutAmount ?? 0,
+  }));
 
   return (
     <div className="space-y-4">
@@ -340,8 +368,8 @@ export default function AdminTreasury() {
           <div className="rounded-lg border bg-card p-4 space-y-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h2 className="text-sm font-semibold">Ministry Wallet Balances</h2>
-                <p className="text-xs text-muted-foreground">Totals are grouped by ministry across each ministry's church wallets.</p>
+                <h2 className="text-sm font-semibold">Ministry Funds</h2>
+                <p className="text-xs text-muted-foreground">Ledger balances, confirmed payouts, pending accounting, and available funds grouped by currency.</p>
               </div>
               <div className="grid w-full gap-2 sm:grid-cols-3 lg:w-[780px]">
                 <div>
@@ -403,17 +431,25 @@ export default function AdminTreasury() {
                 icon={Banknote}
                 tone="bg-blue-100 text-blue-700"
               />
-              {(ministryWalletSummary?.byCurrency ?? []).map(row => (
-                <SummaryCard
-                  key={row.currency}
-                  label={`${row.currency} Wallets`}
-                  value={money(row.currency, row.totalBalance)}
-                  sub={`${row.walletCount} wallet(s), ${row.ministryCount} ministr${row.ministryCount === 1 ? 'y' : 'ies'}`}
-                  icon={Wallet}
-                  tone="bg-yellow-100 text-yellow-700"
-                />
-              ))}
             </div>
+
+            {ministryCurrencySummary.map(row => (
+              <div key={row.currency} className="rounded-xl border bg-muted/20 p-3 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">{row.currency} Ministry Funds</p>
+                    <p className="text-xs text-muted-foreground">{row.walletCount} wallet(s) across {row.ministryCount} ministr{row.ministryCount === 1 ? 'y' : 'ies'}</p>
+                  </div>
+                  <Badge variant="outline">{row.currency}</Badge>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <SummaryCard label="Ledger Balance" value={money(row.currency, row.ledgerBalance)} sub="Credits minus posted debits" icon={Wallet} tone="bg-blue-100 text-blue-700" />
+                  <SummaryCard label="Paid to Accounts" value={money(row.currency, row.providerConfirmedPayoutAmount)} sub="Completed provider payouts" icon={Banknote} tone="bg-emerald-100 text-emerald-700" />
+                  <SummaryCard label="Pending Accounting" value={money(row.currency, row.unreconciledPayoutAmount + row.reservedBalance)} sub={`Unreconciled ${money(row.currency, row.unreconciledPayoutAmount)} · reserved ${money(row.currency, row.reservedBalance)}`} icon={AlertTriangle} tone="bg-amber-100 text-amber-700" />
+                  <SummaryCard label="Available Funds" value={money(row.currency, row.totalBalance)} sub="Ledger minus reservations and unreconciled payouts" icon={ShieldCheck} tone="bg-purple-100 text-purple-700" />
+                </div>
+              </div>
+            ))}
 
             {(ministryWalletSummary?.byMarket ?? []).length > 0 && (
               <div className="grid gap-2 lg:grid-cols-3">
@@ -430,7 +466,7 @@ export default function AdminTreasury() {
                       {row.byCurrency.map(currencyRow => (
                         <div key={currencyRow.currency} className="flex items-center justify-between gap-2 text-xs">
                           <span className="text-muted-foreground">{currencyRow.currency}</span>
-                          <span className="font-mono font-medium">{money(currencyRow.currency, currencyRow.totalBalance)}</span>
+                          <span className="font-mono font-medium">{money(currencyRow.currency, currencyRow.totalBalance)} available</span>
                         </div>
                       ))}
                     </div>
@@ -447,7 +483,7 @@ export default function AdminTreasury() {
                   <tr>
                     <th className="text-left p-3">Ministry</th>
                     <th className="text-left p-3">Admin</th>
-                    <th className="text-right p-3">Total Balance</th>
+                    <th className="text-right p-3">Available Funds</th>
                     <th className="text-right p-3">Wallets</th>
                     <th className="text-left p-3">Church Wallets</th>
                   </tr>
@@ -470,8 +506,8 @@ export default function AdminTreasury() {
                         <p className="text-xs font-medium">{row.ministryAdminName || '-'}</p>
                         <p className="text-xs text-muted-foreground break-all">{row.ministryAdminEmail || '-'}</p>
                       </td>
-                      <td className="p-3 text-right font-mono text-sm font-semibold whitespace-nowrap">
-                        {money(row.currency === 'mixed' ? 'MWK' : row.currency, row.totalBalance)}
+                      <td className="p-3 text-right text-xs font-mono font-semibold whitespace-nowrap">
+                        {ministryCurrencyRows(row).map(item => <div key={item.currency}>{money(item.currency, item.effectiveAvailableBalance)}</div>)}
                       </td>
                       <td className="p-3 text-right text-xs">
                         <span className="font-medium">{row.walletCount}</span>
@@ -490,7 +526,7 @@ export default function AdminTreasury() {
                                     <span className="ml-1 text-muted-foreground">({wallet.church.status})</span>
                                   )}
                                 </span>
-                                <span className="text-xs font-mono font-medium">{money(wallet.currency, wallet.balance)}</span>
+                                <span className="text-xs font-mono font-medium">{money(wallet.currency, wallet.effectiveAvailableBalance)} available</span>
                               </div>
                             ))}
                             {row.wallets.length > 2 && (

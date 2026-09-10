@@ -115,11 +115,11 @@ function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => v
     ['Ministry Country',  tx.ministryCountry ?? '—'],
     ['Gateway Country',   tx.gatewayCountry ?? '—'],
     ['Currency',          tx.currency],
-    ['Settlement Amount', tx.baseAmount != null ? `${tx.currency} ${tx.baseAmount.toLocaleString()}` : '—'],
-    ['Convenience Fee',   tx.convenienceFee != null ? `${tx.currency} ${tx.convenienceFee.toLocaleString()}` : '—'],
-    ['System Fee',        tx.systemFeeAmount != null ? `${tx.currency} ${tx.systemFeeAmount.toLocaleString()}` : '—'],
+    ['Church Principal', tx.baseAmount != null ? `${tx.currency} ${tx.baseAmount.toLocaleString()}` : '—'],
+    ['Gateway Fee Charged to Customer', tx.convenienceFee != null ? `${tx.currency} ${tx.convenienceFee.toLocaleString()}` : '—'],
+    ['ICIMS Fee',         tx.systemFeeAmount != null ? `${tx.currency} ${tx.systemFeeAmount.toLocaleString()}` : '—'],
     ['Rounding',          tx.ceilRoundingAmount ? `${tx.currency} ${tx.ceilRoundingAmount.toLocaleString()}` : '—'],
-    ['Total Amount',      tx.totalAmount != null ? `${tx.currency} ${tx.totalAmount.toLocaleString()}` : '—'],
+    ['Total Paid by Customer', tx.totalAmount != null ? `${tx.currency} ${tx.totalAmount.toLocaleString()}` : '—'],
     ['Payment Method',    tx.paymentMethod ?? '—'],
     ['Channel',           tx.channel ?? '—'],
     ['User',              tx.user ? `${tx.user.firstName} ${tx.user.lastName} (${tx.user.email})` : (tx.isGuest ? `Guest: ${tx.guestName ?? '—'} (${tx.guestEmail ?? '—'})` : '—')],
@@ -129,7 +129,7 @@ function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => v
     ['Cell',              tx.cellName ?? '—'],
     ['Event Tickets',     tx.tickets?.length > 0 ? tx.tickets.map((t) => t.ticketNumber).join(', ') : '—'],
     ['Subaccount',        tx.subaccountName ?? '—'],
-    ['Gateway Charge',    tx.gatewayCharge != null ? `${tx.currency} ${tx.gatewayCharge.toLocaleString()}` : '—'],
+    ['Actual Gateway Charge', tx.gatewayCharge != null ? `${tx.currency} ${tx.gatewayCharge.toLocaleString()}` : '—'],
     ['Paid At',           tx.paidAt ? new Date(tx.paidAt).toLocaleString() : '—'],
     ['Created At',        new Date(tx.createdAt).toLocaleString()],
     ['Manual Entry',      tx.isManual ? 'Yes' : 'No'],
@@ -437,8 +437,9 @@ export default function AdminTransactions() {
             market:      t.pricingMarket?.name ?? '',
             ministryCountry: t.ministryCountry ?? '',
             baseAmount:  t.baseAmount ?? t.amount,
-            transactionCost: (t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0),
+            addedCharges: (t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0),
             gatewayFee:  t.convenienceFee ?? 0,
+            actualGatewayCharge: t.gatewayCharge ?? '',
             systemFee:   t.systemFeeAmount ?? 0,
             rounding:    t.ceilRoundingAmount ?? 0,
             total:       t.totalAmount ?? t.amount,
@@ -459,12 +460,13 @@ export default function AdminTransactions() {
             { label: 'Event',            key: 'event' },
             { label: 'Market',           key: 'market' },
             { label: 'Ministry Country', key: 'ministryCountry' },
-            { label: 'Settlement Amount', key: 'baseAmount' },
-            { label: 'Transaction Cost', key: 'transactionCost' },
-            { label: 'Gateway Fee',      key: 'gatewayFee' },
-            { label: 'System Fee',       key: 'systemFee' },
+            { label: 'Church Principal', key: 'baseAmount' },
+            { label: 'Added Charges', key: 'addedCharges' },
+            { label: 'Gateway Fee Charged to Customer', key: 'gatewayFee' },
+            { label: 'Actual Gateway Charge', key: 'actualGatewayCharge' },
+            { label: 'ICIMS Fee',        key: 'systemFee' },
             { label: 'Rounding',         key: 'rounding' },
-            { label: 'Total',            key: 'total' },
+            { label: 'Total Paid by Customer', key: 'total' },
             { label: 'Currency',         key: 'currency' },
             { label: 'Gateway',          key: 'gateway' },
             { label: 'Gateway Country',  key: 'gatewayCountry' },
@@ -473,40 +475,48 @@ export default function AdminTransactions() {
             { label: 'Reference',        key: 'reference' },
             { label: 'Date',             key: 'date' },
           ]}
-          pdfColumns={['Giver','Email','Type','Church','Campaign','Event','Market','Ministry Country','Settlement Amount','Transaction Cost','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Gateway Country','Method','Status','Reference','Date']}
+          pdfColumns={['Giver','Email','Type','Church','Campaign','Event','Market','Ministry Country','Church Principal','Added Charges','Gateway Fee Charged to Customer','Actual Gateway Charge','ICIMS Fee','Rounding','Total Paid by Customer','Currency','Gateway','Gateway Country','Method','Status','Reference','Date']}
         />
       </div>
 
       {/* Summary cards — one set per currency */}
-      {summary && summary.byCurrency.length > 0 && (
+      {summary && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <CountPill label="Total" value={summary.total} />
             <CountPill label="Completed" value={summary.byStatus?.completed ?? 0} />
             <CountPill label="Pending" value={summary.byStatus?.pending ?? 0} />
+            <CountPill label="Failed" value={summary.byStatus?.failed ?? 0} />
             <CountPill label="Giving" value={summary.byType?.donation ?? 0} />
             <CountPill label="Event Tickets" value={summary.byType?.event_ticket ?? 0} />
           </div>
-          {summary.byCurrency.map(c => (
+          {summary.byCurrency.map(c => {
+            const gatewayFeesCollected = c.gatewayFeesCollected ?? c.totalGatewayFee;
+            const actualGatewayCharges = c.actualGatewayCharges ?? 0;
+            const recordedCount = c.gatewayChargeRecordedCount ?? 0;
+            const missingCount = c.gatewayChargeMissingCount ?? c.count;
+            const variance = c.providerCostVariance ?? gatewayFeesCollected - actualGatewayCharges;
+            return (
             <div key={c.currency} className="rounded-xl border bg-muted/20 p-3 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold">{c.currency} Summary</p>
-                  <p className="text-xs text-muted-foreground">{c.count.toLocaleString()} matching transaction(s)</p>
+                  <p className="text-xs text-muted-foreground">{c.count.toLocaleString()} completed transaction(s) only</p>
                 </div>
                 <Badge variant="outline" className="text-xs">{c.currency}</Badge>
               </div>
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               <SummaryCard
-                label="Total Collected"
+                label="Customer Paid"
                 value={`${c.currency} ${fmt(c.totalCharged)}`}
                 sub="Amount paid by donors/buyers"
                 icon={TrendingUp}
                 color="bg-accent/10 text-accent"
               />
               <SummaryCard
-                label="Settlement Amount"
+                label="Church Principal"
                 value={`${c.currency} ${fmt(c.totalBaseAmount)}`}
-                sub="Amount due to churches"
+                sub="Giving and ticket value before added charges"
                 icon={DollarSign}
                 color="bg-green-100 text-green-700"
               />
@@ -518,22 +528,29 @@ export default function AdminTransactions() {
                 color="bg-purple-100 text-purple-700"
               />
               <SummaryCard
-                label="Gateway Cost"
-                value={`${c.currency} ${fmt(c.totalGatewayFee)}`}
-                sub="Processor/mobile money cost"
+                label="Gateway Fees Collected"
+                value={`${c.currency} ${fmt(gatewayFeesCollected)}`}
+                sub="Provider fee charged to customers"
                 icon={CreditCard}
                 color="bg-blue-100 text-blue-700"
               />
               <SummaryCard
-                label="Total Fees"
-                value={`${c.currency} ${fmt(c.totalTransactionCost)}`}
-                sub="ICIMS revenue + gateway cost"
+                label="Actual Gateway Charges"
+                value={`${c.currency} ${fmt(actualGatewayCharges)}`}
+                sub={`Recorded for ${recordedCount}/${c.count} transactions · ${missingCount} missing`}
                 icon={CreditCard}
                 color="bg-yellow-100 text-yellow-700"
               />
+              <SummaryCard
+                label="Gateway Fee Variance"
+                value={`${c.currency} ${fmt(variance)}`}
+                sub={missingCount > 0 ? 'Provisional until all provider charges are recorded' : 'Fees collected minus actual provider charges'}
+                icon={CreditCard}
+                color="bg-orange-100 text-orange-700"
+              />
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
@@ -679,11 +696,13 @@ export default function AdminTransactions() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Campaign</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Event</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Market</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Settlement</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Transaction Cost</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Gateway Fee</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ System Fee</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Church Principal</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Customer Paid</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Added Charges</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Gateway Fee Collected</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ ICIMS Fee</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Rounding</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Actual Gateway Charge</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Gateway</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Date</th>
@@ -721,9 +740,9 @@ export default function AdminTransactions() {
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-xs font-medium">{t.currency} {(t.baseAmount ?? t.amount).toLocaleString()}</p>
-                        {t.totalAmount && t.totalAmount !== (t.baseAmount ?? t.amount) && (
-                          <p className="text-xs text-muted-foreground">Total: {t.currency} {t.totalAmount.toLocaleString()}</p>
-                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-semibold">{t.currency} {(t.totalAmount ?? t.amount).toLocaleString()}</p>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs font-medium">
@@ -745,6 +764,11 @@ export default function AdminTransactions() {
                       <td className="px-4 py-3 hidden xl:table-cell">
                         <span className="text-xs text-orange-500">
                           {(t.ceilRoundingAmount ?? 0) > 0 ? `${t.currency} ${(t.ceilRoundingAmount ?? 0).toLocaleString()}` : '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <span className="text-xs text-muted-foreground">
+                          {t.gatewayCharge != null ? `${t.currency} ${t.gatewayCharge.toLocaleString()}` : '—'}
                         </span>
                       </td>
                       <td className="px-4 py-3 hidden xl:table-cell">

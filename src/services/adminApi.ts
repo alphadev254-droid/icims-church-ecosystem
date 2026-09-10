@@ -250,7 +250,7 @@ export interface AdminInvoiceSummary {
   amountPaid: number;
   balanceDue: number;
   byStatus: Record<string, number>;
-  byCurrency: Array<{
+  byCurrency?: Array<{
     currency: string;
     count: number;
     totalAmount: number;
@@ -334,6 +334,7 @@ export interface AdminSystemTransaction {
   systemFeeAmount?: number;
   ceilRoundingAmount?: number;
   totalAmount?: number;
+  gatewayCharge?: number;
   currency: string;
   status: string;
   paymentMethod?: string;
@@ -394,6 +395,11 @@ export interface AdminSystemTransactionSummary {
     totalGatewayFee: number;
     totalTransactionCost: number;
     totalCharged: number;
+    gatewayFeesCollected?: number;
+    actualGatewayCharges?: number;
+    gatewayChargeRecordedCount?: number;
+    gatewayChargeMissingCount?: number;
+    providerCostVariance?: number;
   }>;
 }
 
@@ -495,11 +501,31 @@ export interface AdminTreasuryMinistryWallet {
   pricingMarket?: AdminPricingMarket | null;
   currency: string;
   totalBalance: number;
+  byCurrency: Array<{
+    currency: string;
+    ledgerBalance: number;
+    reservedBalance: number;
+    providerConfirmedPayoutAmount: number;
+    unreconciledPayoutAmount: number;
+    effectiveAvailableBalance: number;
+    walletCount: number;
+  }>;
   walletCount: number;
   churchCount: number;
   wallets: Array<{
     id: string;
     balance: number;
+    totalCredits: number;
+    totalDebits: number;
+    ledgerBalance: number;
+    reservedBalance: number;
+    providerConfirmedPayoutAmount: number;
+    reconciledPayoutAmount: number;
+    unreconciledPayoutAmount: number;
+    effectiveAvailableBalance: number;
+    ledgerEntryCount: number;
+    activeReservationCount: number;
+    legacyCachedBalance: number;
     currency: string;
     updatedAt: string;
     church?: {
@@ -552,6 +578,12 @@ export interface AdminPaymentSummary {
     rounding: number;
     totalRevenue: number;
     totalPaymentCost: number;
+    gatewayFeesCollected?: number;
+    actualGatewayCharges?: number;
+    netPlatformRevenue?: number;
+    providerCostVariance?: number;
+    gatewayChargeRecordedCount?: number;
+    gatewayChargeMissingCount?: number;
   }>;
 }
 
@@ -734,7 +766,11 @@ export const adminApi = {
         totalBalance: number | null;
         walletCount: number;
         ministryCount: number;
-        byCurrency: Array<{ currency: string; totalBalance: number; walletCount: number; ministryCount: number }>;
+        byCurrency: Array<{
+          currency: string; totalBalance: number; ledgerBalance?: number; reservedBalance?: number;
+          providerConfirmedPayoutAmount?: number; unreconciledPayoutAmount?: number;
+          walletCount: number; ministryCount: number;
+        }>;
         byMarket: Array<{
           market: AdminPricingMarket | null;
           totalBalance: number;

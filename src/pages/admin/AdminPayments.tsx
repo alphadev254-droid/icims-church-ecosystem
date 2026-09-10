@@ -71,7 +71,7 @@ function PaymentDetailDialog({
   onClose: () => void;
   onOpenAdmin: (id: string) => void;
 }) {
-  const transactionCost = (payment.convenienceFee ?? 0) + (payment.systemFeeAmount ?? 0) + (payment.ceilRoundingAmount ?? 0);
+  const addedCharges = (payment.convenienceFee ?? 0) + (payment.systemFeeAmount ?? 0) + (payment.ceilRoundingAmount ?? 0);
   const fields: [string, string][] = [
     ['Payment ID', payment.id],
     ['Reference', payment.reference ?? '—'],
@@ -80,12 +80,12 @@ function PaymentDetailDialog({
     ['Package', payment.package?.displayName ?? payment.packageName ?? '—'],
     ['Billing Cycle', payment.billingCycle ?? '—'],
     ['Package Price', money(payment, payment.baseAmount ?? payment.amount)],
-    ['Gateway Fee', money(payment, payment.convenienceFee)],
+    ['Gateway Fee Charged to Customer', money(payment, payment.convenienceFee)],
     ['ICIMS Fee', money(payment, payment.systemFeeAmount)],
     ['Rounding', money(payment, payment.ceilRoundingAmount)],
-    ['Transaction Cost', money(payment, transactionCost)],
-    ['Total Collected', money(payment, payment.totalAmount ?? payment.amount)],
-    ['Gateway Charge', money(payment, payment.gatewayCharge)],
+    ['Added Charges', money(payment, addedCharges)],
+    ['Total Paid by Customer', money(payment, payment.totalAmount ?? payment.amount)],
+    ['Actual Gateway Charge', money(payment, payment.gatewayCharge)],
     ['Gateway', payment.gateway ?? '—'],
     ['Payment Method', payment.paymentMethod ?? '—'],
     ['Channel', payment.channel ?? '—'],
@@ -282,8 +282,9 @@ export default function AdminPayments() {
             email:           t.ministryAdmin?.email ?? '',
             package:         t.package?.displayName ?? t.packageName ?? '',
             baseAmount:      t.baseAmount ?? t.amount,
-            transactionCost: (t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0),
+            addedCharges:    (t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0),
             gatewayFee:      t.convenienceFee ?? 0,
+            actualGatewayCharge: t.gatewayCharge ?? '',
             systemFee:       t.systemFeeAmount ?? 0,
             rounding:        t.ceilRoundingAmount ?? 0,
             total:           t.totalAmount ?? t.amount,
@@ -300,11 +301,12 @@ export default function AdminPayments() {
             { label: 'Email',            key: 'email' },
             { label: 'Package',          key: 'package' },
             { label: 'Package Price',    key: 'baseAmount' },
-            { label: 'Transaction Cost', key: 'transactionCost' },
-            { label: 'Gateway Fee',      key: 'gatewayFee' },
+            { label: 'Added Charges', key: 'addedCharges' },
+            { label: 'Gateway Fee Charged to Customer', key: 'gatewayFee' },
+            { label: 'Actual Gateway Charge', key: 'actualGatewayCharge' },
             { label: 'ICIMS Fee',        key: 'systemFee' },
             { label: 'Rounding',         key: 'rounding' },
-            { label: 'Total',            key: 'total' },
+            { label: 'Total Paid by Customer', key: 'total' },
             { label: 'Currency',         key: 'currency' },
             { label: 'Status',           key: 'status' },
             { label: 'Gateway',          key: 'gateway' },
@@ -313,37 +315,45 @@ export default function AdminPayments() {
             { label: 'Country',          key: 'country' },
             { label: 'Date',             key: 'date' },
           ]}
-          pdfColumns={['Admin Name','Email','Package','Package Price','Transaction Cost','Gateway Fee','ICIMS Fee','Rounding','Total','Currency','Status','Gateway','Cycle','Market','Country','Date']}
+          pdfColumns={['Admin Name','Email','Package','Package Price','Added Charges','Gateway Fee Charged to Customer','Actual Gateway Charge','ICIMS Fee','Rounding','Total Paid by Customer','Currency','Status','Gateway','Cycle','Market','Country','Date']}
         />
       </div>
 
-      {summary && summary.byCurrency.length > 0 && (
+      {summary && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <CountPill label="Total" value={summary.total} />
             <CountPill label="Completed" value={summary.byStatus?.completed ?? 0} />
             <CountPill label="Pending" value={summary.byStatus?.pending ?? 0} />
             <CountPill label="Failed" value={summary.byStatus?.failed ?? 0} />
             <CountPill label="Renewals" value={summary.byType?.renewal ?? 0} />
           </div>
-          {summary.byCurrency.map(c => (
+          {summary.byCurrency.map(c => {
+            const gatewayFeesCollected = c.gatewayFeesCollected ?? c.totalPaymentCost - c.icimsFee;
+            const actualGatewayCharges = c.actualGatewayCharges ?? c.gatewayCost;
+            const netPlatformRevenue = c.netPlatformRevenue ?? c.totalCollected - actualGatewayCharges;
+            const providerCostVariance = c.providerCostVariance ?? gatewayFeesCollected - actualGatewayCharges;
+            const gatewayChargeRecordedCount = c.gatewayChargeRecordedCount ?? 0;
+            const gatewayChargeMissingCount = c.gatewayChargeMissingCount ?? c.count;
+            return (
             <div key={c.currency} className="rounded-xl border bg-muted/20 p-3 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold">{c.currency} Package Payments</p>
-                  <p className="text-xs text-muted-foreground">{c.count.toLocaleString()} matching payment(s)</p>
+                  <p className="text-xs text-muted-foreground">{c.count.toLocaleString()} completed payment(s) only</p>
                 </div>
                 <Badge variant="outline" className="text-xs">{c.currency}</Badge>
               </div>
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                 <SummaryCard
-                  label="Total Collected"
+                  label="Customer Paid"
                   value={`${c.currency} ${fmt(c.totalCollected)}`}
-                  sub="Amount paid by ministry admins"
+                  sub="Total successfully collected"
                   icon={TrendingUp}
                   color="bg-accent/10 text-accent"
                 />
                 <SummaryCard
-                  label="Package Revenue"
+                  label="Package Sales"
                   value={`${c.currency} ${fmt(c.packageRevenue)}`}
                   sub="Package price before payment fees"
                   icon={DollarSign}
@@ -357,22 +367,29 @@ export default function AdminPayments() {
                   color="bg-purple-100 text-purple-700"
                 />
                 <SummaryCard
-                  label="Gateway Cost"
-                  value={`${c.currency} ${fmt(c.gatewayCost)}`}
-                  sub="Processor/mobile money cost"
+                  label="Gateway Fees Collected"
+                  value={`${c.currency} ${fmt(gatewayFeesCollected)}`}
+                  sub="Provider fee passed to customers"
                   icon={CreditCard}
                   color="bg-blue-100 text-blue-700"
                 />
                 <SummaryCard
-                  label="Total ICIMS Revenue"
-                  value={`${c.currency} ${fmt(c.totalRevenue)}`}
-                  sub="Package revenue + ICIMS fee"
+                  label="Actual Gateway Charges"
+                  value={`${c.currency} ${fmt(actualGatewayCharges)}`}
+                  sub={`Recorded for ${gatewayChargeRecordedCount}/${c.count} payments · ${gatewayChargeMissingCount} missing`}
+                  icon={CreditCard}
+                  color="bg-orange-100 text-orange-700"
+                />
+                <SummaryCard
+                  label="Net Platform Revenue"
+                  value={`${c.currency} ${fmt(netPlatformRevenue)}`}
+                  sub={gatewayChargeMissingCount > 0 ? 'Provisional: some provider charges are missing' : `After provider charges · fee variance ${c.currency} ${fmt(providerCostVariance)}`}
                   icon={DollarSign}
                   color="bg-yellow-100 text-yellow-700"
                 />
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
@@ -486,10 +503,12 @@ export default function AdminPayments() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Ministry Admin</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Package</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Package Price</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Transaction Cost</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Gateway Fee</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Customer Paid</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Added Charges</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Gateway Fee Collected</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ ICIMS Fee</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Rounding</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Actual Gateway Charge</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Gateway</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Cycle</th>
@@ -525,9 +544,9 @@ export default function AdminPayments() {
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-xs font-medium">{t.currency} {(t.baseAmount ?? t.amount)?.toLocaleString()}</p>
-                        {t.totalAmount && t.totalAmount !== (t.baseAmount ?? t.amount) && (
-                          <p className="text-xs text-muted-foreground">Total: {t.currency} {t.totalAmount?.toLocaleString()}</p>
-                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-semibold">{money(t, t.totalAmount ?? t.amount)}</p>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs font-medium">
@@ -550,6 +569,9 @@ export default function AdminPayments() {
                         <span className="text-xs text-orange-500">
                           {(t.ceilRoundingAmount ?? 0) > 0 ? `${t.currency} ${(t.ceilRoundingAmount ?? 0).toLocaleString()}` : '—'}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <span className="text-xs text-muted-foreground">{money(t, t.gatewayCharge)}</span>
                       </td>
                       <td className="px-4 py-3">{statusBadge(t.status)}</td>
                       <td className="px-4 py-3 hidden md:table-cell">
