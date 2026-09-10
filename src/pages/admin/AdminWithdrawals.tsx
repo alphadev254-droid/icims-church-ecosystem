@@ -233,6 +233,7 @@ export default function AdminWithdrawals() {
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AdminWithdrawal | null>(null);
+  const [reconcilingId, setReconcilingId] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(search, 400);
 
@@ -265,6 +266,7 @@ export default function AdminWithdrawals() {
 
   const reconcileMutation = useMutation({
     mutationFn: (id: string) => adminApi.reconcileWithdrawal('ministry', id),
+    onMutate: id => setReconcilingId(id),
     onSuccess: (res) => {
       toast.success(res.data.message || 'Withdrawal reconciliation checked');
       queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
@@ -273,6 +275,7 @@ export default function AdminWithdrawals() {
       toast.error(err.response?.data?.message || 'Failed to reconcile withdrawal');
       queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
     },
+    onSettled: () => setReconcilingId(null),
   });
 
   const applyDatePreset = (preset: DatePreset) => {
@@ -475,7 +478,7 @@ export default function AdminWithdrawals() {
                           disabled={reconcileMutation.isPending}
                           title={w.chargeId ? 'Reconcile with PayChangu' : 'Mark failed: no PayChangu payout reference'}
                         >
-                          <RefreshCw className={`h-4 w-4 ${reconcileMutation.isPending ? 'animate-spin' : ''}`} />
+                          <RefreshCw className={`h-4 w-4 ${reconcilingId === w.id ? 'animate-spin' : ''}`} />
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelected(w)} title="View withdrawal trace">

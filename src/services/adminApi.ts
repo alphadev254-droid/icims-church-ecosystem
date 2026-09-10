@@ -478,6 +478,7 @@ export interface AdminTreasuryMinistryWallet {
   ministryAdminName: string;
   ministryAdminEmail: string;
   country?: string | null;
+  pricingMarket?: AdminPricingMarket | null;
   currency: string;
   totalBalance: number;
   walletCount: number;
@@ -711,11 +712,23 @@ export const adminApi = {
   getTreasurySummary: () =>
     apiClient.get<{ success: boolean; data: AdminTreasurySummary }>('/admin/treasury/summary'),
 
-  getTreasuryMinistryWallets: (params?: { ministry?: string }) =>
+  getTreasuryMinistryWallets: (params?: { ministry?: string; country?: string; market?: string }) =>
     apiClient.get<{
       success: boolean;
       data: AdminTreasuryMinistryWallet[];
-      summary: { totalBalance: number; walletCount: number; ministryCount: number };
+      summary: {
+        totalBalance: number | null;
+        walletCount: number;
+        ministryCount: number;
+        byCurrency: Array<{ currency: string; totalBalance: number; walletCount: number; ministryCount: number }>;
+        byMarket: Array<{
+          market: AdminPricingMarket | null;
+          totalBalance: number;
+          walletCount: number;
+          ministryCount: number;
+          byCurrency: Array<{ currency: string; totalBalance: number; walletCount: number }>;
+        }>;
+      };
     }>('/admin/treasury/ministry-wallets', { params }),
 
   getTreasuryWithdrawals: (params: { page?: number; limit?: number; status?: string }) =>

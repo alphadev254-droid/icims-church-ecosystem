@@ -233,6 +233,7 @@ export default function AdminPendingTransactions() {
   const [dateTo, setDateTo]     = useState('');
   const [page, setPage]         = useState(1);
   const [selected, setSelected] = useState<PendingTx | null>(null);
+  const [reconcilingId, setReconcilingId] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(search, 400);
 
@@ -274,6 +275,7 @@ export default function AdminPendingTransactions() {
 
   const reconcileMutation = useMutation({
     mutationFn: (id: string) => adminApi.reconcilePendingTransaction(id),
+    onMutate: id => setReconcilingId(id),
     onSuccess: res => {
       toast.success(res.data.message || 'Pending transaction reconciled');
       queryClient.invalidateQueries({ queryKey: ['admin-pending-transactions'] });
@@ -283,6 +285,7 @@ export default function AdminPendingTransactions() {
       toast.error(err.response?.data?.message || 'Failed to reconcile pending transaction');
       queryClient.invalidateQueries({ queryKey: ['admin-pending-transactions'] });
     },
+    onSettled: () => setReconcilingId(null),
   });
 
   function reconcile(tx: PendingTx) {
@@ -445,7 +448,7 @@ export default function AdminPendingTransactions() {
                               onClick={e => { e.stopPropagation(); reconcile(tx); }}
                               title="Reconcile"
                             >
-                              <RefreshCw className={`h-3.5 w-3.5 ${reconcileMutation.isPending ? 'animate-spin' : ''}`} />
+                              <RefreshCw className={`h-3.5 w-3.5 ${reconcilingId === tx.id ? 'animate-spin' : ''}`} />
                             </Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7"
                               onClick={e => { e.stopPropagation(); setSelected(tx); }}>
@@ -481,7 +484,7 @@ export default function AdminPendingTransactions() {
           tx={selected}
           onClose={() => setSelected(null)}
           onReconcile={reconcile}
-          isReconciling={reconcileMutation.isPending}
+          isReconciling={reconcilingId === selected.id}
         />
       )}
     </div>

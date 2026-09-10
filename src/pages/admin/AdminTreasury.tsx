@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Banknote, CreditCard, Eye, MoreHorizontal, RefreshCw, ShieldCheck, Wallet, Zap } from 'lucide-react';
-import { adminApi, type AdminPlatformWithdrawal, type AdminTreasuryMinistryWallet } from '@/services/adminApi';
+import { adminApi, type AdminCountryMarket, type AdminPlatformWithdrawal, type AdminPricingMarket, type AdminTreasuryMinistryWallet } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -191,15 +191,32 @@ export default function AdminTreasury() {
   const [selected, setSelected] = useState<AdminPlatformWithdrawal | null>(null);
   const [selectedMinistryWallet, setSelectedMinistryWallet] = useState<AdminTreasuryMinistryWallet | null>(null);
   const [ministryFilter, setMinistryFilter] = useState('all');
+  const [countryFilter, setCountryFilter] = useState('all');
+  const [marketFilter, setMarketFilter] = useState('all');
+  const [reconcilingWithdrawalId, setReconcilingWithdrawalId] = useState<string | null>(null);
 
   const { data: ministries = [] } = useQuery({
     queryKey: ['admin-ministries'],
     queryFn: () => adminApi.getMinistries().then(r => r.data.data),
     staleTime: 5 * 60_000,
   });
+  const { data: countriesData = [] } = useQuery({
+    queryKey: ['admin-pricing-countries'],
+    queryFn: () => adminApi.getPricingCountries().then(r => r.data.data),
+    staleTime: 5 * 60_000,
+  });
+  const { data: marketsData = [] } = useQuery({
+    queryKey: ['admin-pricing-markets'],
+    queryFn: () => adminApi.getPricingMarkets().then(r => r.data.data),
+    staleTime: 5 * 60_000,
+  });
   const { data: ministryWalletsData, isLoading: ministryWalletsLoading } = useQuery({
-    queryKey: ['admin-treasury-ministry-wallets', ministryFilter],
-    queryFn: () => adminApi.getTreasuryMinistryWallets({ ministry: ministryFilter }).then(r => r.data),
+    queryKey: ['admin-treasury-ministry-wallets', ministryFilter, countryFilter, marketFilter],
+    queryFn: () => adminApi.getTreasuryMinistryWallets({
+      ministry: ministryFilter,
+      country: countryFilter,
+      market: marketFilter,
+    }).then(r => r.data),
     staleTime: 30_000,
   });
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -219,6 +236,8 @@ export default function AdminTreasury() {
   });
 
   const banks: SupportedBank[] = banksData ?? [];
+  const countries: AdminCountryMarket[] = countriesData;
+  const markets: AdminPricingMarket[] = marketsData;
   const rows = withdrawalsData?.data ?? [];
 
   const payload = () => ({
@@ -268,6 +287,7 @@ export default function AdminTreasury() {
 
   const reconcileMutation = useMutation({
     mutationFn: (id: string) => adminApi.reconcileWithdrawal('platform', id),
+    onMutate: id => setReconcilingWithdrawalId(id),
     onSuccess: (res) => {
       toast.success(res.data.message || 'Platform withdrawal reconciliation checked');
       qc.invalidateQueries({ queryKey: ['admin-treasury-summary'] });
@@ -278,6 +298,7 @@ export default function AdminTreasury() {
       qc.invalidateQueries({ queryKey: ['admin-treasury-summary'] });
       qc.invalidateQueries({ queryKey: ['admin-treasury-withdrawals'] });
     },
+    onSettled: () => setReconcilingWithdrawalId(null),
   });
 
   const onSendOtp = () => {
@@ -322,32 +343,59 @@ export default function AdminTreasury() {
                 <h2 className="text-sm font-semibold">Ministry Wallet Balances</h2>
                 <p className="text-xs text-muted-foreground">Totals are grouped by ministry across each ministry's church wallets.</p>
               </div>
-              <div className="w-full lg:w-80">
-                <Label className="text-xs">Filter by ministry</Label>
-                <Select value={ministryFilter} onValueChange={setMinistryFilter}>
-                  <SelectTrigger className="mt-1 h-9 text-sm">
-                    <SelectValue placeholder="All ministries" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All ministries</SelectItem>
-                    {ministries.map((ministry) => (
-                      <SelectItem key={ministry.id} value={ministry.id}>
-                        {ministry.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid w-full gap-2 sm:grid-cols-3 lg:w-[780px]">
+                <div>
+                  <Label className="text-xs">Filter by ministry</Label>
+                  <Select value={ministryFilter} onValueChange={setMinistryFilter}>
+                    <SelectTrigger className="mt-1 h-9 text-sm">
+                      <SelectValue placeholder="All ministries" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All ministries</SelectItem>
+                      {ministries.map((ministry) => (
+                        <SelectItem key={ministry.id} value={ministry.id}>
+                          {ministry.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Filter by country</Label>
+                  <Select value={countryFilter} onValueChange={setCountryFilter}>
+                    <SelectTrigger className="mt-1 h-9 text-sm">
+                      <SelectValue placeholder="All countries" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All countries</SelectItem>
+                      {countries.map((country) => (
+                        <SelectItem key={country.id} value={country.name}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Filter by market</Label>
+                  <Select value={marketFilter} onValueChange={setMarketFilter}>
+                    <SelectTrigger className="mt-1 h-9 text-sm">
+                      <SelectValue placeholder="All markets" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All markets</SelectItem>
+                      {markets.map((market) => (
+                        <SelectItem key={market.id} value={market.id}>
+                          {market.name} ({market.currencyCode})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SummaryCard
-                label="Total Ministry Wallets"
-                value={money('MWK', ministryWalletSummary?.totalBalance)}
-                sub={`${ministryWalletSummary?.walletCount ?? 0} wallet(s)`}
-                icon={Wallet}
-                tone="bg-yellow-100 text-yellow-700"
-              />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <SummaryCard
                 label="Ministries"
                 value={(ministryWalletSummary?.ministryCount ?? 0).toLocaleString()}
@@ -355,7 +403,41 @@ export default function AdminTreasury() {
                 icon={Banknote}
                 tone="bg-blue-100 text-blue-700"
               />
+              {(ministryWalletSummary?.byCurrency ?? []).map(row => (
+                <SummaryCard
+                  key={row.currency}
+                  label={`${row.currency} Wallets`}
+                  value={money(row.currency, row.totalBalance)}
+                  sub={`${row.walletCount} wallet(s), ${row.ministryCount} ministr${row.ministryCount === 1 ? 'y' : 'ies'}`}
+                  icon={Wallet}
+                  tone="bg-yellow-100 text-yellow-700"
+                />
+              ))}
             </div>
+
+            {(ministryWalletSummary?.byMarket ?? []).length > 0 && (
+              <div className="grid gap-2 lg:grid-cols-3">
+                {ministryWalletSummary!.byMarket.map(row => (
+                  <div key={row.market?.id ?? row.market?.code ?? 'unknown'} className="rounded-lg border bg-muted/20 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-semibold">{row.market?.name ?? 'Unknown'} Market</p>
+                        <p className="text-xs text-muted-foreground">{row.ministryCount} ministr{row.ministryCount === 1 ? 'y' : 'ies'}, {row.walletCount} wallet(s)</p>
+                      </div>
+                      {row.market?.currencyCode && <Badge variant="outline" className="text-xs">{row.market.currencyCode}</Badge>}
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      {row.byCurrency.map(currencyRow => (
+                        <div key={currencyRow.currency} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="text-muted-foreground">{currencyRow.currency}</span>
+                          <span className="font-mono font-medium">{money(currencyRow.currency, currencyRow.totalBalance)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg border overflow-hidden bg-card">
@@ -380,6 +462,9 @@ export default function AdminTreasury() {
                       <td className="p-3">
                         <p className="text-sm font-medium">{row.ministryName}</p>
                         <p className="text-xs text-muted-foreground">{row.country || 'Country not set'}</p>
+                        {row.pricingMarket && (
+                          <p className="text-xs text-muted-foreground">{row.pricingMarket.name} market</p>
+                        )}
                       </td>
                       <td className="p-3">
                         <p className="text-xs font-medium">{row.ministryAdminName || '-'}</p>
@@ -587,7 +672,7 @@ export default function AdminTreasury() {
                             disabled={reconcileMutation.isPending}
                             title={row.chargeId ? 'Reconcile with PayChangu' : 'Mark failed: no PayChangu payout reference'}
                           >
-                            <RefreshCw className={`h-4 w-4 ${reconcileMutation.isPending ? 'animate-spin' : ''}`} />
+                            <RefreshCw className={`h-4 w-4 ${reconcilingWithdrawalId === row.id ? 'animate-spin' : ''}`} />
                           </Button>
                         )}
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelected(row)}><Eye className="h-4 w-4" /></Button>
