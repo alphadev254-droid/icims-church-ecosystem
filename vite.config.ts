@@ -22,12 +22,24 @@ export default defineConfig(({ mode }) => ({
       injectRegister: null, // we handle registration manually in main.tsx
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+        globIgnores: ['**/{features,cta,contact,about}.png'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^\/api\//,
             handler: 'NetworkOnly',
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'icims-images',
+              expiration: {
+                maxEntries: 80,
+                maxAgeSeconds: 30 * 24 * 60 * 60,
+              },
+            },
           },
         ],
         cleanupOutdatedCaches: true,
