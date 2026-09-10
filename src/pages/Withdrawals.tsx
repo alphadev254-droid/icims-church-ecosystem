@@ -274,11 +274,12 @@ export default function WithdrawalsPage() {
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const canRequestManualWithdrawal = user?.accountCountry === 'Malawi' && hasWithdrawalsFeature;
 
-  const { data: balance } = useQuery({
-    queryKey: ['wallet-balance'],
-    queryFn: walletService.getBalance,
+  const { data: financialSummary } = useQuery({
+    queryKey: ['wallet-financial-summary'],
+    queryFn: walletService.getFinancialSummary,
     enabled: hasWalletsFeature,
   });
+  const balance = financialSummary?.currencies?.[0];
 
   const { data: banks = [], isLoading: isLoadingBanks } = useQuery({
     queryKey: ['wallet-supported-banks'],
@@ -382,8 +383,13 @@ export default function WithdrawalsPage() {
         </CardHeader>
         <CardContent>
           <div className="text-xl sm:text-2xl font-bold font-heading">
-            {formatCurrency(balance?.balance ?? 0, balance?.currency)}
+            {formatCurrency(balance?.effectiveAvailableBalance ?? 0, balance?.currency)}
           </div>
+          {balance && balance.unreconciledPayoutAmount > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {formatCurrency(balance.unreconciledPayoutAmount, balance.currency)} confirmed paid by the gateway and awaiting transaction-level reconciliation.
+            </p>
+          )}
         </CardContent>
       </Card>
 

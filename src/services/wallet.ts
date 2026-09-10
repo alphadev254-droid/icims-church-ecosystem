@@ -61,6 +61,24 @@ export const walletService = {
     const { data } = await apiClient.get('/wallet/withdrawals', { params });
     return data.data as PayoutHistoryItem[];
   },
+  getFinancialSummary: async () => {
+    const { data } = await apiClient.get('/wallet/financial-summary');
+    return data.data as {
+      currencies: Array<{
+        currency: string;
+        totalCredits: number;
+        totalDebits: number;
+        postedBalance: number;
+        reservedBalance: number;
+        availableBalance: number;
+        providerConfirmedPayoutAmount: number;
+        reconciledPayoutAmount: number;
+        unreconciledPayoutAmount: number;
+        effectiveAvailableBalance: number;
+        legacyCachedBalance: number;
+      }>;
+    };
+  },
   getWithdrawalFeePreview: async (params: WithdrawalPayload) => {
     const { data } = await apiClient.get('/wallet/withdraw/fees', { params });
     return data.data as WithdrawalFeePreview;
