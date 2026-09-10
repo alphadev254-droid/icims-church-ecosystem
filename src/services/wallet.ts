@@ -3,6 +3,8 @@ import apiClient from '@/lib/api-client';
 export type WithdrawalFeePreview = {
   amount: number;
   fee: number;
+  gatewayFeeAmount?: number;
+  systemFeeAmount?: number;
   gatewayFeeAmount: number;
   gatewayFeeRate: number;
   bankFixedFeeAmount: number;
@@ -26,6 +28,21 @@ export type WithdrawalPayload = {
   accountNumber?: string;
 };
 
+export type PayoutHistoryItem = {
+  id: string;
+  amount: number;
+  fee: number;
+  netAmount: number;
+  payoutAmount: number;
+  currency: string;
+  method: string;
+  status: string;
+  gateway?: string;
+  payoutType?: string;
+  reconciliationStatus?: string;
+  createdAt: string;
+};
+
 export const walletService = {
   getBalance: async () => {
     const { data } = await apiClient.get('/wallet/balance');
@@ -37,7 +54,7 @@ export const walletService = {
   },
   getWithdrawals: async (params?: { startDate?: string; endDate?: string }) => {
     const { data } = await apiClient.get('/wallet/withdrawals', { params });
-    return data.data;
+    return data.data as PayoutHistoryItem[];
   },
   getWithdrawalFeePreview: async (params: WithdrawalPayload) => {
     const { data } = await apiClient.get('/wallet/withdraw/fees', { params });

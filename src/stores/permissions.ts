@@ -44,7 +44,7 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   { permission: 'giving:read',        item: { to: '/dashboard/giving',        label: 'Giving',        icon: HandCoins } },
   { permission: 'pledges:read',       item: { to: '/dashboard/pledges',       label: 'Pledges',       icon: Handshake } },
   { permission: 'transactions:read',  item: { to: '/dashboard/transactions',  label: 'Transactions',  icon: Receipt } },
-  { permission: 'withdrawals:read',   item: { to: '/dashboard/withdrawals',   label: 'Withdrawals',   icon: Wallet } },
+  { permission: 'withdrawals:read',   item: { to: '/dashboard/withdrawals',   label: 'Payouts',       icon: Wallet } },
   
   // Analytics & Reports
   { permission: 'performance:read',   item: { to: '/dashboard/performance',   label: 'Performance',   icon: TrendingUp } },
@@ -74,7 +74,7 @@ function routePackageFeature(route: string): string | null {
   if (route === '/dashboard/donations') return PACKAGE_FEATURES.TRANSACTIONS_VIEW;
   if (route === '/dashboard/pledges') return PACKAGE_FEATURES.PLEDGES_MANAGEMENT;
   if (route === '/dashboard/transactions') return PACKAGE_FEATURES.TRANSACTIONS_VIEW;
-  if (route === '/dashboard/withdrawals') return PACKAGE_FEATURES.GIVING_WITHDRAWALS;
+  if (route === '/dashboard/withdrawals') return PACKAGE_FEATURES.GIVING_WALLETS;
   if (route === '/dashboard/events') return PACKAGE_FEATURES.EVENTS_MANAGEMENT;
   if (route === '/dashboard/my-tickets') return PACKAGE_FEATURES.EVENT_MEMBER_BOOKING;
   return null;
@@ -100,9 +100,9 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
         return currentUser?.roleName !== 'member';
       }
 
-      // Hide withdrawals for non-Malawi accounts and members
+      // Payout history is available across markets; members cannot access it.
       if (item.to === '/dashboard/withdrawals') {
-        return currentUser?.accountCountry === 'Malawi' && currentUser?.roleName !== 'member';
+        return currentUser?.roleName !== 'member';
       }
       
       // Hide transactions from members
@@ -154,8 +154,8 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
       if (!isPackageRouteAvailable(item.to, currentUser)) {
         continue;
       }
-      // Hide withdrawals route for non-Malawi accounts and members
-      if (item.to === '/dashboard/withdrawals' && (currentUser?.accountCountry !== 'Malawi' || currentUser?.roleName === 'member')) {
+      // Payout history is administrative and never visible to members.
+      if (item.to === '/dashboard/withdrawals' && currentUser?.roleName === 'member') {
         continue;
       }
       // Hide users route from members

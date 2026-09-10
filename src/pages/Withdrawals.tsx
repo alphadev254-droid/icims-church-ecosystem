@@ -272,17 +272,18 @@ export default function WithdrawalsPage() {
   const [appliedStartDate, setAppliedStartDate] = useState('');
   const [appliedEndDate, setAppliedEndDate] = useState('');
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const canRequestManualWithdrawal = user?.accountCountry === 'Malawi' && hasWithdrawalsFeature;
 
   const { data: balance } = useQuery({
     queryKey: ['wallet-balance'],
     queryFn: walletService.getBalance,
-    enabled: user?.accountCountry === 'Malawi' && hasWalletsFeature,
+    enabled: hasWalletsFeature,
   });
 
   const { data: banks = [], isLoading: isLoadingBanks } = useQuery({
     queryKey: ['wallet-supported-banks'],
     queryFn: walletService.getSupportedBanks,
-    enabled: user?.accountCountry === 'Malawi' && hasWithdrawalsFeature,
+    enabled: canRequestManualWithdrawal,
     staleTime: 5 * 60_000,
   });
 
@@ -292,7 +293,7 @@ export default function WithdrawalsPage() {
       startDate: appliedStartDate || undefined,
       endDate: appliedEndDate || undefined,
     }),
-    enabled: user?.accountCountry === 'Malawi' && hasWithdrawalsFeature,
+    enabled: hasWalletsFeature && (user?.accountCountry !== 'Malawi' || hasWithdrawalsFeature),
   });
 
   const handleApplyFilters = () => {
@@ -310,31 +311,17 @@ export default function WithdrawalsPage() {
   const statusVariant = (s: string): 'default' | 'secondary' | 'destructive' | 'outline' =>
     s === 'completed' ? 'default' : s === 'processing' ? 'outline' : s === 'failed' ? 'destructive' : 'secondary';
 
-  const formatCurrency = (amount: number) => `MWK ${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number, currency?: string) =>
+    `${currency || balance?.currency || ''} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();
 
-  // Block access for non-Malawi accounts (after all hooks)
-  if (user?.accountCountry !== 'Malawi') {
+  if (!hasWalletsFeature || (user?.accountCountry === 'Malawi' && !hasWithdrawalsFeature)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-xl font-semibold mb-2">Withdrawals Not Available</h2>
-            <p className="text-muted-foreground">Withdrawals are only available for Malawi accounts.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!hasWalletsFeature || !hasWithdrawalsFeature) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-xl font-semibold mb-2">Withdrawals Not Available</h2>
-            <p className="text-muted-foreground">Wallets and withdrawals are not available in your current package.</p>
+            <h2 className="text-xl font-semibold mb-2">Payouts Not Available</h2>
+            <p className="text-muted-foreground">Wallet and payout history is not available in your current package.</p>
           </CardContent>
         </Card>
       </div>
@@ -345,8 +332,8 @@ export default function WithdrawalsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-xl sm:text-2xl font-bold">Withdrawals</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Manage wallet withdrawals</p>
+          <h1 className="font-heading text-xl sm:text-2xl font-bold">Payouts</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Track manual withdrawals and automatic gateway settlements</p>
         </div>
         <div className="flex gap-2 self-end sm:self-auto">
           <ExportImportButtons
@@ -357,6 +344,7 @@ export default function WithdrawalsPage() {
               fee: w.fee,
               netAmount: w.netAmount,
               payoutAmount: w.payoutAmount ?? w.netAmount,
+              currency: w.currency,
               method: w.method.replace('_', ' '),
               status: w.status,
               date: new Date(w.createdAt).toLocaleDateString(),
@@ -369,18 +357,19 @@ export default function WithdrawalsPage() {
               { label: 'Total Fee', key: 'fee' },
               { label: 'Net Amount', key: 'netAmount' },
               { label: 'Amount Sent', key: 'payoutAmount' },
+              { label: 'Currency', key: 'currency' },
               { label: 'Method', key: 'method' },
               { label: 'Status', key: 'status' },
               { label: 'Date', key: 'date' },
             ]}
             pdfTitle="Withdrawals Report"
           />
-          <Button 
+          {canRequestManualWithdrawal && <Button
             onClick={() => setRequestDialogOpen(true)} 
             className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 h-8 text-xs sm:h-9 sm:text-sm"
           >
             <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Request Withdrawal
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -391,7 +380,7 @@ export default function WithdrawalsPage() {
         </CardHeader>
         <CardContent>
           <div className="text-xl sm:text-2xl font-bold font-heading">
-            {balance ? formatCurrency(balance.balance) : 'MWK 0'}
+            {formatCurrency(balance?.balance ?? 0, balance?.currency)}
           </div>
         </CardContent>
       </Card>
@@ -444,12 +433,12 @@ export default function WithdrawalsPage() {
               <TableBody>
                 {withdrawals.map((w: any) => (
                   <TableRow key={w.id}>
-                    <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{formatCurrency(w.amount)}</TableCell>
-                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.gatewayFeeAmount ?? w.fee)}</TableCell>
-                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.systemFeeAmount ?? 0)}</TableCell>
-                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.fee)}</TableCell>
-                    <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{formatCurrency(w.netAmount)}</TableCell>
-                    <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{formatCurrency(w.payoutAmount ?? w.netAmount)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{formatCurrency(w.amount, w.currency)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.gatewayFeeAmount ?? w.fee, w.currency)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.systemFeeAmount ?? 0, w.currency)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.fee, w.currency)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{formatCurrency(w.netAmount, w.currency)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{formatCurrency(w.payoutAmount ?? w.netAmount, w.currency)}</TableCell>
                     <TableCell className="text-xs sm:text-sm capitalize whitespace-nowrap">{w.method.replace('_', ' ')}</TableCell>
                     <TableCell>
                       <Badge variant={statusVariant(w.status)} className="text-xs">{w.status}</Badge>
@@ -463,7 +452,7 @@ export default function WithdrawalsPage() {
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                       <ArrowDownToLine className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                      <p>No withdrawals yet.</p>
+                      <p>No payouts yet.</p>
                     </TableCell>
                   </TableRow>
                 )}
@@ -474,12 +463,12 @@ export default function WithdrawalsPage() {
         </Card>
         </>
       )}
-      <RequestWithdrawalDialog
+      {canRequestManualWithdrawal && <RequestWithdrawalDialog
         open={requestDialogOpen}
         onOpenChange={setRequestDialogOpen}
         banks={banks as SupportedBank[]}
         isLoadingBanks={isLoadingBanks}
-      />
+      />}
     </div>
   );
 }
