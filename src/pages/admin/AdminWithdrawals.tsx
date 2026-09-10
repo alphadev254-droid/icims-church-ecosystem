@@ -339,20 +339,20 @@ export default function AdminWithdrawals() {
             { label: 'Ministry', key: 'ministry' },
             { label: 'Method', key: 'method' },
             { label: 'Status', key: 'status' },
-            { label: 'Amount', key: 'amount' },
+            { label: 'Amount Without Fees', key: 'amount' },
             { label: 'Total Fee', key: 'totalFee' },
             { label: 'Gateway Fee', key: 'gatewayFee' },
-            { label: 'Bank Fixed Fee', key: 'bankFixedFee' },
+            { label: 'Bank Fixed Fee (Included in Gateway Fee)', key: 'bankFixedFee' },
             { label: 'System Fee', key: 'systemFee' },
-            { label: 'Net Amount', key: 'netAmount' },
-            { label: 'Payout Amount', key: 'payoutAmount' },
+            { label: 'Total With Fees', key: 'netAmount' },
+            { label: 'Amount Sent', key: 'payoutAmount' },
             { label: 'Currency', key: 'currency' },
             { label: 'Charge ID', key: 'chargeId' },
             { label: 'Initiated By', key: 'initiatedBy' },
             { label: 'Created At', key: 'createdAt' },
             { label: 'Processed At', key: 'processedAt' },
           ]}
-          pdfColumns={['Church', 'Ministry', 'Method', 'Status', 'Amount', 'Total Fee', 'Gateway Fee', 'Bank Fixed Fee', 'System Fee', 'Net Amount', 'Payout Amount', 'Currency', 'Charge ID', 'Initiated By', 'Created At', 'Processed At']}
+          pdfColumns={['Church', 'Ministry', 'Method', 'Status', 'Amount Without Fees', 'Total Fee', 'Gateway Fee', 'Bank Fixed Fee (Included)', 'System Fee', 'Total With Fees', 'Amount Sent', 'Currency', 'Charge ID', 'Initiated By', 'Created At', 'Processed At']}
         />
       </div>
 
@@ -463,9 +463,13 @@ export default function AdminWithdrawals() {
               <tr>
                 <th className="text-left p-3 font-medium">Church</th>
                 <th className="text-left p-3 font-medium">Method</th>
-                <th className="text-right p-3 font-medium">Amount</th>
-                <th className="text-right p-3 font-medium">Payout</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Amount Without Fees</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Gateway Fee</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap" title="This component is already included in Gateway Fee">Fixed Fee (Included)</th>
                 <th className="text-right p-3 font-medium">ICIMS Fee</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Total Fee</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Total With Fees</th>
+                <th className="text-right p-3 font-medium whitespace-nowrap">Amount Sent</th>
                 <th className="text-left p-3 font-medium">Status</th>
                 <th className="text-left p-3 font-medium">Initiator</th>
                 <th className="text-left p-3 font-medium">Charge</th>
@@ -476,10 +480,10 @@ export default function AdminWithdrawals() {
             <tbody className="divide-y">
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i}><td colSpan={10} className="p-3"><div className="h-8 bg-muted animate-pulse rounded" /></td></tr>
+                  <tr key={i}><td colSpan={14} className="p-3"><div className="h-8 bg-muted animate-pulse rounded" /></td></tr>
                 ))
               ) : withdrawals.length === 0 ? (
-                <tr><td colSpan={10} className="p-8 text-center text-sm text-muted-foreground">No withdrawals found</td></tr>
+                <tr><td colSpan={14} className="p-8 text-center text-sm text-muted-foreground">No withdrawals found</td></tr>
               ) : withdrawals.map(w => (
                 <tr key={w.id} className="hover:bg-muted/30">
                   <td className="p-3 min-w-44">
@@ -488,8 +492,12 @@ export default function AdminWithdrawals() {
                   </td>
                   <td className="p-3 text-xs">{methodLabel(w.method)}</td>
                   <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.amount)}</td>
-                  <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.payoutAmount ?? w.netAmount)}</td>
+                  <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.gatewayFeeAmount)}</td>
+                  <td className="p-3 text-right font-mono text-xs" title="Included in gateway fee">{money(w.currency, w.bankFixedFeeAmount)}</td>
                   <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.systemFeeAmount)}</td>
+                  <td className="p-3 text-right font-mono text-xs">{money(w.currency, w.fee)}</td>
+                  <td className="p-3 text-right font-mono text-xs font-semibold">{money(w.currency, w.netAmount)}</td>
+                  <td className="p-3 text-right font-mono text-xs font-semibold">{money(w.currency, w.payoutAmount ?? w.amount)}</td>
                   <td className="p-3">{statusBadge(w.status)}</td>
                   <td className="p-3 min-w-40">
                     <p className="text-xs font-medium">{w.initiatedByUser ? `${w.initiatedByUser.firstName} ${w.initiatedByUser.lastName}` : '-'}</p>
