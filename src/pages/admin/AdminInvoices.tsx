@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, Search, Send, Ban, Wallet, Eye, Link as LinkIcon, MoreHorizontal } from 'lucide-react';
-import { adminApi, type AdminPackageInvoice } from '@/services/adminApi';
+import { adminApi, type AdminCountryMarket, type AdminPackageInvoice, type AdminPricingMarket } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { downloadPackageInvoicePdf } from '@/lib/invoice-pdf';
 import { toast } from 'sonner';
 import { decimalInputProps, decimalInputValue, sanitizeDecimalInput } from '@/lib/numeric-input';
+
+type Ministry = { id: string; label: string; country: string | null };
 
 function money(currency: string, value?: number | null) {
   return `${currency} ${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -60,6 +62,8 @@ function InvoiceDetailDialog({ invoice, onClose, onRecord }: { invoice: AdminPac
         <div className="grid gap-3 text-sm sm:grid-cols-2">
           <div><p className="text-muted-foreground">Ministry</p><p className="font-medium">{invoice.ministryAdmin?.ministryName || `${invoice.ministryAdmin?.firstName ?? ''} ${invoice.ministryAdmin?.lastName ?? ''}`}</p></div>
           <div><p className="text-muted-foreground">Status</p>{statusBadge(invoice.status)}</div>
+          <div><p className="text-muted-foreground">Market</p><p>{invoice.pricingMarket?.name ?? '—'}</p></div>
+          <div><p className="text-muted-foreground">Ministry Country</p><p>{invoice.ministryAdmin?.accountCountry ?? '—'}</p></div>
           <div><p className="text-muted-foreground">Package</p><p>{invoice.package?.displayName || invoice.packageName}</p></div>
           <div><p className="text-muted-foreground">Billing</p><p className="capitalize">{invoice.billingCycle}</p></div>
           <div><p className="text-muted-foreground">Invoice Date</p><p>{date(invoice.invoiceDate)}</p></div>
@@ -113,11 +117,27 @@ export default function AdminInvoices() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [pkg, setPkg] = useState('all');
+  const [ministry, setMinistry] = useState('all');
+  const [country, setCountry] = useState('all');
+  const [market, setMarket] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [selected, setSelected] = useState<AdminPackageInvoice | null>(null);
   const [paying, setPaying] = useState<AdminPackageInvoice | null>(null);
   const [paymentForm, setPaymentForm] = useState({ amount: '', paymentMethod: 'cash', reference: '', notes: '', paidAt: new Date().toISOString().slice(0, 10) });
 
-  const params = useMemo(() => ({ page, limit: 50, search: search || undefined, status, package: pkg }), [page, search, status, pkg]);
+  const params = useMemo(() => ({
+    page,
+    limit: 50,
+    search: search || undefined,
+    status,
+    package: pkg,
+    ministry,
+    country,
+    market,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  }), [page, search, status, pkg, ministry, country, market, dateFrom, dateTo]);
   const { data, isLoading } = useQuery({
     queryKey: ['admin-invoices', params],
     queryFn: () => adminApi.getInvoices(params).then(r => r.data),
@@ -127,6 +147,27 @@ export default function AdminInvoices() {
     queryKey: ['admin-packages'],
     queryFn: () => adminApi.getPackages().then(r => r.data.data),
   });
+
+  const ministriesQuery = useQuery({
+    queryKey: ['admin-ministries'],
+    queryFn: () => adminApi.getMinistries().then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const ministries: Ministry[] = ministriesQuery.data ?? [];
+
+  const marketsQuery = useQuery({
+    queryKey: ['admin-pricing-markets'],
+    queryFn: () => adminApi.getPricingMarkets().then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const markets: AdminPricingMarket[] = marketsQuery.data ?? [];
+
+  const countriesQuery = useQuery({
+    queryKey: ['admin-pricing-countries'],
+    queryFn: () => adminApi.getPricingCountries().then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const countries: AdminCountryMarket[] = countriesQuery.data ?? [];
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['admin-invoices'] });
@@ -175,14 +216,24 @@ export default function AdminInvoices() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Invoiced</p><p className="text-xl font-bold">{money('MWK', summary?.totalAmount)}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Paid</p><p className="text-xl font-bold">{money('MWK', summary?.amountPaid)}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Outstanding</p><p className="text-xl font-bold">{money('MWK', summary?.balanceDue)}</p></CardContent></Card>
+      <div className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-4">
+          <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total invoices</p><p className="text-xl font-bold">{(summary?.total ?? 0).toLocaleString()}</p></CardContent></Card>
+          <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Paid</p><p className="text-xl font-bold">{(summary?.byStatus?.paid ?? 0).toLocaleString()}</p></CardContent></Card>
+          <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Partially paid</p><p className="text-xl font-bold">{(summary?.byStatus?.partially_paid ?? 0).toLocaleString()}</p></CardContent></Card>
+          <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Outstanding invoices</p><p className="text-xl font-bold">{((summary?.byStatus?.sent ?? 0) + (summary?.byStatus?.overdue ?? 0) + (summary?.byStatus?.partially_paid ?? 0)).toLocaleString()}</p></CardContent></Card>
+        </div>
+        {(summary?.byCurrency ?? []).map(row => (
+          <div key={row.currency} className="grid gap-3 sm:grid-cols-3">
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">{row.currency} invoiced</p><p className="text-xl font-bold">{money(row.currency, row.totalAmount)}</p><p className="text-xs text-muted-foreground">{row.count.toLocaleString()} matching invoice(s)</p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">{row.currency} paid</p><p className="text-xl font-bold">{money(row.currency, row.amountPaid)}</p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">{row.currency} outstanding</p><p className="text-xl font-bold">{money(row.currency, row.balanceDue)}</p></CardContent></Card>
+          </div>
+        ))}
       </div>
 
       <Card>
-        <CardContent className="flex flex-col gap-2 p-3 sm:flex-row">
+        <CardContent className="flex flex-col gap-2 p-3 sm:flex-row sm:flex-wrap">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input className="pl-9" placeholder="Search invoice, ministry, email" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
@@ -200,6 +251,29 @@ export default function AdminInvoices() {
               {(packagesQuery.data ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.displayName}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={ministry} onValueChange={v => { setMinistry(v); setPage(1); }}>
+            <SelectTrigger className="sm:w-56"><SelectValue placeholder="Ministry" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All ministries</SelectItem>
+              {ministries.map(item => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={country} onValueChange={v => { setCountry(v); setPage(1); }}>
+            <SelectTrigger className="sm:w-52"><SelectValue placeholder="Ministry country" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All ministry countries</SelectItem>
+              {countries.map(item => <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={market} onValueChange={v => { setMarket(v); setPage(1); }}>
+            <SelectTrigger className="sm:w-48"><SelectValue placeholder="Market" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All markets</SelectItem>
+              {markets.map(item => <SelectItem key={item.id} value={item.id}>{item.name} ({item.currencyCode})</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input className="sm:w-40" type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} title="Due from" />
+          <Input className="sm:w-40" type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} title="Due to" />
         </CardContent>
       </Card>
 
@@ -212,6 +286,7 @@ export default function AdminInvoices() {
                 <th className="px-4 py-2 text-left">Invoice</th>
                 <th className="px-4 py-2 text-left">Ministry</th>
                 <th className="px-4 py-2 text-left">Package</th>
+                <th className="px-4 py-2 text-left">Market</th>
                 <th className="px-4 py-2 text-left">Due</th>
                 <th className="px-4 py-2 text-left">Amount</th>
                 <th className="px-4 py-2 text-left">Balance</th>
@@ -221,14 +296,18 @@ export default function AdminInvoices() {
             </thead>
             <tbody className="divide-y">
               {isLoading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Loading invoices...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading invoices...</td></tr>
               ) : invoices.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No invoices found.</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No invoices found.</td></tr>
               ) : invoices.map(invoice => (
                 <tr key={invoice.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium">{invoice.invoiceNumber}</td>
                   <td className="px-4 py-3">{invoice.ministryAdmin?.ministryName || invoice.ministryAdmin?.email}</td>
                   <td className="px-4 py-3">{invoice.package?.displayName || invoice.packageName}</td>
+                  <td className="px-4 py-3">
+                    <p className="text-xs">{invoice.pricingMarket?.name ?? '—'}</p>
+                    <p className="text-xs text-muted-foreground">{invoice.ministryAdmin?.accountCountry ?? '—'}</p>
+                  </td>
                   <td className="px-4 py-3">{date(invoice.dueDate)}</td>
                   <td className="px-4 py-3">{money(invoice.currency, invoice.amount)}</td>
                   <td className="px-4 py-3">{money(invoice.currency, invoice.balanceDue)}</td>

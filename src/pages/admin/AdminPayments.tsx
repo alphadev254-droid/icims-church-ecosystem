@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, DollarSign, Eye, Search, TrendingUp, Zap } from 'lucide-react';
-import { adminApi, type AdminPayment } from '@/services/adminApi';
+import { adminApi, type AdminCountryMarket, type AdminPayment, type AdminPricingMarket } from '@/services/adminApi';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,6 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 
 const STATUSES = ['completed', 'pending', 'failed'];
-const COUNTRIES = ['Malawi', 'Kenya'];
 const GATEWAYS = ['paychangu', 'paystack'];
 const CYCLES = ['monthly', 'yearly'];
 type DatePreset = 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth';
@@ -90,7 +89,8 @@ function PaymentDetailDialog({
     ['Gateway', payment.gateway ?? '—'],
     ['Payment Method', payment.paymentMethod ?? '—'],
     ['Channel', payment.channel ?? '—'],
-    ['Country', payment.ministryAdmin?.accountCountry ?? '—'],
+    ['Market', payment.pricingMarket?.name ?? '—'],
+    ['Ministry Country', payment.ministryAdmin?.accountCountry ?? '—'],
     ['Ministry Admin', payment.ministryAdmin ? `${payment.ministryAdmin.firstName} ${payment.ministryAdmin.lastName}` : '—'],
     ['Admin Email', payment.ministryAdmin?.email ?? '—'],
     ['Customer Email', payment.customerEmail ?? '—'],
@@ -195,6 +195,7 @@ export default function AdminPayments() {
   const [pkg, setPkg] = useState('');
   const [status, setStatus] = useState('');
   const [country, setCountry] = useState('');
+  const [market, setMarket] = useState('');
   const [ministry, setMinistry] = useState('');
   const [gateway, setGateway] = useState('');
   const [cycle, setCycle] = useState('');
@@ -219,13 +220,28 @@ export default function AdminPayments() {
   });
   const ministries: Ministry[] = ministriesData ?? [];
 
+  const { data: marketsData } = useQuery({
+    queryKey: ['admin-pricing-markets'],
+    queryFn: () => adminApi.getPricingMarkets().then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const markets: AdminPricingMarket[] = marketsData ?? [];
+
+  const { data: countriesData } = useQuery({
+    queryKey: ['admin-pricing-countries'],
+    queryFn: () => adminApi.getPricingCountries().then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const countries: AdminCountryMarket[] = countriesData ?? [];
+
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-package-payments', debouncedSearch, pkg, status, country, ministry, gateway, cycle, dateFrom, dateTo, page],
+    queryKey: ['admin-package-payments', debouncedSearch, pkg, status, country, market, ministry, gateway, cycle, dateFrom, dateTo, page],
     queryFn: () => adminApi.getPackagePayments({
       search: debouncedSearch || undefined,
       package: pkg || undefined,
       status: status || undefined,
       country: country || undefined,
+      market: market || undefined,
       ministry: ministry || undefined,
       gateway: gateway || undefined,
       cycle: cycle || undefined,
@@ -275,6 +291,7 @@ export default function AdminPayments() {
             status:          t.status,
             gateway:         t.gateway ?? '',
             cycle:           t.billingCycle ?? '',
+            market:          t.pricingMarket?.name ?? '',
             country:         t.ministryAdmin?.accountCountry ?? '',
             date:            new Date(t.createdAt).toLocaleDateString(),
           }))}
@@ -292,10 +309,11 @@ export default function AdminPayments() {
             { label: 'Status',           key: 'status' },
             { label: 'Gateway',          key: 'gateway' },
             { label: 'Cycle',            key: 'cycle' },
+            { label: 'Market',           key: 'market' },
             { label: 'Country',          key: 'country' },
             { label: 'Date',             key: 'date' },
           ]}
-          pdfColumns={['Admin Name','Email','Package','Package Price','Transaction Cost','Gateway Fee','ICIMS Fee','Rounding','Total','Currency','Status','Gateway','Cycle','Country','Date']}
+          pdfColumns={['Admin Name','Email','Package','Package Price','Transaction Cost','Gateway Fee','ICIMS Fee','Rounding','Total','Currency','Status','Gateway','Cycle','Market','Country','Date']}
         />
       </div>
 
@@ -380,10 +398,21 @@ export default function AdminPayments() {
           </SelectContent>
         </Select>
         <Select value={country} onValueChange={v => { setCountry(v === 'all' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="h-8 text-xs w-28"><SelectValue placeholder="Country" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-40"><SelectValue placeholder="Ministry country" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-xs">All countries</SelectItem>
-            {COUNTRIES.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+            <SelectItem value="all" className="text-xs">All ministry countries</SelectItem>
+            {countries.map(c => <SelectItem key={c.id} value={c.name} className="text-xs">{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={market} onValueChange={v => { setMarket(v === 'all' ? '' : v); setPage(1); }}>
+          <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Market" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All markets</SelectItem>
+            {markets.map(m => (
+              <SelectItem key={m.id} value={m.id} className="text-xs">
+                {m.name} ({m.currencyCode})
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Select value={ministry} onValueChange={v => { setMinistry(v === 'all' ? '' : v); setPage(1); }}>
@@ -464,6 +493,7 @@ export default function AdminPayments() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Gateway</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Cycle</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Market</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Country</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Date</th>
                 <th className="px-4 py-2.5 w-10" />
@@ -527,6 +557,9 @@ export default function AdminPayments() {
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs capitalize text-muted-foreground">{t.billingCycle ?? '—'}</span>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <span className="text-xs text-muted-foreground">{t.pricingMarket?.name ?? '—'}</span>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs text-muted-foreground">{t.ministryAdmin?.accountCountry ?? '—'}</span>

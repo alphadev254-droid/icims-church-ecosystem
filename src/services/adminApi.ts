@@ -176,6 +176,7 @@ export interface AdminPayment {
   paidAt?: string;
   createdAt: string;
   package?: { name: string; displayName: string } | null;
+  pricingMarket?: AdminPricingMarket | null;
   ministryAdmin?: {
     id: string;
     firstName: string;
@@ -208,6 +209,7 @@ export interface AdminPackageInvoice {
   paidAt?: string | null;
   createdAt: string;
   package?: { id: string; name: string; displayName: string } | null;
+  pricingMarket?: AdminPricingMarket | null;
   ministryAdmin?: { id: string; firstName: string; lastName: string; email: string; ministryName?: string | null; accountCountry?: string | null } | null;
   payments?: Array<{
     id: string;
@@ -225,10 +227,18 @@ export interface AdminPackageInvoice {
 }
 
 export interface AdminInvoiceSummary {
+  total: number;
   totalAmount: number;
   amountPaid: number;
   balanceDue: number;
   byStatus: Record<string, number>;
+  byCurrency: Array<{
+    currency: string;
+    count: number;
+    totalAmount: number;
+    amountPaid: number;
+    balanceDue: number;
+  }>;
 }
 
 export interface AdminChurch {
@@ -578,6 +588,7 @@ export const adminApi = {
     package?: string;
     status?: string;
     country?: string;
+    market?: string;
     ministry?: string;
     gateway?: string;
     cycle?: string;
@@ -592,6 +603,8 @@ export const adminApi = {
     status?: string;
     ministry?: string;
     package?: string;
+    country?: string;
+    market?: string;
     dateFrom?: string;
     dateTo?: string;
   }) => apiClient.get<{ success: boolean; data: AdminPackageInvoice[]; pagination: Pagination; summary: AdminInvoiceSummary }>('/admin/invoices', { params }),
@@ -626,6 +639,7 @@ export const adminApi = {
     package?: string;
     status?: string;
     country?: string;
+    market?: string;
     ministry?: string;
     gateway?: string;
     cycle?: string;
