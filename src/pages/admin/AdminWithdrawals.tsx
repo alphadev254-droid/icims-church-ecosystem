@@ -278,6 +278,25 @@ export default function AdminWithdrawals() {
     onSettled: () => setReconcilingId(null),
   });
 
+  const ministryReconcileMutation = useMutation({
+    mutationFn: () => adminApi.reconcileMinistryPayouts({
+      ministryAdminId: ministry,
+      from: dateFrom || undefined,
+      to: dateTo || undefined,
+    }),
+    onSuccess: (res) => {
+      if (res.data.success) toast.success(res.data.message);
+      else toast.warning(res.data.message);
+      queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message || 'Failed to reconcile ministry payouts');
+    },
+  });
+
+  const selectedMinistry = ministries.find(item => item.id === ministry);
+  const selectedGateway = selectedMinistry?.country?.toLowerCase() === 'malawi' ? 'PayChangu' : 'Paystack';
+
   const applyDatePreset = (preset: DatePreset) => {
     const range = getDatePresetRange(preset);
     setDateFrom(range.from);
@@ -374,7 +393,7 @@ export default function AdminWithdrawals() {
                 <SummaryCard label="Payout Sent" value={money(c.currency, c.payoutAmount)} sub="Amount sent to bank/mobile" icon={Banknote} color="bg-green-100 text-green-700" />
                 <SummaryCard label="Total Fees" value={money(c.currency, c.totalFee)} sub="Gateway + bank + ICIMS" icon={CreditCard} color="bg-blue-100 text-blue-700" />
                 <SummaryCard label="ICIMS Fee" value={money(c.currency, c.systemFee)} sub={`Completed revenue ${money(c.currency, c.completedSystemRevenue)}`} icon={Zap} color="bg-purple-100 text-purple-700" />
-                <SummaryCard label="Gateway/Bank Cost" value={money(c.currency, (c.gatewayFee ?? 0) + (c.bankFixedFee ?? 0))} sub={`Gateway ${money(c.currency, c.gatewayFee)}`} icon={TrendingUp} color="bg-yellow-100 text-yellow-700" />
+                <SummaryCard label="Gateway/Bank Cost" value={money(c.currency, c.gatewayFee)} sub={`Includes fixed bank fee ${money(c.currency, c.bankFixedFee)}`} icon={TrendingUp} color="bg-yellow-100 text-yellow-700" />
               </div>
             </div>
           ))}
@@ -415,6 +434,17 @@ export default function AdminWithdrawals() {
             {ministries.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 text-xs gap-1.5"
+          disabled={!ministry || ministryReconcileMutation.isPending}
+          onClick={() => ministryReconcileMutation.mutate()}
+          title={ministry ? `Reconcile this ministry using ${selectedGateway}` : 'Select a ministry first'}
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${ministryReconcileMutation.isPending ? 'animate-spin' : ''}`} />
+          {ministry ? `Reconcile via ${selectedGateway}` : 'Select ministry to reconcile'}
+        </Button>
         <Input type="date" className="h-8 text-xs w-36" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} />
         <Input type="date" className="h-8 text-xs w-36" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} />
         <div className="flex flex-wrap gap-1">

@@ -761,6 +761,13 @@ export const adminApi = {
   reconcileWithdrawal: (kind: 'ministry' | 'platform', id: string) =>
     apiClient.post<{ success: boolean; message: string; data: AdminWithdrawal | AdminPlatformWithdrawal }>(`/admin/treasury/withdrawals/${kind}/${id}/reconcile`),
 
+  reconcileMinistryPayouts: (payload: { ministryAdminId: string; from?: string; to?: string }) =>
+    apiClient.post<{
+      success: boolean;
+      message: string;
+      data: { gateway: 'paystack' | 'paychangu'; processed: number; failed: number };
+    }>('/admin/payouts/reconcile', payload),
+
   getPendingTransactions: (params: {
     page?: number;
     limit?: number;

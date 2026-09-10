@@ -3,8 +3,6 @@ import apiClient from '@/lib/api-client';
 export type WithdrawalFeePreview = {
   amount: number;
   fee: number;
-  gatewayFeeAmount?: number;
-  systemFeeAmount?: number;
   gatewayFeeAmount: number;
   gatewayFeeRate: number;
   bankFixedFeeAmount: number;
@@ -31,7 +29,14 @@ export type WithdrawalPayload = {
 export type PayoutHistoryItem = {
   id: string;
   amount: number;
+  requestedAmount?: number;
   fee: number;
+  gatewayFeeAmount?: number;
+  gatewayFeeRate?: number | null;
+  bankFixedFeeAmount?: number;
+  systemFeeAmount?: number;
+  systemFeeRate?: number | null;
+  totalDebitAmount?: number;
   netAmount: number;
   payoutAmount: number;
   currency: string;

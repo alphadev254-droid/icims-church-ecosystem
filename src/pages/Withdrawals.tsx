@@ -338,11 +338,12 @@ export default function WithdrawalsPage() {
         <div className="flex gap-2 self-end sm:self-auto">
           <ExportImportButtons
             data={withdrawals.map((w: any) => ({
-              amount: w.amount,
+              requestedAmount: w.requestedAmount ?? w.amount,
               gatewayFee: w.gatewayFeeAmount ?? w.fee,
+              fixedFee: w.bankFixedFeeAmount ?? 0,
               systemFee: w.systemFeeAmount ?? 0,
-              fee: w.fee,
-              netAmount: w.netAmount,
+              totalFee: w.fee,
+              totalDebitAmount: w.totalDebitAmount ?? w.netAmount,
               payoutAmount: w.payoutAmount ?? w.netAmount,
               currency: w.currency,
               method: w.method.replace('_', ' '),
@@ -351,11 +352,12 @@ export default function WithdrawalsPage() {
             }))}
             filename="withdrawals"
             headers={[
-              { label: 'Amount', key: 'amount' },
+              { label: 'Amount Without Fees', key: 'requestedAmount' },
               { label: 'Gateway Fee', key: 'gatewayFee' },
+              { label: 'Fixed Fee (Included in Gateway Fee)', key: 'fixedFee' },
               { label: 'System Fee', key: 'systemFee' },
-              { label: 'Total Fee', key: 'fee' },
-              { label: 'Net Amount', key: 'netAmount' },
+              { label: 'Total Fee', key: 'totalFee' },
+              { label: 'Total With Fees', key: 'totalDebitAmount' },
               { label: 'Amount Sent', key: 'payoutAmount' },
               { label: 'Currency', key: 'currency' },
               { label: 'Method', key: 'method' },
@@ -419,11 +421,12 @@ export default function WithdrawalsPage() {
           <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs sm:text-sm">Amount</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Amount Without Fees</TableHead>
                   <TableHead className="text-xs sm:text-sm">Gateway Fee</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Fixed Fee (Included)</TableHead>
                   <TableHead className="text-xs sm:text-sm">System Fee</TableHead>
                   <TableHead className="text-xs sm:text-sm">Total Fee</TableHead>
-                  <TableHead className="text-xs sm:text-sm">Net Amount</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Total With Fees</TableHead>
                   <TableHead className="text-xs sm:text-sm">Amount Sent</TableHead>
                   <TableHead className="text-xs sm:text-sm">Method</TableHead>
                   <TableHead className="text-xs sm:text-sm">Status</TableHead>
@@ -433,11 +436,12 @@ export default function WithdrawalsPage() {
               <TableBody>
                 {withdrawals.map((w: any) => (
                   <TableRow key={w.id}>
-                    <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{formatCurrency(w.amount, w.currency)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm font-medium whitespace-nowrap">{formatCurrency(w.requestedAmount ?? w.amount, w.currency)}</TableCell>
                     <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.gatewayFeeAmount ?? w.fee, w.currency)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.bankFixedFeeAmount ?? 0, w.currency)}</TableCell>
                     <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.systemFeeAmount ?? 0, w.currency)}</TableCell>
                     <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatCurrency(w.fee, w.currency)}</TableCell>
-                    <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{formatCurrency(w.netAmount, w.currency)}</TableCell>
+                    <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{formatCurrency(w.totalDebitAmount ?? w.netAmount, w.currency)}</TableCell>
                     <TableCell className="text-xs sm:text-sm font-semibold whitespace-nowrap">{formatCurrency(w.payoutAmount ?? w.netAmount, w.currency)}</TableCell>
                     <TableCell className="text-xs sm:text-sm capitalize whitespace-nowrap">{w.method.replace('_', ' ')}</TableCell>
                     <TableCell>
@@ -450,7 +454,7 @@ export default function WithdrawalsPage() {
                 ))}
                 {withdrawals.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
                       <ArrowDownToLine className="h-10 w-10 mx-auto mb-2 opacity-50" />
                       <p>No payouts yet.</p>
                     </TableCell>
