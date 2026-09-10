@@ -33,9 +33,21 @@ window.addEventListener('appinstalled', () => {
 });
 
 if ('serviceWorker' in navigator) {
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloadingForUpdate = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloadingForUpdate) return;
+    reloadingForUpdate = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('[PWA] Service worker registered, scope:', reg.scope))
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+      .then(async reg => {
+        console.log('[PWA] Service worker registered, scope:', reg.scope);
+        await reg.update();
+      })
       .catch(err => console.warn('[PWA] Service worker registration failed:', err));
   });
 }
