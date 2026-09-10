@@ -146,26 +146,71 @@ function inputToList(value: string) {
 const DEFAULT_INVOICE_NOTES = 'This invoice covers ICIMS package access for the selected service period. Please review the package, amount, service period, and due date before payment. Online payments through the invoice link will update this invoice automatically.';
 const DEFAULT_INVOICE_TERMS = 'Payment is due by the due date shown on this invoice.';
 
-function invoiceCurrency(country?: string | null) {
-  return country === 'Malawi' ? 'MWK' : 'KES';
+type InvoicePackageOption = {
+  id: string;
+  name: string;
+  displayName: string;
+  priceMonthly?: number;
+  priceYearly?: number;
+  currencyCode?: string | null;
+  isPrivate?: boolean;
+  marketPrices?: Array<{
+    priceMonthly?: number;
+    priceYearly?: number;
+    currencyCode?: string | null;
+    pricingMarket?: {
+      code?: string | null;
+      name?: string | null;
+      currencyCode?: string | null;
+      isDefault?: boolean | null;
+    } | null;
+  }>;
+};
+
+function normalizeMarketValue(value?: string | null) {
+  return (value ?? '').trim().toLowerCase();
 }
 
-function calculateInvoicePackageAmount(
-  pkg: { priceMonthly?: number; priceYearly?: number } | undefined,
+function fallbackInvoiceCurrency(country?: string | null) {
+  if (country === 'Malawi') return 'MWK';
+  if (country === 'Kenya') return 'KES';
+  return 'USD';
+}
+
+function findPackageMarketPrice(pkg: InvoicePackageOption, country?: string | null) {
+  const prices = pkg.marketPrices ?? [];
+  const normalizedCountry = normalizeMarketValue(country);
+  return prices.find(price =>
+    normalizeMarketValue(price.pricingMarket?.name) === normalizedCountry
+    || normalizeMarketValue(price.pricingMarket?.code) === normalizedCountry
+  ) ?? prices.find(price =>
+    price.pricingMarket?.isDefault
+    || normalizeMarketValue(price.pricingMarket?.code) === 'general'
+  ) ?? prices[0];
+}
+
+function resolveInvoicePackagePricing(
+  pkg: InvoicePackageOption | undefined,
   billingCycle: string,
   country: string | null | undefined,
-  rates?: { mwkRate: number; kesRate: number; malawiDiscount: number; kenyaDiscount: number },
   months = 1,
 ) {
-  if (!pkg || !rates) return '';
+  if (!pkg) return { amount: '', currency: fallbackInvoiceCurrency(country) };
+
   const selectedMonths = Math.max(1, Number(months) || 1);
-  const usdAmount = billingCycle === 'yearly'
-    ? Number(pkg.priceYearly ?? 0)
-    : Number(pkg.priceMonthly ?? 0) * selectedMonths;
-  const isMalawi = country === 'Malawi';
-  const rate = isMalawi ? rates.mwkRate : rates.kesRate;
-  const discount = isMalawi ? rates.malawiDiscount : rates.kenyaDiscount;
-  return String(Math.round(usdAmount * rate * discount));
+  const marketPrice = pkg.isPrivate ? undefined : findPackageMarketPrice(pkg, country);
+  const currency = marketPrice?.currencyCode
+    || marketPrice?.pricingMarket?.currencyCode
+    || pkg.currencyCode
+    || fallbackInvoiceCurrency(country);
+  const monthlyAmount = Number(marketPrice?.priceMonthly ?? pkg.priceMonthly ?? 0);
+  const yearlyAmount = Number(marketPrice?.priceYearly ?? pkg.priceYearly ?? monthlyAmount * 12);
+  const amount = billingCycle === 'yearly' ? yearlyAmount : monthlyAmount * selectedMonths;
+
+  return {
+    amount: amount > 0 ? String(Math.round(amount)) : '',
+    currency,
+  };
 }
 
 export default function AdminUserDetail() {
@@ -210,22 +255,23 @@ export default function AdminUserDetail() {
     queryKey: ['admin-packages'],
     queryFn: () => adminApi.getPackages().then(r => r.data.data),
   });
-  const packages = packagesData ?? [];
-
-  const { data: packageRates } = useQuery({
-    queryKey: ['admin-package-rates'],
-    queryFn: () => adminApi.getPackageRates().then(r => r.data.data),
-  });
+  const packages: InvoicePackageOption[] = packagesData ?? [];
 
   const invoiceCountry = data?.resolvedCountry ?? data?.accountCountry;
-  const selectedInvoicePackage = packages.find((pkg: any) => pkg.id === invoiceForm.packageId)
-    || data?.subscriptions?.find((sub: AdminSubscription) => sub.packageId === invoiceForm.packageId)?.package
-    || (data?.subscription?.packageId === invoiceForm.packageId ? data.subscription.package : undefined);
+  const selectedInvoicePackage = packages.find(pkg => pkg.id === invoiceForm.packageId)
+    || (data?.subscriptions?.find((sub: AdminSubscription) => sub.packageId === invoiceForm.packageId)?.package as InvoicePackageOption | undefined)
+    || (data?.subscription?.packageId === invoiceForm.packageId ? data.subscription.package as InvoicePackageOption : undefined);
+  const selectedInvoicePricing = resolveInvoicePackagePricing(
+    selectedInvoicePackage,
+    invoiceForm.billingCycle,
+    invoiceCountry,
+    invoiceForm.billingCycle === 'yearly' ? 12 : Number(invoiceForm.months) || 1,
+  );
 
   useEffect(() => {
     if (!invoiceOpen || !invoiceForm.packageId) return;
     const months = invoiceForm.billingCycle === 'yearly' ? 12 : Math.max(1, Number(invoiceForm.months) || 1);
-    const amount = calculateInvoicePackageAmount(selectedInvoicePackage, invoiceForm.billingCycle, invoiceCountry, packageRates, months);
+    const { amount } = resolveInvoicePackagePricing(selectedInvoicePackage, invoiceForm.billingCycle, invoiceCountry, months);
     const servicePeriodEnd = invoiceForm.servicePeriodStart
       ? addMonthsMinusDay(new Date(invoiceForm.servicePeriodStart), months)
       : invoiceForm.servicePeriodEnd;
@@ -237,7 +283,7 @@ export default function AdminUserDetail() {
         servicePeriodEnd,
       }));
     }
-  }, [invoiceOpen, invoiceForm.packageId, invoiceForm.billingCycle, invoiceForm.months, invoiceForm.amount, invoiceForm.servicePeriodStart, invoiceForm.servicePeriodEnd, selectedInvoicePackage, invoiceCountry, packageRates]);
+  }, [invoiceOpen, invoiceForm.packageId, invoiceForm.billingCycle, invoiceForm.months, invoiceForm.amount, invoiceForm.servicePeriodStart, invoiceForm.servicePeriodEnd, selectedInvoicePackage, invoiceCountry]);
 
   const { data: churchesData } = useQuery({
     queryKey: ['admin-all-churches', churchSearch],
@@ -299,7 +345,6 @@ export default function AdminUserDetail() {
       packageId: invoiceForm.packageId,
       billingCycle: invoiceForm.billingCycle,
       months: Number(invoiceForm.months) || 1,
-      amount: invoiceForm.amount ? Number(invoiceForm.amount) : undefined,
       dueDate: invoiceForm.dueDate,
       servicePeriodStart: invoiceForm.servicePeriodStart,
       servicePeriodEnd: invoiceForm.servicePeriodEnd,
@@ -431,12 +476,13 @@ export default function AdminUserDetail() {
     const billingCycle = 'monthly';
     const months = 1;
     const packageId = current?.packageId || packages[0]?.id || '';
-    const initialPackage = packages.find((pkg: any) => pkg.id === packageId) || current?.package;
+    const initialPackage = packages.find(pkg => pkg.id === packageId) || current?.package as InvoicePackageOption | undefined;
+    const initialPricing = resolveInvoicePackagePricing(initialPackage, billingCycle, invoiceCountry, months);
     setInvoiceForm({
       packageId,
       billingCycle,
       months: String(months),
-      amount: calculateInvoicePackageAmount(initialPackage, billingCycle, invoiceCountry, packageRates, months),
+      amount: initialPricing.amount,
       dueDate: current?.expiresAt ? toDateInput(current.expiresAt) : today(),
       servicePeriodStart: start,
       servicePeriodEnd: addMonthsMinusDay(startDate, months),
@@ -804,11 +850,12 @@ export default function AdminUserDetail() {
               <Select value={invoiceForm.packageId} onValueChange={v => {
                 const pkg = packages.find((p: any) => p.id === v);
                 const months = invoiceForm.billingCycle === 'yearly' ? 12 : Math.max(1, Number(invoiceForm.months) || 1);
+                const pricing = resolveInvoicePackagePricing(pkg, invoiceForm.billingCycle, invoiceCountry, months);
                 setInvoiceForm(f => ({
                   ...f,
                   packageId: v,
                   months: String(months),
-                  amount: calculateInvoicePackageAmount(pkg, f.billingCycle, invoiceCountry, packageRates, months),
+                  amount: pricing.amount,
                   servicePeriodEnd: f.servicePeriodStart ? addMonthsMinusDay(new Date(f.servicePeriodStart), months) : f.servicePeriodEnd,
                 }));
               }}>
@@ -825,11 +872,12 @@ export default function AdminUserDetail() {
                 <Label className="text-xs">Billing</Label>
                 <Select value={invoiceForm.billingCycle} onValueChange={v => {
                   const months = v === 'yearly' ? 12 : Math.max(1, Number(invoiceForm.months) || 1);
+                  const pricing = resolveInvoicePackagePricing(selectedInvoicePackage, v, invoiceCountry, months);
                   setInvoiceForm(f => ({
                     ...f,
                     billingCycle: v,
                     months: String(months),
-                    amount: calculateInvoicePackageAmount(selectedInvoicePackage, v, invoiceCountry, packageRates, months),
+                    amount: pricing.amount,
                     servicePeriodEnd: f.servicePeriodStart ? addMonthsMinusDay(new Date(f.servicePeriodStart), months) : f.servicePeriodEnd,
                   }));
                 }}>
@@ -847,10 +895,11 @@ export default function AdminUserDetail() {
                   disabled={invoiceForm.billingCycle === 'yearly'}
                   onValueChange={v => {
                     const months = Math.max(1, Number(v) || 1);
+                    const pricing = resolveInvoicePackagePricing(selectedInvoicePackage, invoiceForm.billingCycle, invoiceCountry, months);
                     setInvoiceForm(f => ({
                       ...f,
                       months: String(months),
-                      amount: calculateInvoicePackageAmount(selectedInvoicePackage, f.billingCycle, invoiceCountry, packageRates, months),
+                      amount: pricing.amount,
                       servicePeriodEnd: f.servicePeriodStart ? addMonthsMinusDay(new Date(f.servicePeriodStart), months) : f.servicePeriodEnd,
                     }));
                   }}
@@ -868,12 +917,12 @@ export default function AdminUserDetail() {
             </div>
             <div className="grid grid-cols-1 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Amount ({invoiceCurrency(invoiceCountry)})</Label>
+                <Label className="text-xs">Amount ({selectedInvoicePricing.currency})</Label>
                 <Input className="h-8 text-xs" type="number" value={invoiceForm.amount}
                   readOnly
                   aria-readonly="true"
                   title="Amount is calculated from the selected package and billing cycle"
-                  placeholder={packageRates ? 'Auto' : 'Loading rates...'} />
+                  placeholder="Auto" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">

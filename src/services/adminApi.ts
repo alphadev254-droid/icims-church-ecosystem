@@ -137,7 +137,25 @@ export interface AdminSubscription {
   startsAt: string;
   expiresAt: string;
   createdAt: string;
-  package: { id: string; name: string; displayName: string; priceMonthly?: number; priceYearly?: number };
+  package: AdminPackageOption;
+}
+
+export interface AdminPackageOption {
+  id: string;
+  name: string;
+  displayName: string;
+  priceMonthly?: number;
+  priceYearly?: number;
+  currencyCode?: string | null;
+  isActive?: boolean;
+  isPrivate?: boolean;
+  marketPrices?: Array<{
+    pricingMarketId?: string;
+    priceMonthly?: number;
+    priceYearly?: number;
+    currencyCode?: string | null;
+    pricingMarket?: AdminPricingMarket | null;
+  }>;
 }
 
 export interface AdminPayment {
@@ -570,7 +588,7 @@ export const adminApi = {
     apiClient.put<{ success: boolean; data: AdminUser }>(`/admin/church-users/${id}`, data),
 
   getPackages: () =>
-    apiClient.get<{ success: boolean; data: Array<{ id: string; name: string; displayName: string; priceMonthly: number; priceYearly: number; isActive: boolean; isPrivate?: boolean }> }>('/admin/packages'),
+    apiClient.get<{ success: boolean; data: AdminPackageOption[] }>('/admin/packages'),
 
   getPackageRates: () =>
     apiClient.get<{ success: boolean; data: { mwkRate: number; kesRate: number; malawiDiscount: number; kenyaDiscount: number } }>('/admin/packages/rates'),
