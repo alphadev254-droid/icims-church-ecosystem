@@ -311,6 +311,8 @@ export interface AdminSystemTransaction {
   paymentMethod?: string;
   gateway?: string;
   gatewayCountry?: string;
+  ministryCountry?: string | null;
+  pricingMarket?: AdminPricingMarket | null;
   reference?: string;
   campaignName?: string | null;
   campaignCategory?: string | null;
@@ -325,6 +327,29 @@ export interface AdminSystemTransaction {
   createdAt: string;
   user?: { firstName: string; lastName: string; email: string } | null;
   church?: { id: string; name: string } | null;
+}
+
+export interface AdminPricingMarket {
+  id: string;
+  code: string;
+  name: string;
+  currencyCode: string;
+  packageGateway?: string;
+  isDefault?: boolean;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+export interface AdminCountryMarket {
+  id: string;
+  name: string;
+  iso2: string;
+  iso3?: string | null;
+  phoneCode?: string | null;
+  currencyCode?: string | null;
+  pricingMarketId?: string | null;
+  pricingMarket?: AdminPricingMarket | null;
+  isActive: boolean;
 }
 
 export interface AdminSystemTransactionSummary {
@@ -616,6 +641,7 @@ export const adminApi = {
     status?: string;
     gateway?: string;
     country?: string;
+    market?: string;
     churchId?: string;
     ministry?: string;
     dateFrom?: string;
@@ -626,6 +652,12 @@ export const adminApi = {
     pagination: Pagination;
     summary: AdminSystemTransactionSummary;
   }>('/admin/system-transactions', { params }),
+
+  getPricingMarkets: () =>
+    apiClient.get<{ success: boolean; data: AdminPricingMarket[] }>('/admin/packages/pricing-markets'),
+
+  getPricingCountries: () =>
+    apiClient.get<{ success: boolean; data: AdminCountryMarket[] }>('/admin/packages/countries'),
 
   getWithdrawals: (params: {
     page?: number;

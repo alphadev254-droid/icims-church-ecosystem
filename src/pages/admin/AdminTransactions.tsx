@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, TrendingUp, DollarSign, Zap, CreditCard, Eye, X } from 'lucide-react';
-import { adminApi, type AdminSystemTransaction } from '@/services/adminApi';
+import { adminApi, type AdminCountryMarket, type AdminPricingMarket, type AdminSystemTransaction } from '@/services/adminApi';
 import apiClient from '@/lib/api-client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -111,7 +111,9 @@ function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => v
     ['Type',              tx.type],
     ['Status',            tx.status],
     ['Gateway',           tx.gateway ?? '—'],
-    ['Country',           tx.gatewayCountry ?? '—'],
+    ['Market',            tx.pricingMarket?.name ?? '—'],
+    ['Ministry Country',  tx.ministryCountry ?? '—'],
+    ['Gateway Country',   tx.gatewayCountry ?? '—'],
     ['Currency',          tx.currency],
     ['Settlement Amount', tx.baseAmount != null ? `${tx.currency} ${tx.baseAmount.toLocaleString()}` : '—'],
     ['Convenience Fee',   tx.convenienceFee != null ? `${tx.currency} ${tx.convenienceFee.toLocaleString()}` : '—'],
@@ -237,7 +239,6 @@ function TransactionDetailDialog({ id, onClose }: { id: string; onClose: () => v
 const TYPES    = ['event_ticket', 'donation'];
 const STATUSES = ['completed', 'pending', 'failed', 'refunded'];
 const GATEWAYS = ['paychangu', 'paystack'];
-const COUNTRIES = ['Malawi', 'Kenya'];
 
 function statusBadge(status: string) {
   if (status === 'completed') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Completed</Badge>;
@@ -320,6 +321,7 @@ export default function AdminTransactions() {
   const [status, setStatus]     = useState('');
   const [gateway, setGateway]   = useState('');
   const [country, setCountry]   = useState('');
+  const [market, setMarket]     = useState('');
   const [ministry, setMinistry] = useState('');
   const [churchId, setChurchId] = useState('');
   const [churchSearch, setChurchSearch] = useState('');
@@ -340,6 +342,20 @@ export default function AdminTransactions() {
   });
   const ministries: Ministry[] = ministriesData ?? [];
 
+  const { data: marketsData } = useQuery({
+    queryKey: ['admin-pricing-markets'],
+    queryFn: () => adminApi.getPricingMarkets().then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const markets: AdminPricingMarket[] = marketsData ?? [];
+
+  const { data: countriesData } = useQuery({
+    queryKey: ['admin-pricing-countries'],
+    queryFn: () => adminApi.getPricingCountries().then(r => r.data.data),
+    staleTime: 60_000,
+  });
+  const countries: AdminCountryMarket[] = countriesData ?? [];
+
   // Load churches — searchable and filtered by selected ministry if set
   const { data: churchesData } = useQuery({
     queryKey: ['admin-all-churches', ministry, debouncedChurchSearch],
@@ -356,13 +372,14 @@ export default function AdminTransactions() {
     : churches;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-system-transactions', debouncedSearch, type, status, gateway, country, ministry, churchId, dateFrom, dateTo, page],
+    queryKey: ['admin-system-transactions', debouncedSearch, type, status, gateway, country, market, ministry, churchId, dateFrom, dateTo, page],
     queryFn: () => adminApi.getSystemTransactions({
       search:   debouncedSearch || undefined,
       type:     type     || undefined,
       status:   status   || undefined,
       gateway:  gateway  || undefined,
       country:  country  || undefined,
+      market:   market   || undefined,
       ministry: ministry || undefined,
       churchId: churchId || undefined,
       dateFrom: dateFrom || undefined,
@@ -417,6 +434,8 @@ export default function AdminTransactions() {
             church:      t.church?.name ?? '',
             campaign:    givingLinesLabel(t),
             event:       t.eventTitle ?? '',
+            market:      t.pricingMarket?.name ?? '',
+            ministryCountry: t.ministryCountry ?? '',
             baseAmount:  t.baseAmount ?? t.amount,
             transactionCost: (t.convenienceFee ?? 0) + (t.systemFeeAmount ?? 0) + (t.ceilRoundingAmount ?? 0),
             gatewayFee:  t.convenienceFee ?? 0,
@@ -425,7 +444,7 @@ export default function AdminTransactions() {
             total:       t.totalAmount ?? t.amount,
             currency:    t.currency,
             gateway:     t.gateway ?? '',
-            country:     t.gatewayCountry ?? '',
+            gatewayCountry: t.gatewayCountry ?? '',
             method:      t.paymentMethod ?? '',
             status:      t.status,
             reference:   t.reference ?? '',
@@ -438,6 +457,8 @@ export default function AdminTransactions() {
             { label: 'Church',           key: 'church' },
             { label: 'Campaign',         key: 'campaign' },
             { label: 'Event',            key: 'event' },
+            { label: 'Market',           key: 'market' },
+            { label: 'Ministry Country', key: 'ministryCountry' },
             { label: 'Settlement Amount', key: 'baseAmount' },
             { label: 'Transaction Cost', key: 'transactionCost' },
             { label: 'Gateway Fee',      key: 'gatewayFee' },
@@ -446,13 +467,13 @@ export default function AdminTransactions() {
             { label: 'Total',            key: 'total' },
             { label: 'Currency',         key: 'currency' },
             { label: 'Gateway',          key: 'gateway' },
-            { label: 'Country',          key: 'country' },
+            { label: 'Gateway Country',  key: 'gatewayCountry' },
             { label: 'Method',           key: 'method' },
             { label: 'Status',           key: 'status' },
             { label: 'Reference',        key: 'reference' },
             { label: 'Date',             key: 'date' },
           ]}
-          pdfColumns={['Giver','Email','Type','Church','Campaign','Event','Settlement Amount','Transaction Cost','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Country','Method','Status','Reference','Date']}
+          pdfColumns={['Giver','Email','Type','Church','Campaign','Event','Market','Ministry Country','Settlement Amount','Transaction Cost','Gateway Fee','System Fee','Rounding','Total','Currency','Gateway','Gateway Country','Method','Status','Reference','Date']}
         />
       </div>
 
@@ -545,10 +566,21 @@ export default function AdminTransactions() {
           </SelectContent>
         </Select>
         <Select value={country} onValueChange={v => { setCountry(v === 'all' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="h-8 text-xs w-28"><SelectValue placeholder="Country" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-40"><SelectValue placeholder="Ministry country" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-xs">All countries</SelectItem>
-            {COUNTRIES.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+            <SelectItem value="all" className="text-xs">All ministry countries</SelectItem>
+            {countries.map(c => <SelectItem key={c.id} value={c.name} className="text-xs">{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={market} onValueChange={v => { setMarket(v === 'all' ? '' : v); setPage(1); }}>
+          <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Market" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All markets</SelectItem>
+            {markets.map(m => (
+              <SelectItem key={m.id} value={m.id} className="text-xs">
+                {m.name} ({m.currencyCode})
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {/* Ministry filter */}
@@ -646,6 +678,7 @@ export default function AdminTransactions() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Church</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Campaign</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Event</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Market</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Settlement</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Transaction Cost</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">↳ Gateway Fee</th>
@@ -682,6 +715,10 @@ export default function AdminTransactions() {
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell"><span className="text-xs text-muted-foreground">{t.campaignName || '—'}</span></td>
                       <td className="px-4 py-3 hidden md:table-cell"><span className="text-xs text-muted-foreground">{t.eventTitle || '—'}</span></td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <p className="text-xs text-muted-foreground">{t.pricingMarket?.name ?? '—'}</p>
+                        <p className="text-[11px] text-muted-foreground">{t.ministryCountry ?? t.gatewayCountry ?? '—'}</p>
+                      </td>
                       <td className="px-4 py-3">
                         <p className="text-xs font-medium">{t.currency} {(t.baseAmount ?? t.amount).toLocaleString()}</p>
                         {t.totalAmount && t.totalAmount !== (t.baseAmount ?? t.amount) && (
