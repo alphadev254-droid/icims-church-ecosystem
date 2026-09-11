@@ -44,6 +44,7 @@ import { Link } from 'react-router-dom';
 import { buildPublicEventUrl } from '@/lib/public-links';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
 import { decimalInputProps, digitsInputProps, sanitizeDecimalInput, sanitizeDigitsInput } from '@/lib/numeric-input';
+import { ExactDateSchedulePicker, normalizeScheduleDates, scheduleInputInTimeZone } from '@/components/scheduling/ExactDateSchedulePicker';
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -77,6 +78,8 @@ const schema = z.object({
   scopeType: z.enum(['one_church', 'selected_churches', 'all_churches']).default('one_church'),
   churchIds: z.array(z.string()).default([]),
   deliveryMode: z.enum(['now', 'scheduled']).default('now'),
+  schedulePattern: z.enum(['repeat', 'custom_dates']).default('repeat'),
+  occurrenceDates: z.array(z.string()).default([]),
   recurrenceRule: z.object({
     frequency: z.enum(['none', 'daily', 'weekly', 'monthly', 'yearly']).default('none'),
     interval: z.number().int().positive().default(1),
@@ -100,6 +103,27 @@ const schema = z.object({
   }
   if (data.scopeType === 'selected_churches' && data.churchIds.length === 0) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['churchIds'], message: 'Select at least one church' });
+  }
+  if (data.deliveryMode === 'scheduled') {
+    if (data.schedulePattern === 'custom_dates' && data.occurrenceDates.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['occurrenceDates'], message: 'Select at least one event date' });
+    }
+    const recurrence = data.recurrenceRule;
+    if (data.schedulePattern === 'repeat' && recurrence?.frequency === 'weekly' && recurrence.daysOfWeek.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['recurrenceRule', 'daysOfWeek'], message: 'Select at least one weekday' });
+    }
+    if (recurrence?.frequency === 'monthly' && !recurrence.dayOfMonth) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['recurrenceRule', 'dayOfMonth'], message: 'Choose a day of the month' });
+    }
+    if (recurrence?.frequency === 'monthly' && recurrence.dayOfMonth && recurrence.dayOfMonth > 28) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['recurrenceRule', 'dayOfMonth'], message: 'Monthly schedules must use a day from 1 to 28' });
+    }
+    if (recurrence?.frequency === 'yearly' && (!recurrence.monthOfYear || !recurrence.dayOfMonth)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['recurrenceRule', 'monthOfYear'], message: 'Choose a month and day' });
+    }
+    if (recurrence?.endsAt && recurrence.endsAt < data.date) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['recurrenceRule', 'endsAt'], message: 'Repeat end date must be on or after the event start date' });
+    }
   }
 });
 
@@ -126,6 +150,13 @@ function defaultRecurrenceRule(): NonNullable<FormValues['recurrenceRule']> {
     endsAt: null,
     count: null,
   };
+}
+
+function localDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function safeFileName(value: string) {
@@ -208,6 +239,8 @@ function EventForm({
       scopeType: 'one_church',
       churchIds: [],
       deliveryMode: 'now',
+      schedulePattern: 'repeat',
+      occurrenceDates: [],
       recurrenceRule: defaultRecurrenceRule(),
       ...defaultValues,
     },
@@ -222,6 +255,8 @@ function EventForm({
     if (defaultValues?.scopeType) setValue('scopeType', defaultValues.scopeType);
     if (defaultValues?.churchIds) setValue('churchIds', defaultValues.churchIds);
     if (defaultValues?.deliveryMode) setValue('deliveryMode', defaultValues.deliveryMode);
+    if (defaultValues?.schedulePattern) setValue('schedulePattern', defaultValues.schedulePattern);
+    if (defaultValues?.occurrenceDates) setValue('occurrenceDates', defaultValues.occurrenceDates);
     if (defaultValues?.requiresTicket !== undefined) setValue('requiresTicket', defaultValues.requiresTicket);
     if (defaultValues?.isFree !== undefined) setValue('isFree', defaultValues.isFree);
     if (defaultValues?.allowPublicTicketing !== undefined) setValue('allowPublicTicketing', defaultValues.allowPublicTicketing);
@@ -236,10 +271,16 @@ function EventForm({
   const isFree = watch('isFree');
   const imageUrl = watch('imageUrl');
   const deliveryMode = watch('deliveryMode') || 'now';
+  const schedulePattern = watch('schedulePattern') || 'repeat';
+  const occurrenceDates = watch('occurrenceDates') || [];
   const recurrenceRule = watch('recurrenceRule') ?? defaultRecurrenceRule();
   const recurrenceFrequency = recurrenceRule.frequency ?? 'none';
   const recurrenceDays = recurrenceRule.daysOfWeek ?? [];
   const recurrenceEndsAt = recurrenceRule.endsAt ?? '';
+  const eventStartDate = watch('date') || '';
+  const eventEndDate = watch('endDate') || '';
+  const todayInput = localDateInputValue();
+  const earliestScheduledDate = eventStartDate && eventStartDate > todayInput ? eventStartDate : todayInput;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -286,7 +327,10 @@ function EventForm({
     }
     onSubmit({
       ...values,
-      recurrenceRule: values.deliveryMode === 'scheduled'
+      occurrenceDates: values.deliveryMode === 'scheduled' && values.schedulePattern === 'custom_dates'
+        ? normalizeScheduleDates(values.occurrenceDates)
+        : [],
+      recurrenceRule: values.deliveryMode === 'scheduled' && values.schedulePattern === 'repeat'
         ? { ...defaultRecurrenceRule(), ...values.recurrenceRule }
         : null,
     });
@@ -385,15 +429,30 @@ function EventForm({
       </div>
 
       {/* Dates */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label className="text-xs sm:text-sm">Start Date</Label>
-          <Input type="date" {...register('date')} className="h-8 text-xs sm:h-10 sm:text-sm" />
+          <Input
+            type="date"
+            min={deliveryMode === 'scheduled' ? todayInput : undefined}
+            {...register('date', {
+              onChange: event => {
+                const nextStart = event.target.value;
+                if (eventEndDate && eventEndDate < nextStart) {
+                  setValue('endDate', nextStart, { shouldDirty: true, shouldValidate: true });
+                }
+                if (recurrenceEndsAt && recurrenceEndsAt < nextStart) {
+                  setValue('recurrenceRule', { ...recurrenceRule, endsAt: nextStart, count: null }, { shouldDirty: true });
+                }
+              },
+            })}
+            className="h-8 text-xs sm:h-10 sm:text-sm"
+          />
           {errors.date && <p className="text-xs text-destructive mt-1">{errors.date.message}</p>}
         </div>
         <div>
           <Label className="text-xs sm:text-sm">End Date</Label>
-          <Input type="date" {...register('endDate')} className="h-8 text-xs sm:h-10 sm:text-sm" />
+          <Input type="date" min={eventStartDate || undefined} {...register('endDate')} className="h-8 text-xs sm:h-10 sm:text-sm" />
           {errors.endDate && <p className="text-xs text-destructive mt-1">{errors.endDate.message}</p>}
         </div>
       </div>
@@ -415,7 +474,15 @@ function EventForm({
         </p>
         <Select value={deliveryMode} onValueChange={value => {
           setValue('deliveryMode', value as FormValues['deliveryMode'], { shouldDirty: true, shouldValidate: true });
-          if (value !== 'scheduled') setValue('recurrenceRule', defaultRecurrenceRule(), { shouldDirty: true });
+          if (value !== 'scheduled') {
+            setValue('recurrenceRule', defaultRecurrenceRule(), { shouldDirty: true });
+            setValue('occurrenceDates', [], { shouldDirty: true });
+          } else if (!eventStartDate || eventStartDate < todayInput) {
+            setValue('date', todayInput, { shouldDirty: true, shouldValidate: true });
+            if (!eventEndDate || eventEndDate < todayInput) {
+              setValue('endDate', todayInput, { shouldDirty: true, shouldValidate: true });
+            }
+          }
         }}>
           <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -434,12 +501,58 @@ function EventForm({
       {deliveryMode === 'scheduled' && (
       <div className="space-y-3 rounded-md border border-border p-3">
         <div>
-          <Label className="text-xs sm:text-sm">Schedule</Label>
-          <p className="text-xs text-muted-foreground">
-            Use None for a normal one-time event, or repeat the event on a regular pattern.
-          </p>
+          <Label className="text-xs sm:text-sm">Schedule Type</Label>
+          <p className="mb-2 text-xs text-muted-foreground">Use a repeat rule, or pick the exact dates this event should happen.</p>
+          <div className="grid grid-cols-2 overflow-hidden rounded-md border border-border">
+            <Button
+              type="button"
+              variant={schedulePattern === 'repeat' ? 'secondary' : 'ghost'}
+              className="h-9 rounded-none"
+              onClick={() => {
+                setValue('schedulePattern', 'repeat', { shouldDirty: true, shouldValidate: true });
+                setValue('occurrenceDates', [], { shouldDirty: true });
+              }}
+            >
+              Repeat pattern
+            </Button>
+            <Button
+              type="button"
+              variant={schedulePattern === 'custom_dates' ? 'secondary' : 'ghost'}
+              className="h-9 rounded-none border-l border-border"
+              onClick={() => {
+                setValue('schedulePattern', 'custom_dates', { shouldDirty: true, shouldValidate: true });
+                setValue('recurrenceRule', defaultRecurrenceRule(), { shouldDirty: true });
+                if (occurrenceDates.length === 0 && eventStartDate) {
+                  setValue('occurrenceDates', [eventStartDate], { shouldDirty: true, shouldValidate: true });
+                }
+              }}
+            >
+              Choose dates
+            </Button>
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+
+        {schedulePattern === 'custom_dates' && (
+          <ExactDateSchedulePicker
+            value={occurrenceDates}
+            onChange={dates => {
+              setValue('occurrenceDates', dates, { shouldDirty: true, shouldValidate: true });
+              if (dates[0]) {
+                setValue('date', dates[0], { shouldDirty: true, shouldValidate: true });
+                if (!eventEndDate || eventEndDate < dates[0]) setValue('endDate', dates[0], { shouldDirty: true, shouldValidate: true });
+              }
+            }}
+            minimumDate={todayInput}
+            defaultDate={eventStartDate}
+            label="Event Dates"
+            description="Select every calendar date when this event should occur."
+          />
+        )}
+        {errors.occurrenceDates && <p className="text-xs text-destructive">{errors.occurrenceDates.message}</p>}
+
+        {schedulePattern === 'repeat' && (
+        <>
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label className="text-xs sm:text-sm">Repeat</Label>
             <p className="mb-1 text-xs text-muted-foreground">Choose how this event repeats.</p>
@@ -463,6 +576,9 @@ function EventForm({
             </Select>
             {!canUseRecurringSchedules && (
               <p className="mt-1 text-xs text-muted-foreground">Recurring schedules are not enabled for your package.</p>
+            )}
+            {errors.recurrenceRule?.daysOfWeek && (
+              <p className="mt-1 text-xs text-destructive">{errors.recurrenceRule.daysOfWeek.message}</p>
             )}
           </div>
           <div>
@@ -495,7 +611,7 @@ function EventForm({
                     className="h-8 w-9 p-0 text-xs"
                     onClick={() => {
                       const nextDays = checked ? recurrenceDays.filter(value => value !== day.value) : [...recurrenceDays, day.value];
-                      setValue('recurrenceRule', { ...recurrenceRule, daysOfWeek: nextDays }, { shouldDirty: true });
+                      setValue('recurrenceRule', { ...recurrenceRule, daysOfWeek: nextDays }, { shouldDirty: true, shouldValidate: true });
                     }}
                   >
                     {day.label}
@@ -514,14 +630,18 @@ function EventForm({
               {...digitsInputProps}
               value={recurrenceRule.dayOfMonth ?? ''}
               onInput={e => sanitizeDigitsInput(e, 2)}
-              onChange={e => setValue('recurrenceRule', { ...recurrenceRule, dayOfMonth: e.target.value ? Number(e.target.value) : null }, { shouldDirty: true })}
+              min={1}
+              max={28}
+              onChange={e => setValue('recurrenceRule', { ...recurrenceRule, dayOfMonth: e.target.value ? Math.min(28, Math.max(1, Number(e.target.value))) : null }, { shouldDirty: true, shouldValidate: true })}
               className="h-8 text-xs sm:h-10 sm:text-sm"
             />
+            <p className="mt-1 text-xs text-muted-foreground">Limited to 1–28 so the event remains valid in every month.</p>
+            {errors.recurrenceRule?.dayOfMonth && <p className="mt-1 text-xs text-destructive">{errors.recurrenceRule.dayOfMonth.message}</p>}
           </div>
         )}
 
         {recurrenceFrequency === 'yearly' && canUseRecurringSchedules && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="text-xs sm:text-sm">Month</Label>
               <p className="mb-1 text-xs text-muted-foreground">Month number, 1 to 12.</p>
@@ -529,9 +649,12 @@ function EventForm({
                 {...digitsInputProps}
                 value={recurrenceRule.monthOfYear ?? ''}
                 onInput={e => sanitizeDigitsInput(e, 2)}
-                onChange={e => setValue('recurrenceRule', { ...recurrenceRule, monthOfYear: e.target.value ? Number(e.target.value) : null }, { shouldDirty: true })}
+                min={1}
+                max={12}
+                onChange={e => setValue('recurrenceRule', { ...recurrenceRule, monthOfYear: e.target.value ? Math.min(12, Math.max(1, Number(e.target.value))) : null }, { shouldDirty: true, shouldValidate: true })}
                 className="h-8 text-xs sm:h-10 sm:text-sm"
               />
+              {errors.recurrenceRule?.monthOfYear && <p className="mt-1 text-xs text-destructive">{errors.recurrenceRule.monthOfYear.message}</p>}
             </div>
             <div>
               <Label className="text-xs sm:text-sm">Day</Label>
@@ -540,7 +663,9 @@ function EventForm({
                 {...digitsInputProps}
                 value={recurrenceRule.dayOfMonth ?? ''}
                 onInput={e => sanitizeDigitsInput(e, 2)}
-                onChange={e => setValue('recurrenceRule', { ...recurrenceRule, dayOfMonth: e.target.value ? Number(e.target.value) : null }, { shouldDirty: true })}
+                min={1}
+                max={31}
+                onChange={e => setValue('recurrenceRule', { ...recurrenceRule, dayOfMonth: e.target.value ? Math.min(31, Math.max(1, Number(e.target.value))) : null }, { shouldDirty: true, shouldValidate: true })}
                 className="h-8 text-xs sm:h-10 sm:text-sm"
               />
             </div>
@@ -548,16 +673,18 @@ function EventForm({
         )}
 
         {recurrenceFrequency !== 'none' && canUseRecurringSchedules && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="text-xs sm:text-sm">End date</Label>
               <p className="mb-1 text-xs text-muted-foreground">Stop repeating after this date.</p>
               <Input
                 type="date"
+                min={earliestScheduledDate}
                 value={recurrenceEndsAt ? String(recurrenceEndsAt).slice(0, 10) : ''}
-                onChange={e => setValue('recurrenceRule', { ...recurrenceRule, endsAt: e.target.value || null, count: null }, { shouldDirty: true })}
+                onChange={e => setValue('recurrenceRule', { ...recurrenceRule, endsAt: e.target.value || null, count: null }, { shouldDirty: true, shouldValidate: true })}
                 className="h-8 text-xs sm:h-10 sm:text-sm"
               />
+              {errors.recurrenceRule?.endsAt && <p className="mt-1 text-xs text-destructive">{errors.recurrenceRule.endsAt.message}</p>}
             </div>
             <div>
               <Label className="text-xs sm:text-sm">Or after</Label>
@@ -573,6 +700,8 @@ function EventForm({
             </div>
           </div>
         )}
+        </>
+        )}
       </div>
       )}
 
@@ -584,7 +713,7 @@ function EventForm({
       </div>
 
       {/* Contact Information */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label className="text-xs sm:text-sm">Enquiries Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
           <Input type="email" {...register('contactEmail')} placeholder="info@church.com" className="h-8 text-xs sm:h-10 sm:text-sm" />
@@ -597,7 +726,7 @@ function EventForm({
       </div>
 
       {/* Type / Status */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label className="text-xs sm:text-sm">Type</Label>
           <Select
@@ -690,7 +819,7 @@ function EventForm({
           </div>
 
           {!isFree && canUseOnlinePayments && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label className="text-xs sm:text-sm">Ticket Price</Label>
                 <Input
@@ -1082,7 +1211,14 @@ export default function EventsPage() {
     imageUrl: e.imageUrl ?? undefined,
     scopeType: e.scopeType || 'one_church',
     churchIds: e.availableChurchIds || e.linkedChurches?.map(link => link.churchId) || [],
-    deliveryMode: e.recurrenceRule ? 'scheduled' : 'now',
+    deliveryMode: e.scheduledEvent ? 'scheduled' : 'now',
+    schedulePattern: e.scheduledEvent && !e.scheduledEvent.recurrenceRuleId && (e.scheduledEvent.occurrences?.length ?? 0) > 0
+      ? 'custom_dates'
+      : 'repeat',
+    occurrenceDates: normalizeScheduleDates(e.scheduledEvent?.occurrences?.map(occurrence => scheduleInputInTimeZone(
+      occurrence.occurrenceStartAt,
+      e.scheduledEvent?.timezone || 'UTC',
+    )) ?? []),
     recurrenceRule: e.recurrenceRule ? { ...defaultRecurrenceRule(), ...e.recurrenceRule } : defaultRecurrenceRule(),
   });
 
@@ -1195,7 +1331,7 @@ export default function EventsPage() {
                   <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Create Event
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-sm sm:max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogContent className="w-[calc(100vw-1.5rem)] max-w-none sm:max-w-3xl lg:max-w-5xl max-h-[92vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle className="font-heading text-sm sm:text-base">Create Event</DialogTitle>
                 </DialogHeader>
@@ -1487,7 +1623,7 @@ export default function EventsPage() {
       </Dialog>
 
       <Dialog open={!!editEvent} onOpenChange={(open) => { if (!open) setEditEvent(null); }}>
-        <DialogContent className="max-w-sm sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-none sm:max-w-3xl lg:max-w-5xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading text-sm sm:text-base">Edit Event</DialogTitle>
           </DialogHeader>

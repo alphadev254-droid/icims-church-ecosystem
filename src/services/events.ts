@@ -42,6 +42,13 @@ export interface ChurchEvent {
   availableChurches?: Array<{ id: string; name: string }>;
   recurrenceRuleId?: string | null;
   recurrenceRule?: RecurrenceRulePayload | null;
+  scheduledEvent?: {
+    id: string;
+    status: string;
+    timezone: string;
+    recurrenceRuleId?: string | null;
+    occurrences?: Array<{ id: string; occurrenceStartAt: string; occurrenceEndAt: string; status: string }>;
+  } | null;
   maxAttendees?: number;
   createdById: string;
   createdAt: string;
@@ -71,6 +78,8 @@ export interface CreateEventDto {
   scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
   churchIds?: string[];
   deliveryMode?: 'now' | 'scheduled';
+  schedulePattern?: 'repeat' | 'custom_dates';
+  occurrenceDates?: string[];
   recurrenceRule?: RecurrenceRulePayload | null;
 }
 

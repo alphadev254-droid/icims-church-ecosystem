@@ -68,6 +68,9 @@ export interface CellMeeting {
   topic?: string | null;
   notes?: string | null;
   recurrenceRuleId?: string | null;
+  recordType?: 'direct' | 'scheduled_source' | 'scheduled_occurrence';
+  sourceMeetingId?: string | null;
+  scheduledOccurrenceId?: string | null;
   recurrenceRule?: CellMeetingRecurrenceRule | null;
   scheduledEvent?: {
     id: string;

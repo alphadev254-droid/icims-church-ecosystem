@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { ExactDateSchedulePicker, normalizeScheduleDates, scheduleInputFromDate } from '@/components/scheduling/ExactDateSchedulePicker';
 import { ArrowLeft, Users, Calendar as CalendarIcon, MapPin, UserPlus, Plus, Trash2, ClipboardList, ChevronLeft, ChevronRight, Search, AlertTriangle, TrendingUp, TrendingDown, Minus, Pencil, Eye, MoreHorizontal } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -60,7 +60,7 @@ function emptyMeetingForm(time = ''): MeetingFormState {
   return {
     deliveryMode: 'now',
     schedulePattern: 'repeat',
-    date: inputValueFromDate(new Date()),
+    date: scheduleInputFromDate(new Date()),
     time,
     topic: '',
     notes: '',
@@ -79,35 +79,6 @@ function emptyMeetingForm(time = ''): MeetingFormState {
 
 function dateInputValue(value?: string | null): string {
   return value ? new Date(value).toISOString().slice(0, 10) : '';
-}
-
-function dateFromInputValue(value?: string | null) {
-  if (!value) return undefined;
-  const [year, month, day] = value.split('-').map(Number);
-  if (!year || !month || !day) return undefined;
-  return new Date(year, month - 1, day);
-}
-
-function inputValueFromDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function selectedDatesFromInputValues(values: string[]): Date[] {
-  return values
-    .map(value => dateFromInputValue(value))
-    .filter((date): date is Date => Boolean(date));
-}
-
-function sortedUniqueDateValues(values: string[]): string[] {
-  return [...new Set(values)].sort();
-}
-
-function formatSelectedScheduleDate(value: string) {
-  const date = dateFromInputValue(value);
-  return date ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : value;
 }
 
 export default function CellDetailPage() {
@@ -393,7 +364,7 @@ export default function CellDetailPage() {
   };
 
   const openEditMeetingDialog = (meeting: CellMeeting) => {
-    const savedOccurrenceDates = sortedUniqueDateValues(
+    const savedOccurrenceDates = normalizeScheduleDates(
       (meeting.scheduledEvent?.occurrences ?? []).map(occurrence => dateInputValue(occurrence.occurrenceStartAt)),
     );
     const hasExactDateSchedule = meeting.scheduledEvent && !meeting.scheduledEvent.recurrenceRuleId && savedOccurrenceDates.length > 0;
@@ -427,8 +398,7 @@ export default function CellDetailPage() {
     const recurrence = form.recurrenceRule;
     const isScheduledMode = form.deliveryMode === 'scheduled';
     const isExactDateSchedule = isScheduledMode && form.schedulePattern === 'custom_dates';
-    const selectedExactDates = selectedDatesFromInputValues(form.occurrenceDates);
-    const todayInput = inputValueFromDate(new Date());
+    const todayInput = scheduleInputFromDate(new Date());
     const earliestScheduleInput = form.date && form.date > todayInput ? form.date : todayInput;
     const hasRequiredScheduleDate = isExactDateSchedule ? form.occurrenceDates.length > 0 : Boolean(form.date);
     const setRecurrence = (next: Partial<MeetingFormState['recurrenceRule']>) => {
@@ -440,29 +410,17 @@ export default function CellDetailPage() {
         schedulePattern,
         recurrenceRule: schedulePattern === 'repeat' ? current.recurrenceRule : emptyMeetingForm().recurrenceRule,
         occurrenceDates: schedulePattern === 'custom_dates'
-          ? sortedUniqueDateValues(current.occurrenceDates.length > 0 ? current.occurrenceDates : current.date ? [current.date] : [])
+          ? normalizeScheduleDates(current.occurrenceDates.length > 0 ? current.occurrenceDates : current.date ? [current.date] : [])
           : [],
       }));
     };
-    const setExactDates = (dates: Date[] | undefined) => {
-      const occurrenceDates = sortedUniqueDateValues((dates ?? []).map(inputValueFromDate));
+    const setExactDates = (occurrenceDates: string[]) => {
       setForm(current => ({
         ...current,
         occurrenceDates,
         date: occurrenceDates[0] ?? current.date,
       }));
     };
-    const removeExactDate = (value: string) => {
-      setForm(current => {
-        const occurrenceDates = current.occurrenceDates.filter(date => date !== value);
-        return {
-          ...current,
-          occurrenceDates,
-          date: current.date === value ? occurrenceDates[0] ?? '' : current.date,
-        };
-      });
-    };
-
     return (
       <div className="space-y-3">
         <div>
@@ -531,33 +489,14 @@ export default function CellDetailPage() {
 
             {form.schedulePattern === 'custom_dates' && (
               <div>
-                <Label>Meeting Dates</Label>
-                <p className="mb-2 text-xs text-muted-foreground">Select every calendar date when this meeting should be created.</p>
-                <div className="rounded-md border border-border bg-background/40">
-                  <CalendarPicker
-                    mode="multiple"
-                    selected={selectedExactDates}
-                    defaultMonth={selectedExactDates[0] ?? dateFromInputValue(form.date)}
-                    onSelect={setExactDates}
-                    disabled={{ before: dateFromInputValue(earliestScheduleInput)! }}
-                    className="mx-auto w-fit"
-                  />
-                  <div className="space-y-2 border-t px-3 py-2">
-                    <p className="text-xs text-muted-foreground">{form.occurrenceDates.length} date{form.occurrenceDates.length === 1 ? '' : 's'} selected</p>
-                    {form.occurrenceDates.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {form.occurrenceDates.map(date => (
-                          <Badge key={date} variant="secondary" className="gap-1">
-                            {formatSelectedScheduleDate(date)}
-                            <button type="button" className="ml-1 text-muted-foreground hover:text-foreground" onClick={() => removeExactDate(date)}>
-                              x
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ExactDateSchedulePicker
+                  value={form.occurrenceDates}
+                  onChange={setExactDates}
+                  minimumDate={earliestScheduleInput}
+                  defaultDate={form.date}
+                  label="Meeting Dates"
+                  description="Select every calendar date when this meeting should be created."
+                />
               </div>
             )}
 
@@ -1780,6 +1719,9 @@ export default function CellDetailPage() {
                 <div><p className="text-xs text-muted-foreground">Church</p><p className="font-medium">{cell.church?.name || '—'}</p></div>
                 <div><p className="text-xs text-muted-foreground">Meeting date</p><p className="font-medium">{new Date(viewMeeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
                 <div><p className="text-xs text-muted-foreground">Time</p><p className="font-medium">{viewMeeting.time || cell.meetingTime || '—'}</p></div>
+                <div><p className="text-xs text-muted-foreground">Record type</p><p className="font-medium capitalize">{(viewMeeting.recordType || 'direct').replace(/_/g, ' ')}</p></div>
+                {viewMeeting.sourceMeetingId && <div><p className="text-xs text-muted-foreground">Source meeting</p><p className="break-all font-mono text-xs">{viewMeeting.sourceMeetingId}</p></div>}
+                {viewMeeting.scheduledOccurrenceId && <div><p className="text-xs text-muted-foreground">Scheduler occurrence</p><p className="break-all font-mono text-xs">{viewMeeting.scheduledOccurrenceId}</p></div>}
                 <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Topic</p><p className="font-medium">{viewMeeting.topic || 'No topic recorded'}</p></div>
                 <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Notes</p><p className="whitespace-pre-wrap">{viewMeeting.notes || 'No notes recorded'}</p></div>
               </div>

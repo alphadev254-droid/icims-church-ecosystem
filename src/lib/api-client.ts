@@ -6,6 +6,14 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Send the browser's IANA timezone on every request. The backend validates it
+// and persists it only for records whose meaning depends on local clock time.
+apiClient.interceptors.request.use(config => {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (timezone) config.headers.set('X-Timezone', timezone);
+  return config;
+});
+
 // Response interceptor — if 401, clear local auth state (handled by store)
 apiClient.interceptors.response.use(
   res => res,
