@@ -127,6 +127,9 @@ export function OccurrenceRangePicker({ value, onChange, minimumDate, defaultSta
             defaultMonth={dates?.from ?? dateFromScheduleInput(minimumDate)}
             numberOfMonths={1}
             className="mx-auto w-fit max-w-full"
+            classNames={{
+              day_today: 'bg-transparent text-foreground ring-2 ring-inset ring-primary/70 hover:bg-accent/40 aria-selected:bg-primary aria-selected:text-primary-foreground',
+            }}
           />
           <div className="space-y-2 border-t px-3 py-2">
             <p className="text-xs text-muted-foreground">Selected range</p>
