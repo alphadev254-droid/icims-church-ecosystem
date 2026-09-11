@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, ArrowLeft, Crown, Users, ChevronLeft, ChevronRight, ShieldAlert } from 'lucide-react';
 import { AgeRangeFilter } from '@/components/AgeRangeFilter';
 import { toast } from 'sonner';
+import { useDebounce } from '@/hooks/use-debounce';
 
 const formatRoleLabel = (member: { roleDisplayName?: string | null; roleName?: string | null }) =>
   member.roleDisplayName || member.roleName?.replace(/_/g, ' ') || 'Member';
@@ -26,6 +27,7 @@ export default function TeamMembersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search.trim(), 350);
   const [limit, setLimit] = useState(100);
   const [offset, setOffset] = useState(0);
   const [minAge, setMinAge] = useState<number | undefined>();
@@ -42,8 +44,8 @@ export default function TeamMembersPage() {
   const team = teams.find(t => t.id === id);
 
   const { data: membersData, isLoading } = useQuery({
-    queryKey: ['team-members', id, search, limit, offset, minAge, maxAge],
-    queryFn: () => teamsService.getMembers(id!, search, limit, offset, minAge, maxAge),
+    queryKey: ['team-members', id, debouncedSearch, limit, offset, minAge, maxAge],
+    queryFn: () => teamsService.getMembers(id!, debouncedSearch, limit, offset, minAge, maxAge),
     enabled: !!id && !isMember,
   });
 

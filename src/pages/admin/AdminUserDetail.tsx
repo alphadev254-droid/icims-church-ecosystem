@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
+import { useDebounce } from '@/hooks/use-debounce';
 
 function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -224,6 +225,7 @@ export default function AdminUserDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState<EditUserData>(emptyEditData);
   const [churchSearch, setChurchSearch] = useState('');
+  const debouncedChurchSearch = useDebounce(churchSearch.trim(), 300);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailForm, setEmailForm] = useState({ subject: '', message: '' });
 
@@ -286,8 +288,8 @@ export default function AdminUserDetail() {
   }, [invoiceOpen, invoiceForm.packageId, invoiceForm.billingCycle, invoiceForm.months, invoiceForm.amount, invoiceForm.servicePeriodStart, invoiceForm.servicePeriodEnd, selectedInvoicePackage, invoiceCountry]);
 
   const { data: churchesData } = useQuery({
-    queryKey: ['admin-all-churches', churchSearch],
-    queryFn: () => adminApi.getAllChurches({ q: churchSearch || undefined, limit: 30 }).then(r => r.data),
+    queryKey: ['admin-all-churches', debouncedChurchSearch],
+    queryFn: () => adminApi.getAllChurches({ q: debouncedChurchSearch || undefined, limit: 30 }).then(r => r.data),
     enabled: editOpen && !!data && ((data.roleName ?? data.role?.name) === 'member' || !!data.church),
   });
   const churches = churchesData?.data ?? [];

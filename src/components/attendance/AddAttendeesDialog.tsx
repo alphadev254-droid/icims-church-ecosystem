@@ -187,9 +187,16 @@ export function AddAttendeesDialog({
               <div className="max-h-[420px] overflow-y-auto">
                 {!hasSearch ? (
                   <div className="px-4 py-10 text-center text-sm text-muted-foreground">Start typing to search members.</div>
-                ) : membersQuery.isLoading ? (
+                ) : membersQuery.isFetching ? (
                   <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> Searching...
+                  </div>
+                ) : membersQuery.isError ? (
+                  <div className="space-y-3 px-4 py-10 text-center text-sm text-muted-foreground">
+                    <p>Member search failed. Please try again.</p>
+                    <Button type="button" variant="outline" size="sm" onClick={() => membersQuery.refetch()}>
+                      Retry search
+                    </Button>
                   </div>
                 ) : members.length ? (
                   members.map(member => {
@@ -226,10 +233,10 @@ export function AddAttendeesDialog({
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled={page <= 1 || membersQuery.isLoading} onClick={() => setPage(value => Math.max(1, value - 1))}>
+                <Button variant="outline" size="sm" disabled={page <= 1 || membersQuery.isFetching} onClick={() => setPage(value => Math.max(1, value - 1))}>
                   <ChevronLeft className="mr-1 h-4 w-4" /> Previous
                 </Button>
-                <Button variant="outline" size="sm" disabled={!canGoNext || membersQuery.isLoading} onClick={() => setPage(value => value + 1)}>
+                <Button variant="outline" size="sm" disabled={!canGoNext || membersQuery.isFetching} onClick={() => setPage(value => value + 1)}>
                   Next <ChevronRight className="ml-1 h-4 w-4" />
                 </Button>
                 {pagination && <span className="text-xs text-muted-foreground">Page {pagination.page} of {Math.max(pagination.totalPages, 1)}</span>}
@@ -369,8 +376,17 @@ export function AddAttendeesDialog({
                     )}
                     {inviterOpen && debouncedInviterQuery.length >= 3 && (
                       <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-md max-h-48 overflow-y-auto">
-                        {inviterSearchQuery.isLoading ? (
+                        {inviterSearchQuery.isFetching ? (
                           <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
+                        ) : inviterSearchQuery.isError ? (
+                          <button
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-xs text-destructive hover:bg-muted/60"
+                            onMouseDown={event => event.preventDefault()}
+                            onClick={() => inviterSearchQuery.refetch()}
+                          >
+                            Search failed. Click to retry.
+                          </button>
                         ) : (inviterSearchQuery.data?.data ?? []).length === 0 ? (
                           <div className="px-3 py-2 text-xs text-muted-foreground">No members found</div>
                         ) : (

@@ -311,8 +311,17 @@ export function VisitorsManageDialog({ record, canUpdate, onClose, token }: Prop
               )}
               {inviterOpen && debouncedInviterQuery.length >= 3 && (
                 <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-md max-h-40 overflow-y-auto">
-                  {inviterSearchQuery.isLoading ? (
+                  {inviterSearchQuery.isFetching ? (
                     <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
+                  ) : inviterSearchQuery.isError ? (
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-xs text-destructive hover:bg-muted/60"
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={() => inviterSearchQuery.refetch()}
+                    >
+                      Search failed. Click to retry.
+                    </button>
                   ) : (inviterSearchQuery.data?.data ?? []).length === 0 ? (
                     <div className="px-3 py-2 text-xs text-muted-foreground">No members found</div>
                   ) : (

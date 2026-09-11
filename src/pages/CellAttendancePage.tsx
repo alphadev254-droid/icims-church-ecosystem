@@ -113,7 +113,7 @@ function OfferingMemberPicker({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ['offering-member-search', cellId, debounced],
     queryFn: () => cellsService.getMembers(cellId, { search: debounced || undefined, limit: 30 }),
     enabled: open,
@@ -150,6 +150,10 @@ function OfferingMemberPicker({
           <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
             {isFetching ? (
               <div className="px-3 py-4 text-xs text-center text-muted-foreground">Searching...</div>
+            ) : isError ? (
+              <button type="button" className="w-full px-3 py-4 text-center text-xs text-destructive hover:bg-muted" onClick={() => refetch()}>
+                Search failed. Click to retry.
+              </button>
             ) : results.length === 0 ? (
               <div className="px-3 py-4 text-xs text-center text-muted-foreground">No members found</div>
             ) : (

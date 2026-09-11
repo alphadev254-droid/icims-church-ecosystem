@@ -322,8 +322,12 @@ export default function AttendanceScanner() {
             <div className="max-h-72 overflow-y-auto">
               {debouncedSearch.length < 3 ? (
                 <div className="px-3 py-6 text-center text-sm text-muted-foreground">Type 3 letters to search.</div>
-              ) : memberSearch.isLoading ? (
+              ) : memberSearch.isFetching ? (
                 <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Searching...</div>
+              ) : memberSearch.isError ? (
+                <button type="button" className="w-full px-3 py-6 text-center text-sm text-destructive hover:bg-muted/40" onClick={() => memberSearch.refetch()}>
+                  Search failed. Click to retry.
+                </button>
               ) : (memberSearch.data?.data ?? []).length ? (
                 (memberSearch.data?.data ?? []).map(member => {
                   const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Unnamed member';

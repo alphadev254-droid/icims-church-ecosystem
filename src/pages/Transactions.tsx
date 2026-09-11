@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 import { Link } from 'react-router-dom';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
+import { useDebounce } from '@/hooks/use-debounce';
 
 const getErrorMessage = (err: unknown, fallback: string) => {
   if (typeof err === 'object' && err !== null && 'response' in err) {
@@ -41,6 +42,7 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(100);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search.trim(), 350);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
@@ -61,11 +63,11 @@ export default function TransactionsPage() {
   });
 
   const { data, isLoading } = useQuery({ 
-    queryKey: ['transactions', page, limit, search, typeFilter, statusFilter, paymentFilter, churchFilter, campaignFilter, startDate, endDate], 
-    queryFn: () => transactionsService.getAll({ 
-      page, 
-      limit, 
-      search: search || undefined, 
+    queryKey: ['transactions', page, limit, debouncedSearch, typeFilter, statusFilter, paymentFilter, churchFilter, campaignFilter, startDate, endDate],
+    queryFn: () => transactionsService.getAll({
+      page,
+      limit,
+      search: debouncedSearch || undefined,
       type: typeFilter !== 'all' ? typeFilter : undefined,
       status: statusFilter !== 'all' ? statusFilter : undefined,
       paymentMethod: paymentFilter !== 'all' ? paymentFilter : undefined,

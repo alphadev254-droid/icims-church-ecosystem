@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { downloadPackageInvoicePdf } from '@/lib/invoice-pdf';
 import { toast } from 'sonner';
 import { decimalInputProps, decimalInputValue, sanitizeDecimalInput } from '@/lib/numeric-input';
+import { useDebounce } from '@/hooks/use-debounce';
 
 type Ministry = { id: string; label: string; country: string | null };
 
@@ -115,6 +116,7 @@ export default function AdminInvoices() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search.trim(), 400);
   const [status, setStatus] = useState('all');
   const [pkg, setPkg] = useState('all');
   const [ministry, setMinistry] = useState('all');
@@ -129,7 +131,7 @@ export default function AdminInvoices() {
   const params = useMemo(() => ({
     page,
     limit: 50,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     status,
     package: pkg,
     ministry,
@@ -137,7 +139,7 @@ export default function AdminInvoices() {
     market,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
-  }), [page, search, status, pkg, ministry, country, market, dateFrom, dateTo]);
+  }), [page, debouncedSearch, status, pkg, ministry, country, market, dateFrom, dateTo]);
   const { data, isLoading } = useQuery({
     queryKey: ['admin-invoices', params],
     queryFn: () => adminApi.getInvoices(params).then(r => r.data),

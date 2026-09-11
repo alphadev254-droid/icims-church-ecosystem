@@ -48,7 +48,7 @@ function MemberSearchDropdown({
   // If cellMembers provided, filter them locally; otherwise search API
   const useCellFilter = !!cellMembers && cellMembers.length >= 0;
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ['member-search', debouncedQuery],
     queryFn: () => usersService.getAll({ search: debouncedQuery || undefined, role: 'member', limit: 20 }),
     enabled: open && !useCellFilter,
@@ -105,6 +105,10 @@ function MemberSearchDropdown({
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-52 overflow-y-auto">
           {isFetching && !useCellFilter ? (
             <div className="px-3 py-4 text-xs text-center text-muted-foreground">Searching...</div>
+          ) : isError && !useCellFilter ? (
+            <button type="button" className="w-full px-3 py-4 text-center text-xs text-destructive hover:bg-muted" onClick={() => refetch()}>
+              Search failed. Click to retry.
+            </button>
           ) : members.length === 0 ? (
             <div className="px-3 py-4 text-xs text-center text-muted-foreground">
               {useCellFilter && !cellMembers?.length ? 'No members in this cell' : 'No members found'}

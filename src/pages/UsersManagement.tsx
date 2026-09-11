@@ -12,6 +12,7 @@ import { cellsService } from '@/services/cells';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useAuthStore } from '@/stores/authStore';
+import { useDebounce } from '@/hooks/use-debounce';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -867,6 +868,7 @@ function ChildUserEditForm({ child, onSubmit, isPending }: {
 
 export default function UsersManagement() {
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search.trim(), 350);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(100);
   const [churchFilter, setChurchFilter] = useState<string>('all');
@@ -890,11 +892,11 @@ export default function UsersManagement() {
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', page, limit, search, churchFilter, roleFilter, cellFilter, statusFilter, minAge, maxAge],
+    queryKey: ['users', page, limit, debouncedSearch, churchFilter, roleFilter, cellFilter, statusFilter, minAge, maxAge],
     queryFn: () => usersService.getAll({ 
       page, 
       limit, 
-      search: search || undefined,
+      search: debouncedSearch || undefined,
       churchId: churchFilter !== 'all' ? churchFilter : undefined,
       roleId: roleFilter !== 'all' ? roleFilter : undefined,
       cellId: cellFilter !== 'all' ? cellFilter : undefined,

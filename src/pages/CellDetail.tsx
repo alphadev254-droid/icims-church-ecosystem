@@ -228,7 +228,7 @@ export default function CellDetailPage() {
     staleTime: STALE_TIME.DEFAULT,
   });
 
-  const { data: churchMembersResponse, isFetching: churchMembersFetching } = useQuery({
+  const { data: churchMembersResponse, isFetching: churchMembersFetching, isError: churchMembersError, refetch: retryChurchMembers } = useQuery({
     queryKey: ['cell-church-members', id, debouncedAddMemberQuery, addMemberPage],
     queryFn: () => cellsService.getChurchMembers(id!, {
       search: debouncedAddMemberQuery || undefined,
@@ -1681,6 +1681,10 @@ export default function CellDetailPage() {
                 <div className="flex items-center justify-center py-8">
                   <div className="h-5 w-5 animate-spin rounded-full border-4 border-accent border-t-transparent" />
                 </div>
+              ) : churchMembersError ? (
+                <button type="button" className="w-full py-8 text-center text-sm text-destructive hover:bg-muted/50" onClick={() => retryChurchMembers()}>
+                  Member search failed. Click to retry.
+                </button>
               ) : churchMembersList.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   {debouncedAddMemberQuery.trim().length > 0 && debouncedAddMemberQuery.trim().length < 3 ? 'Type at least 3 characters to search by name, email, or phone.' : 'No members match your search.'}
