@@ -27,8 +27,28 @@ function sortRanges(ranges: ScheduleOccurrenceRange[]) {
     `${left.startDate}T${left.startTime}`.localeCompare(`${right.startDate}T${right.startTime}`));
 }
 
+function sameDay(left?: Date, right?: Date) {
+  return Boolean(left && right
+    && left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate());
+}
+
+function initialSelection(minimumDate: string, startTime: string): DateRange | undefined {
+  const minimum = dateFromScheduleInput(minimumDate);
+  if (!minimum) return undefined;
+
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const proposedStart = new Date(minimum);
+  proposedStart.setHours(hours || 0, minutes || 0, 0, 0);
+  const selected = proposedStart.getTime() > Date.now()
+    ? minimum
+    : new Date(minimum.getFullYear(), minimum.getMonth(), minimum.getDate() + 1);
+  return { from: selected, to: selected };
+}
+
 export function OccurrenceRangePicker({ value, onChange, minimumDate, defaultStartTime = '09:00', defaultEndTime = '10:00' }: Props) {
-  const [dates, setDates] = useState<DateRange | undefined>();
+  const [dates, setDates] = useState<DateRange | undefined>(() => initialSelection(minimumDate, defaultStartTime));
   const [startTime, setStartTime] = useState(defaultStartTime);
   const [endTime, setEndTime] = useState(defaultEndTime);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -63,6 +83,36 @@ export function OccurrenceRangePicker({ value, onChange, minimumDate, defaultSta
     setError('');
   };
 
+  const selectDates = (next: DateRange | undefined, selectedDay: Date) => {
+    if (!dates?.from) {
+      setDates(next);
+      return;
+    }
+
+    if (sameDay(selectedDay, dates.from)) {
+      setDates(dates.to && !sameDay(dates.from, dates.to) ? { from: dates.to, to: dates.to } : undefined);
+      return;
+    }
+    if (dates.to && sameDay(selectedDay, dates.to)) {
+      setDates({ from: dates.from, to: dates.from });
+      return;
+    }
+
+    setDates(next);
+  };
+
+  const removeSelectedEndpoint = (endpoint: 'start' | 'end') => {
+    if (!dates?.from) return;
+    if (!dates.to || sameDay(dates.from, dates.to)) {
+      setDates(undefined);
+    } else if (endpoint === 'start') {
+      setDates({ from: dates.to, to: dates.to });
+    } else {
+      setDates({ from: dates.from, to: dates.from });
+    }
+    setError('');
+  };
+
   return (
     <div className="space-y-3">
       <div>
@@ -72,12 +122,45 @@ export function OccurrenceRangePicker({ value, onChange, minimumDate, defaultSta
           <Calendar
             mode="range"
             selected={dates}
-            onSelect={setDates}
+            onSelect={selectDates}
             disabled={{ before: dateFromScheduleInput(minimumDate)! }}
             defaultMonth={dates?.from ?? dateFromScheduleInput(minimumDate)}
             numberOfMonths={1}
             className="mx-auto w-fit max-w-full"
           />
+          <div className="space-y-2 border-t px-3 py-2">
+            <p className="text-xs text-muted-foreground">Selected range</p>
+            {dates?.from ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="gap-1">
+                  Start: {scheduleInputFromDate(dates.from)}
+                  <button
+                    type="button"
+                    aria-label="Remove selected start date"
+                    className="ml-1 text-muted-foreground hover:text-foreground"
+                    onClick={() => removeSelectedEndpoint('start')}
+                  >
+                    ×
+                  </button>
+                </Badge>
+                {dates.to && !sameDay(dates.from, dates.to) && (
+                  <Badge variant="secondary" className="gap-1">
+                    End: {scheduleInputFromDate(dates.to)}
+                    <button
+                      type="button"
+                      aria-label="Remove selected end date"
+                      className="ml-1 text-muted-foreground hover:text-foreground"
+                      onClick={() => removeSelectedEndpoint('end')}
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No date selected</p>
+            )}
+          </div>
           <div className="grid gap-3 border-t p-3 sm:grid-cols-2">
             <div><Label>Start time</Label><Input type="time" value={startTime} onChange={event => setStartTime(event.target.value)} /></div>
             <div><Label>End time</Label><Input type="time" value={endTime} onChange={event => setEndTime(event.target.value)} /></div>
