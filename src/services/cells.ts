@@ -70,19 +70,37 @@ export interface CellMeeting {
   recurrenceRuleId?: string | null;
   recurrenceRule?: CellMeetingRecurrenceRule | null;
   scheduledEvent?: {
+    id: string;
+    title: string;
+    description?: string | null;
+    type: string;
     startAt: string;
     endAt: string;
+    timezone: string;
+    locationText?: string | null;
     status: string;
+    approvalStatus: string;
+    organizerUserId?: string | null;
+    createdById?: string | null;
     recurrenceRuleId?: string | null;
     recurrenceRule?: CellMeetingRecurrenceRule | null;
     occurrences?: Array<{
+      id: string;
       occurrenceStartAt: string;
       occurrenceEndAt: string;
       status: string;
+      generatedSourceModule?: string | null;
+      generatedSourceId?: string | null;
+      errorMessage?: string | null;
     }>;
+    createdAt: string;
+    updatedAt: string;
   } | null;
   presentCount?: number;
   visitorCount?: number;
+  totalAttendance?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CellAttendanceRecord {

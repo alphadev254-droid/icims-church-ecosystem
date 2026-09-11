@@ -14,9 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
-import { ArrowLeft, Users, Calendar as CalendarIcon, MapPin, UserPlus, Plus, Trash2, ClipboardList, ChevronLeft, ChevronRight, Search, AlertTriangle, TrendingUp, TrendingDown, Minus, Pencil, Eye } from 'lucide-react';
+import { ArrowLeft, Users, Calendar as CalendarIcon, MapPin, UserPlus, Plus, Trash2, ClipboardList, ChevronLeft, ChevronRight, Search, AlertTriangle, TrendingUp, TrendingDown, Minus, Pencil, Eye, MoreHorizontal } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -59,7 +60,7 @@ function emptyMeetingForm(time = ''): MeetingFormState {
   return {
     deliveryMode: 'now',
     schedulePattern: 'repeat',
-    date: '',
+    date: inputValueFromDate(new Date()),
     time,
     topic: '',
     notes: '',
@@ -156,6 +157,7 @@ export default function CellDetailPage() {
   const [meetingPage, setMeetingPage] = useState(1);
   const [deleteMeeting, setDeleteMeeting] = useState<CellMeeting | null>(null);
   const [editMeeting, setEditMeeting] = useState<CellMeeting | null>(null);
+  const [viewMeeting, setViewMeeting] = useState<CellMeeting | null>(null);
   const [editMeetingForm, setEditMeetingForm] = useState<MeetingFormState>(() => emptyMeetingForm());
 
   const { data: cell, isLoading } = useQuery({
@@ -420,11 +422,14 @@ export default function CellDetailPage() {
     isSaving: boolean,
     submitLabel: string,
     onSubmit: () => void,
+    isNewMeeting = false,
   ) => {
     const recurrence = form.recurrenceRule;
     const isScheduledMode = form.deliveryMode === 'scheduled';
     const isExactDateSchedule = isScheduledMode && form.schedulePattern === 'custom_dates';
     const selectedExactDates = selectedDatesFromInputValues(form.occurrenceDates);
+    const todayInput = inputValueFromDate(new Date());
+    const earliestScheduleInput = form.date && form.date > todayInput ? form.date : todayInput;
     const hasRequiredScheduleDate = isExactDateSchedule ? form.occurrenceDates.length > 0 : Boolean(form.date);
     const setRecurrence = (next: Partial<MeetingFormState['recurrenceRule']>) => {
       setForm(current => ({ ...current, recurrenceRule: { ...current.recurrenceRule, ...next } }));
@@ -470,6 +475,7 @@ export default function CellDetailPage() {
             onValueChange={value => setForm(current => ({
               ...current,
               deliveryMode: value as CellMeetingDeliveryMode,
+              date: isNewMeeting ? todayInput : current.date || todayInput,
               recurrenceRule: value === 'scheduled' ? current.recurrenceRule : emptyMeetingForm().recurrenceRule,
               occurrenceDates: value === 'scheduled' ? current.occurrenceDates : [],
             }))}
@@ -491,7 +497,7 @@ export default function CellDetailPage() {
           <div>
             <Label>{isScheduledMode ? 'Start date *' : 'Date *'}</Label>
             {isExactDateSchedule && <p className="mb-1 text-xs text-muted-foreground">Auto-fills from the first selected date.</p>}
-            <Input className="mt-1" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+            <Input className="mt-1" type="date" min={isScheduledMode ? todayInput : undefined} disabled={isNewMeeting && !isScheduledMode} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
           </div>
           <div><Label>Time</Label><Input className="mt-1" type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
         </div>
@@ -533,6 +539,7 @@ export default function CellDetailPage() {
                     selected={selectedExactDates}
                     defaultMonth={selectedExactDates[0] ?? dateFromInputValue(form.date)}
                     onSelect={setExactDates}
+                    disabled={{ before: dateFromInputValue(earliestScheduleInput)! }}
                     className="mx-auto w-fit"
                   />
                   <div className="space-y-2 border-t px-3 py-2">
@@ -677,7 +684,7 @@ export default function CellDetailPage() {
                 <div>
                   <Label>End date</Label>
                   <p className="mb-1 text-xs text-muted-foreground">Stop repeating after this date.</p>
-                  <Input type="date" className="mt-1" value={recurrence.endsAt ?? ''} onChange={e => setRecurrence({ endsAt: e.target.value || null, count: null })} />
+                  <Input type="date" min={earliestScheduleInput} className="mt-1" value={recurrence.endsAt ?? ''} onChange={e => setRecurrence({ endsAt: e.target.value || null, count: null })} />
                 </div>
                 <div>
                   <Label>Or after</Label>
@@ -927,36 +934,34 @@ export default function CellDetailPage() {
                   <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground shrink-0">
                     <span className="text-green-600 font-medium">{m.presentCount ?? 0} present</span>
                     <span className="hidden sm:inline">{m.visitorCount ?? 0} visitors</span>
-                    {!isReadOnlyMember && (
-                      <Button
-                        size="sm" variant="outline" className="h-7 text-xs gap-1"
-                        onClick={() => navigate(`/dashboard/cells/${id}/meetings/${m.id}/attendance`)}
-                      >
-                        <ClipboardList className="h-3 w-3" /> <span className="hidden sm:inline">Attendance</span>
-                      </Button>
-                    )}
-                    {effectiveCanManage && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 w-7 p-0"
-                          title="Edit meeting"
-                          onClick={() => openEditMeetingDialog(m)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline" className="h-8 w-8 p-0" aria-label="Meeting actions">
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
-                          title="Delete meeting"
-                          onClick={() => setDeleteMeeting(m)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setViewMeeting(m)}>
+                          <Eye className="mr-2 h-4 w-4" /> View details
+                        </DropdownMenuItem>
+                        {!isReadOnlyMember && (
+                          <DropdownMenuItem onClick={() => navigate(`/dashboard/cells/${id}/meetings/${m.id}/attendance`)}>
+                            <ClipboardList className="mr-2 h-4 w-4" /> Manage attendance
+                          </DropdownMenuItem>
+                        )}
+                        {effectiveCanManage && (
+                          <>
+                            <DropdownMenuItem onClick={() => openEditMeetingDialog(m)}>
+                              <Pencil className="mr-2 h-4 w-4" /> Edit meeting
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteMeeting(m)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete meeting
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}
@@ -1765,10 +1770,80 @@ export default function CellDetailPage() {
       </Dialog>
 
       {/* New Meeting Dialog */}
+      <Dialog open={!!viewMeeting} onOpenChange={open => { if (!open) setViewMeeting(null); }}>
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-3xl max-h-[calc(100svh-1.5rem)] overflow-y-auto">
+          <DialogHeader><DialogTitle>Meeting Details</DialogTitle></DialogHeader>
+          {viewMeeting && (
+            <div className="space-y-5 text-sm">
+              <div className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2">
+                <div><p className="text-xs text-muted-foreground">Cell</p><p className="font-medium">{cell.name}</p></div>
+                <div><p className="text-xs text-muted-foreground">Church</p><p className="font-medium">{cell.church?.name || '—'}</p></div>
+                <div><p className="text-xs text-muted-foreground">Meeting date</p><p className="font-medium">{new Date(viewMeeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
+                <div><p className="text-xs text-muted-foreground">Time</p><p className="font-medium">{viewMeeting.time || cell.meetingTime || '—'}</p></div>
+                <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Topic</p><p className="font-medium">{viewMeeting.topic || 'No topic recorded'}</p></div>
+                <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Notes</p><p className="whitespace-pre-wrap">{viewMeeting.notes || 'No notes recorded'}</p></div>
+              </div>
+
+              <div>
+                <h3 className="mb-2 font-semibold">Attendance</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Present</p><p className="text-xl font-bold text-green-600">{viewMeeting.presentCount ?? 0}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Visitors</p><p className="text-xl font-bold">{viewMeeting.visitorCount ?? 0}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Records</p><p className="text-xl font-bold">{viewMeeting.totalAttendance ?? 0}</p></div>
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h3 className="font-semibold">Delivery and Scheduler</h3>
+                  <Badge variant={viewMeeting.scheduledEvent ? 'default' : 'outline'}>{viewMeeting.scheduledEvent ? 'Scheduled' : 'Created directly'}</Badge>
+                </div>
+                {viewMeeting.scheduledEvent ? (
+                  <div className="space-y-3 rounded-lg border p-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div><p className="text-xs text-muted-foreground">Schedule status</p><p className="font-medium capitalize">{viewMeeting.scheduledEvent.status}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Approval</p><p className="font-medium capitalize">{viewMeeting.scheduledEvent.approvalStatus.replace(/_/g, ' ')}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Starts</p><p className="font-medium">{new Date(viewMeeting.scheduledEvent.startAt).toLocaleString()}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Ends</p><p className="font-medium">{new Date(viewMeeting.scheduledEvent.endAt).toLocaleString()}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Timezone</p><p className="font-medium">{viewMeeting.scheduledEvent.timezone}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Location</p><p className="font-medium">{viewMeeting.scheduledEvent.locationText || '—'}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Repeat</p><p className="font-medium capitalize">{(viewMeeting.scheduledEvent.recurrenceRule?.frequency || 'none').replace(/_/g, ' ')}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Interval</p><p className="font-medium">Every {viewMeeting.scheduledEvent.recurrenceRule?.interval || 1} occurrence(s)</p></div>
+                      <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Schedule ID</p><p className="break-all font-mono text-xs">{viewMeeting.scheduledEvent.id}</p></div>
+                    </div>
+                    {!!viewMeeting.scheduledEvent.occurrences?.length && (
+                      <div>
+                        <p className="mb-2 text-xs font-medium text-muted-foreground">Occurrences</p>
+                        <div className="max-h-52 divide-y overflow-y-auto rounded-md border">
+                          {viewMeeting.scheduledEvent.occurrences.map(occurrence => (
+                            <div key={occurrence.id} className="flex items-start justify-between gap-3 px-3 py-2 text-xs">
+                              <div><p className="font-medium">{new Date(occurrence.occurrenceStartAt).toLocaleString()}</p>{occurrence.generatedSourceId && <p className="text-muted-foreground">Meeting: {occurrence.generatedSourceId}</p>}{occurrence.errorMessage && <p className="text-destructive">{occurrence.errorMessage}</p>}</div>
+                              <Badge variant="outline" className="capitalize">{occurrence.status}</Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="rounded-lg border p-4 text-muted-foreground">This meeting was created immediately and has no Scheduler record. Its notification was queued for immediate delivery.</p>
+                )}
+              </div>
+
+              <div className="grid gap-2 border-t pt-3 text-xs text-muted-foreground sm:grid-cols-2">
+                <p>Meeting ID: <span className="break-all font-mono">{viewMeeting.id}</span></p>
+                <p>Updated: {viewMeeting.updatedAt ? new Date(viewMeeting.updatedAt).toLocaleString() : '—'}</p>
+                <p>Created: {viewMeeting.createdAt ? new Date(viewMeeting.createdAt).toLocaleString() : '—'}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={newMeetingOpen} onOpenChange={setNewMeetingOpen}>
         <DialogContent className="w-[calc(100vw-1.5rem)] max-w-3xl max-h-[calc(100svh-1.5rem)] overflow-y-auto">
           <DialogHeader><DialogTitle>Record Meeting</DialogTitle></DialogHeader>
-          {renderMeetingForm(meetingForm, setMeetingForm, createMeetingMutation.isPending, 'Create Meeting', () => createMeetingMutation.mutate())}
+          {renderMeetingForm(meetingForm, setMeetingForm, createMeetingMutation.isPending, 'Create Meeting', () => createMeetingMutation.mutate(), true)}
         </DialogContent>
       </Dialog>
 
