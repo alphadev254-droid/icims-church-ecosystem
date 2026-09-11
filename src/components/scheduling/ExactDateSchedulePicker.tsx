@@ -27,6 +27,17 @@ export function scheduleInputInTimeZone(value: string | Date, timezone = 'UTC') 
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
+export function scheduleTimeInTimeZone(value: string | Date, timezone = 'UTC') {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(value));
+  const part = (type: string) => parts.find(item => item.type === type)?.value ?? '00';
+  return `${part('hour')}:${part('minute')}`;
+}
+
 export function normalizeScheduleDates(values: string[]) {
   return [...new Set(values.filter(value => dateFromScheduleInput(value)))].sort();
 }

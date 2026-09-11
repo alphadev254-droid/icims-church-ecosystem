@@ -18,6 +18,7 @@ export interface ChurchEvent {
   date: string;
   endDate: string;
   time: string;
+  endTime?: string;
   location: string;
   type: 'service' | 'meeting' | 'conference' | 'outreach' | 'fellowship';
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
@@ -64,6 +65,7 @@ export interface CreateEventDto {
   date: string;
   endDate: string;
   time: string;
+  endTime?: string;
   location: string;
   type: ChurchEvent['type'];
   status?: ChurchEvent['status'];
@@ -80,6 +82,7 @@ export interface CreateEventDto {
   deliveryMode?: 'now' | 'scheduled';
   schedulePattern?: 'repeat' | 'custom_dates';
   occurrenceDates?: string[];
+  occurrenceRanges?: Array<{ startDate: string; endDate: string; startTime: string; endTime: string }>;
   recurrenceRule?: RecurrenceRulePayload | null;
 }
 
