@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
+import { ScheduledTimesPicker } from '@/components/scheduling/ScheduledTimesPicker';
 
 interface TeamCommunicationFormProps {
   teams: Team[];
@@ -67,6 +68,11 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
   const [deliveryMode, setDeliveryMode] = useState<'now' | 'scheduled'>(initialData?.scheduledEvent ? 'scheduled' : 'now');
   const [scheduledDate, setScheduledDate] = useState(toDateInputValue(initialData?.scheduledEvent?.startAt));
   const [scheduledTime, setScheduledTime] = useState(toTimeInputValue(initialData?.scheduledEvent?.startAt));
+  const [schedulePattern, setSchedulePattern] = useState<'repeat' | 'custom_dates'>(initialData?.scheduledEvent?.occurrenceTimes?.length ? 'custom_dates' : 'repeat');
+  const [occurrenceTimes, setOccurrenceTimes] = useState<string[]>((initialData?.scheduledEvent?.occurrenceTimes ?? []).map(value => {
+    const date = new Date(value);
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  }));
   const [recurrenceRule, setRecurrenceRule] = useState<TeamCommunicationRecurrenceRule>(
     initialData?.scheduledEvent?.recurrenceRule
       ? { ...defaultRecurrenceRule(), ...initialData.scheduledEvent.recurrenceRule }
@@ -87,6 +93,11 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
       setDeliveryMode(initialData.scheduledEvent ? 'scheduled' : 'now');
       setScheduledDate(toDateInputValue(initialData.scheduledEvent?.startAt));
       setScheduledTime(toTimeInputValue(initialData.scheduledEvent?.startAt));
+      setSchedulePattern(initialData.scheduledEvent?.occurrenceTimes?.length ? 'custom_dates' : 'repeat');
+      setOccurrenceTimes((initialData.scheduledEvent?.occurrenceTimes ?? []).map(value => {
+        const date = new Date(value);
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+      }));
       setRecurrenceRule(initialData.scheduledEvent?.recurrenceRule
         ? { ...defaultRecurrenceRule(), ...initialData.scheduledEvent.recurrenceRule }
         : defaultRecurrenceRule());
@@ -121,12 +132,16 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
       toast.error('Please fill in all required fields');
       return;
     }
-    if (deliveryMode === 'scheduled' && (!scheduledDate || !scheduledTime)) {
+    if (deliveryMode === 'scheduled' && schedulePattern === 'repeat' && (!scheduledDate || !scheduledTime)) {
       toast.error('Please select schedule date and time');
       return;
     }
+    if (deliveryMode === 'scheduled' && schedulePattern === 'custom_dates' && occurrenceTimes.length === 0) {
+      toast.error('Please add at least one send time');
+      return;
+    }
 
-    const scheduledAt = deliveryMode === 'scheduled' ? buildScheduledAt(scheduledDate, scheduledTime) : null;
+    const scheduledAt = deliveryMode === 'scheduled' && schedulePattern === 'repeat' ? buildScheduledAt(scheduledDate, scheduledTime) : null;
     onSubmit({
       title,
       content,
@@ -135,7 +150,11 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
       existingMedia,
       deliveryMode,
       scheduledAt,
-      recurrenceRule: deliveryMode === 'scheduled' ? { ...recurrenceRule, startsAt: scheduledAt } : null,
+      schedulePattern,
+      occurrenceTimes: deliveryMode === 'scheduled' && schedulePattern === 'custom_dates'
+        ? occurrenceTimes.map(value => new Date(value).toISOString())
+        : [],
+      recurrenceRule: deliveryMode === 'scheduled' && schedulePattern === 'repeat' ? { ...recurrenceRule, startsAt: scheduledAt } : null,
     });
   };
 
@@ -197,6 +216,21 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
 
         {deliveryMode === 'scheduled' && (
           <>
+            <div className="space-y-2">
+              <Label>Schedule type</Label>
+              <p className="text-xs text-muted-foreground">Send once or on a repeating pattern, or select independent send times.</p>
+              <Select value={schedulePattern} onValueChange={value => {
+                setSchedulePattern(value as 'repeat' | 'custom_dates');
+                if (value === 'custom_dates') setRecurrenceRule(defaultRecurrenceRule());
+              }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="repeat">Send once or repeat</SelectItem>
+                  <SelectItem value="custom_dates">Selected send times</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {schedulePattern === 'repeat' ? <>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Send date</Label>
@@ -343,6 +377,7 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
                 </div>
               </div>
             )}
+            </> : <ScheduledTimesPicker value={occurrenceTimes} onChange={setOccurrenceTimes} />}
           </>
         )}
       </div>

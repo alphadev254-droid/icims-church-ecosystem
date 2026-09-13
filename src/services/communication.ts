@@ -30,6 +30,7 @@ export interface Announcement {
     timezone: string;
     recurrenceRuleId?: string | null;
     recurrenceRule?: RecurrenceRulePayload | null;
+    occurrenceTimes?: string[];
   } | null;
 }
 
@@ -54,6 +55,8 @@ export interface CreateAnnouncementDto {
   deliveryMode?: 'now' | 'scheduled';
   scheduledAt?: string | null;
   recurrenceRule?: RecurrenceRulePayload | null;
+  schedulePattern?: 'repeat' | 'custom_dates';
+  occurrenceTimes?: string[];
 }
 
 export type UpdateAnnouncementDto = Partial<CreateAnnouncementDto>;

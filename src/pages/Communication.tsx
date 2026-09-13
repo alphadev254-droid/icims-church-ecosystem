@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChurchSelect } from '@/components/ChurchSelect';
 import TeamCommunicationTab from '@/components/TeamCommunicationTab';
+import { ScheduledTimesPicker } from '@/components/scheduling/ScheduledTimesPicker';
 import { Plus, MessageSquare, Bell, Trash2, HandHeart, Pencil, Eye, Paperclip, X, FileText, Image as ImageIcon, Download, Lock, Users, Search, CalendarClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -36,6 +37,8 @@ const schema = z.object({
   deliveryMode: z.enum(['now', 'scheduled']).default('now'),
   scheduledDate: z.string().optional(),
   scheduledTime: z.string().optional(),
+  schedulePattern: z.enum(['repeat', 'custom_dates']).default('repeat'),
+  occurrenceTimes: z.array(z.string()).default([]),
   recurrenceRule: z.object({
     frequency: z.enum(['none', 'daily', 'weekly', 'monthly', 'yearly']).default('none'),
     interval: z.number().int().positive().default(1),
@@ -46,11 +49,14 @@ const schema = z.object({
     count: z.number().int().positive().nullable().optional(),
   }).nullable().optional(),
 }).superRefine((data, ctx) => {
-  if (data.deliveryMode === 'scheduled' && !data.scheduledDate) {
+  if (data.deliveryMode === 'scheduled' && data.schedulePattern === 'repeat' && !data.scheduledDate) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['scheduledDate'], message: 'Schedule date required' });
   }
-  if (data.deliveryMode === 'scheduled' && !data.scheduledTime) {
+  if (data.deliveryMode === 'scheduled' && data.schedulePattern === 'repeat' && !data.scheduledTime) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['scheduledTime'], message: 'Schedule time required' });
+  }
+  if (data.deliveryMode === 'scheduled' && data.schedulePattern === 'custom_dates' && data.occurrenceTimes.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['occurrenceTimes'], message: 'Add at least one send time' });
   }
 });
 type FormValues = z.infer<typeof schema>;
@@ -106,9 +112,9 @@ function toTimeInputValue(value?: string | null) {
 }
 
 function buildAnnouncementPayload(values: FormValues) {
-  const { scheduledDate, scheduledTime, recurrenceRule, ...payload } = values;
-  const scheduledAt = values.deliveryMode === 'scheduled' ? buildScheduledAt(scheduledDate, scheduledTime) : null;
-  const normalizedRecurrence: RecurrenceRulePayload | null = values.deliveryMode === 'scheduled'
+  const { scheduledDate, scheduledTime, recurrenceRule, occurrenceTimes, ...payload } = values;
+  const scheduledAt = values.deliveryMode === 'scheduled' && values.schedulePattern === 'repeat' ? buildScheduledAt(scheduledDate, scheduledTime) : null;
+  const normalizedRecurrence: RecurrenceRulePayload | null = values.deliveryMode === 'scheduled' && values.schedulePattern === 'repeat'
     ? { ...defaultRecurrenceRule(), ...recurrenceRule, startsAt: scheduledAt }
     : null;
 
@@ -116,6 +122,9 @@ function buildAnnouncementPayload(values: FormValues) {
     ...payload,
     scheduledAt,
     recurrenceRule: normalizedRecurrence,
+    occurrenceTimes: values.deliveryMode === 'scheduled' && values.schedulePattern === 'custom_dates'
+      ? occurrenceTimes.map(value => new Date(value).toISOString())
+      : [],
   };
 }
 
@@ -157,6 +166,7 @@ export default function CommunicationPage() {
       type: 'announcement',
       priority: 'normal',
       deliveryMode: 'now',
+      schedulePattern: 'repeat', occurrenceTimes: [],
       recurrenceRule: defaultRecurrenceRule(),
     },
   });
@@ -165,6 +175,7 @@ export default function CommunicationPage() {
     resolver: zodResolver(schema),
     defaultValues: {
       deliveryMode: 'now',
+      schedulePattern: 'repeat', occurrenceTimes: [],
       recurrenceRule: defaultRecurrenceRule(),
     },
   });
@@ -174,8 +185,12 @@ export default function CommunicationPage() {
   const recurrenceRule = watch('recurrenceRule') ?? defaultRecurrenceRule();
   const recurrenceFrequency = recurrenceRule.frequency ?? 'none';
   const recurrenceDays = recurrenceRule.daysOfWeek ?? [];
+  const schedulePattern = watch('schedulePattern') || 'repeat';
+  const occurrenceTimes = watch('occurrenceTimes') || [];
   const editDeliveryMode = watchEdit('deliveryMode') || 'now';
   const editRecurrenceRule = watchEdit('recurrenceRule') ?? defaultRecurrenceRule();
+  const editSchedulePattern = watchEdit('schedulePattern') || 'repeat';
+  const editOccurrenceTimes = watchEdit('occurrenceTimes') || [];
   const editRecurrenceFrequency = editRecurrenceRule.frequency ?? 'none';
   const editRecurrenceDays = editRecurrenceRule.daysOfWeek ?? [];
 
@@ -197,7 +212,7 @@ export default function CommunicationPage() {
       qc.invalidateQueries({ queryKey: ['announcements'] });
       setDialogOpen(false);
       setSelectedFiles([]);
-      reset({ type: 'announcement', priority: 'normal', deliveryMode: 'now', recurrenceRule: defaultRecurrenceRule() });
+      reset({ type: 'announcement', priority: 'normal', deliveryMode: 'now', schedulePattern: 'repeat', occurrenceTimes: [], recurrenceRule: defaultRecurrenceRule() });
       setFormType('announcement');
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to post'),
@@ -298,6 +313,8 @@ export default function CommunicationPage() {
     rule,
     frequency,
     selectedDays,
+    pattern,
+    occurrenceTimes: selectedTimes,
     formErrors,
   }: {
     registerForm: any;
@@ -306,6 +323,8 @@ export default function CommunicationPage() {
     rule: NonNullable<FormValues['recurrenceRule']>;
     frequency: string;
     selectedDays: string[];
+    pattern: 'repeat' | 'custom_dates';
+    occurrenceTimes: string[];
     formErrors: any;
   }) => (
     <div className="space-y-3 rounded-md border border-border p-3">
@@ -335,6 +354,21 @@ export default function CommunicationPage() {
 
       {mode === 'scheduled' && (
         <>
+          <div>
+            <Label className="text-xs sm:text-sm">Schedule type</Label>
+            <p className="mb-1 text-xs text-muted-foreground">Use a pattern for one-time or recurring delivery, or choose independent send times.</p>
+            <Select value={pattern} onValueChange={value => {
+              setFormValue('schedulePattern', value, { shouldDirty: true, shouldValidate: true });
+              if (value === 'custom_dates') setFormValue('recurrenceRule', defaultRecurrenceRule(), { shouldDirty: true });
+            }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="repeat">Send once or repeat</SelectItem>
+                <SelectItem value="custom_dates">Selected send times</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {pattern === 'repeat' ? <>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs sm:text-sm">Send date</Label>
@@ -487,6 +521,15 @@ export default function CommunicationPage() {
               </div>
             </div>
           )}
+          </> : (
+            <>
+              <ScheduledTimesPicker
+                value={selectedTimes}
+                onChange={value => setFormValue('occurrenceTimes', value, { shouldDirty: true, shouldValidate: true })}
+              />
+              {formErrors.occurrenceTimes && <p className="text-xs text-destructive">{formErrors.occurrenceTimes.message}</p>}
+            </>
+          )}
         </>
       )}
     </div>
@@ -574,6 +617,11 @@ export default function CommunicationPage() {
                         type: item.type,
                         priority: item.priority,
                         deliveryMode: item.scheduledEvent ? 'scheduled' : 'now',
+                        schedulePattern: item.scheduledEvent?.occurrenceTimes?.length ? 'custom_dates' : 'repeat',
+                        occurrenceTimes: (item.scheduledEvent?.occurrenceTimes ?? []).map(value => {
+                          const date = new Date(value);
+                          return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+                        }),
                         scheduledDate: toDateInputValue(item.scheduledEvent?.startAt),
                         scheduledTime: toTimeInputValue(item.scheduledEvent?.startAt),
                         recurrenceRule: item.scheduledEvent?.recurrenceRule
@@ -653,7 +701,7 @@ export default function CommunicationPage() {
                       <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> New Church Post
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-sm sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+                  <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle className="font-heading text-sm sm:text-base">Create Post</DialogTitle>
                   </DialogHeader>
@@ -704,6 +752,8 @@ export default function CommunicationPage() {
                       rule: recurrenceRule,
                       frequency: recurrenceFrequency,
                       selectedDays: recurrenceDays,
+                      pattern: schedulePattern,
+                      occurrenceTimes,
                       formErrors: errors,
                     })}
                     <div>
@@ -789,7 +839,7 @@ export default function CommunicationPage() {
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={open => !open && setViewItem(null)}>
-        <DialogContent className="max-w-sm sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading text-sm sm:text-base flex items-center gap-2">
               {viewItem && (() => {
@@ -922,7 +972,7 @@ export default function CommunicationPage() {
           resetEdit();
         }
       }}>
-        <DialogContent className="max-w-sm sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading text-sm sm:text-base">Edit Post</DialogTitle>
           </DialogHeader>
@@ -968,6 +1018,8 @@ export default function CommunicationPage() {
                 rule: editRecurrenceRule,
                 frequency: editRecurrenceFrequency,
                 selectedDays: editRecurrenceDays,
+                pattern: editSchedulePattern,
+                occurrenceTimes: editOccurrenceTimes,
                 formErrors: errorsEdit,
               })}
               <div>

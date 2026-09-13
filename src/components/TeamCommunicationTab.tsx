@@ -136,7 +136,7 @@ export default function TeamCommunicationTab({ churches, isMember }: { churches:
               <Plus className="h-4 w-4" /> New Team post
             </Button>
           </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create Team Post</DialogTitle>
               </DialogHeader>
@@ -311,7 +311,7 @@ export default function TeamCommunicationTab({ churches, isMember }: { churches:
       {/* Edit Dialog */}
       {editPost && (
         <Dialog open={!!editPost} onOpenChange={() => setEditPost(null)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Post</DialogTitle>
             </DialogHeader>

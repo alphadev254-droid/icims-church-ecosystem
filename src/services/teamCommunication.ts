@@ -17,6 +17,7 @@ export interface TeamCommunication {
     timezone: string;
     recurrenceRuleId?: string | null;
     recurrenceRule?: TeamCommunicationRecurrenceRule | null;
+    occurrenceTimes?: string[];
   } | null;
   team: {
     id: string;
@@ -50,6 +51,8 @@ export interface CreateTeamCommunicationData {
   deliveryMode?: 'now' | 'scheduled';
   scheduledAt?: string | null;
   recurrenceRule?: TeamCommunicationRecurrenceRule | null;
+  schedulePattern?: 'repeat' | 'custom_dates';
+  occurrenceTimes?: string[];
 }
 
 export const teamCommunicationService = {
@@ -72,6 +75,8 @@ export const teamCommunicationService = {
     if (communicationData.deliveryMode) formData.append('deliveryMode', communicationData.deliveryMode);
     if (communicationData.scheduledAt) formData.append('scheduledAt', communicationData.scheduledAt);
     if (communicationData.recurrenceRule) formData.append('recurrenceRule', JSON.stringify(communicationData.recurrenceRule));
+    if (communicationData.schedulePattern) formData.append('schedulePattern', communicationData.schedulePattern);
+    if (communicationData.occurrenceTimes) formData.append('occurrenceTimes', JSON.stringify(communicationData.occurrenceTimes));
     
     // Append files if any
     if (communicationData.files) {
@@ -94,6 +99,8 @@ export const teamCommunicationService = {
     if (communicationData.deliveryMode) formData.append('deliveryMode', communicationData.deliveryMode);
     if (communicationData.scheduledAt) formData.append('scheduledAt', communicationData.scheduledAt);
     if (communicationData.recurrenceRule) formData.append('recurrenceRule', JSON.stringify(communicationData.recurrenceRule));
+    if (communicationData.schedulePattern) formData.append('schedulePattern', communicationData.schedulePattern);
+    if (communicationData.occurrenceTimes) formData.append('occurrenceTimes', JSON.stringify(communicationData.occurrenceTimes));
     
     // Append existing media as JSON
     if (communicationData.existingMedia) {
