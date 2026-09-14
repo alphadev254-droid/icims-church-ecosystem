@@ -247,6 +247,7 @@ interface EventFormProps {
   canUseOnlinePayments?: boolean;
   canCreateSchedule?: boolean;
   canUseRecurringSchedules?: boolean;
+  canDeleteSchedule?: boolean;
 }
 
 function EventForm({
@@ -261,6 +262,7 @@ function EventForm({
   canUseOnlinePayments = true,
   canCreateSchedule = false,
   canUseRecurringSchedules = false,
+  canDeleteSchedule = true,
 }: EventFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const imageFileRef = useRef<File | null>(null);
@@ -558,7 +560,7 @@ function EventForm({
         }}>
           <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="now">Publish now</SelectItem>
+            <SelectItem value="now" disabled={deliveryMode === 'scheduled' && !canDeleteSchedule}>Publish now</SelectItem>
             {(canCreateSchedule || deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
           </SelectContent>
         </Select>
@@ -596,6 +598,7 @@ function EventForm({
                 setValue('schedulePattern', 'custom_dates', { shouldDirty: true, shouldValidate: true });
                 setValue('recurrenceRule', defaultRecurrenceRule(), { shouldDirty: true });
               }}
+              disabled={!canUseRecurringSchedules}
             >
               Selected dates
             </Button>
@@ -1084,7 +1087,10 @@ export default function EventsPage() {
   const canSharePublicEvents = hasEventPublicLinksFeature && hasEventGuestBookingFeature;
   const canGenerateEventQr = hasEventQrCodesFeature && canSharePublicEvents;
   const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
+  const canUpdateSchedule = hasPermission('schedules:update') && hasSchedulerCreationFeature;
+  const canDeleteSchedule = hasPermission('schedules:delete') && hasSchedulerCreationFeature;
   const canUseRecurringSchedules = canCreateSchedule && hasSchedulerRecurringFeature;
+  const canUpdateRecurringSchedules = canUpdateSchedule && hasSchedulerRecurringFeature;
 
   // Feature gate
   if (!isMember && !hasEventsFeature) {
@@ -1422,6 +1428,7 @@ export default function EventsPage() {
                   canUseOnlinePayments={hasEventOnlinePaymentsFeature}
                   canCreateSchedule={canCreateSchedule}
                   canUseRecurringSchedules={canUseRecurringSchedules}
+                  canDeleteSchedule={true}
                   onSubmit={(v) => {
                     console.log('Event form values:', v);
                     createMutation.mutate(v);
@@ -1461,6 +1468,7 @@ export default function EventsPage() {
                 <div className="flex flex-wrap items-start justify-between gap-1 mb-2">
                   <div className="flex gap-1">
                     <Badge variant={statusVariant(event.status)} className="text-xs">{event.status}</Badge>
+                    <Badge variant={event.publicationStatus === 'draft' ? 'secondary' : 'outline'} className="text-xs capitalize">{event.publicationStatus}</Badge>
                     <Badge variant="outline" className="text-xs capitalize">{event.type}</Badge>
                   </div>
                   <DropdownMenu>
@@ -1715,8 +1723,9 @@ export default function EventsPage() {
                       canUsePublicLinks={hasEventPublicLinksFeature}
                       canUseGuestBooking={hasEventGuestBookingFeature}
                       canUseOnlinePayments={hasEventOnlinePaymentsFeature}
-                      canCreateSchedule={canCreateSchedule}
-                      canUseRecurringSchedules={canUseRecurringSchedules}
+                      canCreateSchedule={canUpdateSchedule}
+                      canUseRecurringSchedules={canUpdateRecurringSchedules}
+                      canDeleteSchedule={canDeleteSchedule}
               onSubmit={(v) => updateMutation.mutate({ id: editEvent.id, dto: v })}
               isPending={updateMutation.isPending}
               submitLabel="Save Changes"

@@ -71,6 +71,9 @@ export interface CellMeeting {
   recordType?: 'direct' | 'scheduled_source' | 'scheduled_occurrence';
   sourceMeetingId?: string | null;
   scheduledOccurrenceId?: string | null;
+  publicationStatus?: 'draft' | 'published';
+  publishAt?: string | null;
+  publishedAt?: string | null;
   recurrenceRule?: CellMeetingRecurrenceRule | null;
   scheduledEvent?: {
     id: string;

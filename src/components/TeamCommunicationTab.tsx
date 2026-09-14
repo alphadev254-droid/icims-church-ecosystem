@@ -16,9 +16,7 @@ import { Plus, MessageSquare, Pencil, Trash2, Download, FileText, Video, Image a
 import { toast } from 'sonner';
 import { TeamCommunicationForm } from '@/components/TeamCommunicationForm';
 import { formatDistanceToNow } from 'date-fns';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
-const getMediaUrl = (url: string) => url.startsWith('http') ? url : `${API_BASE}${url}`;
+import { MediaAttachments } from '@/components/communication/MediaAttachments';
 
 export default function TeamCommunicationTab({ churches, isMember }: { churches: Church[], isMember: boolean }) {
   const queryClient = useQueryClient();
@@ -209,7 +207,8 @@ export default function TeamCommunicationTab({ churches, isMember }: { churches:
                               </Badge>
                               {post.scheduledEvent.recurrenceRule && <Badge variant="secondary" className="text-xs w-fit">Repeats</Badge>}
                             </div>
-                          )}
+                            )}
+                            <Badge variant={post.publicationStatus === 'draft' ? 'secondary' : 'outline'} className="text-xs capitalize">{post.publicationStatus}</Badge>
                           {!isMember && (post.team as any).church && (
                             <p className="text-xs text-muted-foreground truncate">
                               {(post.team as any).church.name}
@@ -283,24 +282,7 @@ export default function TeamCommunicationTab({ churches, isMember }: { churches:
               {viewPost.mediaUrls && viewPost.mediaUrls.length > 0 && (
                 <div className="space-y-3">
                   <p className="text-sm font-semibold">Attachments</p>
-                  <div className="grid gap-2">
-                    {viewPost.mediaUrls.map((media, idx) => (
-                      <a
-                        key={idx}
-                        href={getMediaUrl(media.url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 border rounded-lg hover:bg-muted transition-colors"
-                      >
-                        {getMediaIcon(media.type)}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{media.name}</p>
-                          <p className="text-xs text-muted-foreground">{(media.size / 1024).toFixed(1)} KB</p>
-                        </div>
-                        <Download className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
-                      </a>
-                    ))}
-                  </div>
+                  <MediaAttachments files={viewPost.mediaUrls} />
                 </div>
               )}
             </div>

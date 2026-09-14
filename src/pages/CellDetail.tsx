@@ -91,7 +91,8 @@ export default function CellDetailPage() {
   const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
   const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
   const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
-  const canUseRecurringSchedules = canCreateSchedule && hasSchedulerRecurringFeature;
+  const canUpdateSchedule = hasPermission('schedules:update') && hasSchedulerCreationFeature;
+  const canDeleteSchedule = hasPermission('schedules:delete') && hasSchedulerCreationFeature;
   const isMember = role === 'member';
 
   const [tab, setTab] = useState<'members' | 'meetings' | 'stats' | 'transactions'>('members');
@@ -395,6 +396,8 @@ export default function CellDetailPage() {
     onSubmit: () => void,
     isNewMeeting = false,
   ) => {
+    const canManageSchedule = isNewMeeting ? canCreateSchedule : canUpdateSchedule;
+    const canUseRecurringSchedules = canManageSchedule && hasSchedulerRecurringFeature;
     const recurrence = form.recurrenceRule;
     const isScheduledMode = form.deliveryMode === 'scheduled';
     const isExactDateSchedule = isScheduledMode && form.schedulePattern === 'custom_dates';
@@ -440,14 +443,14 @@ export default function CellDetailPage() {
           >
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="now">Create now</SelectItem>
-              {(canCreateSchedule || form.deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
+              <SelectItem value="now" disabled={form.deliveryMode === 'scheduled' && !canDeleteSchedule}>Create now</SelectItem>
+              {(canManageSchedule || form.deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
             </SelectContent>
           </Select>
-          {!canCreateSchedule && form.deliveryMode !== 'scheduled' && (
+          {!canManageSchedule && form.deliveryMode !== 'scheduled' && (
             <p className="mt-1 text-xs text-muted-foreground">Scheduling is not enabled for your role or package.</p>
           )}
-          {!canCreateSchedule && form.deliveryMode === 'scheduled' && (
+          {!canManageSchedule && form.deliveryMode === 'scheduled' && (
             <p className="mt-1 text-xs text-destructive">This meeting has a schedule, but your role or package cannot modify schedules.</p>
           )}
         </div>
@@ -468,7 +471,7 @@ export default function CellDetailPage() {
               <Label>Schedule Type</Label>
               <p className="mb-2 text-xs text-muted-foreground">Use a repeat rule, or pick the exact dates this meeting should happen.</p>
               <div className="grid grid-cols-2 overflow-hidden rounded-md border border-border">
-                <Button
+                  <Button
                   type="button"
                   variant={form.schedulePattern === 'repeat' ? 'secondary' : 'ghost'}
                   className="h-9 rounded-none"
@@ -480,7 +483,8 @@ export default function CellDetailPage() {
                   type="button"
                   variant={form.schedulePattern === 'custom_dates' ? 'secondary' : 'ghost'}
                   className="h-9 rounded-none border-l border-border"
-                  onClick={() => setSchedulePattern('custom_dates')}
+                    onClick={() => setSchedulePattern('custom_dates')}
+                    disabled={!canUseRecurringSchedules}
                 >
                   Choose dates
                 </Button>
@@ -867,7 +871,7 @@ export default function CellDetailPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     <p className="text-xs text-muted-foreground">
-                      {[m.time, m.topic, m.scheduledEvent ? 'Scheduled' : null, (m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency && (m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency !== 'none' ? `Repeats ${(m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency}` : null].filter(Boolean).join(' · ')}
+                      {[m.time, m.topic, m.publicationStatus === 'draft' ? 'Draft' : null, m.scheduledEvent ? 'Scheduled' : null, (m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency && (m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency !== 'none' ? `Repeats ${(m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency}` : null].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground shrink-0">

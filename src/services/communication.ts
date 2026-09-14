@@ -19,6 +19,8 @@ export interface Announcement {
   createdById: string;
   createdAt: string;
   updatedAt: string;
+  publicationStatus: 'draft' | 'published';
+  publishedAt?: string | null;
   church?: {
     id: string;
     name: string;

@@ -54,6 +54,9 @@ export interface ChurchEvent {
   createdById: string;
   createdAt: string;
   updatedAt: string;
+  publicationStatus: 'draft' | 'published';
+  publishAt?: string | null;
+  publishedAt?: string | null;
   userHasTicket?: boolean;
   userTicketId?: string;
   userTicketNumber?: string;

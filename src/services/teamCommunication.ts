@@ -9,6 +9,8 @@ export interface TeamCommunication {
   mediaUrls?: { url: string; type: string; name: string; size: number }[];
   createdAt: string;
   updatedAt: string;
+  publicationStatus: 'draft' | 'published';
+  publishedAt?: string | null;
   canEdit?: boolean;
   scheduledEvent?: {
     startAt: string;

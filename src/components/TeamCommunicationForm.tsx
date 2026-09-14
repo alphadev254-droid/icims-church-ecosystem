@@ -60,8 +60,9 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
   const { hasPermission } = useRole();
   const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
   const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
-  const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
-  const canUseRecurringSchedules = canCreateSchedule && hasSchedulerRecurringFeature;
+  const canManageSchedule = hasPermission(initialData ? 'schedules:update' : 'schedules:create') && hasSchedulerCreationFeature;
+  const canRemoveSchedule = hasPermission('schedules:delete') && hasSchedulerCreationFeature;
+  const canUseRecurringSchedules = canManageSchedule && hasSchedulerRecurringFeature;
   const [title, setTitle] = useState(initialData?.title || '');
   const [content, setContent] = useState(initialData?.content || '');
   const [teamId, setTeamId] = useState(initialData?.teamId || '');
@@ -203,14 +204,14 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="now">Send now</SelectItem>
-            {(canCreateSchedule || deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
+            <SelectItem value="now" disabled={deliveryMode === 'scheduled' && !canRemoveSchedule}>Send now</SelectItem>
+            {(canManageSchedule || deliveryMode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
           </SelectContent>
         </Select>
-        {!canCreateSchedule && deliveryMode !== 'scheduled' && (
+        {!canManageSchedule && deliveryMode !== 'scheduled' && (
           <p className="text-xs text-muted-foreground">Scheduling is not enabled for your role or package.</p>
         )}
-        {!canCreateSchedule && deliveryMode === 'scheduled' && (
+        {!canManageSchedule && deliveryMode === 'scheduled' && (
           <p className="text-xs text-destructive">This post has a schedule, but your role or package cannot modify schedules.</p>
         )}
 
@@ -226,7 +227,7 @@ export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending 
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="repeat">Send once or repeat</SelectItem>
-                  <SelectItem value="custom_dates">Selected send times</SelectItem>
+                  <SelectItem value="custom_dates" disabled={!canUseRecurringSchedules}>Selected send times</SelectItem>
                 </SelectContent>
               </Select>
             </div>

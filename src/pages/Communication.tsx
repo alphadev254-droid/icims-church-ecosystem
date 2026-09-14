@@ -23,6 +23,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChurchSelect } from '@/components/ChurchSelect';
 import TeamCommunicationTab from '@/components/TeamCommunicationTab';
 import { ScheduledTimesPicker } from '@/components/scheduling/ScheduledTimesPicker';
+import { MediaAttachments } from '@/components/communication/MediaAttachments';
 import { Plus, MessageSquare, Bell, Trash2, HandHeart, Pencil, Eye, Paperclip, X, FileText, Image as ImageIcon, Download, Lock, Users, Search, CalendarClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -144,7 +145,10 @@ export default function CommunicationPage() {
   const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
   const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
   const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
+  const canUpdateSchedule = hasPermission('schedules:update') && hasSchedulerCreationFeature;
+  const canDeleteSchedule = hasPermission('schedules:delete') && hasSchedulerCreationFeature;
   const canUseRecurringSchedules = canCreateSchedule && hasSchedulerRecurringFeature;
+  const canUpdateRecurringSchedules = canUpdateSchedule && hasSchedulerRecurringFeature;
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['announcements', selectedChurch],
@@ -201,11 +205,15 @@ export default function CommunicationPage() {
       if (selectedFiles.length > 0) {
         uploadedFiles = await uploadService.uploadCommunicationFiles(selectedFiles);
       }
-      // Create announcement with uploaded files
-      return communicationService.create({
-        ...buildAnnouncementPayload(data),
-        attachments: uploadedFiles.length > 0 ? JSON.stringify(uploadedFiles) : undefined,
-      });
+      try {
+        return await communicationService.create({
+          ...buildAnnouncementPayload(data),
+          attachments: uploadedFiles.length > 0 ? JSON.stringify(uploadedFiles) : undefined,
+        });
+      } catch (error) {
+        await Promise.allSettled(uploadedFiles.map(file => uploadService.deleteFile(file.url)));
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success('Posted successfully');
@@ -227,10 +235,15 @@ export default function CommunicationPage() {
       }
       // Merge existing and new files
       const allFiles = [...existingFiles, ...uploadedFiles];
-      return communicationService.update(id, {
-        ...buildAnnouncementPayload(dto),
-        attachments: allFiles.length > 0 ? JSON.stringify(allFiles) : undefined,
-      });
+      try {
+        return await communicationService.update(id, {
+          ...buildAnnouncementPayload(dto),
+          attachments: JSON.stringify(allFiles),
+        });
+      } catch (error) {
+        await Promise.allSettled(uploadedFiles.map(file => uploadService.deleteFile(file.url)));
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success('Updated successfully');
@@ -277,13 +290,8 @@ export default function CommunicationPage() {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const removeExistingFile = async (index: number, fileUrl: string) => {
-    try {
-      await uploadService.deleteFile(fileUrl);
-      setExistingFiles(prev => prev.filter((_, i) => i !== index));
-    } catch (err) {
-      toast.error('Failed to delete file');
-    }
+  const removeExistingFile = (index: number, _fileUrl: string) => {
+    setExistingFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const filterByType = (type: string) => items.filter((i: any) => i.type === type);
@@ -315,6 +323,9 @@ export default function CommunicationPage() {
     selectedDays,
     pattern,
     occurrenceTimes: selectedTimes,
+    canManageSchedule,
+    canManageRecurring,
+    canRemoveSchedule,
     formErrors,
   }: {
     registerForm: any;
@@ -325,6 +336,9 @@ export default function CommunicationPage() {
     selectedDays: string[];
     pattern: 'repeat' | 'custom_dates';
     occurrenceTimes: string[];
+    canManageSchedule: boolean;
+    canManageRecurring: boolean;
+    canRemoveSchedule: boolean;
     formErrors: any;
   }) => (
     <div className="space-y-3 rounded-md border border-border p-3">
@@ -341,14 +355,14 @@ export default function CommunicationPage() {
       }}>
         <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
         <SelectContent>
-          <SelectItem value="now">Send now</SelectItem>
-          {(canCreateSchedule || mode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
+          <SelectItem value="now" disabled={mode === 'scheduled' && !canRemoveSchedule}>Send now</SelectItem>
+          {(canManageSchedule || mode === 'scheduled') && <SelectItem value="scheduled">Schedule</SelectItem>}
         </SelectContent>
       </Select>
-      {!canCreateSchedule && mode !== 'scheduled' && (
+      {!canManageSchedule && mode !== 'scheduled' && (
         <p className="text-xs text-muted-foreground">Scheduling is not enabled for your role or package.</p>
       )}
-      {!canCreateSchedule && mode === 'scheduled' && (
+      {!canManageSchedule && mode === 'scheduled' && (
         <p className="text-xs text-destructive">This post has a schedule, but your role or package cannot modify schedules.</p>
       )}
 
@@ -364,7 +378,7 @@ export default function CommunicationPage() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="repeat">Send once or repeat</SelectItem>
-                <SelectItem value="custom_dates">Selected send times</SelectItem>
+                <SelectItem value="custom_dates" disabled={!canManageRecurring}>Selected send times</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -391,12 +405,12 @@ export default function CommunicationPage() {
               <Select
                 value={frequency}
                 onValueChange={value => setFormValue('recurrenceRule', { ...defaultRecurrenceRule(), ...rule, frequency: value }, { shouldDirty: true })}
-                disabled={!canUseRecurringSchedules}
+                disabled={!canManageRecurring}
               >
                 <SelectTrigger className="h-8 text-xs sm:h-10 sm:text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  {(canUseRecurringSchedules || frequency !== 'none') && (
+                  {(canManageRecurring || frequency !== 'none') && (
                     <>
                       <SelectItem value="daily">Daily</SelectItem>
                       <SelectItem value="weekly">Weekly</SelectItem>
@@ -406,7 +420,7 @@ export default function CommunicationPage() {
                   )}
                 </SelectContent>
               </Select>
-              {!canUseRecurringSchedules && (
+              {!canManageRecurring && (
                 <p className="mt-1 text-xs text-muted-foreground">Recurring schedules are not enabled for your package.</p>
               )}
             </div>
@@ -416,7 +430,7 @@ export default function CommunicationPage() {
               <Input
                 type="number"
                 min={1}
-                disabled={frequency === 'none' || !canUseRecurringSchedules}
+                disabled={frequency === 'none' || !canManageRecurring}
                 value={rule.interval ?? 1}
                 onChange={event => setFormValue('recurrenceRule', { ...rule, interval: Math.max(1, Number(event.target.value || 1)) }, { shouldDirty: true })}
                 className="h-8 text-xs sm:h-10 sm:text-sm"
@@ -424,7 +438,7 @@ export default function CommunicationPage() {
             </div>
           </div>
 
-          {frequency === 'weekly' && canUseRecurringSchedules && (
+          {frequency === 'weekly' && canManageRecurring && (
             <div>
               <Label className="text-xs sm:text-sm">Repeat on</Label>
               <p className="mb-1 text-xs text-muted-foreground">Pick the weekdays when this should repeat.</p>
@@ -451,7 +465,7 @@ export default function CommunicationPage() {
             </div>
           )}
 
-          {frequency === 'monthly' && canUseRecurringSchedules && (
+          {frequency === 'monthly' && canManageRecurring && (
             <div>
               <Label className="text-xs sm:text-sm">Day of month</Label>
               <p className="mb-1 text-xs text-muted-foreground">The date number to repeat on each month.</p>
@@ -466,7 +480,7 @@ export default function CommunicationPage() {
             </div>
           )}
 
-          {frequency === 'yearly' && canUseRecurringSchedules && (
+          {frequency === 'yearly' && canManageRecurring && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs sm:text-sm">Month</Label>
@@ -495,7 +509,7 @@ export default function CommunicationPage() {
             </div>
           )}
 
-          {frequency !== 'none' && canUseRecurringSchedules && (
+          {frequency !== 'none' && canManageRecurring && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs sm:text-sm">End date</Label>
@@ -572,6 +586,7 @@ export default function CommunicationPage() {
                   <span className="font-heading font-semibold text-foreground">{item.title}</span>
                   {item.priority === 'urgent' && <Badge variant="destructive" className="text-xs">Urgent</Badge>}
                   {item.scheduledEvent && <Badge variant="outline" className="text-xs">Scheduled</Badge>}
+                  <Badge variant={item.publicationStatus === 'draft' ? 'secondary' : 'outline'} className="text-xs capitalize">{item.publicationStatus}</Badge>
                   {item.scheduledEvent?.recurrenceRule && <Badge variant="secondary" className="text-xs">Repeats</Badge>}
                   {attachments.length > 0 && <Paperclip className="h-3 w-3 text-muted-foreground" />}
                 </div>
@@ -754,6 +769,9 @@ export default function CommunicationPage() {
                       selectedDays: recurrenceDays,
                       pattern: schedulePattern,
                       occurrenceTimes,
+                      canManageSchedule: canCreateSchedule,
+                      canManageRecurring: canUseRecurringSchedules,
+                      canRemoveSchedule: true,
                       formErrors: errors,
                     })}
                     <div>
@@ -863,28 +881,7 @@ export default function CommunicationPage() {
                 {attachments.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">Attachments</Label>
-                    <div className="grid gap-2">
-                      {attachments.map((file: any, i: number) => {
-                        const isVideo = file.mimeType?.startsWith('video/');
-                        return isVideo ? (
-                          <div key={i} className="rounded-lg overflow-hidden bg-black">
-                            <video src={`${import.meta.env.VITE_STATIC_URL}${file.url}`} controls className="w-full" />
-                          </div>
-                        ) : (
-                          <a
-                            key={i}
-                            href={`${import.meta.env.VITE_STATIC_URL}${file.url}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-2 bg-muted rounded hover:bg-muted/80 transition-colors"
-                          >
-                            {file.mimeType?.startsWith('image/') ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                            <span className="flex-1 text-sm truncate">{file.name}</span>
-                            <Download className="h-3 w-3" />
-                          </a>
-                        );
-                      })}
-                    </div>
+                    <MediaAttachments files={attachments} />
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
@@ -1020,6 +1017,9 @@ export default function CommunicationPage() {
                 selectedDays: editRecurrenceDays,
                 pattern: editSchedulePattern,
                 occurrenceTimes: editOccurrenceTimes,
+                canManageSchedule: canUpdateSchedule,
+                canManageRecurring: canUpdateRecurringSchedules,
+                canRemoveSchedule: canDeleteSchedule,
                 formErrors: errorsEdit,
               })}
               <div>
