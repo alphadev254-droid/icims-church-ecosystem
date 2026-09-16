@@ -32,32 +32,21 @@ window.addEventListener('appinstalled', () => {
   window.dispatchEvent(new CustomEvent('pwa-installed'));
 });
 
-if ('serviceWorker' in navigator) {
-  const hadController = Boolean(navigator.serviceWorker.controller);
-  let reloadingForUpdate = false;
+// Service workers are intentionally disabled. Remove registrations and caches
+// left behind by earlier PWA builds so the UI always comes from the deployment.
+window.addEventListener('load', () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch((error) => console.warn('[Browser cleanup] Could not remove service workers:', error));
+  }
 
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController || reloadingForUpdate) return;
-    reloadingForUpdate = true;
-    window.location.reload();
-  });
-
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
-      .then(async reg => {
-        console.log('[PWA] Service worker registered, scope:', reg.scope);
-        await reg.update();
-
-        // Check periodically and whenever the user returns to the app so a
-        // deployment replaces stale assets without manual worker removal.
-        window.setInterval(() => reg.update().catch(() => undefined), 60 * 60 * 1000);
-        document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible') reg.update().catch(() => undefined);
-        });
-      })
-      .catch(err => console.warn('[PWA] Service worker registration failed:', err));
-  });
-}
+  if ('caches' in window) {
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+      .catch((error) => console.warn('[Browser cleanup] Could not clear old caches:', error));
+  }
+});
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
