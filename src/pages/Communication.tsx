@@ -144,9 +144,9 @@ export default function CommunicationPage() {
   const isMember = role === 'member';
   const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
   const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
-  const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
-  const canUpdateSchedule = hasPermission('schedules:update') && hasSchedulerCreationFeature;
-  const canDeleteSchedule = hasPermission('schedules:delete') && hasSchedulerCreationFeature;
+  const canCreateSchedule = hasSchedulerCreationFeature;
+  const canUpdateSchedule = hasSchedulerCreationFeature;
+  const canDeleteSchedule = hasSchedulerCreationFeature;
   const canUseRecurringSchedules = canCreateSchedule && hasSchedulerRecurringFeature;
   const canUpdateRecurringSchedules = canUpdateSchedule && hasSchedulerRecurringFeature;
 

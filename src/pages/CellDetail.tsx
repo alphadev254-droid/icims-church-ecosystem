@@ -20,6 +20,7 @@ import { ExactDateSchedulePicker, normalizeScheduleDates, scheduleInputFromDate 
 import { ArrowLeft, Users, Calendar as CalendarIcon, MapPin, UserPlus, Plus, Trash2, ClipboardList, ChevronLeft, ChevronRight, Search, AlertTriangle, TrendingUp, TrendingDown, Minus, Pencil, Eye, MoreHorizontal } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { STALE_TIME } from '@/lib/query-config';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -90,9 +91,9 @@ export default function CellDetailPage() {
   const canManage = hasPermission('cells:update');
   const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
   const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
-  const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
-  const canUpdateSchedule = hasPermission('schedules:update') && hasSchedulerCreationFeature;
-  const canDeleteSchedule = hasPermission('schedules:delete') && hasSchedulerCreationFeature;
+  const canCreateSchedule = hasSchedulerCreationFeature;
+  const canUpdateSchedule = hasSchedulerCreationFeature;
+  const canDeleteSchedule = hasSchedulerCreationFeature;
   const isMember = role === 'member';
 
   const [tab, setTab] = useState<'members' | 'meetings' | 'stats' | 'transactions'>('members');
@@ -126,11 +127,13 @@ export default function CellDetailPage() {
   // Meetings tab state
   const [meetingDateFrom, setMeetingDateFrom] = useState('');
   const [meetingDateTo, setMeetingDateTo] = useState('');
+  const [meetingPublicationStatus, setMeetingPublicationStatus] = useState<'published' | 'draft'>('published');
   const [meetingPage, setMeetingPage] = useState(1);
   const [deleteMeeting, setDeleteMeeting] = useState<CellMeeting | null>(null);
   const [editMeeting, setEditMeeting] = useState<CellMeeting | null>(null);
   const [viewMeeting, setViewMeeting] = useState<CellMeeting | null>(null);
   const [editMeetingForm, setEditMeetingForm] = useState<MeetingFormState>(() => emptyMeetingForm());
+  const [selectedDraftMeetingIds, setSelectedDraftMeetingIds] = useState<string[]>([]);
 
   const { data: cell, isLoading } = useQuery({
     queryKey: ['cell-detail', id],
@@ -159,10 +162,11 @@ export default function CellDetailPage() {
 
   // Paginated meetings
   const { data: meetingsResponse, isLoading: meetingsLoading } = useQuery({
-    queryKey: ['cell-meetings', id, meetingDateFrom, meetingDateTo, meetingPage],
+    queryKey: ['cell-meetings', id, meetingDateFrom, meetingDateTo, meetingPublicationStatus, meetingPage],
     queryFn: () => cellsService.getMeetings(id!, {
       dateFrom: meetingDateFrom || undefined,
       dateTo: meetingDateTo || undefined,
+      publicationStatus: meetingPublicationStatus,
       page: meetingPage,
       limit: 50,
     }),
@@ -257,7 +261,17 @@ export default function CellDetailPage() {
   });
 
   const updateMeetingMutation = useMutation({
-    mutationFn: () => cellsService.updateMeeting(editMeeting!.id, editMeetingForm),
+    mutationFn: () => {
+      const dto = editMeeting?.recordType === 'scheduled_occurrence'
+        ? {
+            date: editMeetingForm.date,
+            time: editMeetingForm.time,
+            topic: editMeetingForm.topic,
+            notes: editMeetingForm.notes,
+          }
+        : editMeetingForm;
+      return cellsService.updateMeeting(editMeeting!.id, dto);
+    },
     onSuccess: () => {
       toast.success('Meeting updated');
       qc.invalidateQueries({ queryKey: ['cell-meetings', id] });
@@ -279,6 +293,25 @@ export default function CellDetailPage() {
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete meeting'),
   });
+
+  const bulkDeleteDraftMeetingsMutation = useMutation({
+    mutationFn: () => cellsService.bulkDeleteDraftMeetings(selectedDraftMeetingIds),
+    onSuccess: result => {
+      toast.success(`${result.deletedCount} draft meeting${result.deletedCount === 1 ? '' : 's'} deleted`);
+      setSelectedDraftMeetingIds([]);
+      qc.invalidateQueries({ queryKey: ['cell-meetings', id] });
+      qc.invalidateQueries({ queryKey: ['cell-detail', id] });
+      qc.invalidateQueries({ queryKey: ['cell-stats', id] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to delete selected drafts'),
+  });
+
+  useEffect(() => {
+    setSelectedDraftMeetingIds(current => {
+      const next = current.filter(meetingId => meetings.some(meeting => meeting.id === meetingId));
+      return next.length === current.length ? current : next;
+    });
+  }, [meetings]);
 
   // Switch to meetings tab if read-only member — only once when determined
   // Must be before any early returns (Rules of Hooks)
@@ -395,6 +428,7 @@ export default function CellDetailPage() {
     submitLabel: string,
     onSubmit: () => void,
     isNewMeeting = false,
+    isSingleOccurrence = false,
   ) => {
     const canManageSchedule = isNewMeeting ? canCreateSchedule : canUpdateSchedule;
     const canUseRecurringSchedules = canManageSchedule && hasSchedulerRecurringFeature;
@@ -426,7 +460,7 @@ export default function CellDetailPage() {
     };
     return (
       <div className="space-y-3">
-        <div>
+        {!isSingleOccurrence && <div>
           <Label>Meeting Mode</Label>
           <p className="mb-1 text-xs text-muted-foreground">
             Choose whether this meeting is created now or scheduled for automation.
@@ -453,7 +487,7 @@ export default function CellDetailPage() {
           {!canManageSchedule && form.deliveryMode === 'scheduled' && (
             <p className="mt-1 text-xs text-destructive">This meeting has a schedule, but your role or package cannot modify schedules.</p>
           )}
-        </div>
+        </div>}
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>{isScheduledMode ? 'Start date *' : 'Date *'}</Label>
@@ -465,7 +499,7 @@ export default function CellDetailPage() {
         <div><Label>Topic</Label><Input className="mt-1" value={form.topic} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} placeholder="Meeting topic" /></div>
         <div><Label>Notes</Label><Textarea className="mt-1" rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
 
-        {isScheduledMode && (
+        {!isSingleOccurrence && isScheduledMode && (
           <div className="space-y-3 rounded-md border border-border p-3">
             <div>
               <Label>Schedule Type</Label>
@@ -844,6 +878,13 @@ export default function CellDetailPage() {
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted-foreground shrink-0">Date:</span>
+            <Select value={meetingPublicationStatus} onValueChange={value => { setMeetingPublicationStatus(value as 'published' | 'draft'); setMeetingPage(1); }}>
+              <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="published">Active</SelectItem>
+                {!isReadOnlyMember && <SelectItem value="draft">Draft</SelectItem>}
+              </SelectContent>
+            </Select>
             <Input type="date" className="h-8 w-32 text-xs" value={meetingDateFrom} onChange={e => { setMeetingDateFrom(e.target.value); setMeetingPage(1); }} />
             <span className="text-xs text-muted-foreground">–</span>
             <Input type="date" className="h-8 w-32 text-xs" value={meetingDateTo} onChange={e => { setMeetingDateTo(e.target.value); setMeetingPage(1); }} />
@@ -854,6 +895,29 @@ export default function CellDetailPage() {
             )}
           </div>
 
+          {meetingPublicationStatus === 'draft' && effectiveCanManage && meetings.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 px-3 py-2">
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <Checkbox
+                  checked={selectedDraftMeetingIds.length === meetings.length && meetings.length > 0}
+                  onCheckedChange={checked => setSelectedDraftMeetingIds(checked ? meetings.map(meeting => meeting.id) : [])}
+                />
+                Select all on this page
+              </label>
+              <span className="text-xs text-muted-foreground">{selectedDraftMeetingIds.length} selected</span>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="ml-auto h-8 gap-1.5"
+                disabled={selectedDraftMeetingIds.length === 0 || bulkDeleteDraftMeetingsMutation.isPending}
+                onClick={() => bulkDeleteDraftMeetingsMutation.mutate()}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {bulkDeleteDraftMeetingsMutation.isPending ? 'Deleting...' : 'Delete selected'}
+              </Button>
+            </div>
+          )}
+
           {/* Count */}
           <p className="text-xs text-muted-foreground">
             {meetingsPagination ? `${meetingsPagination.total} meetings` : ''}
@@ -863,11 +927,20 @@ export default function CellDetailPage() {
           {meetingsLoading ? (
             <div className="flex justify-center py-8"><div className="h-5 w-5 animate-spin rounded-full border-4 border-accent border-t-transparent" /></div>
           ) : meetings.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No meetings recorded yet.</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No {meetingPublicationStatus === 'draft' ? 'draft' : 'active'} meetings found.</p>
           ) : (
             <div className="divide-y border rounded-lg">
               {(meetings as CellMeeting[]).map(m => (
                 <div key={m.id} className="flex items-center justify-between px-4 py-3 gap-3">
+                  {meetingPublicationStatus === 'draft' && effectiveCanManage && (
+                    <Checkbox
+                      aria-label={`Select draft meeting ${new Date(m.date).toLocaleDateString()}`}
+                      checked={selectedDraftMeetingIds.includes(m.id)}
+                      onCheckedChange={checked => setSelectedDraftMeetingIds(current => checked
+                        ? [...new Set([...current, m.id])]
+                        : current.filter(meetingId => meetingId !== m.id))}
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     <p className="text-xs text-muted-foreground">
@@ -895,7 +968,7 @@ export default function CellDetailPage() {
                         {effectiveCanManage && (
                           <>
                             <DropdownMenuItem onClick={() => openEditMeetingDialog(m)}>
-                              <Pencil className="mr-2 h-4 w-4" /> Edit meeting
+                              <Pencil className="mr-2 h-4 w-4" /> {m.recordType === 'scheduled_source' ? 'Edit schedule' : m.publicationStatus === 'draft' ? 'Edit draft' : 'Edit meeting'}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteMeeting(m)}>
@@ -1795,8 +1868,13 @@ export default function CellDetailPage() {
 
       <Dialog open={!!editMeeting} onOpenChange={open => { if (!open) setEditMeeting(null); }}>
         <DialogContent className="w-[calc(100vw-1.5rem)] max-w-3xl max-h-[calc(100svh-1.5rem)] overflow-y-auto">
-          <DialogHeader><DialogTitle>Edit Meeting</DialogTitle></DialogHeader>
-          {renderMeetingForm(editMeetingForm, setEditMeetingForm, updateMeetingMutation.isPending, 'Save Changes', () => updateMeetingMutation.mutate())}
+          <DialogHeader><DialogTitle>{editMeeting?.recordType === 'scheduled_source' ? 'Edit Meeting Schedule' : editMeeting?.publicationStatus === 'draft' ? 'Edit Draft Meeting' : 'Edit Meeting'}</DialogTitle></DialogHeader>
+          {editMeeting?.recordType === 'scheduled_occurrence' && (
+            <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+              This edits only this occurrence. To change recurrence, edit the original meeting schedule.
+            </p>
+          )}
+          {renderMeetingForm(editMeetingForm, setEditMeetingForm, updateMeetingMutation.isPending, 'Save Changes', () => updateMeetingMutation.mutate(), false, editMeeting?.recordType === 'scheduled_occurrence')}
         </DialogContent>
       </Dialog>
 

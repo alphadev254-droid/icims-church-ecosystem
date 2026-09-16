@@ -1086,9 +1086,9 @@ export default function EventsPage() {
   const canViewAllTickets = hasPermission('tickets:create') && hasEventReportsFeature;
   const canSharePublicEvents = hasEventPublicLinksFeature && hasEventGuestBookingFeature;
   const canGenerateEventQr = hasEventQrCodesFeature && canSharePublicEvents;
-  const canCreateSchedule = hasPermission('schedules:create') && hasSchedulerCreationFeature;
-  const canUpdateSchedule = hasPermission('schedules:update') && hasSchedulerCreationFeature;
-  const canDeleteSchedule = hasPermission('schedules:delete') && hasSchedulerCreationFeature;
+  const canCreateSchedule = hasSchedulerCreationFeature;
+  const canUpdateSchedule = hasSchedulerCreationFeature;
+  const canDeleteSchedule = hasSchedulerCreationFeature;
   const canUseRecurringSchedules = canCreateSchedule && hasSchedulerRecurringFeature;
   const canUpdateRecurringSchedules = canUpdateSchedule && hasSchedulerRecurringFeature;
 
@@ -1346,6 +1346,7 @@ export default function EventsPage() {
                     <SelectItem value="ongoing">Ongoing</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
+                    {!isMember && <SelectItem value="draft">Draft</SelectItem>}
                     <SelectItem value="all">All Statuses</SelectItem>
                   </SelectContent>
                 </Select>

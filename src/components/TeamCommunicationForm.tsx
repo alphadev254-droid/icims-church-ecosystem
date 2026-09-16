@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarClock, Upload, X, FileText, Video, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
 import { ScheduledTimesPicker } from '@/components/scheduling/ScheduledTimesPicker';
@@ -57,11 +56,10 @@ function buildScheduledAt(date: string, time: string) {
 }
 
 export function TeamCommunicationForm({ teams, initialData, onSubmit, isPending }: TeamCommunicationFormProps) {
-  const { hasPermission } = useRole();
   const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
   const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
-  const canManageSchedule = hasPermission(initialData ? 'schedules:update' : 'schedules:create') && hasSchedulerCreationFeature;
-  const canRemoveSchedule = hasPermission('schedules:delete') && hasSchedulerCreationFeature;
+  const canManageSchedule = hasSchedulerCreationFeature;
+  const canRemoveSchedule = hasSchedulerCreationFeature;
   const canUseRecurringSchedules = canManageSchedule && hasSchedulerRecurringFeature;
   const [title, setTitle] = useState(initialData?.title || '');
   const [content, setContent] = useState(initialData?.content || '');

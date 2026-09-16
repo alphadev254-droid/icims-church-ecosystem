@@ -235,7 +235,7 @@ export const cellsService = {
     return data;
   },
 
-  getMeetings: async (cellId: string, params?: { dateFrom?: string; dateTo?: string; page?: number; limit?: number }): Promise<{
+  getMeetings: async (cellId: string, params?: { dateFrom?: string; dateTo?: string; publicationStatus?: 'published' | 'draft'; page?: number; limit?: number }): Promise<{
     data: CellMeeting[];
     pagination: { total: number; page: number; limit: number; pages: number };
   }> => {
@@ -255,6 +255,11 @@ export const cellsService = {
 
   deleteMeeting: async (meetingId: string): Promise<void> => {
     await apiClient.delete(`${BASE}/meetings/${meetingId}`);
+  },
+
+  bulkDeleteDraftMeetings: async (meetingIds: string[]): Promise<{ deletedCount: number }> => {
+    const { data } = await apiClient.post(`${BASE}/meetings/bulk-delete-drafts`, { meetingIds });
+    return { deletedCount: data.deletedCount ?? meetingIds.length };
   },
 
   // Attendance
