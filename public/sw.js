@@ -6,9 +6,15 @@ self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', () => {
+self.addEventListener('activate', (event) => {
   console.log('[FCM SW] Activated');
-  clients.claim();
+  // Remove legacy Workbox application caches. UI navigation and hashed assets
+  // then come from the network, so deployments do not need manual SW cleanup.
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+      .then(() => clients.claim())
+  );
 });
 
 const firebaseConfig = {

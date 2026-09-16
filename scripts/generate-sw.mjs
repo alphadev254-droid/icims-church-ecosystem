@@ -33,9 +33,15 @@ self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', () => {
+self.addEventListener('activate', (event) => {
   console.log('[FCM SW] Activated');
-  clients.claim();
+  // Remove legacy Workbox application caches. UI navigation and hashed assets
+  // then come from the network, so deployments do not need manual SW cleanup.
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+      .then(() => clients.claim())
+  );
 });
 
 const firebaseConfig = {
@@ -94,6 +100,6 @@ self.addEventListener('notificationclick', (event) => {
 });
 `;
 
-const outPath = resolve(root, 'public', 'firebase-messaging-sw.js');
+const outPath = resolve(root, 'public', 'sw.js');
 writeFileSync(outPath, swContent, 'utf-8');
-console.log('[generate-sw] Generated public/firebase-messaging-sw.js from env vars');
+console.log('[generate-sw] Generated public/sw.js from env vars');
