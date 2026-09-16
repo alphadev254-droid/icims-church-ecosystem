@@ -1373,7 +1373,13 @@ export default function EventsPage() {
               )}
               <div>
                 <Label className="text-xs">Status</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select
+                  value={statusFilter}
+                  onValueChange={value => {
+                    setStatusFilter(value);
+                    setAppliedFilters(current => ({ ...current, status: value }));
+                  }}
+                >
                   <SelectTrigger className="w-36 sm:w-40 h-8 text-xs sm:h-9 sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
