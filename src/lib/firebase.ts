@@ -69,7 +69,13 @@ export async function getFcmToken(vapidKey: string): Promise<string | null> {
       return null;
     }
 
-    const token = await getToken(messaging, { vapidKey });
+    // Reuse the application's single root-scoped PWA worker. Without passing
+    // this registration Firebase creates a competing root service worker,
+    // which can leave clients controlled by an outdated application cache.
+    const serviceWorkerRegistration = await navigator.serviceWorker.register('/sw.js', {
+      updateViaCache: 'none',
+    });
+    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration });
     return token;
   } catch (error) {
     logMessagingError('Failed to get FCM token', error);

@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ExactDateSchedulePicker, normalizeScheduleDates, scheduleInputFromDate } from '@/components/scheduling/ExactDateSchedulePicker';
+import { ExactDateSchedulePicker, SingleDateSchedulePicker, normalizeScheduleDates, scheduleInputFromDate } from '@/components/scheduling/ExactDateSchedulePicker';
 import { ArrowLeft, Users, Calendar as CalendarIcon, MapPin, UserPlus, Plus, Trash2, ClipboardList, ChevronLeft, ChevronRight, Search, AlertTriangle, TrendingUp, TrendingDown, Minus, Pencil, Eye, MoreHorizontal } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -182,7 +182,6 @@ export default function CellDetailPage() {
     staleTime: STALE_TIME.DEFAULT,
   });
   const meetingSchedules = meetingSchedulesResponse?.data ?? [];
-  const schedulesByMeetingId = new Map(meetingSchedules.map(schedule => [schedule.id, schedule]));
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['cell-stats', id],
@@ -270,7 +269,10 @@ export default function CellDetailPage() {
 
   const updateMeetingMutation = useMutation({
     mutationFn: () => {
-      const dto = editMeeting?.recordType === 'scheduled_occurrence'
+      const isOccurrence = Boolean(editMeeting && (
+        editMeeting.recordType === 'scheduled_occurrence' || editMeeting.scheduledOccurrenceId || editMeeting.sourceMeetingId
+      ));
+      const dto = isOccurrence
         ? {
             date: editMeetingForm.date,
             time: editMeetingForm.time,
@@ -496,14 +498,28 @@ export default function CellDetailPage() {
             <p className="mt-1 text-xs text-destructive">This meeting has a schedule, but your role or package cannot modify schedules.</p>
           )}
         </div>}
-        <div className="grid gap-3 sm:grid-cols-2">
+        {isSingleOccurrence ? (
+          <div className="space-y-3 rounded-md border border-border p-3">
+            <SingleDateSchedulePicker
+              value={form.date}
+              onChange={date => setForm(current => ({ ...current, date }))}
+              minimumDate={todayInput}
+              label="Occurrence date"
+              description="Change only this draft meeting date. The parent schedule will not be changed."
+            />
+            <div>
+              <Label>Occurrence time</Label>
+              <Input className="mt-1" type="time" value={form.time} onChange={e => setForm(current => ({ ...current, time: e.target.value }))} />
+            </div>
+          </div>
+        ) : <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label>{isScheduledMode ? 'Start date *' : 'Date *'}</Label>
             {isExactDateSchedule && <p className="mb-1 text-xs text-muted-foreground">Auto-fills from the first selected date.</p>}
             <Input className="mt-1" type="date" min={isScheduledMode ? todayInput : undefined} disabled={isNewMeeting && !isScheduledMode} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
           </div>
           <div><Label>Time</Label><Input className="mt-1" type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
-        </div>
+        </div>}
         <div><Label>Topic</Label><Input className="mt-1" value={form.topic} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} placeholder="Meeting topic" /></div>
         <div><Label>Notes</Label><Textarea className="mt-1" rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
 
@@ -902,6 +918,32 @@ export default function CellDetailPage() {
                 <Plus className="h-3.5 w-3.5" /> <span className="hidden sm:inline">New Meeting</span>
               </Button>
             )}
+            {meetingPublicationStatus === 'draft' && effectiveCanManage && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="h-8 gap-1.5">
+                    <CalendarIcon className="h-3.5 w-3.5" /> Edit Scheduler
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  {meetingSchedules.length === 0 ? (
+                    <DropdownMenuItem disabled>No meeting schedules found</DropdownMenuItem>
+                  ) : meetingSchedules.map(schedule => (
+                    <DropdownMenuItem key={schedule.id} onClick={() => openEditMeetingDialog(schedule)} className="items-start">
+                      <CalendarIcon className="mr-2 mt-0.5 h-4 w-4 shrink-0" />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{schedule.topic || 'Cell meeting schedule'}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {(schedule.scheduledEvent?.recurrenceRule ?? schedule.recurrenceRule)?.frequency && (schedule.scheduledEvent?.recurrenceRule ?? schedule.recurrenceRule)?.frequency !== 'none'
+                            ? `Repeats ${(schedule.scheduledEvent?.recurrenceRule ?? schedule.recurrenceRule)?.frequency}`
+                            : `Starts ${new Date(schedule.date).toLocaleDateString('en-GB')}`}
+                        </span>
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
 
           {meetingPublicationStatus === 'draft' && effectiveCanManage && meetings.length > 0 && (
@@ -959,16 +1001,6 @@ export default function CellDetailPage() {
                   <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground shrink-0">
                     <span className="text-green-600 font-medium">{m.presentCount ?? 0} present</span>
                     <span className="hidden sm:inline">{m.visitorCount ?? 0} visitors</span>
-                    {m.recordType === 'scheduled_occurrence' && m.sourceMeetingId && schedulesByMeetingId.has(m.sourceMeetingId) && effectiveCanManage && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="hidden h-8 gap-1.5 md:inline-flex"
-                        onClick={() => openEditMeetingDialog(schedulesByMeetingId.get(m.sourceMeetingId!)!)}
-                      >
-                        <CalendarIcon className="h-3.5 w-3.5" /> Edit schedule
-                      </Button>
-                    )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="outline" className="h-8 w-8 p-0" aria-label="Meeting actions">
@@ -989,11 +1021,6 @@ export default function CellDetailPage() {
                             <DropdownMenuItem onClick={() => openEditMeetingDialog(m)}>
                               <Pencil className="mr-2 h-4 w-4" /> {m.recordType === 'scheduled_source' ? 'Edit schedule' : m.publicationStatus === 'draft' ? 'Edit draft' : 'Edit meeting'}
                             </DropdownMenuItem>
-                            {m.recordType === 'scheduled_occurrence' && m.sourceMeetingId && schedulesByMeetingId.has(m.sourceMeetingId) && (
-                              <DropdownMenuItem onClick={() => openEditMeetingDialog(schedulesByMeetingId.get(m.sourceMeetingId!)!)}>
-                                <CalendarIcon className="mr-2 h-4 w-4" /> Edit parent schedule
-                              </DropdownMenuItem>
-                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteMeeting(m)}>
                               <Trash2 className="mr-2 h-4 w-4" /> {m.recordType === 'scheduled_source' ? 'Delete schedule' : m.publicationStatus === 'draft' ? 'Delete draft' : 'Delete meeting'}
@@ -1892,13 +1919,21 @@ export default function CellDetailPage() {
 
       <Dialog open={!!editMeeting} onOpenChange={open => { if (!open) setEditMeeting(null); }}>
         <DialogContent className="w-[calc(100vw-1.5rem)] max-w-3xl max-h-[calc(100svh-1.5rem)] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editMeeting?.recordType === 'scheduled_source' ? 'Edit Meeting Schedule' : editMeeting?.publicationStatus === 'draft' ? 'Edit Draft Meeting' : 'Edit Meeting'}</DialogTitle></DialogHeader>
-          {editMeeting?.recordType === 'scheduled_occurrence' && (
+          <DialogHeader><DialogTitle>{editMeeting?.recordType === 'scheduled_source' ? 'Edit Meeting Schedule' : editMeeting?.publicationStatus === 'draft' ? 'Edit Draft Occurrence' : 'Edit Meeting'}</DialogTitle></DialogHeader>
+          {Boolean(editMeeting && (editMeeting.recordType === 'scheduled_occurrence' || editMeeting.scheduledOccurrenceId || editMeeting.sourceMeetingId)) && (
             <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
               This edits only this occurrence. To change recurrence, edit the original meeting schedule.
             </p>
           )}
-          {renderMeetingForm(editMeetingForm, setEditMeetingForm, updateMeetingMutation.isPending, 'Save Changes', () => updateMeetingMutation.mutate(), false, editMeeting?.recordType === 'scheduled_occurrence')}
+          {renderMeetingForm(
+            editMeetingForm,
+            setEditMeetingForm,
+            updateMeetingMutation.isPending,
+            'Save Changes',
+            () => updateMeetingMutation.mutate(),
+            false,
+            Boolean(editMeeting && (editMeeting.recordType === 'scheduled_occurrence' || editMeeting.scheduledOccurrenceId || editMeeting.sourceMeetingId)),
+          )}
         </DialogContent>
       </Dialog>
 

@@ -21,6 +21,9 @@ export default defineConfig(({ mode }) => ({
       filename: 'sw.js',
       injectRegister: null, // we handle registration manually in main.tsx
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        importScripts: ['firebase-messaging-sw.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
         globIgnores: ['**/{features,cta,contact,about}.png'],
         navigateFallback: '/index.html',

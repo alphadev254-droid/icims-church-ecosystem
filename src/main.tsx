@@ -47,6 +47,13 @@ if ('serviceWorker' in navigator) {
       .then(async reg => {
         console.log('[PWA] Service worker registered, scope:', reg.scope);
         await reg.update();
+
+        // Check periodically and whenever the user returns to the app so a
+        // deployment replaces stale assets without manual worker removal.
+        window.setInterval(() => reg.update().catch(() => undefined), 60 * 60 * 1000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update().catch(() => undefined);
+        });
       })
       .catch(err => console.warn('[PWA] Service worker registration failed:', err));
   });

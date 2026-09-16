@@ -111,3 +111,47 @@ export function ExactDateSchedulePicker({
     </div>
   );
 }
+
+type SingleDateSchedulePickerProps = {
+  value: string;
+  onChange: (date: string) => void;
+  minimumDate?: string;
+  label?: string;
+  description?: string;
+};
+
+export function SingleDateSchedulePicker({
+  value,
+  onChange,
+  minimumDate,
+  label = 'Meeting date',
+  description = 'Choose the date for this meeting occurrence.',
+}: SingleDateSchedulePickerProps) {
+  const selected = dateFromScheduleInput(value);
+  const minimum = dateFromScheduleInput(minimumDate);
+
+  return (
+    <div>
+      <Label>{label}</Label>
+      <p className="mb-2 text-xs text-muted-foreground">{description}</p>
+      <div className="rounded-md border border-border bg-background/40">
+        <Calendar
+          mode="single"
+          required
+          selected={selected}
+          defaultMonth={selected ?? minimum}
+          onSelect={date => { if (date) onChange(scheduleInputFromDate(date)); }}
+          disabled={minimum ? { before: minimum } : undefined}
+          className="mx-auto w-fit max-w-full"
+        />
+        {selected && (
+          <div className="border-t px-3 py-2">
+            <Badge variant="secondary">
+              {selected.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </Badge>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
