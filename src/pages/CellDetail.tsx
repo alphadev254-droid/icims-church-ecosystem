@@ -182,6 +182,12 @@ export default function CellDetailPage() {
     staleTime: STALE_TIME.DEFAULT,
   });
   const meetingSchedules = meetingSchedulesResponse?.data ?? [];
+  const editableMeetingSchedules = meetingSchedules.filter(schedule =>
+    (schedule.scheduledEvent?.occurrences ?? []).some(occurrence =>
+      Boolean(occurrence.generatedSourceId)
+      && (occurrence.status === 'pending' || occurrence.status === 'failed'),
+    ),
+  );
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['cell-stats', id],
@@ -409,14 +415,20 @@ export default function CellDetailPage() {
 
   const openEditMeetingDialog = (meeting: CellMeeting) => {
     const savedOccurrenceDates = normalizeScheduleDates(
-      (meeting.scheduledEvent?.occurrences ?? []).map(occurrence => dateInputValue(occurrence.occurrenceStartAt)),
+      (meeting.scheduledEvent?.occurrences ?? [])
+        .filter(occurrence => Boolean(occurrence.generatedSourceId)
+          && (occurrence.status === 'pending' || occurrence.status === 'failed'))
+        .map(occurrence => dateInputValue(occurrence.occurrenceStartAt)),
     );
     const hasExactDateSchedule = meeting.scheduledEvent && !meeting.scheduledEvent.recurrenceRuleId && savedOccurrenceDates.length > 0;
+    const editableStartDate = meeting.recordType === 'scheduled_source' && savedOccurrenceDates[0]
+      ? savedOccurrenceDates[0]
+      : dateInputValue(meeting.date);
     setEditMeeting(meeting);
     setEditMeetingForm({
       deliveryMode: meeting.scheduledEvent ? 'scheduled' : 'now',
       schedulePattern: hasExactDateSchedule ? 'custom_dates' : 'repeat',
-      date: dateInputValue(meeting.date),
+      date: editableStartDate,
       time: meeting.time ?? cell.meetingTime ?? '',
       topic: meeting.topic ?? '',
       notes: meeting.notes ?? '',
@@ -926,9 +938,9 @@ export default function CellDetailPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-72">
-                  {meetingSchedules.length === 0 ? (
-                    <DropdownMenuItem disabled>No meeting schedules found</DropdownMenuItem>
-                  ) : meetingSchedules.map(schedule => (
+                  {editableMeetingSchedules.length === 0 ? (
+                    <DropdownMenuItem disabled>No schedules with draft meetings</DropdownMenuItem>
+                  ) : editableMeetingSchedules.map(schedule => (
                     <DropdownMenuItem key={schedule.id} onClick={() => openEditMeetingDialog(schedule)} className="items-start">
                       <CalendarIcon className="mr-2 mt-0.5 h-4 w-4 shrink-0" />
                       <span className="min-w-0">
@@ -1011,7 +1023,7 @@ export default function CellDetailPage() {
                         <DropdownMenuItem onClick={() => setViewMeeting(m)}>
                           <Eye className="mr-2 h-4 w-4" /> View details
                         </DropdownMenuItem>
-                        {!isReadOnlyMember && m.recordType !== 'scheduled_source' && (
+                        {!isReadOnlyMember && m.recordType !== 'scheduled_source' && m.publicationStatus !== 'draft' && (
                           <DropdownMenuItem onClick={() => navigate(`/dashboard/cells/${id}/meetings/${m.id}/attendance`)}>
                             <ClipboardList className="mr-2 h-4 w-4" /> Manage attendance
                           </DropdownMenuItem>
@@ -1920,6 +1932,11 @@ export default function CellDetailPage() {
       <Dialog open={!!editMeeting} onOpenChange={open => { if (!open) setEditMeeting(null); }}>
         <DialogContent className="w-[calc(100vw-1.5rem)] max-w-3xl max-h-[calc(100svh-1.5rem)] overflow-y-auto">
           <DialogHeader><DialogTitle>{editMeeting?.recordType === 'scheduled_source' ? 'Edit Meeting Schedule' : editMeeting?.publicationStatus === 'draft' ? 'Edit Draft Occurrence' : 'Edit Meeting'}</DialogTitle></DialogHeader>
+          {editMeeting?.recordType === 'scheduled_source' && (
+            <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+              Changes apply only to meetings that are still drafts. Published meetings and their attendance history are preserved.
+            </p>
+          )}
           {Boolean(editMeeting && (editMeeting.recordType === 'scheduled_occurrence' || editMeeting.scheduledOccurrenceId || editMeeting.sourceMeetingId)) && (
             <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
               This edits only this occurrence. To change recurrence, edit the original meeting schedule.
