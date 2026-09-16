@@ -48,13 +48,16 @@ export interface ChurchEvent {
     status: string;
     timezone: string;
     recurrenceRuleId?: string | null;
-    occurrences?: Array<{ id: string; occurrenceStartAt: string; occurrenceEndAt: string; status: string }>;
+    occurrences?: Array<{ id: string; occurrenceStartAt: string; occurrenceEndAt: string; status: string; generatedSourceModule?: string | null; generatedSourceId?: string | null }>;
   } | null;
   maxAttendees?: number;
   createdById: string;
   createdAt: string;
   updatedAt: string;
   publicationStatus: 'draft' | 'published';
+  recordType?: 'direct' | 'scheduled_source' | 'scheduled_occurrence';
+  sourceEventId?: string | null;
+  scheduledOccurrenceId?: string | null;
   publishAt?: string | null;
   publishedAt?: string | null;
   userHasTicket?: boolean;

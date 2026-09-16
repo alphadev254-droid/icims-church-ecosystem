@@ -248,6 +248,7 @@ interface EventFormProps {
   canCreateSchedule?: boolean;
   canUseRecurringSchedules?: boolean;
   canDeleteSchedule?: boolean;
+  isDraftOccurrence?: boolean;
 }
 
 function EventForm({
@@ -263,6 +264,7 @@ function EventForm({
   canCreateSchedule = false,
   canUseRecurringSchedules = false,
   canDeleteSchedule = true,
+  isDraftOccurrence = false,
 }: EventFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const imageFileRef = useRef<File | null>(null);
@@ -537,7 +539,7 @@ function EventForm({
       </>
       )}
 
-      <div className="space-y-3 rounded-md border border-border p-3">
+      {!isDraftOccurrence && <div className="space-y-3 rounded-md border border-border p-3">
         <div className="flex items-center gap-2">
           <CalendarClock className="h-4 w-4 text-accent" />
           <Label className="text-xs sm:text-sm">Event Mode</Label>
@@ -570,9 +572,9 @@ function EventForm({
         {!canCreateSchedule && deliveryMode === 'scheduled' && (
           <p className="text-xs text-destructive">This event has a schedule, but your role or package cannot modify schedules.</p>
         )}
-      </div>
+      </div>}
 
-      {deliveryMode === 'scheduled' && (
+      {!isDraftOccurrence && deliveryMode === 'scheduled' && (
       <div className="space-y-3 rounded-md border border-border p-3">
         <div>
           <Label className="text-xs sm:text-sm">Schedule Type</Label>
@@ -1032,6 +1034,22 @@ export default function EventsPage() {
   const events = flattenGrouped(eventsResponse);
   const groupedEvents = eventsResponse ?? [];
 
+  const { data: eventSchedulesResponse } = useQuery({
+    queryKey: ['event-schedules', appliedFilters.church],
+    queryFn: () => eventsService.getAll(
+      appliedFilters.church !== 'all' ? appliedFilters.church : undefined,
+      { status: 'schedule' },
+    ),
+    enabled: !isMember && appliedFilters.status === 'draft',
+    staleTime: 5 * 60 * 1000,
+  });
+  const editableEventSchedules = flattenGrouped(eventSchedulesResponse).filter(schedule =>
+    (schedule.scheduledEvent?.occurrences ?? []).some((occurrence: any) =>
+      Boolean(occurrence.generatedSourceId)
+      && (occurrence.status === 'pending' || occurrence.status === 'failed'),
+    ),
+  );
+
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
     queryFn: async () => {
@@ -1058,8 +1076,20 @@ export default function EventsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: Partial<FormValues> }) =>
-      eventsService.update(id, dto),
+    mutationFn: ({ id, dto }: { id: string; dto: Partial<FormValues> }) => {
+      const isDraftOccurrence = editEvent?.recordType === 'scheduled_occurrence'
+        || Boolean(editEvent?.scheduledOccurrenceId || editEvent?.sourceEventId);
+      if (!isDraftOccurrence) return eventsService.update(id, dto);
+      const {
+        deliveryMode: _deliveryMode,
+        schedulePattern: _schedulePattern,
+        occurrenceDates: _occurrenceDates,
+        occurrenceRanges: _occurrenceRanges,
+        recurrenceRule: _recurrenceRule,
+        ...occurrenceDto
+      } = dto;
+      return eventsService.update(id, occurrenceDto);
+    },
     onSuccess: () => {
       toast.success('Event updated');
       qc.invalidateQueries({ queryKey: ['events'] });
@@ -1271,7 +1301,12 @@ export default function EventsPage() {
   const buildEditDefaults = (e: ChurchEvent): Partial<FormValues> => ({
     title: e.title,
     description: e.description ?? '',
-    date: new Date(e.date).toISOString().split('T')[0],
+    date: e.recordType === 'scheduled_source'
+      ? scheduleInputInTimeZone(
+          e.scheduledEvent?.occurrences?.find(occurrence => Boolean(occurrence.generatedSourceId) && (occurrence.status === 'pending' || occurrence.status === 'failed'))?.occurrenceStartAt || e.date,
+          e.scheduledEvent?.timezone || 'UTC',
+        )
+      : new Date(e.date).toISOString().split('T')[0],
     endDate: new Date(e.endDate).toISOString().split('T')[0],
     time: e.time,
     endTime: e.endTime || e.time,
@@ -1298,7 +1333,9 @@ export default function EventsPage() {
       ? 'custom_dates'
       : 'repeat',
     occurrenceDates: [],
-    occurrenceRanges: e.scheduledEvent?.occurrences?.map(occurrence => ({
+    occurrenceRanges: e.scheduledEvent?.occurrences
+      ?.filter(occurrence => Boolean(occurrence.generatedSourceId) && (occurrence.status === 'pending' || occurrence.status === 'failed'))
+      .map(occurrence => ({
       startDate: scheduleInputInTimeZone(occurrence.occurrenceStartAt, e.scheduledEvent?.timezone || 'UTC'),
       endDate: scheduleInputInTimeZone(occurrence.occurrenceEndAt, e.scheduledEvent?.timezone || 'UTC'),
       startTime: scheduleTimeInTimeZone(occurrence.occurrenceStartAt, e.scheduledEvent?.timezone || 'UTC'),
@@ -1410,6 +1447,28 @@ export default function EventsPage() {
             ]}
             pdfTitle="Events Report"
           />
+          {appliedFilters.status === 'draft' && canUpdate && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-8 gap-2 text-xs sm:h-9 sm:text-sm">
+                  <Calendar className="h-4 w-4" /> Edit Scheduler
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                {editableEventSchedules.length === 0 ? (
+                  <DropdownMenuItem disabled>No schedules with draft events</DropdownMenuItem>
+                ) : editableEventSchedules.map(schedule => (
+                  <DropdownMenuItem key={schedule.id} onClick={() => setEditEvent(schedule)} className="items-start">
+                    <Calendar className="mr-2 mt-0.5 h-4 w-4 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{schedule.title}</span>
+                      <span className="block text-xs text-muted-foreground">Edits remaining draft events only</span>
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {canCreate && (
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
@@ -1484,13 +1543,13 @@ export default function EventsPage() {
                         <Eye className="h-4 w-4" />
                         View Details
                       </DropdownMenuItem>
-                      {event.requiresTicket && canViewAllTickets && (
+                      {event.publicationStatus !== 'draft' && event.requiresTicket && canViewAllTickets && (
                         <DropdownMenuItem className="gap-2" onClick={() => navigate(`/dashboard/events/${event.id}/tickets`)}>
                           <Ticket className="h-4 w-4" />
                           Tickets
                         </DropdownMenuItem>
                       )}
-                      {event.allowPublicTicketing && event.status !== 'cancelled' && (canSharePublicEvents || canGenerateEventQr) && (
+                      {event.publicationStatus !== 'draft' && event.allowPublicTicketing && event.status !== 'cancelled' && (canSharePublicEvents || canGenerateEventQr) && (
                         <>
                           <DropdownMenuSeparator />
                           {canSharePublicEvents && (
@@ -1517,13 +1576,13 @@ export default function EventsPage() {
                       {canUpdate && (
                         <DropdownMenuItem className="gap-2" onClick={() => setEditEvent(event)}>
                           <Pencil className="h-4 w-4" />
-                          Edit Event
+                          {event.publicationStatus === 'draft' ? 'Edit draft' : 'Edit Event'}
                         </DropdownMenuItem>
                       )}
                       {canDelete && event.status !== 'cancelled' && (
                         <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => setDeleteEvent(event)}>
                           <Trash2 className="h-4 w-4" />
-                          Cancel Event
+                          {event.publicationStatus === 'draft' ? 'Delete draft' : 'Cancel Event'}
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -1713,8 +1772,15 @@ export default function EventsPage() {
       <Dialog open={!!editEvent} onOpenChange={(open) => { if (!open) setEditEvent(null); }}>
         <DialogContent className="w-[calc(100vw-1.5rem)] max-w-none sm:max-w-3xl lg:max-w-5xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-heading text-sm sm:text-base">Edit Event</DialogTitle>
+            <DialogTitle className="font-heading text-sm sm:text-base">
+              {editEvent?.recordType === 'scheduled_source' ? 'Edit Event Schedule' : editEvent?.publicationStatus === 'draft' ? 'Edit Draft Event' : 'Edit Event'}
+            </DialogTitle>
           </DialogHeader>
+          {editEvent?.recordType === 'scheduled_source' && (
+            <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+              Changes apply only to events that are still drafts. Published events, bookings, tickets, and attendance remain unchanged.
+            </p>
+          )}
           {editEvent && (
             <EventForm
               key={editEvent.id}
@@ -1726,7 +1792,8 @@ export default function EventsPage() {
                       canUseOnlinePayments={hasEventOnlinePaymentsFeature}
                       canCreateSchedule={canUpdateSchedule}
                       canUseRecurringSchedules={canUpdateRecurringSchedules}
-                      canDeleteSchedule={canDeleteSchedule}
+              canDeleteSchedule={canDeleteSchedule}
+              isDraftOccurrence={editEvent.recordType === 'scheduled_occurrence' || Boolean(editEvent.scheduledOccurrenceId || editEvent.sourceEventId)}
               onSubmit={(v) => updateMutation.mutate({ id: editEvent.id, dto: v })}
               isPending={updateMutation.isPending}
               submitLabel="Save Changes"
@@ -1739,9 +1806,11 @@ export default function EventsPage() {
       <AlertDialog open={!!deleteEvent} onOpenChange={(open) => { if (!open) setDeleteEvent(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Event</AlertDialogTitle>
+            <AlertDialogTitle>{deleteEvent?.publicationStatus === 'draft' ? 'Delete Draft Event' : 'Cancel Event'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Cancel <strong>{deleteEvent?.title}</strong>? This keeps tickets, transactions, and history, but stops new bookings.
+              {deleteEvent?.publicationStatus === 'draft'
+                ? <>Delete the draft <strong>{deleteEvent?.title}</strong>? This removes only this unpublished occurrence and leaves its parent schedule unchanged.</>
+                : <>Cancel <strong>{deleteEvent?.title}</strong>? This keeps tickets, transactions, and history, but stops new bookings.</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1750,7 +1819,7 @@ export default function EventsPage() {
               onClick={() => deleteEvent && deleteMutation.mutate(deleteEvent.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Cancel Event
+              {deleteEvent?.publicationStatus === 'draft' ? 'Delete Draft' : 'Cancel Event'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
