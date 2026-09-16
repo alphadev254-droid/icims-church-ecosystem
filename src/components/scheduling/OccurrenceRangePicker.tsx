@@ -104,6 +104,21 @@ export function OccurrenceRangePicker({ value, onChange, minimumDate, defaultSta
 
   const removeSelectedEndpoint = (endpoint: 'start' | 'end') => {
     if (!dates?.from) return;
+    const selectedDate = scheduleInputFromDate(
+      endpoint === 'end' && dates.to ? dates.to : dates.from,
+    );
+    const matchingIndex = editingIndex ?? value.findIndex(range =>
+      endpoint === 'start'
+        ? range.startDate === selectedDate
+        : range.endDate === selectedDate,
+    );
+    if (matchingIndex >= 0) {
+      onChange(value.filter((_, index) => index !== matchingIndex));
+      setDates(undefined);
+      setEditingIndex(null);
+      setError('');
+      return;
+    }
     if (!dates.to || sameDay(dates.from, dates.to)) {
       setDates(undefined);
     } else if (endpoint === 'start') {
