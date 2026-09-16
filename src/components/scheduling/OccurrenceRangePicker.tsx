@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { X } from 'lucide-react';
 import { dateFromScheduleInput, scheduleInputFromDate } from './ExactDateSchedulePicker';
 
 export type ScheduleOccurrenceRange = {
@@ -131,9 +132,9 @@ export function OccurrenceRangePicker({ value, onChange, minimumDate, defaultSta
               day_today: 'bg-transparent text-foreground ring-2 ring-inset ring-primary/70 hover:bg-accent/40 aria-selected:bg-primary aria-selected:text-primary-foreground',
             }}
           />
-          <div className="space-y-2 border-t px-3 py-2">
-            <p className="text-xs text-muted-foreground">Selected range</p>
-            {dates?.from ? (
+          {dates?.from && (
+            <div className="space-y-2 border-t px-3 py-2">
+              <p className="text-xs text-muted-foreground">Selected range</p>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary" className="gap-1">
                   Start: {scheduleInputFromDate(dates.from)}
@@ -160,10 +161,8 @@ export function OccurrenceRangePicker({ value, onChange, minimumDate, defaultSta
                   </Badge>
                 )}
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">No date selected</p>
-            )}
-          </div>
+            </div>
+          )}
           <div className="grid gap-3 border-t p-3 sm:grid-cols-2">
             <div><Label>Start time</Label><Input type="time" value={startTime} onChange={event => setStartTime(event.target.value)} /></div>
             <div><Label>End time</Label><Input type="time" value={endTime} onChange={event => setEndTime(event.target.value)} /></div>
@@ -189,7 +188,17 @@ export function OccurrenceRangePicker({ value, onChange, minimumDate, defaultSta
             </div>
             <div className="flex gap-2">
               <Button type="button" size="sm" variant="outline" onClick={() => editRange(range, index)}>Edit</Button>
-              <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-9 w-9 text-destructive"
+                aria-label={`Remove occurrence ${index + 1}`}
+                title="Remove occurrence"
+                onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         ))}

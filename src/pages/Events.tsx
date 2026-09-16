@@ -981,6 +981,7 @@ function EventForm({
 export default function EventsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<ChurchEvent | null>(null);
+  const [pendingScheduleUpdate, setPendingScheduleUpdate] = useState<FormValues | null>(null);
   const [deleteEvent, setDeleteEvent] = useState<ChurchEvent | null>(null);
   const [expandImage, setExpandImage] = useState<string | null>(null);
   const [viewEvent, setViewEvent] = useState<ChurchEvent | null>(null);
@@ -1092,6 +1093,7 @@ export default function EventsPage() {
     },
     onSuccess: () => {
       toast.success('Event updated');
+      setPendingScheduleUpdate(null);
       qc.invalidateQueries({ queryKey: ['events'] });
       setEditEvent(null);
     },
@@ -1103,15 +1105,7 @@ export default function EventsPage() {
       updateMutation.mutate({ id: editEvent!.id, dto });
       return;
     }
-    toast.warning('Save event schedule changes?', {
-      description: 'Dates removed from the scheduler and their unpublished draft events will be deleted. Published events will not be changed.',
-      duration: 12_000,
-      action: {
-        label: 'Save schedule',
-        onClick: () => updateMutation.mutate({ id: editEvent.id, dto }),
-      },
-      cancel: { label: 'Cancel', onClick: () => undefined },
-    });
+    setPendingScheduleUpdate(dto);
   };
 
   const deleteMutation = useMutation({
@@ -1823,6 +1817,30 @@ export default function EventsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!pendingScheduleUpdate} onOpenChange={open => { if (!open) setPendingScheduleUpdate(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save event schedule changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dates removed from the scheduler and their unpublished draft events will be deleted. Published events, bookings, tickets, and attendance will not be changed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updateMutation.isPending}
+              onClick={() => {
+                if (editEvent && pendingScheduleUpdate) {
+                  updateMutation.mutate({ id: editEvent.id, dto: pendingScheduleUpdate });
+                }
+              }}
+            >
+              Save schedule
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Cancel Dialog */}
       <AlertDialog open={!!deleteEvent} onOpenChange={(open) => { if (!open) setDeleteEvent(null); }}>

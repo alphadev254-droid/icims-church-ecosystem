@@ -131,6 +131,7 @@ export default function CellDetailPage() {
   const [meetingPage, setMeetingPage] = useState(1);
   const [deleteMeeting, setDeleteMeeting] = useState<CellMeeting | null>(null);
   const [editMeeting, setEditMeeting] = useState<CellMeeting | null>(null);
+  const [scheduleSaveConfirmOpen, setScheduleSaveConfirmOpen] = useState(false);
   const [viewMeeting, setViewMeeting] = useState<CellMeeting | null>(null);
   const [editMeetingForm, setEditMeetingForm] = useState<MeetingFormState>(() => emptyMeetingForm());
   const [selectedDraftMeetingIds, setSelectedDraftMeetingIds] = useState<string[]>([]);
@@ -290,6 +291,7 @@ export default function CellDetailPage() {
     },
     onSuccess: () => {
       toast.success('Meeting updated');
+      setScheduleSaveConfirmOpen(false);
       qc.invalidateQueries({ queryKey: ['cell-meetings', id] });
       qc.invalidateQueries({ queryKey: ['cell-detail', id] });
       setEditMeeting(null);
@@ -303,15 +305,7 @@ export default function CellDetailPage() {
       updateMeetingMutation.mutate();
       return;
     }
-    toast.warning('Save meeting schedule changes?', {
-      description: 'Dates removed from the scheduler and their unpublished draft meetings will be deleted. Published meetings will not be changed.',
-      duration: 12_000,
-      action: {
-        label: 'Save schedule',
-        onClick: () => updateMeetingMutation.mutate(),
-      },
-      cancel: { label: 'Cancel', onClick: () => undefined },
-    });
+    setScheduleSaveConfirmOpen(true);
   };
 
   const deleteMeetingMutation = useMutation({
@@ -1969,6 +1963,26 @@ export default function CellDetailPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={scheduleSaveConfirmOpen} onOpenChange={setScheduleSaveConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save meeting schedule changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dates removed from the scheduler and their unpublished draft meetings will be deleted. Published meetings and their attendance history will not be changed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updateMeetingMutation.isPending}
+              onClick={() => updateMeetingMutation.mutate()}
+            >
+              Save schedule
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteMeeting} onOpenChange={open => !open && setDeleteMeeting(null)}>
         <AlertDialogContent>
