@@ -286,7 +286,12 @@ export default function CellDetailPage() {
             topic: editMeetingForm.topic,
             notes: editMeetingForm.notes,
           }
-        : editMeetingForm;
+        : editMeeting?.recordType === 'scheduled_source'
+          && editMeetingForm.deliveryMode === 'scheduled'
+          && editMeetingForm.schedulePattern === 'custom_dates'
+          && editMeetingForm.occurrenceDates.length === 0
+          ? { ...editMeetingForm, deliveryMode: 'now' as const, schedulePattern: 'repeat' as const, recurrenceRule: emptyMeetingForm().recurrenceRule }
+          : editMeetingForm;
       return cellsService.updateMeeting(editMeeting!.id, dto);
     },
     onSuccess: () => {
@@ -469,7 +474,11 @@ export default function CellDetailPage() {
     const isExactDateSchedule = isScheduledMode && form.schedulePattern === 'custom_dates';
     const todayInput = scheduleInputFromDate(new Date());
     const earliestScheduleInput = form.date && form.date > todayInput ? form.date : todayInput;
-    const hasRequiredScheduleDate = isExactDateSchedule ? form.occurrenceDates.length > 0 : Boolean(form.date);
+    const removesExistingSchedule = !isNewMeeting
+      && editMeeting?.recordType === 'scheduled_source'
+      && isExactDateSchedule
+      && form.occurrenceDates.length === 0;
+    const hasRequiredScheduleDate = removesExistingSchedule || (isExactDateSchedule ? form.occurrenceDates.length > 0 : Boolean(form.date));
     const setRecurrence = (next: Partial<MeetingFormState['recurrenceRule']>) => {
       setForm(current => ({ ...current, recurrenceRule: { ...current.recurrenceRule, ...next } }));
     };
@@ -1967,9 +1976,11 @@ export default function CellDetailPage() {
       <AlertDialog open={scheduleSaveConfirmOpen} onOpenChange={setScheduleSaveConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Save meeting schedule changes?</AlertDialogTitle>
+            <AlertDialogTitle>{editMeetingForm.schedulePattern === 'custom_dates' && editMeetingForm.occurrenceDates.length === 0 ? 'Remove meeting scheduler?' : 'Save meeting schedule changes?'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Dates removed from the scheduler and their unpublished draft meetings will be deleted. Published meetings and their attendance history will not be changed.
+              {editMeetingForm.schedulePattern === 'custom_dates' && editMeetingForm.occurrenceDates.length === 0
+                ? 'No draft occurrences remain. Saving will remove this scheduler and its unpublished drafts. Published meetings and their attendance history will not be changed.'
+                : 'Dates removed from the scheduler and their unpublished draft meetings will be deleted. Published meetings and their attendance history will not be changed.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

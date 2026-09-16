@@ -128,9 +128,6 @@ const schema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['churchIds'], message: 'Select at least one church' });
   }
   if (data.deliveryMode === 'scheduled') {
-    if (data.schedulePattern === 'custom_dates' && data.occurrenceRanges.length === 0) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['occurrenceRanges'], message: 'Add at least one event occurrence' });
-    }
     if (data.schedulePattern === 'custom_dates') {
       const ranges = [...data.occurrenceRanges].sort((left, right) =>
         `${left.startDate}T${left.startTime}`.localeCompare(`${right.startDate}T${right.startTime}`));
@@ -249,6 +246,7 @@ interface EventFormProps {
   canUseRecurringSchedules?: boolean;
   canDeleteSchedule?: boolean;
   isDraftOccurrence?: boolean;
+  allowEmptySchedule?: boolean;
 }
 
 function EventForm({
@@ -265,6 +263,7 @@ function EventForm({
   canUseRecurringSchedules = false,
   canDeleteSchedule = true,
   isDraftOccurrence = false,
+  allowEmptySchedule = false,
 }: EventFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const imageFileRef = useRef<File | null>(null);
@@ -359,6 +358,13 @@ function EventForm({
   };
 
   const handleFormSubmit = async (values: FormValues) => {
+    if (values.deliveryMode === 'scheduled'
+      && values.schedulePattern === 'custom_dates'
+      && values.occurrenceRanges.length === 0
+      && !allowEmptySchedule) {
+      toast.error('Add at least one event occurrence');
+      return;
+    }
     console.log('[EventForm] Submit data:', values);
     // Upload new image if one was selected
     if (imageFileRef.current) {
@@ -1105,7 +1111,12 @@ export default function EventsPage() {
       updateMutation.mutate({ id: editEvent!.id, dto });
       return;
     }
-    setPendingScheduleUpdate(dto);
+    const removesSchedule = dto.deliveryMode === 'scheduled'
+      && dto.schedulePattern === 'custom_dates'
+      && dto.occurrenceRanges.length === 0;
+    setPendingScheduleUpdate(removesSchedule
+      ? { ...dto, deliveryMode: 'now', schedulePattern: 'repeat', recurrenceRule: null }
+      : dto);
   };
 
   const deleteMutation = useMutation({
@@ -1810,6 +1821,7 @@ export default function EventsPage() {
                       canUseRecurringSchedules={canUpdateRecurringSchedules}
               canDeleteSchedule={canDeleteSchedule}
               isDraftOccurrence={editEvent.recordType === 'scheduled_occurrence' || Boolean(editEvent.scheduledOccurrenceId || editEvent.sourceEventId)}
+              allowEmptySchedule={editEvent.recordType === 'scheduled_source'}
               onSubmit={requestEventUpdate}
               isPending={updateMutation.isPending}
               submitLabel="Save Changes"
@@ -1821,9 +1833,11 @@ export default function EventsPage() {
       <AlertDialog open={!!pendingScheduleUpdate} onOpenChange={open => { if (!open) setPendingScheduleUpdate(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Save event schedule changes?</AlertDialogTitle>
+            <AlertDialogTitle>{pendingScheduleUpdate?.deliveryMode === 'now' ? 'Remove event scheduler?' : 'Save event schedule changes?'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Dates removed from the scheduler and their unpublished draft events will be deleted. Published events, bookings, tickets, and attendance will not be changed.
+              {pendingScheduleUpdate?.deliveryMode === 'now'
+                ? 'No draft occurrences remain. Saving will remove this scheduler and its unpublished drafts. Published events, bookings, tickets, and attendance will not be changed.'
+                : 'Dates removed from the scheduler and their unpublished draft events will be deleted. Published events, bookings, tickets, and attendance will not be changed.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
