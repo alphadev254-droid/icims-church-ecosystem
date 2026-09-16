@@ -127,7 +127,7 @@ export default function CellDetailPage() {
   // Meetings tab state
   const [meetingDateFrom, setMeetingDateFrom] = useState('');
   const [meetingDateTo, setMeetingDateTo] = useState('');
-  const [meetingPublicationStatus, setMeetingPublicationStatus] = useState<'published' | 'draft'>('published');
+  const [meetingPublicationStatus, setMeetingPublicationStatus] = useState<'published' | 'draft' | 'schedule'>('published');
   const [meetingPage, setMeetingPage] = useState(1);
   const [deleteMeeting, setDeleteMeeting] = useState<CellMeeting | null>(null);
   const [editMeeting, setEditMeeting] = useState<CellMeeting | null>(null);
@@ -175,6 +175,14 @@ export default function CellDetailPage() {
   });
   const meetings: CellMeeting[] = meetingsResponse?.data ?? [];
   const meetingsPagination = meetingsResponse?.pagination;
+  const { data: meetingSchedulesResponse } = useQuery({
+    queryKey: ['cell-meeting-schedules', id],
+    queryFn: () => cellsService.getMeetings(id!, { publicationStatus: 'schedule', page: 1, limit: 200 }),
+    enabled: !!id && tab === 'meetings' && meetingPublicationStatus === 'draft',
+    staleTime: STALE_TIME.DEFAULT,
+  });
+  const meetingSchedules = meetingSchedulesResponse?.data ?? [];
+  const schedulesByMeetingId = new Map(meetingSchedules.map(schedule => [schedule.id, schedule]));
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['cell-stats', id],
@@ -878,11 +886,12 @@ export default function CellDetailPage() {
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted-foreground shrink-0">Date:</span>
-            <Select value={meetingPublicationStatus} onValueChange={value => { setMeetingPublicationStatus(value as 'published' | 'draft'); setMeetingPage(1); }}>
+            <Select value={meetingPublicationStatus} onValueChange={value => { setMeetingPublicationStatus(value as 'published' | 'draft' | 'schedule'); setMeetingPage(1); setSelectedDraftMeetingIds([]); }}>
               <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="published">Active</SelectItem>
-                {!isReadOnlyMember && <SelectItem value="draft">Draft</SelectItem>}
+                {!isReadOnlyMember && <SelectItem value="draft">Drafts</SelectItem>}
+                {!isReadOnlyMember && <SelectItem value="schedule">Schedules</SelectItem>}
               </SelectContent>
             </Select>
             <Input type="date" className="h-8 w-32 text-xs" value={meetingDateFrom} onChange={e => { setMeetingDateFrom(e.target.value); setMeetingPage(1); }} />
@@ -927,7 +936,7 @@ export default function CellDetailPage() {
           {meetingsLoading ? (
             <div className="flex justify-center py-8"><div className="h-5 w-5 animate-spin rounded-full border-4 border-accent border-t-transparent" /></div>
           ) : meetings.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No {meetingPublicationStatus === 'draft' ? 'draft' : 'active'} meetings found.</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No {meetingPublicationStatus === 'draft' ? 'draft' : meetingPublicationStatus === 'schedule' ? 'scheduled' : 'active'} meetings found.</p>
           ) : (
             <div className="divide-y border rounded-lg">
               {(meetings as CellMeeting[]).map(m => (
@@ -944,12 +953,22 @@ export default function CellDetailPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     <p className="text-xs text-muted-foreground">
-                      {[m.time, m.topic, m.publicationStatus === 'draft' ? 'Draft' : null, m.scheduledEvent ? 'Scheduled' : null, (m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency && (m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency !== 'none' ? `Repeats ${(m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency}` : null].filter(Boolean).join(' · ')}
+                      {[m.time, m.topic, m.recordType === 'scheduled_source' ? 'Original schedule' : m.publicationStatus === 'draft' ? 'Draft occurrence' : null, m.scheduledEvent ? 'Scheduled' : null, (m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency && (m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency !== 'none' ? `Repeats ${(m.scheduledEvent?.recurrenceRule ?? m.recurrenceRule)?.frequency}` : null].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground shrink-0">
                     <span className="text-green-600 font-medium">{m.presentCount ?? 0} present</span>
                     <span className="hidden sm:inline">{m.visitorCount ?? 0} visitors</span>
+                    {m.recordType === 'scheduled_occurrence' && m.sourceMeetingId && schedulesByMeetingId.has(m.sourceMeetingId) && effectiveCanManage && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="hidden h-8 gap-1.5 md:inline-flex"
+                        onClick={() => openEditMeetingDialog(schedulesByMeetingId.get(m.sourceMeetingId!)!)}
+                      >
+                        <CalendarIcon className="h-3.5 w-3.5" /> Edit schedule
+                      </Button>
+                    )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="outline" className="h-8 w-8 p-0" aria-label="Meeting actions">
@@ -960,7 +979,7 @@ export default function CellDetailPage() {
                         <DropdownMenuItem onClick={() => setViewMeeting(m)}>
                           <Eye className="mr-2 h-4 w-4" /> View details
                         </DropdownMenuItem>
-                        {!isReadOnlyMember && (
+                        {!isReadOnlyMember && m.recordType !== 'scheduled_source' && (
                           <DropdownMenuItem onClick={() => navigate(`/dashboard/cells/${id}/meetings/${m.id}/attendance`)}>
                             <ClipboardList className="mr-2 h-4 w-4" /> Manage attendance
                           </DropdownMenuItem>
@@ -970,9 +989,14 @@ export default function CellDetailPage() {
                             <DropdownMenuItem onClick={() => openEditMeetingDialog(m)}>
                               <Pencil className="mr-2 h-4 w-4" /> {m.recordType === 'scheduled_source' ? 'Edit schedule' : m.publicationStatus === 'draft' ? 'Edit draft' : 'Edit meeting'}
                             </DropdownMenuItem>
+                            {m.recordType === 'scheduled_occurrence' && m.sourceMeetingId && schedulesByMeetingId.has(m.sourceMeetingId) && (
+                              <DropdownMenuItem onClick={() => openEditMeetingDialog(schedulesByMeetingId.get(m.sourceMeetingId!)!)}>
+                                <CalendarIcon className="mr-2 h-4 w-4" /> Edit parent schedule
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteMeeting(m)}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete meeting
+                              <Trash2 className="mr-2 h-4 w-4" /> {m.recordType === 'scheduled_source' ? 'Delete schedule' : m.publicationStatus === 'draft' ? 'Delete draft' : 'Delete meeting'}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -1881,13 +1905,18 @@ export default function CellDetailPage() {
       <AlertDialog open={!!deleteMeeting} onOpenChange={open => !open && setDeleteMeeting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Meeting</AlertDialogTitle>
+            <AlertDialogTitle>{deleteMeeting?.recordType === 'scheduled_source' ? 'Delete Schedule' : deleteMeeting?.publicationStatus === 'draft' ? 'Delete Draft' : 'Delete Meeting'}</AlertDialogTitle>
             <AlertDialogDescription>
               Delete the meeting for{' '}
               <strong>
                 {deleteMeeting ? new Date(deleteMeeting.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
               </strong>
-              {deleteMeeting?.topic ? <> on <strong>{deleteMeeting.topic}</strong></> : ''}? This will also delete its attendance records and cannot be undone.
+              {deleteMeeting?.topic ? <> on <strong>{deleteMeeting.topic}</strong></> : ''}?
+              {' '}{deleteMeeting?.recordType === 'scheduled_source'
+                ? 'This removes the parent schedule and all unpublished occurrences. Published meeting history is preserved.'
+                : deleteMeeting?.publicationStatus === 'draft'
+                  ? 'This skips only this occurrence and does not change the parent schedule.'
+                  : 'This will also delete its attendance records and cannot be undone.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1897,7 +1926,7 @@ export default function CellDetailPage() {
               disabled={deleteMeetingMutation.isPending}
               onClick={() => deleteMeeting && deleteMeetingMutation.mutate(deleteMeeting.id)}
             >
-              {deleteMeetingMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteMeetingMutation.isPending ? 'Deleting...' : deleteMeeting?.recordType === 'scheduled_source' ? 'Delete Schedule' : deleteMeeting?.publicationStatus === 'draft' ? 'Delete Draft' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

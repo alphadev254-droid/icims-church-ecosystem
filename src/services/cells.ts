@@ -235,7 +235,7 @@ export const cellsService = {
     return data;
   },
 
-  getMeetings: async (cellId: string, params?: { dateFrom?: string; dateTo?: string; publicationStatus?: 'published' | 'draft'; page?: number; limit?: number }): Promise<{
+  getMeetings: async (cellId: string, params?: { dateFrom?: string; dateTo?: string; publicationStatus?: 'published' | 'draft' | 'schedule'; page?: number; limit?: number }): Promise<{
     data: CellMeeting[];
     pagination: { total: number; page: number; limit: number; pages: number };
   }> => {
