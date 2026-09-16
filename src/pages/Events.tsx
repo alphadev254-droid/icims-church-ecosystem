@@ -989,10 +989,10 @@ export default function EventsPage() {
   const [paymentConfirm, setPaymentConfirm] = useState<{ event: ChurchEvent; details: any } | null>(null);
   const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
   const [churchFilter, setChurchFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('current');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [appliedFilters, setAppliedFilters] = useState({ church: 'all', status: 'current', startDate: '', endDate: '' });
+  const [appliedFilters, setAppliedFilters] = useState({ church: 'all', status: 'all', startDate: '', endDate: '' });
 
   const { hasPermission } = useRole();
   const hasEventsFeature = useHasFeature(PACKAGE_FEATURES.EVENTS_MANAGEMENT);
@@ -1097,6 +1097,22 @@ export default function EventsPage() {
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update'),
   });
+
+  const requestEventUpdate = (dto: FormValues) => {
+    if (editEvent?.recordType !== 'scheduled_source') {
+      updateMutation.mutate({ id: editEvent!.id, dto });
+      return;
+    }
+    toast.warning('Save event schedule changes?', {
+      description: 'Dates removed from the scheduler and their unpublished draft events will be deleted. Published events will not be changed.',
+      duration: 12_000,
+      action: {
+        label: 'Save schedule',
+        onClick: () => updateMutation.mutate({ id: editEvent.id, dto }),
+      },
+      cancel: { label: 'Cancel', onClick: () => undefined },
+    });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: eventsService.delete,
@@ -1415,10 +1431,10 @@ export default function EventsPage() {
                 className="h-8 text-xs sm:h-9 sm:text-sm"
                 onClick={() => {
                   setChurchFilter('all');
-                  setStatusFilter('current');
+                  setStatusFilter('all');
                   setStartDate('');
                   setEndDate('');
-                  setAppliedFilters({ church: 'all', status: 'current', startDate: '', endDate: '' });
+                  setAppliedFilters({ church: 'all', status: 'all', startDate: '', endDate: '' });
                 }}
               >
                 Clear
@@ -1800,7 +1816,7 @@ export default function EventsPage() {
                       canUseRecurringSchedules={canUpdateRecurringSchedules}
               canDeleteSchedule={canDeleteSchedule}
               isDraftOccurrence={editEvent.recordType === 'scheduled_occurrence' || Boolean(editEvent.scheduledOccurrenceId || editEvent.sourceEventId)}
-              onSubmit={(v) => updateMutation.mutate({ id: editEvent.id, dto: v })}
+              onSubmit={requestEventUpdate}
               isPending={updateMutation.isPending}
               submitLabel="Save Changes"
             />

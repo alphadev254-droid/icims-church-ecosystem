@@ -298,6 +298,22 @@ export default function CellDetailPage() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update meeting'),
   });
 
+  const requestMeetingUpdate = () => {
+    if (editMeeting?.recordType !== 'scheduled_source') {
+      updateMeetingMutation.mutate();
+      return;
+    }
+    toast.warning('Save meeting schedule changes?', {
+      description: 'Dates removed from the scheduler and their unpublished draft meetings will be deleted. Published meetings will not be changed.',
+      duration: 12_000,
+      action: {
+        label: 'Save schedule',
+        onClick: () => updateMeetingMutation.mutate(),
+      },
+      cancel: { label: 'Cancel', onClick: () => undefined },
+    });
+  };
+
   const deleteMeetingMutation = useMutation({
     mutationFn: (meetingId: string) => cellsService.deleteMeeting(meetingId),
     onSuccess: () => {
@@ -1947,7 +1963,7 @@ export default function CellDetailPage() {
             setEditMeetingForm,
             updateMeetingMutation.isPending,
             'Save Changes',
-            () => updateMeetingMutation.mutate(),
+            requestMeetingUpdate,
             false,
             Boolean(editMeeting && (editMeeting.recordType === 'scheduled_occurrence' || editMeeting.scheduledOccurrenceId || editMeeting.sourceMeetingId)),
           )}
