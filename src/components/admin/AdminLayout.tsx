@@ -1,10 +1,9 @@
 import { Suspense, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Receipt, CreditCard, LogOut, Menu, X, Shield, ChevronRight, Package2, Smartphone, DatabaseZap, Wallet, Landmark, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, CreditCard, LogOut, Menu, X, Shield, ChevronRight, Package2, DatabaseZap, Wallet, Landmark, FileText } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 const NAV = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -30,12 +29,6 @@ export default function AdminLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [iosHint, setIosHint] = useState(false);
-  const { canInstall, install, showInstallUI, isIOS } = usePWAInstall();
-  const handleInstall = async () => {
-    if (canInstall) { await install(); }
-    else if (isIOS) { setIosHint(true); }
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -95,17 +88,6 @@ export default function AdminLayout() {
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
-        {showInstallUI && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2 text-accent text-xs h-8"
-            onClick={handleInstall}
-          >
-            <Smartphone className="h-3.5 w-3.5" />
-            Install App
-          </Button>
-        )}
         <Button
           variant="ghost"
           size="sm"

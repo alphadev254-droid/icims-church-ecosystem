@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { usePageMeta } from '@/hooks/usePageMeta';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   Users, Church, Calendar, HandCoins, BarChart3, MessageSquare,
   BookOpen, ClipboardList, Building2, TrendingUp, Shield, Globe,
-  ArrowRight, Baby, CheckCircle2, ChevronRight, Smartphone, Download, X,
+  ArrowRight, Baby, CheckCircle2, ChevronRight,
   Bell, QrCode, Receipt, ShieldCheck,
 } from 'lucide-react';
 const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
@@ -76,14 +75,6 @@ const inView = {
 
 export default function LandingPage() {
   const [demoOpen, setDemoOpen] = useState(false);
-  const { canInstall, install, showInstallUI, isIOS, isChromiumBased } = usePWAInstall();
-  const [iosHint, setIosHint] = useState(false);
-  const [desktopHint, setDesktopHint] = useState(false);
-  const handleInstall = async () => {
-    if (canInstall) { await install(); }
-    else if (isIOS) { setIosHint(true); }
-    else { setDesktopHint(true); }
-  };
 
   usePageMeta({
     title: 'The Complete Church Management Ecosystem',
@@ -150,16 +141,6 @@ export default function LandingPage() {
               >
                 Book a demo
               </Button>
-              {showInstallUI && (
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-white/30 text-white hover:text-white h-12 px-7 text-base gap-2"
-                  onClick={handleInstall}
-                >
-                  <Smartphone className="h-4 w-4" /> Install App
-                </Button>
-              )}
             </motion.div>
 
             <motion.div
@@ -354,48 +335,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── PWA ──────────────────────────────────────────────────────────── */}
-      <section className="py-20 bg-muted/40">
-        <div className="container">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={inView}
-            className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-8 md:gap-12"
-          >
-            <div className="flex-shrink-0 w-20 h-20 rounded-2xl bg-accent/20 flex items-center justify-center">
-              <Smartphone className="h-10 w-10 text-accent" />
-            </div>
-            <div className="flex-1 text-center md:text-left">
-              <h2 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-2">Available as a mobile app</h2>
-              <p className="text-muted-foreground text-base leading-relaxed">
-                Install ICIMS directly on your phone or tablet — no app store required. Works on Android and iOS. Opens instantly, even on slow connections.
-              </p>
-            </div>
-            <div className="flex-shrink-0">
-              {canInstall ? (
-                <Button
-                  size="lg"
-                  className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 h-12 px-7 text-base"
-                  onClick={handleInstall}
-                >
-                  <Download className="h-4 w-4" /> Install Now
-                </Button>
-              ) : (
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-wide">Add to Home Screen</p>
-                  <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-accent" /> Android — Chrome menu → "Install app"</span>
-                    <span className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-accent" /> iPhone — Safari share → "Add to Home Screen"</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
       {/* ── CTA ──────────────────────────────────────────────────────────── */}
       <section className="py-24 bg-foreground dark:bg-accent">
         <div className="container">
@@ -427,50 +366,6 @@ export default function LandingPage() {
 
       <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
 
-      {/* Desktop / Chrome install instructions */}
-      {desktopHint && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/60" onClick={() => setDesktopHint(false)}>
-          <div className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-5 mb-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Smartphone className="h-5 w-5 text-accent" />
-                <span className="font-semibold text-sm">Install ICIMS on your computer</span>
-              </div>
-              <button onClick={() => setDesktopHint(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
-            </div>
-            {isChromiumBased ? (
-              <ol className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex gap-2"><span className="font-bold text-foreground">1.</span> Look for the <span className="font-medium text-foreground">install icon ⊕</span> on the right side of the address bar</li>
-                <li className="flex gap-2"><span className="font-bold text-foreground">2.</span> Click it and select <span className="font-medium text-foreground">"Install"</span></li>
-                <li className="flex gap-2"><span className="font-bold text-foreground">Alt:</span> Chrome menu <span className="font-medium text-foreground">(⋮)</span> → <span className="font-medium text-foreground">"Save and share"</span> → <span className="font-medium text-foreground">"Install ICIMS"</span></li>
-              </ol>
-            ) : (
-              <p className="text-sm text-muted-foreground">Use Chrome, Edge, or Brave on desktop for the best install experience.</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* iOS install instructions */}
-      {iosHint && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/60" onClick={() => setIosHint(false)}>
-          <div className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-5 mb-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Smartphone className="h-5 w-5 text-accent" />
-                <span className="font-semibold text-sm">Install ICIMS on iPhone</span>
-              </div>
-              <button onClick={() => setIosHint(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
-            </div>
-            <ol className="space-y-2 text-sm text-muted-foreground">
-              <li className="flex gap-2"><span className="font-bold text-foreground">1.</span> Open this page in <span className="font-medium text-foreground">Safari</span></li>
-              <li className="flex gap-2"><span className="font-bold text-foreground">2.</span> Tap the <span className="font-medium text-foreground">Share</span> button (box with arrow at the bottom)</li>
-              <li className="flex gap-2"><span className="font-bold text-foreground">3.</span> Scroll and tap <span className="font-medium text-foreground">"Add to Home Screen"</span></li>
-              <li className="flex gap-2"><span className="font-bold text-foreground">4.</span> Tap <span className="font-medium text-foreground">"Add"</span> — done!</li>
-            </ol>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
