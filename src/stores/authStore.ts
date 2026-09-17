@@ -51,6 +51,12 @@ export interface AuthUser {
       };
     }>;
   } | null;
+  subscription?: {
+    status: string;
+    startsAt: string;
+    expiresAt: string;
+    packageName?: string | null;
+  } | null;
 }
 
 interface AuthState {

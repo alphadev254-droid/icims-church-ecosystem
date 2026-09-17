@@ -290,7 +290,7 @@ export default function CellDetailPage() {
           && editMeetingForm.deliveryMode === 'scheduled'
           && editMeetingForm.schedulePattern === 'custom_dates'
           && editMeetingForm.occurrenceDates.length === 0
-          ? { ...editMeetingForm, deliveryMode: 'now' as const, schedulePattern: 'repeat' as const, recurrenceRule: emptyMeetingForm().recurrenceRule }
+          ? { ...editMeetingForm, deliveryMode: 'now' as const, removeScheduleSource: true, schedulePattern: 'repeat' as const, recurrenceRule: emptyMeetingForm().recurrenceRule }
           : editMeetingForm;
       return cellsService.updateMeeting(editMeeting!.id, dto);
     },

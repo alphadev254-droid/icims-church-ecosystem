@@ -1,4 +1,5 @@
 export const PACKAGE_FEATURES = {
+  USERS_MANAGEMENT: 'users_management',
   GIVING_TRACKING: 'giving_tracking',
   GIVING_CAMPAIGNS: 'giving_campaigns',
   GIVING_MANUAL_RECORDS: 'giving_manual_records',

@@ -12,17 +12,29 @@ export function SubscriptionCheck() {
 
   useEffect(() => {
     // Only check for non-members.
-    if (!user || user.roleName === 'member') return;
-
-    // Check if user has no package or subscription is expired
-    const hasNoPackage = !user.package;
-    
-    if (hasNoPackage) {
-      setShowDialog(true);
+    if (!user || user.roleName === 'member') {
+      setShowDialog(false);
+      return;
     }
+
+    setShowDialog(!user.package);
   }, [user]);
 
   if (!showDialog) return null;
+
+  const subscription = user?.subscription;
+  const expired = subscription?.status === 'expired'
+    || Boolean(subscription?.expiresAt && new Date(subscription.expiresAt).getTime() <= Date.now());
+  const hasPreviousSubscription = Boolean(subscription?.startsAt || subscription?.expiresAt);
+  const formatDate = (value?: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+  const startedOn = formatDate(subscription?.startsAt);
+  const expiredOn = formatDate(subscription?.expiresAt);
+  const title = expired ? 'Subscription Expired' : hasPreviousSubscription ? 'Subscription Inactive' : 'Subscription Required';
 
   return (
     <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
@@ -32,13 +44,34 @@ export function SubscriptionCheck() {
             <div className="p-2 bg-amber-100 rounded-full dark:bg-amber-900/30">
               <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <AlertDialogTitle className="text-lg">Subscription Required</AlertDialogTitle>
+            <AlertDialogTitle className="text-lg">{title}</AlertDialogTitle>
           </div>
-          <AlertDialogDescription className="space-y-3 text-sm">
-            <p>
-              You don't have an active subscription. To continue accessing ICIMS services, 
-              please subscribe to a package.
-            </p>
+          <AlertDialogDescription asChild>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            {expired ? (
+              <>
+                <p>
+                  Your {subscription?.packageName ? <strong>{subscription.packageName}</strong> : 'last'} subscription
+                  {expiredOn ? <> expired on <strong>{expiredOn}</strong></> : ' has expired'}.
+                  {' '}Subscribe again to restore your package features.
+                </p>
+                {startedOn && expiredOn && (
+                  <div className="rounded-md bg-muted p-3 text-xs">
+                    <p className="font-medium text-foreground">Previous subscription period</p>
+                    <p className="mt-1 text-muted-foreground">{startedOn} – {expiredOn}</p>
+                  </div>
+                )}
+              </>
+            ) : hasPreviousSubscription ? (
+              <p>
+                Your previous subscription is no longer active{expiredOn ? <>. Its recorded service end date is <strong>{expiredOn}</strong></> : ''}.
+                {' '}Choose a package to restore access.
+              </p>
+            ) : (
+              <p>
+                You have not subscribed to a package yet. Choose a package to start using ICIMS services.
+              </p>
+            )}
             <div className="bg-muted rounded-md p-3 text-xs space-y-1">
               <p className="font-medium text-foreground">Why subscribe?</p>
               <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
@@ -48,6 +81,7 @@ export function SubscriptionCheck() {
                 <li>Generate reports and analytics</li>
               </ul>
             </div>
+          </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col sm:flex-row gap-2">

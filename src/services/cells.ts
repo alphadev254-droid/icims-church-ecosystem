@@ -248,7 +248,7 @@ export const cellsService = {
     return data.data;
   },
 
-  updateMeeting: async (meetingId: string, dto: Partial<{ date: string; time: string; topic: string; notes: string; deliveryMode: CellMeetingDeliveryMode; schedulePattern: CellMeetingSchedulePattern; occurrenceDates: string[]; recurrenceRule: CellMeetingRecurrenceRule | null }>): Promise<CellMeeting> => {
+  updateMeeting: async (meetingId: string, dto: Partial<{ date: string; time: string; topic: string; notes: string; deliveryMode: CellMeetingDeliveryMode; removeScheduleSource: boolean; schedulePattern: CellMeetingSchedulePattern; occurrenceDates: string[]; recurrenceRule: CellMeetingRecurrenceRule | null }>): Promise<CellMeeting> => {
     const { data } = await apiClient.put(`${BASE}/meetings/${meetingId}`, dto);
     return data.data;
   },

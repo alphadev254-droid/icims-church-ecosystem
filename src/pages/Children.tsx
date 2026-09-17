@@ -6,7 +6,10 @@ import { usersService, type AppUser } from '@/services/users';
 import { churchesService } from '@/services/churches';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useRole } from '@/hooks/useRole';
+import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useAuthStore } from '@/stores/authStore';
+import { PACKAGE_FEATURES } from '@/lib/package-features';
+import { FeatureGate } from '@/components/FeatureGate';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -430,6 +433,8 @@ export default function ChildrenPage() {
   const qc = useQueryClient();
   const { hasPermission } = useRole();
   const currentUser = useAuthStore(state => state.user);
+  const packageHasUsersManagement = useHasFeature(PACKAGE_FEATURES.USERS_MANAGEMENT);
+  const hasChildrenFeature = currentUser?.roleName === 'system_admin' || packageHasUsersManagement;
   const isMember = currentUser?.roleName === 'member';
   const [search, setSearch] = useState('');
   const [churchId, setChurchId] = useState('all');
@@ -450,7 +455,7 @@ export default function ChildrenPage() {
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
     queryFn: churchesService.getAll,
-    enabled: !isMember,
+    enabled: hasChildrenFeature && !isMember,
   });
   const defaultChurchId = isMember ? currentUser?.churchId ?? undefined : churches[0]?.id;
   const fixedGuardian = isMember && currentUser ? {
@@ -471,6 +476,7 @@ export default function ChildrenPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['children', queryParams],
     queryFn: () => childrenService.list(queryParams),
+    enabled: hasChildrenFeature,
   });
 
   const createMutation = useMutation({
@@ -519,6 +525,18 @@ export default function ChildrenPage() {
     },
     onError: (err: any) => toast.error(err?.response?.data?.message || 'Failed to unlink guardian'),
   });
+
+  if (!hasChildrenFeature) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Children</h1>
+          <p className="text-sm text-muted-foreground">Manage dependents and guardian links</p>
+        </div>
+        <FeatureGate feature={PACKAGE_FEATURES.USERS_MANAGEMENT}><></></FeatureGate>
+      </div>
+    );
+  }
 
   const children = data?.data ?? [];
   const pagination = data?.pagination;

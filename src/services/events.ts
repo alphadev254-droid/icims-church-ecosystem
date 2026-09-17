@@ -86,6 +86,7 @@ export interface CreateEventDto {
   scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
   churchIds?: string[];
   deliveryMode?: 'now' | 'scheduled';
+  removeScheduleSource?: boolean;
   schedulePattern?: 'repeat' | 'custom_dates';
   occurrenceDates?: string[];
   occurrenceRanges?: Array<{ startDate: string; endDate: string; startTime: string; endTime: string }>;

@@ -987,7 +987,7 @@ function EventForm({
 export default function EventsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<ChurchEvent | null>(null);
-  const [pendingScheduleUpdate, setPendingScheduleUpdate] = useState<FormValues | null>(null);
+  const [pendingScheduleUpdate, setPendingScheduleUpdate] = useState<(FormValues & { removeScheduleSource?: boolean }) | null>(null);
   const [deleteEvent, setDeleteEvent] = useState<ChurchEvent | null>(null);
   const [expandImage, setExpandImage] = useState<string | null>(null);
   const [viewEvent, setViewEvent] = useState<ChurchEvent | null>(null);
@@ -1083,7 +1083,7 @@ export default function EventsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: Partial<FormValues> }) => {
+    mutationFn: ({ id, dto }: { id: string; dto: Partial<FormValues> & { removeScheduleSource?: boolean } }) => {
       const isDraftOccurrence = editEvent?.recordType === 'scheduled_occurrence'
         || Boolean(editEvent?.scheduledOccurrenceId || editEvent?.sourceEventId);
       if (!isDraftOccurrence) return eventsService.update(id, dto);
@@ -1115,18 +1115,18 @@ export default function EventsPage() {
       && dto.schedulePattern === 'custom_dates'
       && dto.occurrenceRanges.length === 0;
     setPendingScheduleUpdate(removesSchedule
-      ? { ...dto, deliveryMode: 'now', schedulePattern: 'repeat', recurrenceRule: null }
+      ? { ...dto, deliveryMode: 'now', removeScheduleSource: true, schedulePattern: 'repeat', recurrenceRule: null }
       : dto);
   };
 
   const deleteMutation = useMutation({
     mutationFn: eventsService.delete,
     onSuccess: () => {
-      toast.success('Event cancelled');
+      toast.success(deleteEvent?.status === 'cancelled' ? 'Event permanently deleted' : deleteEvent?.publicationStatus === 'draft' ? 'Draft event deleted' : 'Event cancelled');
       qc.invalidateQueries({ queryKey: ['events'] });
       setDeleteEvent(null);
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to cancel event'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update event'),
   });
 
   // Permissions
@@ -1599,17 +1599,17 @@ export default function EventsPage() {
                           )}
                         </>
                       )}
-                      {(canUpdate || (canDelete && event.status !== 'cancelled')) && <DropdownMenuSeparator />}
+                      {(canUpdate || canDelete) && <DropdownMenuSeparator />}
                       {canUpdate && (
                         <DropdownMenuItem className="gap-2" onClick={() => setEditEvent(event)}>
                           <Pencil className="h-4 w-4" />
                           {event.publicationStatus === 'draft' ? 'Edit draft' : 'Edit Event'}
                         </DropdownMenuItem>
                       )}
-                      {canDelete && event.status !== 'cancelled' && (
+                      {canDelete && (
                         <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => setDeleteEvent(event)}>
                           <Trash2 className="h-4 w-4" />
-                          {event.publicationStatus === 'draft' ? 'Delete draft' : 'Cancel Event'}
+                          {event.publicationStatus === 'draft' ? 'Delete draft' : event.status === 'cancelled' ? 'Delete Event' : 'Cancel Event'}
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -1860,11 +1860,13 @@ export default function EventsPage() {
       <AlertDialog open={!!deleteEvent} onOpenChange={(open) => { if (!open) setDeleteEvent(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{deleteEvent?.publicationStatus === 'draft' ? 'Delete Draft Event' : 'Cancel Event'}</AlertDialogTitle>
+            <AlertDialogTitle>{deleteEvent?.publicationStatus === 'draft' ? 'Delete Draft Event' : deleteEvent?.status === 'cancelled' ? 'Permanently Delete Event' : 'Cancel Event'}</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteEvent?.publicationStatus === 'draft'
                 ? <>Delete the draft <strong>{deleteEvent?.title}</strong>? This removes only this unpublished occurrence and leaves its parent schedule unchanged.</>
-                : <>Cancel <strong>{deleteEvent?.title}</strong>? This keeps tickets, transactions, and history, but stops new bookings.</>}
+                : deleteEvent?.status === 'cancelled'
+                  ? <>Permanently delete <strong>{deleteEvent?.title}</strong>? Event tickets and event reminders will be removed. Financial transactions will be preserved without the deleted event link. This cannot be undone.</>
+                  : <>Cancel <strong>{deleteEvent?.title}</strong>? This keeps tickets, transactions, and history, but stops new bookings.</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1873,7 +1875,7 @@ export default function EventsPage() {
               onClick={() => deleteEvent && deleteMutation.mutate(deleteEvent.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteEvent?.publicationStatus === 'draft' ? 'Delete Draft' : 'Cancel Event'}
+              {deleteEvent?.publicationStatus === 'draft' ? 'Delete Draft' : deleteEvent?.status === 'cancelled' ? 'Delete Permanently' : 'Cancel Event'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

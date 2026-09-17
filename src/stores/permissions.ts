@@ -70,6 +70,8 @@ function userHasPackageFeature(user: any, featureName: string) {
 }
 
 function routePackageFeature(route: string): string | null {
+  if (route === '/dashboard/users') return PACKAGE_FEATURES.USERS_MANAGEMENT;
+  if (route === '/dashboard/children') return PACKAGE_FEATURES.USERS_MANAGEMENT;
   if (route === '/dashboard/giving') return PACKAGE_FEATURES.GIVING_TRACKING;
   if (route === '/dashboard/donations') return PACKAGE_FEATURES.TRANSACTIONS_VIEW;
   if (route === '/dashboard/pledges') return PACKAGE_FEATURES.PLEDGES_MANAGEMENT;
