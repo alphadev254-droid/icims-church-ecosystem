@@ -116,7 +116,7 @@ export default function PublicFooter() {
             <h4 className="text-xs font-semibold uppercase tracking-widest text-background/40 dark:text-foreground/40 mb-4">Support</h4>
             <ul className="space-y-2.5 text-sm">
               <li>
-                <a href="/ICIMS%20User%20Guide.docx" className="text-background/60 dark:text-foreground/55 hover:text-background dark:hover:text-foreground transition-colors">
+                <a href="/ICIMS User Guide.pdf" download className="text-background/60 dark:text-foreground/55 hover:text-background dark:hover:text-foreground transition-colors">
                   User Guide
                 </a>
               </li>

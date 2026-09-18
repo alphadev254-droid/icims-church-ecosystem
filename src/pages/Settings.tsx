@@ -215,8 +215,8 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">Download the client guide for modules, reports, finance workflows, roles, and daily use.</p>
           </div>
           <Button asChild variant="outline" className="w-full gap-2 sm:w-auto">
-            <a href="/ICIMS%20User%20Guide.docx">
-              <Download className="h-4 w-4" /> Open Guide
+            <a href="/ICIMS User Guide.pdf" download>
+              <Download className="h-4 w-4" /> Download Guide
             </a>
           </Button>
         </CardContent>
