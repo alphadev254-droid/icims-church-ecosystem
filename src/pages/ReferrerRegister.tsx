@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FALLBACK_COUNTRIES, type CountryOption } from '@/lib/countries';
 
-const heroImage = 'https://media.aircnc.co.ke/media-images/20e847ba-fb2d-45f8-ad77-95b615ef85c8.webp';
+const heroImage = 'https://media.aircnc.co.ke/media-images/3e642cc8-1e30-4664-9b14-a782f63550f9.webp';
 
 const schema = z.object({
   firstName: z.string().min(2, 'First name is required'),
@@ -105,8 +105,8 @@ export default function ReferrerRegister() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      <div className="relative hidden flex-col justify-between overflow-hidden p-12 lg:flex lg:w-[40%]">
+    <div className="flex h-screen overflow-hidden">
+      <div className="relative hidden h-screen flex-col justify-between overflow-hidden p-12 lg:flex lg:w-[40%]">
         <div className="absolute inset-0">
           <img src={heroImage} alt="" className="h-full w-full object-cover object-center" />
           <div className="absolute inset-0 bg-black/72" />
@@ -143,8 +143,8 @@ export default function ReferrerRegister() {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col justify-center bg-background px-6 py-10 lg:px-16">
-        <div className="mx-auto w-full max-w-2xl">
+      <div className="flex h-screen flex-1 flex-col overflow-hidden bg-background px-6 py-8 lg:px-16">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col">
           <div className="mb-8 flex flex-col items-center lg:hidden">
             <Link to="/" className="flex flex-col items-center gap-2">
               <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 rounded-full bg-white object-contain p-1" />
@@ -156,7 +156,7 @@ export default function ReferrerRegister() {
             <ArrowLeft className="h-4 w-4" /> Back to referrals
           </Link>
 
-          <div className="mb-8">
+          <div className="mb-6 shrink-0">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
               <Handshake className="h-6 w-6" />
             </div>
@@ -164,7 +164,7 @@ export default function ReferrerRegister() {
             <p className="mt-1 text-sm text-muted-foreground">Register, verify your email, then share your referral link.</p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
+          <form onSubmit={handleSubmit(onSubmit)} className="grid min-h-0 gap-4 overflow-y-auto pr-1 pb-2 sm:grid-cols-2">
             {[
               ['firstName', 'First name'],
               ['lastName', 'Last name'],

@@ -44,7 +44,7 @@ export default function ReferralsPage() {
           <img src={heroImage} alt="ICIMS referrals" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/72" />
         </div>
-        <div className="container relative z-10 py-24 md:py-32">
+        <div className="container relative z-10 py-28 md:py-36">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
