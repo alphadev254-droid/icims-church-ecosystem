@@ -143,8 +143,8 @@ export default function ReferrerRegister() {
         </div>
       </div>
 
-      <div className="flex h-screen flex-1 flex-col overflow-hidden bg-background px-6 py-8 lg:px-16">
-        <div className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col">
+      <div className="h-screen flex-1 overflow-y-auto bg-background px-6 py-8 lg:px-16">
+        <div className="mx-auto w-full max-w-2xl">
           <div className="mb-8 flex flex-col items-center lg:hidden">
             <Link to="/" className="flex flex-col items-center gap-2">
               <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 rounded-full bg-white object-contain p-1" />
@@ -164,7 +164,7 @@ export default function ReferrerRegister() {
             <p className="mt-1 text-sm text-muted-foreground">Register, verify your email, then share your referral link.</p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="grid min-h-0 gap-4 overflow-y-auto pr-1 pb-2 sm:grid-cols-2">
+          <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 pb-2 sm:grid-cols-2">
             {[
               ['firstName', 'First name'],
               ['lastName', 'Last name'],

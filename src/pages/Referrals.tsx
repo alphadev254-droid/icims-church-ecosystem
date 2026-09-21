@@ -39,12 +39,12 @@ export default function ReferralsPage() {
 
   return (
     <div className="overflow-x-hidden">
-      <section className="relative overflow-hidden">
+      <section className="relative flex min-h-[460px] items-center overflow-hidden md:min-h-[540px]">
         <div className="absolute inset-0">
           <img src={heroImage} alt="ICIMS referrals" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/72" />
         </div>
-        <div className="container relative z-10 py-28 md:py-36">
+        <div className="container relative z-10 py-16">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
