@@ -3,12 +3,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle2, ArrowLeft, MailCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import apiClient from '@/lib/api-client';
 const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 
 const schema = z.object({
@@ -20,22 +22,69 @@ type FormValues = z.infer<typeof schema>;
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const fetchMe = useAuthStore(state => state.fetchMe);
   const [showPassword, setShowPassword] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
   });
+
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const timer = window.setTimeout(() => setResendCountdown(seconds => Math.max(seconds - 1, 0)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCountdown]);
 
   const onSubmit = async (values: FormValues) => {
     const result = await login(values.email, values.password);
     if (result.success) {
       toast.success('Welcome back!');
       navigate(result.redirectTo || '/dashboard');
-    } else if (result.redirectTo) {
+    } else if (result.code === 'EMAIL_NOT_VERIFIED') {
+      setVerificationEmail(result.email || values.email);
+      setOtpCode('');
+      setResendCountdown(40);
       toast.info(result.message || 'Verify your email to continue');
-      navigate(result.redirectTo);
     } else {
       toast.error(result.message || 'Login failed');
+    }
+  };
+
+  const verifyEmail = async (event: FormEvent) => {
+    event.preventDefault();
+    setVerifying(true);
+    try {
+      await apiClient.post('/auth/verify-email', { email: verificationEmail, otpCode });
+      await fetchMe();
+      const user = useAuthStore.getState().user;
+      toast.success('Email verified. Welcome to ICIMS.');
+      navigate(user?.roleName === 'referrer' ? '/dashboard/referrals' : '/dashboard');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Verification failed');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const resendVerification = async () => {
+    if (!verificationEmail) return;
+    setResending(true);
+    try {
+      await apiClient.post('/auth/resend-verification-otp', { email: verificationEmail });
+      setResendCountdown(40);
+      toast.success('Verification code sent');
+    } catch (error: any) {
+      if (error.response?.data?.retryAfterSeconds) {
+        setResendCountdown(error.response.data.retryAfterSeconds);
+      }
+      toast.error(error.response?.data?.message || 'Could not resend code');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -104,33 +153,88 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <div className="mb-8">
-            <h1 className="font-heading text-2xl font-bold text-foreground">Welcome back</h1>
-            <p className="text-sm text-muted-foreground mt-1">Sign in to your church account</p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@church.org"
-                autoComplete="email"
-                {...register('email')}
-                className={errors.email ? 'border-destructive' : ''}
-              />
-              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link to="/forgot-password" className="text-xs text-accent hover:underline">
-                  Forgot password?
-                </Link>
+          {verificationEmail ? (
+            <>
+              <div className="mb-8">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
+                  <MailCheck className="h-6 w-6" />
+                </div>
+                <h1 className="font-heading text-2xl font-bold text-foreground">Verify your email</h1>
+                <p className="text-sm text-muted-foreground mt-1">Enter the 6-digit code sent to {verificationEmail}.</p>
               </div>
-              <div className="relative">
+
+              <form onSubmit={verifyEmail} className="space-y-5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="otpCode">OTP code</Label>
+                  <Input
+                    id="otpCode"
+                    value={otpCode}
+                    onChange={event => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    inputMode="numeric"
+                    required
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={verifying || otpCode.length !== 6}
+                  className="w-full h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-medium"
+                >
+                  {verifying ? 'Verifying...' : 'Verify account'}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={resending || resendCountdown > 0}
+                  onClick={resendVerification}
+                  className="w-full"
+                >
+                  {resending ? 'Sending...' : resendCountdown > 0 ? `Resend code in ${resendCountdown}s` : 'Resend code'}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVerificationEmail('');
+                    setOtpCode('');
+                  }}
+                  className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Use a different account
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <div className="mb-8">
+                <h1 className="font-heading text-2xl font-bold text-foreground">Welcome back</h1>
+                <p className="text-sm text-muted-foreground mt-1">Sign in to your church account</p>
+              </div>
+
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Email address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@church.org"
+                    autoComplete="email"
+                    {...register('email')}
+                    className={errors.email ? 'border-destructive' : ''}
+                  />
+                  {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <Link to="/forgot-password" className="text-xs text-accent hover:underline">
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -147,18 +251,20 @@ export default function LoginPage() {
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
-              </div>
-              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-            </div>
+                  </div>
+                  {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+                </div>
 
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-medium"
-            >
-              {isSubmitting ? 'Signing in...' : 'Sign in'}
-            </Button>
-          </form>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-11 bg-accent text-accent-foreground hover:bg-accent/90 font-medium"
+                >
+                  {isSubmitting ? 'Signing in...' : 'Sign in'}
+                </Button>
+              </form>
+            </>
+          )}
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Don't have an account?{' '}

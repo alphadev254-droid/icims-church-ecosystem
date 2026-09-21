@@ -66,7 +66,7 @@ interface AuthState {
   allowedRoutes: string[];
   navItems: NavItem[];
 
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string; redirectTo?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string; redirectTo?: string; code?: string; email?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; message?: string; isNewRegistration?: boolean; subdomain?: string | null; requiresEmailVerification?: boolean; redirectTo?: string }>;
   registerMember: (data: MemberRegisterData) => Promise<{ success: boolean; message?: string; requiresEmailVerification?: boolean; redirectTo?: string }>;
   acceptTerms: () => Promise<{ success: boolean; message?: string }>;
@@ -179,8 +179,9 @@ export const useAuthStore = create<AuthState>()(
           if (payload?.code === 'EMAIL_NOT_VERIFIED') {
             return {
               success: false,
+              code: 'EMAIL_NOT_VERIFIED',
+              email: payload.email || email,
               message: payload.message,
-              redirectTo: `/verify-email?email=${encodeURIComponent(payload.email || email)}`,
             };
           }
           return { success: false, message: payload?.message || 'Login failed' };

@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, Eye, EyeOff, Handshake } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Eye, EyeOff, Handshake, MailCheck } from 'lucide-react';
 import apiClient from '@/lib/api-client';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,8 +35,14 @@ type FormValues = z.infer<typeof schema>;
 
 export default function ReferrerRegister() {
   const navigate = useNavigate();
+  const fetchMe = useAuthStore(state => state.fetchMe);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -94,13 +101,53 @@ export default function ReferrerRegister() {
     setValue('district', '');
   }, [city, setValue]);
 
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const timer = window.setTimeout(() => setResendCountdown(seconds => Math.max(seconds - 1, 0)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCountdown]);
+
   const onSubmit = async ({ confirmPassword: _confirmPassword, ...values }: FormValues) => {
     try {
       const response = await apiClient.post('/referrals/register', values);
       toast.success('Referrer account created. Check your email for the verification code.');
-      navigate(`/verify-email?email=${encodeURIComponent(response.data.email || values.email)}`);
+      setVerificationEmail(response.data.email || values.email);
+      setOtpCode('');
+      setResendCountdown(40);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Could not submit referrer registration');
+    }
+  };
+
+  const verifyEmail = async (event: FormEvent) => {
+    event.preventDefault();
+    setVerifying(true);
+    try {
+      await apiClient.post('/auth/verify-email', { email: verificationEmail, otpCode });
+      await fetchMe();
+      toast.success('Email verified. Welcome to ICIMS.');
+      navigate('/dashboard/referrals');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Verification failed');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const resendVerification = async () => {
+    if (!verificationEmail) return;
+    setResending(true);
+    try {
+      await apiClient.post('/auth/resend-verification-otp', { email: verificationEmail });
+      setResendCountdown(40);
+      toast.success('Verification code sent');
+    } catch (error: any) {
+      if (error.response?.data?.retryAfterSeconds) {
+        setResendCountdown(error.response.data.retryAfterSeconds);
+      }
+      toast.error(error.response?.data?.message || 'Could not resend code');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -156,15 +203,49 @@ export default function ReferrerRegister() {
             <ArrowLeft className="h-4 w-4" /> Back to referrals
           </Link>
 
-          <div className="mb-6 shrink-0">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
-              <Handshake className="h-6 w-6" />
-            </div>
-            <h1 className="font-heading text-2xl font-bold text-foreground">Create referrer account</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Register, verify your email, then share your referral link.</p>
-          </div>
+          {verificationEmail ? (
+            <>
+              <div className="mb-6 shrink-0">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
+                  <MailCheck className="h-6 w-6" />
+                </div>
+                <h1 className="font-heading text-2xl font-bold text-foreground">Verify your email</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Enter the 6-digit code sent to {verificationEmail}.</p>
+              </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 pb-2 sm:grid-cols-2">
+              <form onSubmit={verifyEmail} className="max-w-sm space-y-5 pb-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="otpCode">OTP code</Label>
+                  <Input
+                    id="otpCode"
+                    value={otpCode}
+                    onChange={event => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    inputMode="numeric"
+                    required
+                  />
+                </div>
+
+                <Button type="submit" disabled={verifying || otpCode.length !== 6} className="h-11 w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                  {verifying ? 'Verifying...' : 'Verify account'}
+                </Button>
+
+                <Button type="button" variant="ghost" disabled={resending || resendCountdown > 0} onClick={resendVerification} className="w-full">
+                  {resending ? 'Sending...' : resendCountdown > 0 ? `Resend code in ${resendCountdown}s` : 'Resend code'}
+                </Button>
+              </form>
+            </>
+          ) : (
+            <>
+              <div className="mb-6 shrink-0">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
+                  <Handshake className="h-6 w-6" />
+                </div>
+                <h1 className="font-heading text-2xl font-bold text-foreground">Create referrer account</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Register, verify your email, then share your referral link.</p>
+              </div>
+
+              <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 pb-2 sm:grid-cols-2">
             {[
               ['firstName', 'First name'],
               ['lastName', 'Last name'],
@@ -283,7 +364,9 @@ export default function ReferrerRegister() {
                 {isSubmitting ? 'Creating account...' : 'Create referrer account'}
               </Button>
             </div>
-          </form>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>
