@@ -23,6 +23,7 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
+const Referrals = lazy(() => import("./pages/Referrals"));
 const ReferrerRegister = lazy(() => import("./pages/ReferrerRegister"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const MemberRegister = lazy(() => import("./pages/MemberRegister"));
@@ -118,6 +119,7 @@ const App = () => {
                 <Route path="/" element={<Index />} />
                 <Route path="/features" element={<Features />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/referrals" element={<Referrals />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/terms" element={<Terms />} />

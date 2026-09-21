@@ -1,17 +1,18 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
-import { Handshake, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Eye, EyeOff, Handshake } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FALLBACK_COUNTRIES, type CountryOption } from '@/lib/countries';
+
+const heroImage = 'https://media.aircnc.co.ke/media-images/20e847ba-fb2d-45f8-ad77-95b615ef85c8.webp';
 
 const schema = z.object({
   firstName: z.string().min(2, 'First name is required'),
@@ -33,6 +34,8 @@ type FormValues = z.infer<typeof schema>;
 
 export default function ReferrerRegister() {
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -94,113 +97,194 @@ export default function ReferrerRegister() {
   const onSubmit = async ({ confirmPassword: _confirmPassword, ...values }: FormValues) => {
     try {
       const response = await apiClient.post('/referrals/register', values);
-      toast.success('Referrer application submitted. Check your email for the verification code.');
+      toast.success('Referrer account created. Check your email for the verification code.');
       navigate(`/verify-email?email=${encodeURIComponent(response.data.email || values.email)}`);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Could not submit referrer application');
+      toast.error(error.response?.data?.message || 'Could not submit referrer registration');
     }
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-10">
-      <div className="mx-auto max-w-3xl">
-        <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to home
+    <div className="flex min-h-screen">
+      <div className="relative hidden flex-col justify-between overflow-hidden p-12 lg:flex lg:w-[40%]">
+        <div className="absolute inset-0">
+          <img src={heroImage} alt="" className="h-full w-full object-cover object-center" />
+          <div className="absolute inset-0 bg-black/72" />
+        </div>
+
+        <Link to="/" className="relative z-10 flex items-center gap-2.5">
+          <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 rounded-full bg-white object-contain p-1" />
         </Link>
 
-        <Card>
-          <CardHeader className="space-y-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
+        <div className="relative z-10">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-accent">Referral Partner</p>
+          <h2 className="mb-6 font-heading text-4xl font-bold leading-tight text-white">
+            Help ministries grow.<br />Earn as they subscribe.
+          </h2>
+          <div className="space-y-3">
+            {[
+              'Unique referral code and link',
+              '20% commission on package payments',
+              'Ledger-based wallet tracking',
+              'Secure OTP withdrawals',
+            ].map(item => (
+              <div key={item} className="flex items-center gap-3">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-accent" />
+                <span className="text-sm text-white/75">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative z-10 border-l-2 border-accent pl-4">
+          <p className="text-sm italic leading-relaxed text-white/70">
+            "Introduce churches to a better way of managing ministry and track every earning in your dashboard."
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col justify-center bg-background px-6 py-10 lg:px-16">
+        <div className="mx-auto w-full max-w-2xl">
+          <div className="mb-8 flex flex-col items-center lg:hidden">
+            <Link to="/" className="flex flex-col items-center gap-2">
+              <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 rounded-full bg-white object-contain p-1" />
+              <span className="font-heading text-sm font-bold tracking-wide text-foreground">ICIMS</span>
+            </Link>
+          </div>
+
+          <Link to="/referrals" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Back to referrals
+          </Link>
+
+          <div className="mb-8">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
               <Handshake className="h-6 w-6" />
             </div>
-            <div>
-              <CardTitle className="text-2xl">Become an ICIMS Referrer</CardTitle>
-              <CardDescription>Refer ministries to ICIMS and earn commission when they pay for packages.</CardDescription>
-            </div>
-            <div className="grid gap-2 rounded-lg bg-muted p-4 text-sm text-muted-foreground sm:grid-cols-3">
-              <div className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-accent" /> Unique referral link</div>
-              <div className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-accent" /> 20% package commission</div>
-              <div className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-accent" /> Email OTP verification</div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
-              {[
-                ['firstName', 'First name'],
-                ['lastName', 'Last name'],
-                ['email', 'Email'],
-                ['phone', 'Phone'],
-              ].map(([name, label]) => (
-                <div key={name} className="space-y-1.5">
-                  <Label htmlFor={name}>{label}</Label>
-                  <Input id={name} type={name === 'email' ? 'email' : 'text'} {...register(name as keyof FormValues)} />
-                  {errors[name as keyof FormValues] && <p className="text-xs text-destructive">{errors[name as keyof FormValues]?.message as string}</p>}
-                </div>
-              ))}
+            <h1 className="font-heading text-2xl font-bold text-foreground">Create referrer account</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Register, verify your email, then share your referral link.</p>
+          </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="country">Country</Label>
-                <select id="country" {...register('country')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  <option value="">Select country</option>
-                  {countryOptions.map(option => <option key={option} value={option}>{option}</option>)}
+          <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
+            {[
+              ['firstName', 'First name'],
+              ['lastName', 'Last name'],
+              ['email', 'Email address'],
+              ['phone', 'Phone number'],
+            ].map(([name, label]) => (
+              <div key={name} className="space-y-1.5">
+                <Label htmlFor={name}>{label}</Label>
+                <Input
+                  id={name}
+                  type={name === 'email' ? 'email' : 'text'}
+                  autoComplete={name === 'email' ? 'email' : name === 'phone' ? 'tel' : 'name'}
+                  {...register(name as keyof FormValues)}
+                  className={errors[name as keyof FormValues] ? 'border-destructive' : ''}
+                />
+                {errors[name as keyof FormValues] && <p className="text-xs text-destructive">{errors[name as keyof FormValues]?.message as string}</p>}
+              </div>
+            ))}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="country">Country</Label>
+              <select id="country" {...register('country')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <option value="">Select country</option>
+                {countryOptions.map(option => <option key={option} value={option}>{option}</option>)}
+              </select>
+              {errors.country && <p className="text-xs text-destructive">{errors.country.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="city">City / Region</Label>
+              {hasLocationData ? (
+                <select id="city" {...register('city')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <option value="">Select city / region</option>
+                  {regions.map(option => <option key={option} value={option}>{option}</option>)}
                 </select>
-                {errors.country && <p className="text-xs text-destructive">{errors.country.message}</p>}
-              </div>
+              ) : (
+                <Input id="city" {...register('city')} placeholder="Enter city / region" />
+              )}
+              {errors.city && <p className="text-xs text-destructive">{errors.city.message}</p>}
+            </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="city">City / Region</Label>
-                {hasLocationData ? (
-                  <select id="city" {...register('city')} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <option value="">Select city / region</option>
-                    {regions.map(option => <option key={option} value={option}>{option}</option>)}
-                  </select>
-                ) : (
-                  <Input id="city" {...register('city')} placeholder="Enter city / region" />
-                )}
-                {errors.city && <p className="text-xs text-destructive">{errors.city.message}</p>}
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="district">District</Label>
+              {hasLocationData ? (
+                <select id="district" {...register('district')} disabled={!city} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50">
+                  <option value="">Select district</option>
+                  {districts.map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
+              ) : (
+                <Input id="district" {...register('district')} placeholder="Enter district" />
+              )}
+              {errors.district && <p className="text-xs text-destructive">{errors.district.message}</p>}
+            </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="district">District</Label>
-                {hasLocationData ? (
-                  <select id="district" {...register('district')} disabled={!city} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50">
-                    <option value="">Select district</option>
-                    {districts.map(option => <option key={option} value={option}>{option}</option>)}
-                  </select>
-                ) : (
-                  <Input id="district" {...register('district')} placeholder="Enter district" />
-                )}
-                {errors.district && <p className="text-xs text-destructive">{errors.district.message}</p>}
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  {...register('password')}
+                  className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword(value => !value)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
+              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" {...register('password')} />
-                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword">Confirm password</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  {...register('confirmPassword')}
+                  className={errors.confirmPassword ? 'border-destructive pr-10' : 'pr-10'}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowConfirmPassword(value => !value)}
+                  tabIndex={-1}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword">Confirm password</Label>
-                <Input id="confirmPassword" type="password" {...register('confirmPassword')} />
-                {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
-              </div>
+              {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
+            </div>
 
-              <label className="sm:col-span-2 flex items-start gap-3 rounded-md border p-3 text-sm">
-                <input type="checkbox" className="mt-1" {...register('acceptedTerms')} />
-                <span>
-                  I accept the ICIMS Partner Terms and understand approval is required before earning commission.
-                  {errors.acceptedTerms && <p className="mt-1 text-xs text-destructive">{errors.acceptedTerms.message}</p>}
-                </span>
-              </label>
+            <label className="flex items-start gap-3 rounded-md border p-3 text-sm sm:col-span-2">
+              <input type="checkbox" className="mt-1" {...register('acceptedTerms')} />
+              <span>
+                I accept the ICIMS{' '}
+                <Link to="/terms" className="text-accent hover:underline" target="_blank" rel="noreferrer">
+                  Terms and Conditions
+                </Link>
+                {' '}and understand approval is required before earning commission.
+                {errors.acceptedTerms && <p className="mt-1 text-xs text-destructive">{errors.acceptedTerms.message}</p>}
+              </span>
+            </label>
 
-              <div className="sm:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground">Applications start as pending and must be approved before earning commission.</p>
-                <Button type="submit" disabled={isSubmitting} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                  {isSubmitting ? 'Submitting...' : 'Submit application'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+            <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">Your account starts as pending until approved by ICIMS.</p>
+              <Button type="submit" disabled={isSubmitting} className="h-11 bg-accent text-accent-foreground hover:bg-accent/90">
+                {isSubmitting ? 'Creating account...' : 'Create referrer account'}
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

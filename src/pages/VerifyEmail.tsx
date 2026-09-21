@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, MailCheck } from 'lucide-react';
@@ -17,6 +17,13 @@ export default function VerifyEmail() {
   const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(40);
+
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const timer = window.setTimeout(() => setResendCountdown(seconds => Math.max(seconds - 1, 0)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCountdown]);
 
   const verify = async (event: FormEvent) => {
     event.preventDefault();
@@ -42,8 +49,12 @@ export default function VerifyEmail() {
     setResending(true);
     try {
       await apiClient.post('/auth/resend-verification-otp', { email });
+      setResendCountdown(40);
       toast.success('Verification code sent');
     } catch (error: any) {
+      if (error.response?.data?.retryAfterSeconds) {
+        setResendCountdown(error.response.data.retryAfterSeconds);
+      }
       toast.error(error.response?.data?.message || 'Could not resend code');
     } finally {
       setResending(false);
@@ -77,8 +88,8 @@ export default function VerifyEmail() {
               <Button type="submit" disabled={loading || otpCode.length !== 6} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
                 {loading ? 'Verifying...' : 'Verify account'}
               </Button>
-              <Button type="button" variant="ghost" disabled={resending} onClick={resend} className="w-full">
-                {resending ? 'Sending...' : 'Resend code'}
+              <Button type="button" variant="ghost" disabled={resending || resendCountdown > 0} onClick={resend} className="w-full">
+                {resending ? 'Sending...' : resendCountdown > 0 ? `Resend code in ${resendCountdown}s` : 'Resend code'}
               </Button>
             </form>
           </CardContent>
