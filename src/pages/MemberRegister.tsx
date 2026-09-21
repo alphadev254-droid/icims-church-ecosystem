@@ -156,6 +156,11 @@ export default function MemberRegisterPage() {
     });
 
     if (result.success) {
+      if (result.requiresEmailVerification && result.redirectTo) {
+        toast.success('Account created. Check your email for the verification code.');
+        navigate(result.redirectTo);
+        return;
+      }
       toast.success('Account created! Welcome to the church.');
       navigate('/dashboard');
     } else {

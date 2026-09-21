@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -128,6 +128,7 @@ function CountryCombobox({
 export default function RegisterPage() {
   const { register: authRegister } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -190,11 +191,17 @@ export default function RegisterPage() {
       accountCountry: values.accountCountry,
       anniversary: values.anniversary,
       password: values.password,
+      referralCode: searchParams.get('ref') || undefined,
       acceptedTerms: values.acceptedTerms,
       termsVersion: TERMS_VERSION,
       privacyVersion: PRIVACY_VERSION,
     });
     if (result.success) {
+      if (result.requiresEmailVerification && result.redirectTo) {
+        toast.success('Account created. Check your email for the verification code.');
+        navigate(result.redirectTo);
+        return;
+      }
       if (result.isNewRegistration && result.subdomain) {
         // Store subdomain in sessionStorage so Dashboard can show the welcome dialog
         sessionStorage.setItem('newRegistration', JSON.stringify({

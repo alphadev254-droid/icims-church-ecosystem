@@ -11,8 +11,8 @@ export function SubscriptionCheck() {
   const [showDialog, setShowDialog] = useState(false);
 
   useEffect(() => {
-    // Only check for non-members.
-    if (!user || user.roleName === 'member') {
+    // Only check for ministry users; referrers do not need a package subscription.
+    if (!user || user.roleName === 'member' || user.roleName === 'referrer') {
       setShowDialog(false);
       return;
     }

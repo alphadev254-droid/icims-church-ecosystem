@@ -67,8 +67,8 @@ interface AuthState {
   navItems: NavItem[];
 
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; redirectTo?: string }>;
-  register: (data: RegisterData) => Promise<{ success: boolean; message?: string; isNewRegistration?: boolean; subdomain?: string | null }>;
-  registerMember: (data: MemberRegisterData) => Promise<{ success: boolean; message?: string }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; message?: string; isNewRegistration?: boolean; subdomain?: string | null; requiresEmailVerification?: boolean; redirectTo?: string }>;
+  registerMember: (data: MemberRegisterData) => Promise<{ success: boolean; message?: string; requiresEmailVerification?: boolean; redirectTo?: string }>;
   acceptTerms: () => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   fetchMe: () => Promise<void>;
@@ -90,6 +90,8 @@ export interface RegisterData {
   accountCountry?: string;
   anniversary?: string;
   inviteToken?: string;
+  referralCode?: string;
+  ref?: string;
   acceptedTerms: boolean;
   termsVersion?: string;
   privacyVersion?: string;
@@ -125,6 +127,7 @@ function applyPermissions(permissions: string[], user: AuthUser) {
 
 function getDefaultRedirect(user: AuthUser, navItems: NavItem[], allowedRoutes: string[]) {
   if (user.roleName === 'system_admin') return '/admin';
+  if (user.roleName === 'referrer') return '/dashboard/referrals';
   return navItems[0]?.to ?? allowedRoutes[0] ?? '/dashboard';
 }
 
@@ -172,7 +175,15 @@ export const useAuthStore = create<AuthState>()(
           }
           return { success: false, message: data.message };
         } catch (err: any) {
-          return { success: false, message: err.response?.data?.message || 'Login failed' };
+          const payload = err.response?.data;
+          if (payload?.code === 'EMAIL_NOT_VERIFIED') {
+            return {
+              success: false,
+              message: payload.message,
+              redirectTo: `/verify-email?email=${encodeURIComponent(payload.email || email)}`,
+            };
+          }
+          return { success: false, message: payload?.message || 'Login failed' };
         }
       },
 
@@ -180,6 +191,13 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { data } = await apiClient.post('/auth/register', formData);
           if (data.success) {
+            if (data.requiresEmailVerification) {
+              return {
+                success: true,
+                requiresEmailVerification: true,
+                redirectTo: `/verify-email?email=${encodeURIComponent(data.email || formData.email)}`,
+              };
+            }
             const permissions: string[] = data.user.permissions ?? [];
             set({
               user: data.user,
@@ -202,6 +220,13 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { data } = await apiClient.post('/auth/register/member', formData);
           if (data.success) {
+            if (data.requiresEmailVerification) {
+              return {
+                success: true,
+                requiresEmailVerification: true,
+                redirectTo: `/verify-email?email=${encodeURIComponent(data.email || formData.email)}`,
+              };
+            }
             const permissions: string[] = data.user.permissions ?? [];
             set({
               user: data.user,

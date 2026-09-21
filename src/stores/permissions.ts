@@ -8,7 +8,8 @@ import { PACKAGE_FEATURES } from '@/lib/package-features';
 export type UserRole =
   | 'system_admin'
   | 'ministry_admin'
-  | 'member';
+  | 'member'
+  | 'referrer';
 
 export interface NavItem {
   to: string;
@@ -91,6 +92,10 @@ function isPackageRouteAvailable(route: string, user: any) {
 export function getNavForPermissions(permissions: string[], user?: { accountCountry?: string | null; roleName?: string } | null): NavItem[] {
   const permSet = new Set(permissions);
   const currentUser = user ?? useAuthStore.getState().user;
+
+  if (currentUser?.roleName === 'referrer') {
+    return [{ to: '/dashboard/referrals', label: 'Referrals', icon: Handshake }];
+  }
   
   return PERMISSION_TO_NAV
     .filter(({ permission, item }) => {
@@ -150,6 +155,10 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
   const permSet = new Set(permissions);
   const currentUser = user ?? useAuthStore.getState().user;
   const routes: string[] = [];
+
+  if (currentUser?.roleName === 'referrer') {
+    return ['/dashboard/referrals'];
+  }
   
   for (const { permission, item } of PERMISSION_TO_NAV) {
     if (permSet.has(permission) && !routes.includes(item.to)) {

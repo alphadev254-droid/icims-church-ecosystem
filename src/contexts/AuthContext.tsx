@@ -10,8 +10,8 @@ interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; redirectTo?: string }>;
-  register: (data: RegisterData) => Promise<{ success: boolean; message?: string }>;
-  registerMember: (data: MemberRegisterData) => Promise<{ success: boolean; message?: string }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; message?: string; requiresEmailVerification?: boolean; redirectTo?: string; isNewRegistration?: boolean; subdomain?: string | null }>;
+  registerMember: (data: MemberRegisterData) => Promise<{ success: boolean; message?: string; requiresEmailVerification?: boolean; redirectTo?: string }>;
   logout: () => void;
 }
 

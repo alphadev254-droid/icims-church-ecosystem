@@ -23,10 +23,13 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
+const ReferrerRegister = lazy(() => import("./pages/ReferrerRegister"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const MemberRegister = lazy(() => import("./pages/MemberRegister"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ReferrerDashboard = lazy(() => import("./pages/ReferrerDashboard"));
 const Events = lazy(() => import("./pages/Events"));
 const Reminders = lazy(() => import("./pages/Reminders"));
 const Giving = lazy(() => import("./pages/Giving"));
@@ -132,7 +135,9 @@ const App = () => {
               {/* Auth routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/register/referrer" element={<ReferrerRegister />} />
               <Route path="/register/member" element={<MemberRegister />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/payment/callback" element={<PaymentCallback />} />
@@ -140,6 +145,7 @@ const App = () => {
               {/* Dashboard routes */}
               <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
+                <Route path="referrals" element={<ReferrerDashboard />} />
                 <Route path="events" element={<Events />} />
                 <Route path="events/:id/tickets" element={<EventTickets />} />
                 <Route path="my-tickets" element={<MyTickets />} />

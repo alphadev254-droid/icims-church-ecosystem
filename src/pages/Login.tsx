@@ -31,6 +31,9 @@ export default function LoginPage() {
     if (result.success) {
       toast.success('Welcome back!');
       navigate(result.redirectTo || '/dashboard');
+    } else if (result.redirectTo) {
+      toast.info(result.message || 'Verify your email to continue');
+      navigate(result.redirectTo);
     } else {
       toast.error(result.message || 'Login failed');
     }
