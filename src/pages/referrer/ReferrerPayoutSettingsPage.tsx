@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LoadingState, ReferrerStatusNotice, useReferrerDashboardData } from './shared';
+import { LoadingState, ReferrerStatusNotice, isReferrerVerified, useReferrerDashboardData } from './shared';
 
 export default function ReferrerPayoutSettingsPage() {
   const queryClient = useQueryClient();
@@ -47,6 +47,7 @@ export default function ReferrerPayoutSettingsPage() {
 
   const providers = payoutOptions?.providers || [];
   const isSupported = payoutOptions?.supported && providers.length > 0;
+  const verified = isReferrerVerified(data?.referrer);
 
   return (
     <div className="space-y-6">
@@ -65,7 +66,9 @@ export default function ReferrerPayoutSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!isSupported ? (
+          {!verified ? (
+            <div className="rounded-md border bg-muted p-4 text-sm text-muted-foreground">Payout setup is disabled until your marketer account is verified.</div>
+          ) : !isSupported ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
               {payoutOptions?.message || 'Payout setup is not available for your selected country yet.'}
             </div>
@@ -73,7 +76,7 @@ export default function ReferrerPayoutSettingsPage() {
             <>
               <div className="grid gap-2">
                 <Label htmlFor="payoutProvider">Payout provider</Label>
-                <Select value={payoutProvider} onValueChange={setPayoutProvider}>
+                <Select value={payoutProvider} onValueChange={setPayoutProvider} disabled={!verified}>
                   <SelectTrigger id="payoutProvider"><SelectValue placeholder="Select provider" /></SelectTrigger>
                   <SelectContent>
                     {providers.map((provider: any) => (
@@ -84,9 +87,9 @@ export default function ReferrerPayoutSettingsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="payoutPhone">Payout phone number</Label>
-                <Input id="payoutPhone" value={payoutPhone} onChange={(event) => setPayoutPhone(event.target.value)} placeholder="Enter payout phone number" />
+                <Input id="payoutPhone" value={payoutPhone} onChange={(event) => setPayoutPhone(event.target.value)} placeholder="Enter payout phone number" disabled={!verified} />
               </div>
-              <Button onClick={() => savePayout.mutate()} disabled={savePayout.isPending || !payoutPhone || !payoutProvider}>
+              <Button onClick={() => savePayout.mutate()} disabled={!verified || savePayout.isPending || !payoutPhone || !payoutProvider}>
                 {savePayout.isPending ? 'Saving...' : 'Save payout settings'}
               </Button>
             </>
@@ -96,3 +99,6 @@ export default function ReferrerPayoutSettingsPage() {
     </div>
   );
 }
+
+
+

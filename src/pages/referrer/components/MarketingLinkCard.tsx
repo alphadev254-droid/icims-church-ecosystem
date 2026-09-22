@@ -1,18 +1,36 @@
 import { useState } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export function MarketingLinkCard({ referralLink }: { referralLink?: string }) {
+export function MarketingLinkCard({ referralLink, verified }: { referralLink?: string; verified: boolean }) {
   const [copied, setCopied] = useState(false);
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(referralLink || '');
+    if (!verified || !referralLink) return;
+    await navigator.clipboard.writeText(referralLink);
     setCopied(true);
     toast.success('Marketing link copied');
     setTimeout(() => setCopied(false), 1500);
   };
+
+  if (!verified) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Marketing link locked</CardTitle>
+          <CardDescription>Your marketer link will be available after your account is verified.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-3 text-sm text-muted-foreground">
+            <Lock className="h-4 w-4" />
+            Link hidden until verification is complete.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

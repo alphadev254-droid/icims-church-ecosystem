@@ -33,8 +33,13 @@ export default function DashboardLayout() {
     navigate('/');
   };
 
-  const isActive = (path: string) =>
-    path === '/dashboard' ? location.pathname === path : location.pathname.startsWith(path);
+  const isActive = (path: string) => {
+    const matchingItems = navItems.filter(item =>
+      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+    );
+    const closestMatch = matchingItems.sort((a, b) => b.to.length - a.to.length)[0];
+    return closestMatch?.to === path;
+  };
 
   const SidebarContent = () => (
     <>
@@ -160,3 +165,4 @@ export default function DashboardLayout() {
     </div>
   );
 }
+
