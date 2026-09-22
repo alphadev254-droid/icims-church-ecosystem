@@ -51,13 +51,6 @@ export default function ReferralsPage() {
             transition={{ duration: 0.6 }}
             className="max-w-2xl"
           >
-            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-accent">ICIMS Marketer Program</p>
-            <h1 className="mb-5 font-heading text-5xl font-bold leading-tight text-white md:text-6xl">
-              Market ICIMS.<br />Earn commission.
-            </h1>
-            <p className="mb-8 text-lg leading-relaxed text-white/70">
-              Help churches discover ICIMS. When a church registers through your marketer link and pays for a package, your wallet receives commission.
-            </p>
             <Link to="/register/referrer">
               <Button size="lg" className="h-12 gap-2 bg-accent px-7 text-accent-foreground hover:bg-accent/90">
                 Register as a marketer <ArrowRight className="h-4 w-4" />
