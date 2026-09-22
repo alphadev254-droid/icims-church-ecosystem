@@ -31,6 +31,10 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ReferrerDashboard = lazy(() => import("./pages/ReferrerDashboard"));
+const ReferrerReferralsPage = lazy(() => import("./pages/referrer/ReferrerReferralsPage"));
+const ReferrerWalletPage = lazy(() => import("./pages/referrer/ReferrerWalletPage"));
+const ReferrerPayoutSettingsPage = lazy(() => import("./pages/referrer/ReferrerPayoutSettingsPage"));
+const ReferrerWithdrawalsPage = lazy(() => import("./pages/referrer/ReferrerWithdrawalsPage"));
 const Events = lazy(() => import("./pages/Events"));
 const Reminders = lazy(() => import("./pages/Reminders"));
 const Giving = lazy(() => import("./pages/Giving"));
@@ -148,6 +152,10 @@ const App = () => {
               <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
                 <Route path="referrals" element={<ReferrerDashboard />} />
+                <Route path="referrals/my-referrals" element={<ReferrerReferralsPage />} />
+                <Route path="referrals/wallet" element={<ReferrerWalletPage />} />
+                <Route path="referrals/payout-settings" element={<ReferrerPayoutSettingsPage />} />
+                <Route path="referrals/withdrawals" element={<ReferrerWithdrawalsPage />} />
                 <Route path="events" element={<Events />} />
                 <Route path="events/:id/tickets" element={<EventTickets />} />
                 <Route path="my-tickets" element={<MyTickets />} />

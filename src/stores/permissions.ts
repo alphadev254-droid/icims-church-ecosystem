@@ -1,6 +1,6 @@
 import {
   Home, Calendar, HandCoins, ClipboardList, MessageSquare,
-  BookOpen, Building2, TrendingUp, BarChart3, Settings, Shield, UserCog, Package2, Receipt, Wallet, Users, Bell, Handshake, Globe, Baby, type LucideIcon,
+  BookOpen, Building2, TrendingUp, BarChart3, Settings, Shield, UserCog, Package2, Receipt, Wallet, Users, Bell, Handshake, Globe, Baby, Banknote, type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from './authStore';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
@@ -94,7 +94,13 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
   const currentUser = user ?? useAuthStore.getState().user;
 
   if (currentUser?.roleName === 'referrer') {
-    return [{ to: '/dashboard/referrals', label: 'Referrals', icon: Handshake }];
+    return [
+      { to: '/dashboard/referrals', label: 'Dashboard', icon: Home },
+      { to: '/dashboard/referrals/my-referrals', label: 'My Referrals', icon: Users },
+      { to: '/dashboard/referrals/wallet', label: 'Wallet', icon: Wallet },
+      { to: '/dashboard/referrals/payout-settings', label: 'Payout Settings', icon: Settings },
+      { to: '/dashboard/referrals/withdrawals', label: 'Withdrawals', icon: Banknote },
+    ];
   }
   
   return PERMISSION_TO_NAV
@@ -157,7 +163,13 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
   const routes: string[] = [];
 
   if (currentUser?.roleName === 'referrer') {
-    return ['/dashboard/referrals'];
+    return [
+      '/dashboard/referrals',
+      '/dashboard/referrals/my-referrals',
+      '/dashboard/referrals/wallet',
+      '/dashboard/referrals/payout-settings',
+      '/dashboard/referrals/withdrawals',
+    ];
   }
   
   for (const { permission, item } of PERMISSION_TO_NAV) {
@@ -216,3 +228,6 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
 
   return routes;
 }
+
+
+
