@@ -3,8 +3,7 @@ import { CheckCircle2, HandCoins, Link2, ShieldCheck, Wallet } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePageMeta } from '@/hooks/usePageMeta';
-
-const heroImage = '/marketers.png';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const steps = [
   {
@@ -30,6 +29,8 @@ const steps = [
 ];
 
 export default function ReferralsPage() {
+  const { theme } = useTheme();
+  const heroImage = theme === 'dark' ? '/marketers_dark.png' : '/marketers_light.png';
   usePageMeta({
     title: 'ICIMS Marketer Program',
     description: 'Market ICIMS to churches and ministries and earn commission when they pay for packages.',
@@ -40,7 +41,7 @@ export default function ReferralsPage() {
     <div className="overflow-x-hidden">
       <section className="relative flex min-h-[460px] items-center overflow-hidden md:min-h-[540px]">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="ICIMS marketers" className="h-full w-full object-contain" fetchPriority="high" loading="eager" />
+          <img src={heroImage} alt="ICIMS marketers" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/78" />
         </div>
       </section>
@@ -121,3 +122,4 @@ export default function ReferralsPage() {
     </div>
   );
 }
+

@@ -5,15 +5,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, Eye, EyeOff, Handshake, MailCheck } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Handshake, MailCheck } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FALLBACK_COUNTRIES, type CountryOption } from '@/lib/countries';
-
-const heroImage = '/marketers.png';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const schema = z.object({
   firstName: z.string().min(2, 'First name is required'),
@@ -35,6 +34,8 @@ type FormValues = z.infer<typeof schema>;
 
 export default function ReferrerRegister() {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const heroImage = theme === 'dark' ? '/marketers_dark.png' : '/marketers_light.png';
   const fetchMe = useAuthStore(state => state.fetchMe);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -153,41 +154,15 @@ export default function ReferrerRegister() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <div className="relative hidden h-screen flex-col justify-between overflow-hidden p-12 lg:flex lg:w-[40%]">
+      <div className="relative hidden h-screen flex-col justify-between overflow-hidden p-12 lg:flex lg:w-[52%]">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="" className="h-full w-full object-cover object-center" />
+          <img src={heroImage} alt="" className="h-full w-full object-cover object-left" />
           <div className="absolute inset-0 bg-black/78" />
         </div>
 
-        <Link to="/" className="relative z-10 flex items-center gap-2.5">
+        <Link to="/" className="relative z-10 flex items-center gap-2.5 self-start">
           <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 rounded-full bg-white object-contain p-1" />
         </Link>
-
-        <div className="relative z-10">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-accent">Marketing Partner</p>
-          <h2 className="mb-6 font-heading text-4xl font-bold leading-tight text-white">
-            Help ministries grow.<br />Earn as they subscribe.
-          </h2>
-          <div className="space-y-3">
-            {[
-              'Unique marketer code and link',
-              '20% commission on package payments',
-              'Ledger-based wallet tracking',
-              'Secure OTP withdrawals',
-            ].map(item => (
-              <div key={item} className="flex items-center gap-3">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-accent" />
-                <span className="text-sm text-white/75">{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative z-10 border-l-2 border-accent pl-4">
-          <p className="text-sm italic leading-relaxed text-white/70">
-            "Introduce churches to a better way of managing ministry and track every earning in your dashboard."
-          </p>
-        </div>
       </div>
 
       <div className="h-screen flex-1 overflow-y-auto bg-background px-6 py-8 lg:px-16">
