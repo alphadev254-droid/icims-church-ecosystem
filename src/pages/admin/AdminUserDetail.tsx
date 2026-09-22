@@ -24,6 +24,28 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
   );
 }
 
+function roleLabel(role?: string | null, displayName?: string | null) {
+  if (role === 'referrer') return 'Marketer';
+  return displayName ?? role?.replace(/_/g, ' ') ?? '—';
+}
+
+function marketerStatusText(status?: string | null) {
+  if (status === 'approved') return 'Verified';
+  if (status === 'pending') return 'Waiting Verification';
+  if (status === 'suspended') return 'Suspended';
+  if (status === 'rejected') return 'Rejected';
+  return status ?? '—';
+}
+
+function marketerStatusBadge(status?: string | null) {
+  if (!status) return <Badge variant="outline" className="text-xs">—</Badge>;
+  if (status === 'approved') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Verified</Badge>;
+  if (status === 'pending') return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs">Waiting Verification</Badge>;
+  if (status === 'rejected') return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Rejected</Badge>;
+  if (status === 'suspended') return <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs">Suspended</Badge>;
+  return <Badge variant="outline" className="text-xs capitalize">{status}</Badge>;
+}
+
 function subStatusBadge(status: string) {
   if (status === 'active') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Active</Badge>;
   if (status === 'expired') return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Expired</Badge>;
@@ -76,6 +98,7 @@ type EditUserData = {
   email: string;
   phone: string;
   status: string;
+  referrerStatus: string;
   roleId: string;
   accountCountry: string;
   title: string;
@@ -104,6 +127,7 @@ const emptyEditData: EditUserData = {
   email: '',
   phone: '',
   status: 'active',
+  referrerStatus: 'pending',
   roleId: '',
   accountCountry: '',
   title: '',
@@ -370,6 +394,7 @@ export default function AdminUserDetail() {
       email: data.email ?? '',
       phone: data.phone ?? '',
       status: data.status ?? 'active',
+      referrerStatus: data.referrer?.status ?? 'pending',
       roleId: data.role?.id ?? data.roleId ?? '',
       accountCountry: data.accountCountry ?? '',
       title: data.title ?? '',
@@ -402,6 +427,7 @@ export default function AdminUserDetail() {
     const roleName = data?.roleName ?? data?.role?.name;
     const isMemberEdit = roleName === 'member';
     const isMinistryAdminEdit = roleName === 'ministry_admin';
+    const isMarketerEdit = roleName === 'referrer';
     const hasChurchProfile = !!editData.churchId || !!data?.church?.id;
     const payload: Record<string, any> = {
       firstName: editData.firstName.trim(),
@@ -412,6 +438,10 @@ export default function AdminUserDetail() {
       roleId: editData.roleId || undefined,
       loginEnabled: editData.loginEnabled,
     };
+
+    if (isMarketerEdit) {
+      payload.referrerStatus = editData.referrerStatus;
+    }
 
     if (isMinistryAdminEdit || (!isMemberEdit && !hasChurchProfile)) {
       payload.accountCountry = editData.accountCountry || null;
@@ -511,6 +541,7 @@ export default function AdminUserDetail() {
   const roleName = data.roleName ?? data.role?.name;
   const isMinistryAdmin = roleName === 'ministry_admin';
   const isMemberUser = roleName === 'member';
+  const isMarketer = roleName === 'referrer';
   const hasChurchProfile = !!data.church;
   const showCountryField = isMinistryAdmin || (!isMemberUser && !hasChurchProfile);
   const showMinistryProfile = isMinistryAdmin;
@@ -555,7 +586,8 @@ export default function AdminUserDetail() {
             data={[{
               firstName: data.firstName, lastName: data.lastName, title: data.title ?? '',
               email: data.email, phone: data.phone ?? '', country: data.accountCountry ?? '',
-              role: data.role?.displayName ?? '', status: data.status,
+              role: roleLabel(roleName, data.role?.displayName), status: data.status,
+              marketerStatus: isMarketer ? marketerStatusText(data.referrer?.status) : '',
               joined: new Date(data.createdAt).toLocaleDateString(),
               ministryName: (data as any).ministryName ?? '',
               package: data.subscription?.package?.displayName ?? '',
@@ -568,11 +600,12 @@ export default function AdminUserDetail() {
               { label: 'Title', key: 'title' }, { label: 'Email', key: 'email' },
               { label: 'Phone', key: 'phone' }, { label: 'Country', key: 'country' },
               { label: 'Role', key: 'role' }, { label: 'Status', key: 'status' },
+              { label: 'Marketer Status', key: 'marketerStatus' },
               { label: 'Joined', key: 'joined' }, { label: 'Ministry Name', key: 'ministryName' },
               { label: 'Package', key: 'package' }, { label: 'Sub Status', key: 'subStatus' },
               { label: 'Sub Starts', key: 'subStarts' }, { label: 'Sub Expires', key: 'subExpires' },
             ]}
-            pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Country', 'Role', 'Status', 'Joined', 'Package', 'Sub Status', 'Sub Expires']}
+            pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Country', 'Role', 'Status', 'Marketer Status', 'Joined', 'Package', 'Sub Status', 'Sub Expires']}
           />
         </div>
       </div>
@@ -616,8 +649,14 @@ export default function AdminUserDetail() {
                 <InfoRow label="T/Authorities" value={listToInput(data.traditionalAuthorities)} />
               </>
             )}
-            <InfoRow label="Role" value={data.role?.displayName} />
+            <InfoRow label="Role" value={roleLabel(roleName, data.role?.displayName)} />
             <InfoRow label="Joined" value={new Date(data.createdAt).toLocaleDateString()} />
+            {isMarketer && (
+              <div className="flex items-start gap-2 py-1.5 border-b">
+                <span className="text-xs text-muted-foreground w-32 shrink-0">Marketer Status</span>
+                {marketerStatusBadge(data.referrer?.status)}
+              </div>
+            )}
             <div className="flex items-start gap-2 py-1.5">
               <span className="text-xs text-muted-foreground w-32 shrink-0">Status</span>
               {data.status === 'active'
@@ -1055,6 +1094,20 @@ export default function AdminUserDetail() {
                     </SelectContent>
                   </Select>
                 </div>
+                {isMarketer && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Marketer Status</Label>
+                    <Select value={editData.referrerStatus} onValueChange={v => setEditData(d => ({ ...d, referrerStatus: v }))}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending" className="text-xs">Waiting Verification</SelectItem>
+                        <SelectItem value="approved" className="text-xs">Verified</SelectItem>
+                        <SelectItem value="suspended" className="text-xs">Suspended</SelectItem>
+                        <SelectItem value="rejected" className="text-xs">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-1">
                   <Label className="text-xs">Role</Label>
                   <Select value={editData.roleId || 'none'} onValueChange={v => setEditData(d => ({ ...d, roleId: v === 'none' ? '' : v }))}>

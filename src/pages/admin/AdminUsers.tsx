@@ -14,14 +14,28 @@ import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 
-const ROLES = ['ministry_admin', 'member'];
+const ROLES = ['ministry_admin', 'member', 'referrer'];
 const COUNTRIES = ['Malawi', 'Kenya'];
 const STATUSES = ['active', 'suspended', 'inactive', 'cancelled'];
+
+function roleLabel(role?: string | null) {
+  if (role === 'referrer') return 'Marketer';
+  return role?.replace(/_/g, ' ') ?? '—';
+}
 
 function statusBadge(status: string) {
   if (status === 'active') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Active</Badge>;
   if (status === 'suspended') return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs">Suspended</Badge>;
   return <Badge variant="outline" className="text-xs">{status}</Badge>;
+}
+
+function marketerStatusBadge(status?: string | null) {
+  if (!status) return <span className="text-xs text-muted-foreground">—</span>;
+  if (status === 'approved') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Verified</Badge>;
+  if (status === 'pending') return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs">Waiting</Badge>;
+  if (status === 'rejected') return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Rejected</Badge>;
+  if (status === 'suspended') return <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs">Suspended</Badge>;
+  return <Badge variant="outline" className="text-xs capitalize">{status}</Badge>;
 }
 
 export default function AdminUsers() {
@@ -108,7 +122,8 @@ export default function AdminUsers() {
           pdfTitle="Users Export"
           data={users.map(u => ({
             firstName: u.firstName, lastName: u.lastName, email: u.email,
-            phone: u.phone ?? '', role: u.roleName ?? '',
+            phone: u.phone ?? '', role: roleLabel(u.roleName),
+            marketerStatus: u.roleName === 'referrer' ? (u.referrer?.status === 'approved' ? 'Verified' : u.referrer?.status ?? '') : '',
             ministry: u.resolvedMinistryName ?? u.ministryName ?? '',
             country: u.resolvedCountry ?? u.accountCountry ?? '',
             church: u.church?.name ?? '—',
@@ -118,12 +133,13 @@ export default function AdminUsers() {
           headers={[
             { label: 'First Name', key: 'firstName' }, { label: 'Last Name', key: 'lastName' },
             { label: 'Email', key: 'email' }, { label: 'Phone', key: 'phone' },
-            { label: 'Role', key: 'role' }, { label: 'Ministry', key: 'ministry' },
+            { label: 'Role', key: 'role' }, { label: 'Marketer Status', key: 'marketerStatus' },
+            { label: 'Ministry', key: 'ministry' },
             { label: 'Country', key: 'country' }, { label: 'Church', key: 'church' },
             { label: 'Churches', key: 'churches' }, { label: 'Status', key: 'status' },
             { label: 'Joined', key: 'joined' },
           ]}
-          pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Ministry', 'Country', 'Church', 'Churches', 'Status', 'Joined']}
+          pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Marketer Status', 'Ministry', 'Country', 'Church', 'Churches', 'Status', 'Joined']}
         />
       </div>
 
@@ -144,7 +160,7 @@ export default function AdminUsers() {
           <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="All roles" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all" className="text-xs">All roles</SelectItem>
-            {ROLES.map(r => <SelectItem key={r} value={r} className="text-xs">{r.replace('_', ' ')}</SelectItem>)}
+            {ROLES.map(r => <SelectItem key={r} value={r} className="text-xs">{roleLabel(r)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={country} onValueChange={v => { setCountry(v === 'all' ? '' : v); setPage(1); }}>
@@ -185,6 +201,7 @@ export default function AdminUsers() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Country</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Church</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Churches</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Marketer</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Joined</th>
                 <th className="px-4 py-2.5 w-10" />
@@ -194,7 +211,7 @@ export default function AdminUsers() {
               {isLoading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 10 }).map((_, j) => (
+                      {Array.from({ length: 11 }).map((_, j) => (
                         <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded w-24" /></td>
                       ))}
                     </tr>
@@ -211,7 +228,7 @@ export default function AdminUsers() {
                         <span className="text-xs text-muted-foreground">{user.phone || '—'}</span>
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell">
-                        <Badge variant="outline" className="text-xs capitalize">{user.roleName?.replace(/_/g, ' ')}</Badge>
+                        <Badge variant="outline" className="text-xs capitalize">{roleLabel(user.roleName)}</Badge>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs">{user.resolvedMinistryName || user.ministryName || '—'}</span>
@@ -224,6 +241,9 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-4 py-3 hidden xl:table-cell">
                         <span className="text-xs">{user.churchCount ?? 0}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {user.roleName === 'referrer' ? marketerStatusBadge(user.referrer?.status) : <span className="text-xs text-muted-foreground">—</span>}
                       </td>
                       <td className="px-4 py-3">{statusBadge(user.status)}</td>
                       <td className="px-4 py-3 hidden md:table-cell">

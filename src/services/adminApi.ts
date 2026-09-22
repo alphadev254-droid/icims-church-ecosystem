@@ -83,6 +83,26 @@ export interface AdminUser {
   roleName: string;
   role?: { id: string; name: string; displayName: string };
   roleId?: string | null;
+  referrer?: {
+    id: string;
+    code: string;
+    type: string;
+    status: 'pending' | 'approved' | 'suspended' | 'rejected' | string;
+    displayName?: string | null;
+    phone?: string | null;
+    country?: string | null;
+    city?: string | null;
+    district?: string | null;
+    pricingMarketId?: string | null;
+    payoutPhone?: string | null;
+    payoutProvider?: string | null;
+    payoutSetupStatus?: string | null;
+    approvedAt?: string | null;
+    approvedById?: string | null;
+    rejectionReason?: string | null;
+    createdAt?: string;
+    updatedAt?: string;
+  } | null;
   church?: { id: string; name: string } | null;
   churchCount?: number;
   createdAt: string;
