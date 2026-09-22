@@ -99,6 +99,9 @@ type EditUserData = {
   phone: string;
   status: string;
   referrerStatus: string;
+  referrerCountry: string;
+  referrerCity: string;
+  referrerDistrict: string;
   roleId: string;
   accountCountry: string;
   title: string;
@@ -128,6 +131,9 @@ const emptyEditData: EditUserData = {
   phone: '',
   status: 'active',
   referrerStatus: 'pending',
+  referrerCountry: '',
+  referrerCity: '',
+  referrerDistrict: '',
   roleId: '',
   accountCountry: '',
   title: '',
@@ -395,6 +401,9 @@ export default function AdminUserDetail() {
       phone: data.phone ?? '',
       status: data.status ?? 'active',
       referrerStatus: data.referrer?.status ?? 'pending',
+      referrerCountry: data.referrer?.country ?? '',
+      referrerCity: data.referrer?.city ?? '',
+      referrerDistrict: data.referrer?.district ?? '',
       roleId: data.role?.id ?? data.roleId ?? '',
       accountCountry: data.accountCountry ?? '',
       title: data.title ?? '',
@@ -441,6 +450,9 @@ export default function AdminUserDetail() {
 
     if (isMarketerEdit) {
       payload.referrerStatus = editData.referrerStatus;
+      payload.referrerCountry = editData.referrerCountry || null;
+      payload.referrerCity = nullable(editData.referrerCity);
+      payload.referrerDistrict = nullable(editData.referrerDistrict);
     }
 
     if (isMinistryAdminEdit || (!isMemberEdit && !hasChurchProfile)) {
@@ -467,7 +479,7 @@ export default function AdminUserDetail() {
       payload.baptizedByImmersion = editData.baptizedByImmersion;
     }
 
-    if (!isMemberEdit && !isMinistryAdminEdit) {
+    if (!isMemberEdit && !isMinistryAdminEdit && !isMarketerEdit) {
       payload.regions = inputToList(editData.regions);
       payload.districts = inputToList(editData.districts);
       payload.traditionalAuthorities = inputToList(editData.traditionalAuthorities);
@@ -543,10 +555,10 @@ export default function AdminUserDetail() {
   const isMemberUser = roleName === 'member';
   const isMarketer = roleName === 'referrer';
   const hasChurchProfile = !!data.church;
-  const showCountryField = isMinistryAdmin || (!isMemberUser && !hasChurchProfile);
+  const showCountryField = isMinistryAdmin || (!isMemberUser && !isMarketer && !hasChurchProfile);
   const showMinistryProfile = isMinistryAdmin;
   const showMemberProfile = isMemberUser || hasChurchProfile;
-  const showScopeProfile = !isMemberUser && !isMinistryAdmin;
+  const showScopeProfile = !isMemberUser && !isMinistryAdmin && !isMarketer;
 
   return (
     <div className="space-y-4">
@@ -620,6 +632,13 @@ export default function AdminUserDetail() {
             <InfoRow label="Email" value={data.email} />
             <InfoRow label="Phone" value={data.phone} />
             {showCountryField && <InfoRow label="Country" value={data.accountCountry} />}
+            {isMarketer && (
+              <>
+                <InfoRow label="Country" value={data.referrer?.country} />
+                <InfoRow label="City / Region" value={data.referrer?.city} />
+                <InfoRow label="District" value={data.referrer?.district} />
+              </>
+            )}
             <InfoRow label="Login Enabled" value={data.loginEnabled ? 'Yes' : 'No'} />
             {showMemberProfile && (
               <>
@@ -1135,6 +1154,29 @@ export default function AdminUserDetail() {
                       </SelectContent>
                     </Select>
                   </div>
+                )}
+                {isMarketer && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Country</Label>
+                      <Select value={editData.referrerCountry || 'none'} onValueChange={v => setEditData(d => ({ ...d, referrerCountry: v === 'none' ? '' : v }))}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select country" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none" className="text-xs">Not set</SelectItem>
+                          <SelectItem value="Malawi" className="text-xs">Malawi</SelectItem>
+                          <SelectItem value="Kenya" className="text-xs">Kenya</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">City / Region</Label>
+                      <Input className="h-8 text-xs" value={editData.referrerCity} onChange={e => setEditData(d => ({ ...d, referrerCity: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">District</Label>
+                      <Input className="h-8 text-xs" value={editData.referrerDistrict} onChange={e => setEditData(d => ({ ...d, referrerDistrict: e.target.value }))} />
+                    </div>
+                  </>
                 )}
                 <label className="flex items-center gap-2 text-xs rounded-md border p-2">
                   <input type="checkbox" checked={editData.loginEnabled} onChange={e => setEditData(d => ({ ...d, loginEnabled: e.target.checked }))} />
