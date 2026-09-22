@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { usePageMeta } from '@/hooks/usePageMeta';
@@ -7,10 +7,16 @@ import {
   Users, Church, Calendar, HandCoins, BarChart3, MessageSquare,
   BookOpen, ClipboardList, Building2, TrendingUp, Shield, Globe,
   ArrowRight, Baby, CheckCircle2, ChevronRight,
-  Bell, QrCode, Receipt, ShieldCheck,
+  Bell, QrCode, Receipt, ShieldCheck, Download,
 } from 'lucide-react';
 const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
+import { toast } from 'sonner';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
 
 const modules = [
   { icon: Users,        title: 'Members Management',            desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
@@ -75,6 +81,31 @@ const inView = {
 
 export default function LandingPage() {
   const [demoOpen, setDemoOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) {
+      toast.info('To install ICIMS, open your browser menu and choose Install app or Add to Home screen.');
+      return;
+    }
+
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    if (choice.outcome === 'accepted') {
+      toast.success('ICIMS app installation started.');
+      setInstallPrompt(null);
+    }
+  };
 
   usePageMeta({
     title: 'The Complete Church Management Ecosystem',
@@ -136,7 +167,15 @@ export default function LandingPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-white/30 text-gray hover:text-white  h-12 px-7 text-base"
+                className="border-white/30 text-gray hover:text-white h-12 px-7 text-base gap-2"
+                onClick={handleInstallApp}
+              >
+                Install app <Download className="h-4 w-4" />
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white/30 text-gray hover:text-white h-12 px-7 text-base"
                 onClick={() => setDemoOpen(true)}
               >
                 Book a demo

@@ -18,19 +18,10 @@ const slug = isSubdomain
 // Lazy-load the public church page only when needed
 const ChurchPublicPage = React.lazy(() => import('./pages/ChurchPublicPage.tsx'));
 
-// Service workers are intentionally disabled. Remove registrations and caches
-// left behind by earlier PWA builds so the UI always comes from the deployment.
 window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations()
-      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
-      .catch((error) => console.warn('[Browser cleanup] Could not remove service workers:', error));
-  }
-
-  if ('caches' in window) {
-    caches.keys()
-      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
-      .catch((error) => console.warn('[Browser cleanup] Could not clear old caches:', error));
+    navigator.serviceWorker.register('/sw.js')
+      .catch((error) => console.warn('[PWA] Could not register service worker:', error));
   }
 });
 
