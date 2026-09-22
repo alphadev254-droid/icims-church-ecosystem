@@ -5,23 +5,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 export default function ReferrerReferralsPage() {
   const { data, isLoading } = useReferrerDashboardData();
 
-  if (isLoading) return <LoadingState label="Loading referrals..." />;
+  if (isLoading) return <LoadingState label="Loading ministries..." />;
 
   const referrals = data?.referrals || [];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">My Referrals</h1>
-        <p className="text-sm text-muted-foreground">Ministries that registered through your marketer code or link.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">My Ministries</h1>
+        <p className="text-sm text-muted-foreground">Ministries that registered through your marketer link.</p>
       </div>
 
       <ReferrerStatusNotice referrer={data?.referrer} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Referred ministries</CardTitle>
-          <CardDescription>Track who joined through your marketer link.</CardDescription>
+          <CardTitle>Introduced ministries</CardTitle>
+          <CardDescription>Track ministries that joined through your marketer link.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -36,7 +36,7 @@ export default function ReferrerReferralsPage() {
             </TableHeader>
             <TableBody>
               {referrals.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No referrals yet.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No ministries yet.</TableCell></TableRow>
               ) : referrals.map((referral: any) => (
                 <TableRow key={referral.id}>
                   <TableCell>{referral.ministryAdmin?.ministryName || referral.church?.name || 'Ministry'}</TableCell>
@@ -53,3 +53,4 @@ export default function ReferrerReferralsPage() {
     </div>
   );
 }
+

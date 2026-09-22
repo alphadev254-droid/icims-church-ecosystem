@@ -19,7 +19,7 @@ const steps = [
   {
     icon: HandCoins,
     title: 'Earn on package payments',
-    description: 'When a referred ministry pays for an ICIMS package, 20% is credited to your wallet.',
+    description: 'When a ministry you introduced pays for an ICIMS package, 20% is credited to your wallet.',
   },
   {
     icon: Wallet,
@@ -95,8 +95,8 @@ export default function ReferralsPage() {
         <div className="mx-auto mt-12 max-w-3xl rounded-2xl border bg-muted/40 p-6 md:p-8">
           <div className="grid gap-4 md:grid-cols-2">
             {[
-              'Each marketer gets a unique code and link.',
-              'Commission is recorded separately on the payment.',
+              'Each marketer gets a unique marketing link after approval.',
+              'Commission is tracked separately on the package payment.',
               'Wallet balance uses ledger entries for accuracy.',
               'Withdrawals require OTP confirmation.',
             ].map(item => (
@@ -122,4 +122,5 @@ export default function ReferralsPage() {
     </div>
   );
 }
+
 

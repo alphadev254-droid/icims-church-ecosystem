@@ -10,7 +10,7 @@ export function RecentReferralsCard({ referrals }: { referrals: any[] }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <div><CardTitle>Recent referrals</CardTitle><CardDescription>Latest ministries linked to your code.</CardDescription></div>
+        <div><CardTitle>Recent ministries</CardTitle><CardDescription>Latest ministries linked to your marketer account.</CardDescription></div>
         <Button variant="ghost" size="sm" asChild><Link to="/dashboard/referrals/my-referrals">View all <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
       </CardHeader>
       <CardContent>
@@ -18,7 +18,7 @@ export function RecentReferralsCard({ referrals }: { referrals: any[] }) {
           <TableHeader><TableRow><TableHead>Ministry</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
           <TableBody>
             {recentReferrals.length === 0 ? (
-              <TableRow><TableCell colSpan={3} className="py-8 text-center text-muted-foreground">No referrals yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={3} className="py-8 text-center text-muted-foreground">No ministries yet.</TableCell></TableRow>
             ) : recentReferrals.map((referral: any) => (
               <TableRow key={referral.id}>
                 <TableCell>{referral.ministryAdmin?.ministryName || referral.church?.name || referral.ministryAdmin?.email || 'Ministry'}</TableCell>
@@ -32,3 +32,4 @@ export function RecentReferralsCard({ referrals }: { referrals: any[] }) {
     </Card>
   );
 }
+

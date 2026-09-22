@@ -22,7 +22,7 @@ export default function ReferrerDashboard() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Marketer Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Summary of your wallet, referrals, and account status.</p>
+          <p className="text-sm text-muted-foreground">Summary of your wallet, ministries, and account status.</p>
         </div>
         <Badge variant={verified ? 'default' : 'secondary'} className="w-fit capitalize">
           {verified ? 'verified' : 'waiting verification'}
@@ -35,7 +35,7 @@ export default function ReferrerDashboard() {
         <SummaryCard title="Wallet Balance" value={money(data?.balance)} icon={Wallet} />
         <SummaryCard title="Total Earned" value={money(summary.totalCredits)} icon={Handshake} />
         <SummaryCard title="Withdrawn" value={money(summary.totalWithdrawn)} icon={Banknote} />
-        <SummaryCard title="My Referrals" value={summary.referralsCount} icon={Users} />
+        <SummaryCard title="My Ministries" value={summary.referralsCount} icon={Users} />
       </div>
 
       <MarketingLinkCard referralLink={referrer?.referralLink} verified={verified} />
@@ -47,4 +47,5 @@ export default function ReferrerDashboard() {
     </div>
   );
 }
+
 
