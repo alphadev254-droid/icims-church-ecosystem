@@ -26,7 +26,9 @@ export default function DashboardLayout() {
 
   const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/['"]|\/$|^\/api$/g, '');
   const avatarUrl = user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${STATIC_BASE}${user.avatar}`) : null;
-  const roleLabel = user?.roleDisplayName || user?.roleName?.replace(/_/g, ' ');
+  const roleLabel = user?.roleName === 'referrer'
+    ? 'Marketer'
+    : user?.roleDisplayName || user?.roleName?.replace(/_/g, ' ');
 
   const handleLogout = async () => {
     await logout();
