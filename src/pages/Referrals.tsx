@@ -40,7 +40,7 @@ export default function ReferralsPage() {
     <div className="overflow-x-hidden">
       <section className="relative flex min-h-[460px] items-center overflow-hidden md:min-h-[540px]">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="ICIMS marketers" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
+          <img src={heroImage} alt="ICIMS marketers" className="h-full w-full object-contain" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/78" />
         </div>
       </section>
