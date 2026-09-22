@@ -35,7 +35,7 @@ export default function ReferrerDashboard() {
         <SummaryCard title="Wallet Balance" value={money(data?.balance)} icon={Wallet} />
         <SummaryCard title="Total Earned" value={money(summary.totalCredits)} icon={Handshake} />
         <SummaryCard title="Withdrawn" value={money(summary.totalWithdrawn)} icon={Banknote} />
-        <SummaryCard title="My Ministries" value={summary.referralsCount} icon={Users} />
+        <SummaryCard title="Partnered Ministries" value={summary.referralsCount} icon={Users} />
       </div>
 
       <MarketingLinkCard referralLink={referrer?.referralLink} verified={verified} />
@@ -47,5 +47,6 @@ export default function ReferrerDashboard() {
     </div>
   );
 }
+
 
 

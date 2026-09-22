@@ -12,7 +12,7 @@ export default function ReferrerReferralsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">My Ministries</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Partnered Ministries</h1>
         <p className="text-sm text-muted-foreground">Ministries that registered through your marketer link.</p>
       </div>
 
@@ -20,7 +20,7 @@ export default function ReferrerReferralsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Introduced ministries</CardTitle>
+          <CardTitle>Partnered ministries</CardTitle>
           <CardDescription>Track ministries that joined through your marketer link.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -53,4 +53,5 @@ export default function ReferrerReferralsPage() {
     </div>
   );
 }
+
 
