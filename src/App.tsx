@@ -34,7 +34,6 @@ const ReferrerDashboard = lazy(() => import("./pages/ReferrerDashboard"));
 const ReferrerReferralsPage = lazy(() => import("./pages/referrer/ReferrerReferralsPage"));
 const ReferrerWalletPage = lazy(() => import("./pages/referrer/ReferrerWalletPage"));
 const ReferrerPayoutSettingsPage = lazy(() => import("./pages/referrer/ReferrerPayoutSettingsPage"));
-const ReferrerPayoutsPage = lazy(() => import("./pages/referrer/ReferrerPayoutsPage"));
 const Events = lazy(() => import("./pages/Events"));
 const Reminders = lazy(() => import("./pages/Reminders"));
 const Giving = lazy(() => import("./pages/Giving"));
@@ -155,7 +154,6 @@ const App = () => {
                 <Route path="referrals/my-referrals" element={<ReferrerReferralsPage />} />
                 <Route path="referrals/wallet" element={<ReferrerWalletPage />} />
                 <Route path="referrals/payout-settings" element={<ReferrerPayoutSettingsPage />} />
-                <Route path="referrals/payouts" element={<ReferrerPayoutsPage />} />
                 <Route path="events" element={<Events />} />
                 <Route path="events/:id/tickets" element={<EventTickets />} />
                 <Route path="my-tickets" element={<MyTickets />} />
@@ -218,6 +216,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 

@@ -99,7 +99,6 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
       { to: '/dashboard/referrals/my-referrals', label: 'Partnered Ministries', icon: Users },
       { to: '/dashboard/referrals/wallet', label: 'Wallet', icon: Wallet },
       { to: '/dashboard/referrals/payout-settings', label: 'Payout Settings', icon: Settings },
-      { to: '/dashboard/referrals/payouts', label: 'Payouts', icon: Banknote },
     ];
   }
   
@@ -168,7 +167,6 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
       '/dashboard/referrals/my-referrals',
       '/dashboard/referrals/wallet',
       '/dashboard/referrals/payout-settings',
-      '/dashboard/referrals/payouts',
     ];
   }
   
@@ -228,6 +226,7 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
 
   return routes;
 }
+
 
 
 
