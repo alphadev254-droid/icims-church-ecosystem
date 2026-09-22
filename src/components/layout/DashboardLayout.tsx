@@ -33,6 +33,17 @@ export default function DashboardLayout() {
     navigate('/');
   };
 
+  const pageTitles: Record<string, string> = {
+    '/dashboard/referrals': 'Marketer Dashboard',
+    '/dashboard/referrals/my-referrals': 'Partnered Ministries',
+    '/dashboard/referrals/wallet': 'Wallet',
+    '/dashboard/referrals/payout-settings': 'Payout Settings',
+  };
+
+  const currentPageTitle = pageTitles[location.pathname] || (location.pathname === '/dashboard'
+    ? 'Dashboard'
+    : location.pathname.split('/').pop()?.replace(/-/g, ' '));
+
   const isActive = (path: string) => {
     const matchingItems = navItems.filter(item =>
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
@@ -114,9 +125,7 @@ export default function DashboardLayout() {
               <Menu className="h-5 w-5" />
             </Button>
             <h2 className="font-heading text-lg font-semibold capitalize">
-              {location.pathname === '/dashboard'
-                ? 'Dashboard'
-                : location.pathname.split('/').pop()?.replace(/-/g, ' ')}
+              {currentPageTitle}
             </h2>
           </div>
           
