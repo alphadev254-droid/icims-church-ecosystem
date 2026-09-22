@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowRight, CheckCircle2, HandCoins, Link2, ShieldCheck, Wallet } from 'lucide-react';
+import { CheckCircle2, HandCoins, Link2, ShieldCheck, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePageMeta } from '@/hooks/usePageMeta';
@@ -43,20 +42,6 @@ export default function ReferralsPage() {
         <div className="absolute inset-0">
           <img src={heroImage} alt="ICIMS marketers" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/78" />
-        </div>
-        <div className="container relative z-10 py-16">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="max-w-2xl"
-          >
-            <Link to="/register/referrer">
-              <Button size="lg" className="h-12 gap-2 bg-accent px-7 text-accent-foreground hover:bg-accent/90">
-                Register as a marketer <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </motion.div>
         </div>
       </section>
 
