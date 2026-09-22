@@ -24,7 +24,7 @@ export default function PublicHeader() {
     { to: '/',         label: 'Home' },
     { to: '/features', label: 'Features' },
     { to: '/pricing',  label: 'Pricing' },
-    { to: '/referrals', label: 'Referrals' },
+    { to: '/referrals', label: 'Marketers' },
     { to: '/about',    label: 'About' },
     { to: '/contact',  label: 'Contact' },
   ];

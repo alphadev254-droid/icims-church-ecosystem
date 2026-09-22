@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FALLBACK_COUNTRIES, type CountryOption } from '@/lib/countries';
 
-const heroImage = 'https://media.aircnc.co.ke/media-images/3e642cc8-1e30-4664-9b14-a782f63550f9.webp';
+const heroImage = '/marketers.png';
 
 const schema = z.object({
   firstName: z.string().min(2, 'First name is required'),
@@ -110,12 +110,12 @@ export default function ReferrerRegister() {
   const onSubmit = async ({ confirmPassword: _confirmPassword, ...values }: FormValues) => {
     try {
       const response = await apiClient.post('/referrals/register', values);
-      toast.success('Referrer account created. Check your email for the verification code.');
+      toast.success('Marketer account created. Check your email for the verification code.');
       setVerificationEmail(response.data.email || values.email);
       setOtpCode('');
       setResendCountdown(40);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Could not submit referrer registration');
+      toast.error(error.response?.data?.message || 'Could not submit marketer registration');
     }
   };
 
@@ -164,13 +164,13 @@ export default function ReferrerRegister() {
         </Link>
 
         <div className="relative z-10">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-accent">Referral Partner</p>
+          <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-accent">Marketing Partner</p>
           <h2 className="mb-6 font-heading text-4xl font-bold leading-tight text-white">
             Help ministries grow.<br />Earn as they subscribe.
           </h2>
           <div className="space-y-3">
             {[
-              'Unique referral code and link',
+              'Unique marketer code and link',
               '20% commission on package payments',
               'Ledger-based wallet tracking',
               'Secure OTP withdrawals',
@@ -200,7 +200,7 @@ export default function ReferrerRegister() {
           </div>
 
           <Link to="/referrals" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to referrals
+            <ArrowLeft className="h-4 w-4" /> Back to marketers
           </Link>
 
           {verificationEmail ? (
@@ -241,8 +241,8 @@ export default function ReferrerRegister() {
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
                   <Handshake className="h-6 w-6" />
                 </div>
-                <h1 className="font-heading text-2xl font-bold text-foreground">Create referrer account</h1>
-                <p className="mt-1 text-sm text-muted-foreground">Register, verify your email, then share your referral link.</p>
+                <h1 className="font-heading text-2xl font-bold text-foreground">Create marketer account</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Register, verify your email, then share your marketer link.</p>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 pb-2 sm:grid-cols-2">
@@ -361,7 +361,7 @@ export default function ReferrerRegister() {
             <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">Your account starts as pending until approved by ICIMS.</p>
               <Button type="submit" disabled={isSubmitting} className="h-11 bg-accent text-accent-foreground hover:bg-accent/90">
-                {isSubmitting ? 'Creating account...' : 'Create referrer account'}
+                {isSubmitting ? 'Creating account...' : 'Create marketer account'}
               </Button>
             </div>
               </form>

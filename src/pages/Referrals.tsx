@@ -5,17 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePageMeta } from '@/hooks/usePageMeta';
 
-const heroImage = 'https://media.aircnc.co.ke/media-images/20e847ba-fb2d-45f8-ad77-95b615ef85c8.webp';
+const heroImage = '/marketers.png';
 
 const steps = [
   {
     icon: Link2,
-    title: 'Register as a referrer',
-    description: 'Create your referrer account and verify your email address before accessing your dashboard.',
+    title: 'Register as a marketer',
+    description: 'Create your marketer account and verify your email address before accessing your dashboard.',
   },
   {
     icon: ShieldCheck,
-    title: 'Share your referral link',
+    title: 'Share your marketing link',
     description: 'Use your unique code or link when introducing churches and ministries to ICIMS.',
   },
   {
@@ -32,8 +32,8 @@ const steps = [
 
 export default function ReferralsPage() {
   usePageMeta({
-    title: 'ICIMS Referrals Program',
-    description: 'Refer churches and ministries to ICIMS and earn commission when they pay for packages.',
+    title: 'ICIMS Marketer Program',
+    description: 'Market ICIMS to churches and ministries and earn commission when they pay for packages.',
     canonical: 'https://churchcentral.church/referrals',
   });
 
@@ -41,7 +41,7 @@ export default function ReferralsPage() {
     <div className="overflow-x-hidden">
       <section className="relative flex min-h-[460px] items-center overflow-hidden md:min-h-[540px]">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="ICIMS referrals" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
+          <img src={heroImage} alt="ICIMS marketers" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/72" />
         </div>
         <div className="container relative z-10 py-16">
@@ -51,16 +51,16 @@ export default function ReferralsPage() {
             transition={{ duration: 0.6 }}
             className="max-w-2xl"
           >
-            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-accent">ICIMS Referral Program</p>
+            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-accent">ICIMS Marketer Program</p>
             <h1 className="mb-5 font-heading text-5xl font-bold leading-tight text-white md:text-6xl">
-              Refer ministries.<br />Earn commission.
+              Market ICIMS.<br />Earn commission.
             </h1>
             <p className="mb-8 text-lg leading-relaxed text-white/70">
-              Help churches discover ICIMS. When a church registers through your referral link and pays for a package, your referral wallet receives commission.
+              Help churches discover ICIMS. When a church registers through your marketer link and pays for a package, your wallet receives commission.
             </p>
             <Link to="/register/referrer">
               <Button size="lg" className="h-12 gap-2 bg-accent px-7 text-accent-foreground hover:bg-accent/90">
-                Register as a referrer <ArrowRight className="h-4 w-4" />
+                Register as a marketer <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           </motion.div>
@@ -89,9 +89,9 @@ export default function ReferralsPage() {
       <section className="container py-16">
         <div className="mx-auto mb-10 max-w-2xl text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-accent">How it works</p>
-          <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">Simple referral flow</h2>
+          <h2 className="font-heading text-3xl font-bold text-foreground md:text-4xl">Simple marketer flow</h2>
           <p className="mt-3 text-muted-foreground">
-            The referrer module is separate from church operations, so marketers get their own dashboard without touching ministry data.
+            The marketer module is separate from church operations, so marketers get their own dashboard without touching ministry data.
           </p>
         </div>
 
@@ -116,7 +116,7 @@ export default function ReferralsPage() {
         <div className="mx-auto mt-12 max-w-3xl rounded-2xl border bg-muted/40 p-6 md:p-8">
           <div className="grid gap-4 md:grid-cols-2">
             {[
-              'Each referrer gets a unique code and link.',
+              'Each marketer gets a unique code and link.',
               'Commission is recorded separately on the payment.',
               'Wallet balance uses ledger entries for accuracy.',
               'Withdrawals require OTP confirmation.',
@@ -130,7 +130,7 @@ export default function ReferralsPage() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="font-heading text-xl font-semibold">Ready to start?</h3>
-              <p className="text-sm text-muted-foreground">Create your referrer account and verify your email.</p>
+              <p className="text-sm text-muted-foreground">Create your marketer account and verify your email.</p>
             </div>
             <Link to="/register/referrer">
               <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto">
