@@ -42,7 +42,7 @@ export default function ReferralsPage() {
       <section className="relative flex min-h-[460px] items-center overflow-hidden md:min-h-[540px]">
         <div className="absolute inset-0">
           <img src={heroImage} alt="ICIMS marketers" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
-          <div className="absolute inset-0 bg-black/72" />
+          <div className="absolute inset-0 bg-black/78" />
         </div>
         <div className="container relative z-10 py-16">
           <motion.div

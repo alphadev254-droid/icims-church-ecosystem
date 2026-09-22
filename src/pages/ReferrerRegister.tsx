@@ -156,7 +156,7 @@ export default function ReferrerRegister() {
       <div className="relative hidden h-screen flex-col justify-between overflow-hidden p-12 lg:flex lg:w-[40%]">
         <div className="absolute inset-0">
           <img src={heroImage} alt="" className="h-full w-full object-cover object-center" />
-          <div className="absolute inset-0 bg-black/72" />
+          <div className="absolute inset-0 bg-black/78" />
         </div>
 
         <Link to="/" className="relative z-10 flex items-center gap-2.5">
