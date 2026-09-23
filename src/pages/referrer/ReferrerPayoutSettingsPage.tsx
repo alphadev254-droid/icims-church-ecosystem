@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { phoneInputProps, phoneInputValue } from '@/lib/numeric-input';
 import { LoadingState, ReferrerStatusNotice, isReferrerVerified, useReferrerDashboardData } from './shared';
 
 export default function ReferrerPayoutSettingsPage() {
@@ -36,21 +37,21 @@ export default function ReferrerPayoutSettingsPage() {
   useEffect(() => {
     if (otpResendSeconds <= 0) return undefined;
 
-    const timer = window.setInterval(() => {
+    const timer = window.setTimeout(() => {
       setOtpResendSeconds((seconds) => Math.max(0, seconds - 1));
     }, 1000);
 
-    return () => window.clearInterval(timer);
+    return () => window.clearTimeout(timer);
   }, [otpResendSeconds]);
 
   const requestOtp = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.post('/referrals/payout-setup/otp', { payoutPhone, payoutProvider });
+      const response = await apiClient.post('/referrals/payout-setup/otp', { payoutPhone: payoutPhone.trim(), payoutProvider });
       return response.data;
     },
     onSuccess: (response: any) => {
       setOtpRequested(true);
-      setOtpCode(response.data?.devOtp || '');
+      setOtpCode('');
       setOtpResendSeconds(response.retryAfterSeconds || 40);
       toast.success(response.message || 'OTP sent to your email');
     },
@@ -63,7 +64,7 @@ export default function ReferrerPayoutSettingsPage() {
 
   const savePayout = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.put('/referrals/payout-setup', { payoutPhone, payoutProvider, otp: otpCode });
+      const response = await apiClient.put('/referrals/payout-setup', { payoutPhone: payoutPhone.trim(), payoutProvider, otp: otpCode });
       return response.data.data;
     },
     onSuccess: () => {
@@ -81,7 +82,9 @@ export default function ReferrerPayoutSettingsPage() {
   const providers = payoutOptions?.providers || [];
   const isSupported = payoutOptions?.supported && providers.length > 0;
   const verified = isReferrerVerified(data?.referrer);
-  const canRequestOtp = verified && Boolean(payoutPhone && payoutProvider) && !requestOtp.isPending && otpResendSeconds === 0;
+  const trimmedPayoutPhone = payoutPhone.trim();
+  const isPayoutPhoneValid = /^\+?\d{7,16}$/.test(trimmedPayoutPhone);
+  const canRequestOtp = verified && isPayoutPhoneValid && Boolean(payoutProvider) && !requestOtp.isPending && otpResendSeconds === 0;
   const requestOtpLabel = requestOtp.isPending
     ? 'Sending OTP...'
     : otpResendSeconds > 0
@@ -141,14 +144,18 @@ export default function ReferrerPayoutSettingsPage() {
                   id="payoutPhone"
                   value={payoutPhone}
                   onChange={(event) => {
-                    setPayoutPhone(event.target.value);
+                    setPayoutPhone(phoneInputValue(event.target.value));
                     setOtpRequested(false);
                     setOtpCode('');
                     setOtpResendSeconds(0);
                   }}
+                  {...phoneInputProps}
                   placeholder="Enter payout phone number"
                   disabled={!verified}
                 />
+                {payoutPhone && !isPayoutPhoneValid && (
+                  <p className="text-xs text-destructive">Enter a valid phone number using digits and an optional leading +.</p>
+                )}
               </div>
               {otpRequested && (
                 <div className="grid gap-2 rounded-md border bg-muted/40 p-4">
@@ -173,7 +180,7 @@ export default function ReferrerPayoutSettingsPage() {
                 <Button
                   variant="outline"
                   onClick={() => savePayout.mutate()}
-                  disabled={!verified || savePayout.isPending || !otpRequested || otpCode.length !== 6 || !payoutPhone || !payoutProvider}
+                  disabled={!verified || savePayout.isPending || !otpRequested || otpCode.length !== 6 || !isPayoutPhoneValid || !payoutProvider}
                 >
                   {savePayout.isPending ? 'Saving...' : 'Save payout settings'}
                 </Button>
