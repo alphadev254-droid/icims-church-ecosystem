@@ -3,12 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import apiClient from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { phoneInputProps, phoneInputValue } from '@/lib/numeric-input';
-import { LoadingState, ReferrerStatusNotice, isReferrerVerified, useReferrerDashboardData } from './shared';
+import { LoadingState, ReferrerStatusNotice, isReferrerVerified, useReferrerDashboardData, PageShell, PageHeader, CardTitleRow, ActionGroup } from './shared';
 
 export default function ReferrerPayoutSettingsPage() {
   const queryClient = useQueryClient();
@@ -105,28 +105,19 @@ export default function ReferrerPayoutSettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Payout Settings</h1>
-        <p className="text-sm text-muted-foreground">Choose where your marketer payouts should be sent.</p>
-      </div>
+    <PageShell>
+      <PageHeader title="Payout Settings" description="Choose where your marketer payouts should be sent." />
 
       <ReferrerStatusNotice referrer={data?.referrer} />
 
       <Card>
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>Mobile payout details</CardTitle>
-            <CardDescription>
-              Providers are loaded from the active market for your registration country.
-            </CardDescription>
-          </div>
-          {verified && isSupported && !isEditing && (
-            <Button type="button" onClick={() => setIsEditing(true)} className="w-full sm:w-auto">
-              Edit
-            </Button>
-          )}
-        </CardHeader>
+        <CardTitleRow
+          title="Mobile payout details"
+          description="Providers are loaded from the active market for your registration country."
+          action={verified && isSupported && !isEditing ? (
+            <Button type="button" onClick={() => setIsEditing(true)} className="w-full sm:w-auto">Edit</Button>
+          ) : null}
+        />
         <CardContent className="space-y-4">
           {!verified ? (
             <div className="rounded-md border bg-muted p-4 text-sm text-muted-foreground">Payout setup is disabled until your marketer account is verified.</div>
@@ -192,7 +183,7 @@ export default function ReferrerPayoutSettingsPage() {
                 </div>
               )}
               {isEditing && (
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <ActionGroup>
                   <Button onClick={() => requestOtp.mutate()} disabled={!canRequestOtp} className="w-full sm:w-auto">
                     {requestOtpLabel}
                   </Button>
@@ -207,13 +198,13 @@ export default function ReferrerPayoutSettingsPage() {
                   <Button type="button" variant="ghost" onClick={resetEditState} disabled={requestOtp.isPending || savePayout.isPending} className="w-full sm:w-auto">
                     Cancel
                   </Button>
-                </div>
+                </ActionGroup>
               )}
             </>
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 

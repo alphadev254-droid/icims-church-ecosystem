@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Copy, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { CardTitleRow } from './PageStates';
 
 export function MarketingLinkCard({ referralLink, verified }: { referralLink?: string; verified: boolean }) {
   const [copied, setCopied] = useState(false);
@@ -18,10 +19,7 @@ export function MarketingLinkCard({ referralLink, verified }: { referralLink?: s
   if (!verified) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Marketing link locked</CardTitle>
-          <CardDescription>Your marketer link will be available after your account is verified.</CardDescription>
-        </CardHeader>
+        <CardTitleRow title="Marketing link locked" description="Your marketer link will be available after your account is verified." />
         <CardContent>
           <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-3 text-sm text-muted-foreground">
             <Lock className="h-4 w-4" />
@@ -34,10 +32,7 @@ export function MarketingLinkCard({ referralLink, verified }: { referralLink?: s
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>My marketing link</CardTitle>
-        <CardDescription>Share this link with ministries so registrations can be tracked to you.</CardDescription>
-      </CardHeader>
+      <CardTitleRow title="My marketing link" description="Share this link with ministries so registrations can be tracked to you." />
       <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="min-w-0 flex-1 rounded-md border bg-muted px-3 py-2 text-xs break-all sm:text-sm">{referralLink}</div>
         <Button onClick={copyLink} variant="outline" disabled={!referralLink} className="w-full sm:w-auto">
