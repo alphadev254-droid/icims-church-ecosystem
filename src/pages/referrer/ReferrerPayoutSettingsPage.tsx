@@ -18,6 +18,7 @@ export default function ReferrerPayoutSettingsPage() {
   const [otpCode, setOtpCode] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
   const [otpResendSeconds, setOtpResendSeconds] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
 
   const { data: payoutOptions, isLoading: optionsLoading } = useQuery({
     queryKey: ['referrer-payout-options'],
@@ -28,11 +29,11 @@ export default function ReferrerPayoutSettingsPage() {
   });
 
   useEffect(() => {
-    if (data?.referrer) {
+    if (data?.referrer && !isEditing) {
       setPayoutPhone(data.referrer.payoutPhone || '');
       setPayoutProvider(data.referrer.payoutProvider || '');
     }
-  }, [data?.referrer]);
+  }, [data?.referrer, isEditing]);
 
   useEffect(() => {
     if (otpResendSeconds <= 0) return undefined;
@@ -69,8 +70,10 @@ export default function ReferrerPayoutSettingsPage() {
     },
     onSuccess: () => {
       toast.success('Payout settings saved');
+      setIsEditing(false);
       setOtpRequested(false);
       setOtpCode('');
+      setOtpResendSeconds(0);
       queryClient.invalidateQueries({ queryKey: ['referrer-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['referrer-payout-options'] });
     },
@@ -84,7 +87,7 @@ export default function ReferrerPayoutSettingsPage() {
   const verified = isReferrerVerified(data?.referrer);
   const trimmedPayoutPhone = payoutPhone.trim();
   const isPayoutPhoneValid = /^\+?\d{7,16}$/.test(trimmedPayoutPhone);
-  const canRequestOtp = verified && isPayoutPhoneValid && Boolean(payoutProvider) && !requestOtp.isPending && otpResendSeconds === 0;
+  const canRequestOtp = isEditing && verified && isPayoutPhoneValid && Boolean(payoutProvider) && !requestOtp.isPending && otpResendSeconds === 0;
   const requestOtpLabel = requestOtp.isPending
     ? 'Sending OTP...'
     : otpResendSeconds > 0
@@ -92,6 +95,14 @@ export default function ReferrerPayoutSettingsPage() {
       : otpRequested
         ? 'Resend OTP'
         : 'Request OTP';
+  const resetEditState = () => {
+    setPayoutPhone(data?.referrer?.payoutPhone || '');
+    setPayoutProvider(data?.referrer?.payoutProvider || '');
+    setOtpRequested(false);
+    setOtpCode('');
+    setOtpResendSeconds(0);
+    setIsEditing(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -103,11 +114,18 @@ export default function ReferrerPayoutSettingsPage() {
       <ReferrerStatusNotice referrer={data?.referrer} />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Mobile payout details</CardTitle>
-          <CardDescription>
-            Providers are loaded from the active market for your registration country.
-          </CardDescription>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>Mobile payout details</CardTitle>
+            <CardDescription>
+              Providers are loaded from the active market for your registration country.
+            </CardDescription>
+          </div>
+          {verified && isSupported && !isEditing && (
+            <Button type="button" onClick={() => setIsEditing(true)}>
+              Edit
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {!verified ? (
@@ -128,7 +146,7 @@ export default function ReferrerPayoutSettingsPage() {
                     setOtpCode('');
                     setOtpResendSeconds(0);
                   }}
-                  disabled={!verified}
+                  disabled={!verified || !isEditing}
                 >
                   <SelectTrigger id="payoutProvider"><SelectValue placeholder="Select provider" /></SelectTrigger>
                   <SelectContent>
@@ -151,13 +169,13 @@ export default function ReferrerPayoutSettingsPage() {
                   }}
                   {...phoneInputProps}
                   placeholder="Enter payout phone number"
-                  disabled={!verified}
+                  disabled={!verified || !isEditing}
                 />
-                {payoutPhone && !isPayoutPhoneValid && (
+                {isEditing && payoutPhone && !isPayoutPhoneValid && (
                   <p className="text-xs text-destructive">Enter a valid phone number using digits and an optional leading +.</p>
                 )}
               </div>
-              {otpRequested && (
+              {isEditing && otpRequested && (
                 <div className="grid gap-2 rounded-md border bg-muted/40 p-4">
                   <div>
                     <Label htmlFor="payoutOtp">Email OTP</Label>
@@ -173,18 +191,23 @@ export default function ReferrerPayoutSettingsPage() {
                   />
                 </div>
               )}
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => requestOtp.mutate()} disabled={!canRequestOtp}>
-                  {requestOtpLabel}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => savePayout.mutate()}
-                  disabled={!verified || savePayout.isPending || !otpRequested || otpCode.length !== 6 || !isPayoutPhoneValid || !payoutProvider}
-                >
-                  {savePayout.isPending ? 'Saving...' : 'Save payout settings'}
-                </Button>
-              </div>
+              {isEditing && (
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => requestOtp.mutate()} disabled={!canRequestOtp}>
+                    {requestOtpLabel}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => savePayout.mutate()}
+                    disabled={!verified || savePayout.isPending || !otpRequested || otpCode.length !== 6 || !isPayoutPhoneValid || !payoutProvider}
+                  >
+                    {savePayout.isPending ? 'Saving...' : 'Save payout settings'}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={resetEditState} disabled={requestOtp.isPending || savePayout.isPending}>
+                    Cancel
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </CardContent>
