@@ -1,5 +1,5 @@
 import { Banknote, Handshake, Wallet } from 'lucide-react';
-import { ReferrerStatusNotice, LoadingState, money, useReferrerDashboardData, useReferrerSummary } from './shared';
+import { ReferrerStatusNotice, LoadingState, money, referrerCurrency, useReferrerDashboardData, useReferrerSummary } from './shared';
 import { SummaryCard } from './components/SummaryCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,6 +11,7 @@ export default function ReferrerWalletPage() {
   if (isLoading) return <LoadingState label="Loading wallet..." />;
 
   const ledger = data?.ledger || [];
+  const currency = referrerCurrency(data);
 
   return (
     <div className="space-y-6">
@@ -22,9 +23,9 @@ export default function ReferrerWalletPage() {
       <ReferrerStatusNotice referrer={data?.referrer} />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <SummaryCard title="Current Balance" value={money(data?.balance)} icon={Wallet} />
-        <SummaryCard title="Total Credits" value={money(summary.totalCredits)} icon={Handshake} />
-        <SummaryCard title="Total Withdrawn" value={money(summary.totalWithdrawn)} icon={Banknote} />
+        <SummaryCard title="Current Balance" value={money(data?.balance, currency)} icon={Wallet} />
+        <SummaryCard title="Total Credits" value={money(summary.totalCredits, currency)} icon={Handshake} />
+        <SummaryCard title="Total Withdrawn" value={money(summary.totalWithdrawn, currency)} icon={Banknote} />
       </div>
 
       <Card>

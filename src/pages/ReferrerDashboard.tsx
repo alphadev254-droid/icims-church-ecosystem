@@ -1,6 +1,6 @@
 import { Banknote, Handshake, Users, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { ReferrerStatusNotice, LoadingState, money, useReferrerDashboardData, useReferrerSummary, isReferrerVerified } from './referrer/shared';
+import { ReferrerStatusNotice, LoadingState, money, referrerCurrency, useReferrerDashboardData, useReferrerSummary, isReferrerVerified } from './referrer/shared';
 import { SummaryCard } from './referrer/components/SummaryCard';
 import { MarketingLinkCard } from './referrer/components/MarketingLinkCard';
 import { RecentReferralsCard } from './referrer/components/RecentReferralsCard';
@@ -16,6 +16,7 @@ export default function ReferrerDashboard() {
   const referrals = data?.referrals || [];
   const ledger = data?.ledger || [];
   const verified = isReferrerVerified(referrer);
+  const currency = referrerCurrency(data);
 
   return (
     <div className="space-y-6">
@@ -32,9 +33,9 @@ export default function ReferrerDashboard() {
       <ReferrerStatusNotice referrer={referrer} dashboard />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <SummaryCard title="Wallet Balance" value={money(data?.balance)} icon={Wallet} />
-        <SummaryCard title="Total Earned" value={money(summary.totalCredits)} icon={Handshake} />
-        <SummaryCard title="Withdrawn" value={money(summary.totalWithdrawn)} icon={Banknote} />
+        <SummaryCard title="Wallet Balance" value={money(data?.balance, currency)} icon={Wallet} />
+        <SummaryCard title="Total Earned" value={money(summary.totalCredits, currency)} icon={Handshake} />
+        <SummaryCard title="Withdrawn" value={money(summary.totalWithdrawn, currency)} icon={Banknote} />
         <SummaryCard title="Partnered Ministries" value={summary.referralsCount} icon={Users} />
       </div>
 
