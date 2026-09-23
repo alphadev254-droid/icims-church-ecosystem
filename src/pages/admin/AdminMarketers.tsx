@@ -164,9 +164,6 @@ export default function AdminMarketers() {
                           <DropdownMenuItem className="text-xs gap-2" onClick={() => navigate(`/admin/marketers/${marketer.id}`)}>
                             <Eye className="h-3.5 w-3.5" /> View details
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-xs gap-2" onClick={() => openStatusDialog(marketer, 'approved')}>
-                            <ShieldCheck className="h-3.5 w-3.5" /> Mark verified
-                          </DropdownMenuItem>
                           <DropdownMenuItem className="text-xs gap-2" onClick={() => openStatusDialog(marketer)}>
                             <Wallet className="h-3.5 w-3.5" /> Change status
                           </DropdownMenuItem>

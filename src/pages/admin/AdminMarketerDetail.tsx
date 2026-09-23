@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Banknote, Edit2, ExternalLink, Handshake, Mail, ShieldCheck, Users, Wallet } from 'lucide-react';
+import { ArrowLeft, Banknote, Edit2, ExternalLink, Handshake, Mail, Users, Wallet } from 'lucide-react';
 import { adminApi } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,11 +86,6 @@ export default function AdminMarketerDetail() {
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => openStatus()}>
             <Edit2 className="h-3.5 w-3.5" /> Change Status
           </Button>
-          {data.status !== 'approved' && (
-            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => openStatus('approved')}>
-              <ShieldCheck className="h-3.5 w-3.5" /> Mark Verified
-            </Button>
-          )}
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => navigate(`/admin/users/${data.userId}`)}>
             <ExternalLink className="h-3.5 w-3.5" /> User Account
           </Button>
