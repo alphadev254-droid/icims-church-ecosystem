@@ -14,6 +14,8 @@ export default function ReferrerPayoutSettingsPage() {
   const { data, isLoading: dashboardLoading } = useReferrerDashboardData();
   const [payoutPhone, setPayoutPhone] = useState('');
   const [payoutProvider, setPayoutProvider] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpRequested, setOtpRequested] = useState(false);
 
   const { data: payoutOptions, isLoading: optionsLoading } = useQuery({
     queryKey: ['referrer-payout-options'],
@@ -30,13 +32,28 @@ export default function ReferrerPayoutSettingsPage() {
     }
   }, [data?.referrer]);
 
+  const requestOtp = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post('/referrals/payout-setup/otp', { payoutPhone, payoutProvider });
+      return response.data;
+    },
+    onSuccess: (response: any) => {
+      setOtpRequested(true);
+      setOtpCode(response.data?.devOtp || '');
+      toast.success(response.message || 'OTP sent to your email');
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to send OTP'),
+  });
+
   const savePayout = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.put('/referrals/payout-setup', { payoutPhone, payoutProvider });
+      const response = await apiClient.put('/referrals/payout-setup', { payoutPhone, payoutProvider, otp: otpCode });
       return response.data.data;
     },
     onSuccess: () => {
       toast.success('Payout settings saved');
+      setOtpRequested(false);
+      setOtpCode('');
       queryClient.invalidateQueries({ queryKey: ['referrer-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['referrer-payout-options'] });
     },
@@ -48,6 +65,7 @@ export default function ReferrerPayoutSettingsPage() {
   const providers = payoutOptions?.providers || [];
   const isSupported = payoutOptions?.supported && providers.length > 0;
   const verified = isReferrerVerified(data?.referrer);
+  const canRequestOtp = verified && Boolean(payoutPhone && payoutProvider) && !requestOtp.isPending;
 
   return (
     <div className="space-y-6">
@@ -76,7 +94,15 @@ export default function ReferrerPayoutSettingsPage() {
             <>
               <div className="grid gap-2">
                 <Label htmlFor="payoutProvider">Payout provider</Label>
-                <Select value={payoutProvider} onValueChange={setPayoutProvider} disabled={!verified}>
+                <Select
+                  value={payoutProvider}
+                  onValueChange={(value) => {
+                    setPayoutProvider(value);
+                    setOtpRequested(false);
+                    setOtpCode('');
+                  }}
+                  disabled={!verified}
+                >
                   <SelectTrigger id="payoutProvider"><SelectValue placeholder="Select provider" /></SelectTrigger>
                   <SelectContent>
                     {providers.map((provider: any) => (
@@ -87,11 +113,46 @@ export default function ReferrerPayoutSettingsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="payoutPhone">Payout phone number</Label>
-                <Input id="payoutPhone" value={payoutPhone} onChange={(event) => setPayoutPhone(event.target.value)} placeholder="Enter payout phone number" disabled={!verified} />
+                <Input
+                  id="payoutPhone"
+                  value={payoutPhone}
+                  onChange={(event) => {
+                    setPayoutPhone(event.target.value);
+                    setOtpRequested(false);
+                    setOtpCode('');
+                  }}
+                  placeholder="Enter payout phone number"
+                  disabled={!verified}
+                />
               </div>
-              <Button onClick={() => savePayout.mutate()} disabled={!verified || savePayout.isPending || !payoutPhone || !payoutProvider}>
-                {savePayout.isPending ? 'Saving...' : 'Save payout settings'}
-              </Button>
+              {otpRequested && (
+                <div className="grid gap-2 rounded-md border bg-muted/40 p-4">
+                  <div>
+                    <Label htmlFor="payoutOtp">Email OTP</Label>
+                    <p className="text-xs text-muted-foreground">Enter the 6-digit OTP sent to your email to save these payout settings.</p>
+                  </div>
+                  <Input
+                    id="payoutOtp"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Enter 6-digit OTP"
+                  />
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => requestOtp.mutate()} disabled={!canRequestOtp}>
+                  {requestOtp.isPending ? 'Sending OTP...' : otpRequested ? 'Resend OTP' : 'Request OTP'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => savePayout.mutate()}
+                  disabled={!verified || savePayout.isPending || !otpRequested || otpCode.length !== 6 || !payoutPhone || !payoutProvider}
+                >
+                  {savePayout.isPending ? 'Saving...' : 'Save payout settings'}
+                </Button>
+              </div>
             </>
           )}
         </CardContent>
