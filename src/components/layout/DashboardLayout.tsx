@@ -122,11 +122,11 @@ export default function DashboardLayout() {
       {/* Main content */}
       <div className="min-h-0 min-w-0 flex-1 flex flex-col overflow-hidden">
         <header className="h-14 shrink-0 border-b border-border bg-background flex items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <h2 className="font-heading text-lg font-semibold capitalize">
+            <h2 className="truncate font-heading text-base font-semibold capitalize sm:text-lg">
               {currentPageTitle}
             </h2>
           </div>

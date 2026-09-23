@@ -21,8 +21,8 @@ export default function ReferrerDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Marketer Dashboard</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Marketer Dashboard</h1>
           <p className="text-sm text-muted-foreground">Summary of your wallet, ministries, and account status.</p>
         </div>
         <Badge variant={verified ? 'default' : 'secondary'} className="w-fit capitalize">
@@ -32,7 +32,7 @@ export default function ReferrerDashboard() {
 
       <ReferrerStatusNotice referrer={referrer} dashboard />
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard title="Wallet Balance" value={money(data?.balance, currency)} icon={Wallet} />
         <SummaryCard title="Total Earned" value={money(summary.totalCredits, currency)} icon={Handshake} />
         <SummaryCard title="Withdrawn" value={money(summary.totalWithdrawn, currency)} icon={Banknote} />

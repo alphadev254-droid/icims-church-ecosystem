@@ -107,8 +107,8 @@ export default function ReferrerPayoutSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Payout Settings</h1>
-        <p className="text-sm text-muted-foreground">Choose where your marketer withdrawals should be sent.</p>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Payout Settings</h1>
+        <p className="text-sm text-muted-foreground">Choose where your marketer payouts should be sent.</p>
       </div>
 
       <ReferrerStatusNotice referrer={data?.referrer} />
@@ -122,7 +122,7 @@ export default function ReferrerPayoutSettingsPage() {
             </CardDescription>
           </div>
           {verified && isSupported && !isEditing && (
-            <Button type="button" onClick={() => setIsEditing(true)}>
+            <Button type="button" onClick={() => setIsEditing(true)} className="w-full sm:w-auto">
               Edit
             </Button>
           )}
@@ -192,18 +192,19 @@ export default function ReferrerPayoutSettingsPage() {
                 </div>
               )}
               {isEditing && (
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={() => requestOtp.mutate()} disabled={!canRequestOtp}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  <Button onClick={() => requestOtp.mutate()} disabled={!canRequestOtp} className="w-full sm:w-auto">
                     {requestOtpLabel}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => savePayout.mutate()}
                     disabled={!verified || savePayout.isPending || !otpRequested || otpCode.length !== 6 || !isPayoutPhoneValid || !payoutProvider}
+                    className="w-full sm:w-auto"
                   >
                     {savePayout.isPending ? 'Saving...' : 'Save payout settings'}
                   </Button>
-                  <Button type="button" variant="ghost" onClick={resetEditState} disabled={requestOtp.isPending || savePayout.isPending}>
+                  <Button type="button" variant="ghost" onClick={resetEditState} disabled={requestOtp.isPending || savePayout.isPending} className="w-full sm:w-auto">
                     Cancel
                   </Button>
                 </div>

@@ -38,9 +38,9 @@ export function MarketingLinkCard({ referralLink, verified }: { referralLink?: s
         <CardTitle>My marketing link</CardTitle>
         <CardDescription>Share this link with ministries so registrations can be tracked to you.</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3 sm:flex-row">
-        <div className="flex-1 rounded-md border bg-muted px-3 py-2 text-sm break-all">{referralLink}</div>
-        <Button onClick={copyLink} variant="outline" disabled={!referralLink}>
+      <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1 rounded-md border bg-muted px-3 py-2 text-xs break-all sm:text-sm">{referralLink}</div>
+        <Button onClick={copyLink} variant="outline" disabled={!referralLink} className="w-full sm:w-auto">
           <Copy className="mr-2 h-4 w-4" />{copied ? 'Copied' : 'Copy'}
         </Button>
       </CardContent>
