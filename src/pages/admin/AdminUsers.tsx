@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 
-const ROLES = ['ministry_admin', 'member', 'referrer'];
+const ROLES = ['ministry_admin', 'member'];
 const COUNTRIES = ['Malawi', 'Kenya'];
 const STATUSES = ['active', 'suspended', 'inactive', 'cancelled'];
 
