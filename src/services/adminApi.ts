@@ -149,6 +149,76 @@ export interface AdminUserDetail extends AdminUser {
   payments: AdminPayment[];
 }
 
+export interface AdminMarketer {
+  id: string;
+  userId: string;
+  code: string;
+  type: string;
+  status: 'pending' | 'approved' | 'suspended' | 'rejected' | string;
+  displayName?: string | null;
+  phone?: string | null;
+  country?: string | null;
+  city?: string | null;
+  district?: string | null;
+  pricingMarketId?: string | null;
+  payoutPhone?: string | null;
+  payoutProvider?: string | null;
+  payoutSetupStatus?: string | null;
+  approvedAt?: string | null;
+  approvedById?: string | null;
+  rejectionReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string | null;
+    status?: string;
+    emailVerified?: boolean;
+    createdAt?: string;
+  } | null;
+  pricingMarket?: AdminPricingMarket | null;
+  _count?: {
+    referrals: number;
+    ledgerEntries: number;
+    withdrawals: number;
+  };
+}
+
+export interface AdminMarketerDetail extends AdminMarketer {
+  balance: number;
+  currency: string;
+  referrals: Array<{
+    id: string;
+    status: string;
+    referralCode: string;
+    firstPaymentAt?: string | null;
+    createdAt: string;
+    ministryAdmin?: { id: string; firstName: string; lastName: string; email: string; ministryName?: string | null; accountCountry?: string | null } | null;
+    church?: { id: string; name: string; country?: string | null } | null;
+  }>;
+  ledgerEntries: Array<{
+    id: string;
+    direction: string;
+    category: string;
+    amount: string | number;
+    currency: string;
+    balanceAfter: string | number;
+    description?: string | null;
+    createdAt: string;
+  }>;
+  withdrawals: Array<{
+    id: string;
+    amount: string | number;
+    currency: string;
+    status: string;
+    method: string;
+    createdAt: string;
+  }>;
+}
+
 export interface AdminSubscription {
   id: string;
   ministryAdminId: string;
@@ -641,6 +711,15 @@ export const adminApi = {
 
   sendEmail: (id: string, data: { subject: string; message: string }) =>
     apiClient.post<{ success: boolean; message: string }>(`/admin/users/${id}/send-email`, data),
+
+  getMarketers: () =>
+    apiClient.get<{ success: boolean; data: AdminMarketer[] }>('/referrals/admin/referrers'),
+
+  getMarketer: (id: string) =>
+    apiClient.get<{ success: boolean; data: AdminMarketerDetail }>(`/referrals/admin/referrers/${id}`),
+
+  updateMarketerStatus: (id: string, data: { status: string; reason?: string }) =>
+    apiClient.patch<{ success: boolean; data: AdminMarketer }>(`/referrals/admin/referrers/${id}/status`, data),
 
   getChurch: (id: string, params?: { page?: number; search?: string; role?: string; status?: string }) =>
     apiClient.get<{ success: boolean; data: AdminChurch }>(`/admin/churches/${id}`, { params }),

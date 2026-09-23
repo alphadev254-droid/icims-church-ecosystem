@@ -1,6 +1,6 @@
 import { Suspense, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Receipt, CreditCard, LogOut, Menu, X, Shield, ChevronRight, Package2, DatabaseZap, Wallet, Landmark, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, CreditCard, LogOut, Menu, X, Shield, ChevronRight, Package2, DatabaseZap, Wallet, Landmark, FileText, Handshake } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 const NAV = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/users', label: 'Users', icon: Users, end: false },
+  { to: '/admin/marketers', label: 'Marketers', icon: Handshake, end: false },
   { to: '/admin/transactions', label: 'Transactions', icon: Receipt, end: false },
   { to: '/admin/payments', label: 'Payments', icon: CreditCard, end: false },
   { to: '/admin/invoices', label: 'Invoices', icon: FileText, end: false },

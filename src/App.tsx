@@ -77,6 +77,8 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminUserDetail = lazy(() => import("./pages/admin/AdminUserDetail"));
+const AdminMarketers = lazy(() => import("./pages/admin/AdminMarketers"));
+const AdminMarketerDetail = lazy(() => import("./pages/admin/AdminMarketerDetail"));
 const AdminChurchDetail = lazy(() => import("./pages/admin/AdminChurchDetail"));
 const AdminPayments = lazy(() => import("./pages/admin/AdminPayments"));
 const AdminInvoices = lazy(() => import("./pages/admin/AdminInvoices"));
@@ -193,6 +195,8 @@ const App = () => {
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="users/:id" element={<AdminUserDetail />} />
+                <Route path="marketers" element={<AdminMarketers />} />
+                <Route path="marketers/:id" element={<AdminMarketerDetail />} />
                 <Route path="churches/:id" element={<AdminChurchDetail />} />
                 <Route path="payments" element={<AdminPayments />} />
                 <Route path="invoices" element={<AdminInvoices />} />
