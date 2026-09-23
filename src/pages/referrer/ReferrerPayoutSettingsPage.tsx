@@ -16,6 +16,7 @@ export default function ReferrerPayoutSettingsPage() {
   const [payoutProvider, setPayoutProvider] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
+  const [otpResendSeconds, setOtpResendSeconds] = useState(0);
 
   const { data: payoutOptions, isLoading: optionsLoading } = useQuery({
     queryKey: ['referrer-payout-options'],
@@ -32,6 +33,16 @@ export default function ReferrerPayoutSettingsPage() {
     }
   }, [data?.referrer]);
 
+  useEffect(() => {
+    if (otpResendSeconds <= 0) return undefined;
+
+    const timer = window.setInterval(() => {
+      setOtpResendSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [otpResendSeconds]);
+
   const requestOtp = useMutation({
     mutationFn: async () => {
       const response = await apiClient.post('/referrals/payout-setup/otp', { payoutPhone, payoutProvider });
@@ -40,9 +51,14 @@ export default function ReferrerPayoutSettingsPage() {
     onSuccess: (response: any) => {
       setOtpRequested(true);
       setOtpCode(response.data?.devOtp || '');
+      setOtpResendSeconds(response.retryAfterSeconds || 40);
       toast.success(response.message || 'OTP sent to your email');
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to send OTP'),
+    onError: (error: any) => {
+      const retryAfterSeconds = error.response?.data?.retryAfterSeconds;
+      if (retryAfterSeconds) setOtpResendSeconds(retryAfterSeconds);
+      toast.error(error.response?.data?.message || 'Failed to send OTP');
+    },
   });
 
   const savePayout = useMutation({
@@ -65,7 +81,14 @@ export default function ReferrerPayoutSettingsPage() {
   const providers = payoutOptions?.providers || [];
   const isSupported = payoutOptions?.supported && providers.length > 0;
   const verified = isReferrerVerified(data?.referrer);
-  const canRequestOtp = verified && Boolean(payoutPhone && payoutProvider) && !requestOtp.isPending;
+  const canRequestOtp = verified && Boolean(payoutPhone && payoutProvider) && !requestOtp.isPending && otpResendSeconds === 0;
+  const requestOtpLabel = requestOtp.isPending
+    ? 'Sending OTP...'
+    : otpResendSeconds > 0
+      ? `You can request another OTP in ${otpResendSeconds}s`
+      : otpRequested
+        ? 'Resend OTP'
+        : 'Request OTP';
 
   return (
     <div className="space-y-6">
@@ -100,6 +123,7 @@ export default function ReferrerPayoutSettingsPage() {
                     setPayoutProvider(value);
                     setOtpRequested(false);
                     setOtpCode('');
+                    setOtpResendSeconds(0);
                   }}
                   disabled={!verified}
                 >
@@ -120,6 +144,7 @@ export default function ReferrerPayoutSettingsPage() {
                     setPayoutPhone(event.target.value);
                     setOtpRequested(false);
                     setOtpCode('');
+                    setOtpResendSeconds(0);
                   }}
                   placeholder="Enter payout phone number"
                   disabled={!verified}
@@ -143,7 +168,7 @@ export default function ReferrerPayoutSettingsPage() {
               )}
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => requestOtp.mutate()} disabled={!canRequestOtp}>
-                  {requestOtp.isPending ? 'Sending OTP...' : otpRequested ? 'Resend OTP' : 'Request OTP'}
+                  {requestOtpLabel}
                 </Button>
                 <Button
                   variant="outline"
