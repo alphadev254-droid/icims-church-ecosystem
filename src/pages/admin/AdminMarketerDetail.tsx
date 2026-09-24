@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Banknote, Edit2, ExternalLink, Handshake, Mail, Users, Wallet } from 'lucide-react';
-import { adminApi } from '@/services/adminApi';
+import { adminApi, type AdminMarketerPayoutPreview } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import {
@@ -36,6 +39,9 @@ export default function AdminMarketerDetail() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [status, setStatus] = useState('pending');
   const [reason, setReason] = useState('');
+  const [payoutOpen, setPayoutOpen] = useState(false);
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutPreview, setPayoutPreview] = useState<AdminMarketerPayoutPreview | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-marketer', id],
@@ -54,6 +60,36 @@ export default function AdminMarketerDetail() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to update marketer'),
   });
 
+  const reconcileMutation = useMutation({
+    mutationFn: (withdrawalId: string) => adminApi.reconcileMarketerWithdrawal(withdrawalId),
+    onSuccess: (response) => {
+      toast.success(response.data.message || 'Marketer payout reconciled');
+      queryClient.invalidateQueries({ queryKey: ['admin-marketer', id] });
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to reconcile marketer payout'),
+  });
+
+  const previewPayoutMutation = useMutation({
+    mutationFn: () => adminApi.previewMarketerWithdrawal(id!, Number(payoutAmount)),
+    onSuccess: (response) => setPayoutPreview(response.data.data),
+    onError: (error: any) => {
+      setPayoutPreview(null);
+      toast.error(error.response?.data?.message || 'Unable to preview marketer payout');
+    },
+  });
+
+  const initiatePayoutMutation = useMutation({
+    mutationFn: () => adminApi.initiateMarketerWithdrawal(id!, Number(payoutAmount)),
+    onSuccess: (response) => {
+      toast.success(response.data.message || 'Marketer payout initiated');
+      setPayoutOpen(false);
+      setPayoutPreview(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-marketer', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin-marketers'] });
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to initiate marketer payout'),
+  });
+
   if (isLoading) {
     return <div className="flex min-h-[320px] items-center justify-center text-sm text-muted-foreground">Loading marketer...</div>;
   }
@@ -66,9 +102,15 @@ export default function AdminMarketerDetail() {
     setReason('');
     setStatusOpen(true);
   };
+  const openPayout = () => {
+    setPayoutAmount(Number(data.balance || 0).toFixed(2));
+    setPayoutPreview(null);
+    setPayoutOpen(true);
+  };
 
   const totalCredits = data.ledgerEntries.filter(entry => entry.direction === 'credit').reduce((sum, entry) => sum + Number(entry.amount), 0);
   const totalDebits = data.ledgerEntries.filter(entry => entry.direction === 'debit').reduce((sum, entry) => sum + Number(entry.amount), 0);
+  const payoutReady = data.status === 'approved' && data.payoutSetupStatus === 'complete' && Number(data.balance || 0) > 0;
 
   return (
     <div className="space-y-4">
@@ -83,6 +125,9 @@ export default function AdminMarketerDetail() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="default" size="sm" className="h-8 text-xs gap-1.5" disabled={!payoutReady} onClick={openPayout}>
+            <Banknote className="h-3.5 w-3.5" /> Initiate Payout
+          </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => openStatus()}>
             <Edit2 className="h-3.5 w-3.5" /> Change Status
           </Button>
@@ -170,14 +215,15 @@ export default function AdminMarketerDetail() {
         </CardHeader>
         <CardContent>
           <Table>
-            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">Balance After</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Ministry</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">Balance After</TableHead></TableRow></TableHeader>
             <TableBody>
               {data.ledgerEntries.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No wallet entries yet.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No wallet entries yet.</TableCell></TableRow>
               ) : data.ledgerEntries.map(entry => (
                 <TableRow key={entry.id}>
                   <TableCell className="text-xs">{new Date(entry.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-xs capitalize">{entry.direction} / {entry.category}</TableCell>
+                  <TableCell className="text-xs">{entry.ministryName || '—'}</TableCell>
                   <TableCell className="text-xs">{entry.description || '—'}</TableCell>
                   <TableCell className={entry.direction === 'credit' ? 'text-right text-xs text-emerald-600' : 'text-right text-xs text-destructive'}>
                     {entry.direction === 'credit' ? '+' : '-'}{money(entry.currency, entry.amount)}
@@ -185,6 +231,63 @@ export default function AdminMarketerDetail() {
                   <TableCell className="text-right text-xs">{money(entry.currency, entry.balanceAfter)}</TableCell>
                 </TableRow>
               ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Marketer Payouts</CardTitle>
+          <CardDescription>Automatic commission payouts sent to this marketer.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Provider</TableHead>
+                <TableHead>Charge ID</TableHead>
+                <TableHead className="text-right">Gross</TableHead>
+                <TableHead className="text-right">Fee</TableHead>
+                <TableHead className="text-right">Payout</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.withdrawals.length === 0 ? (
+                <TableRow><TableCell colSpan={8} className="py-8 text-center text-muted-foreground">No marketer payouts yet.</TableCell></TableRow>
+              ) : data.withdrawals.map(withdrawal => {
+                const canReconcile = ['processing', 'review_required'].includes(withdrawal.status);
+                return (
+                  <TableRow key={withdrawal.id}>
+                    <TableCell className="text-xs">{new Date(withdrawal.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-xs capitalize">{String(withdrawal.status || 'pending').replace(/_/g, ' ')}</TableCell>
+                    <TableCell className="text-xs capitalize">{withdrawal.mobileOperator || withdrawal.method || '—'}</TableCell>
+                    <TableCell className="text-xs">{withdrawal.chargeId || '—'}</TableCell>
+                    <TableCell className="text-right text-xs">{money(withdrawal.currency || currency, withdrawal.amount)}</TableCell>
+                    <TableCell className="text-right text-xs">{money(withdrawal.currency || currency, withdrawal.feeAmount || 0)}</TableCell>
+                    <TableCell className="text-right text-xs">{money(withdrawal.currency || currency, withdrawal.payoutAmount || withdrawal.amount)}</TableCell>
+                    <TableCell className="text-right">
+                      {canReconcile ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          disabled={reconcileMutation.isPending}
+                          onClick={() => reconcileMutation.mutate(withdrawal.id)}
+                        >
+                          Reconcile
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -200,6 +303,90 @@ export default function AdminMarketerDetail() {
         onReasonChange={setReason}
         onSave={() => statusMutation.mutate()}
       />
+
+      <Dialog open={payoutOpen} onOpenChange={setPayoutOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Initiate Marketer Payout</DialogTitle>
+            <DialogDescription>
+              Review the wallet debit and PayChangu payout details before sending money.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+              <div className="flex items-center justify-between py-1">
+                <span className="text-muted-foreground">Available balance</span>
+                <span className="font-medium">{money(currency, data.balance)}</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-muted-foreground">Provider</span>
+                <span className="font-medium">{data.payoutProvider || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-muted-foreground">Payout phone</span>
+                <span className="font-medium">{data.payoutPhone || '—'}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="marketer-payout-amount">Amount to debit from wallet</Label>
+              <Input
+                id="marketer-payout-amount"
+                type="number"
+                min="1"
+                step="0.01"
+                value={payoutAmount}
+                onChange={(event) => {
+                  setPayoutAmount(event.target.value);
+                  setPayoutPreview(null);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Provider fee is calculated by the backend. The marketer receives the amount after fee.
+              </p>
+            </div>
+
+            {payoutPreview && (
+              <div className="rounded-lg border p-3 text-sm">
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-muted-foreground">Wallet debit</span>
+                  <span className="font-medium">{money(payoutPreview.currency, payoutPreview.amount)}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-muted-foreground">Provider fee</span>
+                  <span className="font-medium">{money(payoutPreview.currency, payoutPreview.feeAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-muted-foreground">Net sent</span>
+                  <span className="font-medium">{money(payoutPreview.currency, payoutPreview.payoutAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-muted-foreground">Balance after success</span>
+                  <span className="font-medium">{money(payoutPreview.currency, payoutPreview.balance - payoutPreview.amount)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setPayoutOpen(false)}>Cancel</Button>
+            <Button
+              variant="outline"
+              disabled={!payoutAmount || previewPayoutMutation.isPending || initiatePayoutMutation.isPending}
+              onClick={() => previewPayoutMutation.mutate()}
+            >
+              {previewPayoutMutation.isPending ? 'Reviewing...' : 'Review Payout'}
+            </Button>
+            <Button
+              disabled={!payoutPreview || initiatePayoutMutation.isPending}
+              onClick={() => initiatePayoutMutation.mutate()}
+            >
+              {initiatePayoutMutation.isPending ? 'Initiating...' : 'Confirm & Initiate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

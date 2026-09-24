@@ -206,6 +206,7 @@ export interface AdminMarketerDetail extends AdminMarketer {
     amount: string | number;
     currency: string;
     balanceAfter: string | number;
+    ministryName?: string | null;
     description?: string | null;
     createdAt: string;
   }>;
@@ -215,8 +216,26 @@ export interface AdminMarketerDetail extends AdminMarketer {
     currency: string;
     status: string;
     method: string;
+    mobileOperator?: string | null;
+    mobileNumber?: string | null;
+    chargeId?: string | null;
+    feeAmount?: string | number | null;
+    payoutAmount?: string | number | null;
     createdAt: string;
   }>;
+}
+
+export interface AdminMarketerPayoutPreview {
+  referrerId: string;
+  balance: number;
+  minimumAmount: number;
+  currency: string;
+  amount: number;
+  feeAmount: number;
+  gatewayFeeRate: number;
+  payoutAmount: number;
+  mobileOperator: string;
+  mobileNumber: string;
 }
 
 export interface AdminSubscription {
@@ -720,6 +739,18 @@ export const adminApi = {
 
   updateMarketerStatus: (id: string, data: { status: string; reason?: string }) =>
     apiClient.patch<{ success: boolean; data: AdminMarketer }>(`/referrals/admin/referrers/${id}/status`, data),
+
+  previewMarketerWithdrawal: (id: string, amount: number) =>
+    apiClient.post<{ success: boolean; data: AdminMarketerPayoutPreview }>(`/referrals/admin/referrers/${id}/withdrawals/preview`, { amount }),
+
+  initiateMarketerWithdrawal: (id: string, amount: number) =>
+    apiClient.post<{ success: boolean; message: string; data: { withdrawal: AdminMarketerDetail['withdrawals'][number]; preview: AdminMarketerPayoutPreview } }>(
+      `/referrals/admin/referrers/${id}/withdrawals/initiate`,
+      { amount },
+    ),
+
+  reconcileMarketerWithdrawal: (withdrawalId: string) =>
+    apiClient.post<{ success: boolean; message: string; data: unknown }>(`/referrals/admin/referrer-withdrawals/${withdrawalId}/reconcile`),
 
   getChurch: (id: string, params?: { page?: number; search?: string; role?: string; status?: string }) =>
     apiClient.get<{ success: boolean; data: AdminChurch }>(`/admin/churches/${id}`, { params }),
