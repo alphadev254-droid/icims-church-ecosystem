@@ -547,7 +547,7 @@ export default function CellDetailPage() {
           <div>
             <Label>{isScheduledMode ? 'Start date *' : 'Date *'}</Label>
             {isExactDateSchedule && <p className="mb-1 text-xs text-muted-foreground">Auto-fills from the first selected date.</p>}
-            <Input className="mt-1" type="date" min={isScheduledMode ? todayInput : undefined} disabled={isNewMeeting && !isScheduledMode} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+            <Input className="mt-1" type="date" min={isScheduledMode ? todayInput : undefined} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
           </div>
           <div><Label>Time</Label><Input className="mt-1" type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} /></div>
         </div>}
