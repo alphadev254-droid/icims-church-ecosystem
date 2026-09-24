@@ -229,6 +229,7 @@ export interface AdminMarketerPayoutPreview {
   referrerId: string;
   balance: number;
   minimumAmount: number;
+  minimumAmountUsd: number;
   currency: string;
   amount: number;
   feeAmount: number;

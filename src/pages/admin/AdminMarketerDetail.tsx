@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Banknote, Edit2, ExternalLink, Handshake, Mail, Users, Wallet } from 'lucide-react';
@@ -42,6 +42,7 @@ export default function AdminMarketerDetail() {
   const [payoutOpen, setPayoutOpen] = useState(false);
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutPreview, setPayoutPreview] = useState<AdminMarketerPayoutPreview | null>(null);
+  const [payoutPreviewError, setPayoutPreviewError] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-marketer', id],
@@ -70,11 +71,14 @@ export default function AdminMarketerDetail() {
   });
 
   const previewPayoutMutation = useMutation({
-    mutationFn: () => adminApi.previewMarketerWithdrawal(id!, Number(payoutAmount)),
-    onSuccess: (response) => setPayoutPreview(response.data.data),
+    mutationFn: (amount: number) => adminApi.previewMarketerWithdrawal(id!, amount),
+    onSuccess: (response) => {
+      setPayoutPreview(response.data.data);
+      setPayoutPreviewError('');
+    },
     onError: (error: any) => {
       setPayoutPreview(null);
-      toast.error(error.response?.data?.message || 'Unable to preview marketer payout');
+      setPayoutPreviewError(error.response?.data?.message || 'Unable to preview marketer payout');
     },
   });
 
@@ -89,6 +93,24 @@ export default function AdminMarketerDetail() {
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Unable to initiate marketer payout'),
   });
+
+  const payoutAmountNumber = Number(payoutAmount);
+  const previewMatchesAmount = !!payoutPreview && Number(payoutPreview.amount) === Math.round(payoutAmountNumber * 100) / 100;
+
+  useEffect(() => {
+    if (!payoutOpen || !id) return;
+    if (!Number.isFinite(payoutAmountNumber) || payoutAmountNumber <= 0) {
+      setPayoutPreview(null);
+      setPayoutPreviewError('');
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      previewPayoutMutation.mutate(payoutAmountNumber);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [payoutOpen, id, payoutAmountNumber]);
 
   if (isLoading) {
     return <div className="flex min-h-[320px] items-center justify-center text-sm text-muted-foreground">Loading marketer...</div>;
@@ -105,6 +127,7 @@ export default function AdminMarketerDetail() {
   const openPayout = () => {
     setPayoutAmount(Number(data.balance || 0).toFixed(2));
     setPayoutPreview(null);
+    setPayoutPreviewError('');
     setPayoutOpen(true);
   };
 
@@ -340,18 +363,33 @@ export default function AdminMarketerDetail() {
                 onChange={(event) => {
                   setPayoutAmount(event.target.value);
                   setPayoutPreview(null);
+                  setPayoutPreviewError('');
                 }}
               />
               <p className="text-xs text-muted-foreground">
-                Provider fee is calculated by the backend. The marketer receives the amount after fee.
+                Fee breakdown updates from the backend as you type. The marketer receives the amount after fee.
               </p>
+              {previewPayoutMutation.isPending && (
+                <p className="text-xs text-muted-foreground">Calculating provider fee...</p>
+              )}
+              {payoutPreviewError && (
+                <p className="text-xs text-destructive">{payoutPreviewError}</p>
+              )}
             </div>
 
             {payoutPreview && (
               <div className="rounded-lg border p-3 text-sm">
                 <div className="flex items-center justify-between py-1">
+                  <span className="text-muted-foreground">Minimum payout</span>
+                  <span className="font-medium">{money(payoutPreview.currency, payoutPreview.minimumAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
                   <span className="text-muted-foreground">Wallet debit</span>
                   <span className="font-medium">{money(payoutPreview.currency, payoutPreview.amount)}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-muted-foreground">Provider rate</span>
+                  <span className="font-medium">{(Number(payoutPreview.gatewayFeeRate || 0) * 100).toFixed(2)}%</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <span className="text-muted-foreground">Provider fee</span>
@@ -374,12 +412,12 @@ export default function AdminMarketerDetail() {
             <Button
               variant="outline"
               disabled={!payoutAmount || previewPayoutMutation.isPending || initiatePayoutMutation.isPending}
-              onClick={() => previewPayoutMutation.mutate()}
+              onClick={() => previewPayoutMutation.mutate(payoutAmountNumber)}
             >
-              {previewPayoutMutation.isPending ? 'Reviewing...' : 'Review Payout'}
+              {previewPayoutMutation.isPending ? 'Calculating...' : 'Refresh Breakdown'}
             </Button>
             <Button
-              disabled={!payoutPreview || initiatePayoutMutation.isPending}
+              disabled={!previewMatchesAmount || initiatePayoutMutation.isPending || previewPayoutMutation.isPending}
               onClick={() => initiatePayoutMutation.mutate()}
             >
               {initiatePayoutMutation.isPending ? 'Initiating...' : 'Confirm & Initiate'}
