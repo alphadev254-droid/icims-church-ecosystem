@@ -50,6 +50,7 @@ const schema = z.object({
   gender: z.enum(['male', 'female'], { required_error: 'Gender is required' }),
   accountCountry: z.string({ required_error: 'Country is required' }).min(2, 'Country is required'),
   anniversary: z.string().optional(),
+  referralCode: z.string().trim().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
     .regex(/[0-9]/, 'Must contain at least one number'),
@@ -150,6 +151,7 @@ export default function RegisterPage() {
       phone: '',
       accountCountry: '',
       anniversary: '',
+      referralCode: searchParams.get('ref') || '',
       password: '',
       confirmPassword: '',
       acceptedTerms: false,
@@ -191,7 +193,7 @@ export default function RegisterPage() {
       accountCountry: values.accountCountry,
       anniversary: values.anniversary,
       password: values.password,
-      referralCode: searchParams.get('ref') || undefined,
+      referralCode: values.referralCode?.trim() || undefined,
       acceptedTerms: values.acceptedTerms,
       termsVersion: TERMS_VERSION,
       privacyVersion: PRIVACY_VERSION,
@@ -485,6 +487,19 @@ export default function RegisterPage() {
                 <div className="space-y-1.5">
                   <Label>Church founded date <span className="text-muted-foreground text-xs">(optional)</span></Label>
                   <Input type="date" {...register('anniversary')} autoComplete="off" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Marketer referral code <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Input
+                    {...register('referralCode')}
+                    autoComplete="off"
+                    placeholder="e.g. ICIMS-REF-ABCD1234"
+                    className="uppercase"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    If you opened a marketer link, this is filled automatically. You can also enter the code manually.
+                  </p>
                 </div>
 
                 <div className="flex gap-3">
