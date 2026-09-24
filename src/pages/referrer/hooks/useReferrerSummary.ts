@@ -2,6 +2,15 @@ import { useMemo } from 'react';
 
 export function useReferrerSummary(data: any) {
   return useMemo(() => {
+    if (data?.summary) {
+      return {
+        totalCredits: Number(data.summary.totalCredits || 0),
+        totalWithdrawn: Number(data.summary.totalWithdrawn || 0),
+        pendingWithdrawals: Number(data.summary.pendingWithdrawals || 0),
+        referralsCount: Number(data.summary.referralsCount || 0),
+      };
+    }
+
     const ledger = data?.ledger || [];
     const totalCredits = ledger
       .filter((entry: any) => entry.direction === 'credit')

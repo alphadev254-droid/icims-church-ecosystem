@@ -1,9 +1,9 @@
-import { ReferrerStatusNotice, LoadingState, useReferrerDashboardData, PageShell, PageHeader, CardTitleRow } from './shared';
+import { ReferrerStatusNotice, LoadingState, useReferrerReferralsData, PageShell, PageHeader, CardTitleRow, getReferralMinistryName, formatReferralStatus } from './shared';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function ReferrerReferralsPage() {
-  const { data, isLoading } = useReferrerDashboardData();
+  const { data, isLoading } = useReferrerReferralsData();
 
   if (isLoading) return <LoadingState label="Loading ministries..." />;
 
@@ -33,8 +33,8 @@ export default function ReferrerReferralsPage() {
                 <TableRow><TableCell colSpan={2} className="py-8 text-center text-muted-foreground">No ministries yet.</TableCell></TableRow>
               ) : referrals.map((referral: any) => (
                 <TableRow key={referral.id}>
-                  <TableCell>{referral.ministryName || 'Ministry'}</TableCell>
-                  <TableCell className="capitalize">{referral.status || 'registered'}</TableCell>
+                  <TableCell>{getReferralMinistryName(referral)}</TableCell>
+                  <TableCell>{formatReferralStatus(referral.status)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

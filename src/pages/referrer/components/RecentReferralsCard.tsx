@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CardTitleRow } from './PageStates';
+import { formatReferralStatus, getReferralMinistryName } from '../shared';
 
 export function RecentReferralsCard({ referrals }: { referrals: any[] }) {
   const recentReferrals = referrals.slice(0, 5);
@@ -27,8 +28,8 @@ export function RecentReferralsCard({ referrals }: { referrals: any[] }) {
               <TableRow><TableCell colSpan={2} className="py-8 text-center text-muted-foreground">No ministries yet.</TableCell></TableRow>
             ) : recentReferrals.map((referral: any) => (
               <TableRow key={referral.id}>
-                <TableCell>{referral.ministryName || 'Ministry'}</TableCell>
-                <TableCell className="capitalize">{referral.status || 'registered'}</TableCell>
+                <TableCell>{getReferralMinistryName(referral)}</TableCell>
+                <TableCell>{formatReferralStatus(referral.status)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

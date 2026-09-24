@@ -1,11 +1,11 @@
 import { Banknote, Handshake, Wallet } from 'lucide-react';
-import { ReferrerStatusNotice, LoadingState, money, referrerCurrency, useReferrerDashboardData, useReferrerSummary, PageShell, PageHeader, SummaryGrid, CardTitleRow } from './shared';
+import { ReferrerStatusNotice, LoadingState, money, referrerCurrency, useReferrerWalletData, useReferrerSummary, PageShell, PageHeader, SummaryGrid, CardTitleRow } from './shared';
 import { SummaryCard } from './components/SummaryCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function ReferrerWalletPage() {
-  const { data, isLoading } = useReferrerDashboardData();
+  const { data, isLoading } = useReferrerWalletData();
   const summary = useReferrerSummary(data);
 
   if (isLoading) return <LoadingState label="Loading wallet..." />;

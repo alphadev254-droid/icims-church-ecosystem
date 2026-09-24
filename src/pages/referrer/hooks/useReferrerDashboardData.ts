@@ -10,3 +10,23 @@ export function useReferrerDashboardData() {
     },
   });
 }
+
+export function useReferrerReferralsData() {
+  return useQuery({
+    queryKey: ['referrer-referrals'],
+    queryFn: async () => {
+      const response = await apiClient.get('/referrals/me/referrals');
+      return response.data.data;
+    },
+  });
+}
+
+export function useReferrerWalletData() {
+  return useQuery({
+    queryKey: ['referrer-wallet'],
+    queryFn: async () => {
+      const response = await apiClient.get('/referrals/me/wallet');
+      return response.data.data;
+    },
+  });
+}
