@@ -5,15 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardTitleRow } from './PageStates';
 
-export function MarketingLinkCard({ referralLink, verified }: { referralLink?: string; verified: boolean }) {
-  const [copied, setCopied] = useState(false);
+export function MarketingLinkCard({
+  referralCode,
+  referralLink,
+  verified,
+}: {
+  referralCode?: string;
+  referralLink?: string;
+  verified: boolean;
+}) {
+  const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 
-  const copyLink = async () => {
-    if (!verified || !referralLink) return;
-    await navigator.clipboard.writeText(referralLink);
-    setCopied(true);
-    toast.success('Marketing link copied');
-    setTimeout(() => setCopied(false), 1500);
+  const copyValue = async (value: string | undefined, type: 'code' | 'link') => {
+    if (!verified || !value) return;
+    await navigator.clipboard.writeText(value);
+    setCopied(type);
+    toast.success(type === 'code' ? 'Marketing code copied' : 'Marketing link copied');
+    setTimeout(() => setCopied(null), 1500);
   };
 
   if (!verified) {
@@ -32,12 +40,20 @@ export function MarketingLinkCard({ referralLink, verified }: { referralLink?: s
 
   return (
     <Card>
-      <CardTitleRow title="My marketing link" description="Share this link with ministries so registrations can be tracked to you." />
-      <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="min-w-0 flex-1 rounded-md border bg-muted px-3 py-2 text-xs break-all sm:text-sm">{referralLink}</div>
-        <Button onClick={copyLink} variant="outline" disabled={!referralLink} className="w-full sm:w-auto">
-          <Copy className="mr-2 h-4 w-4" />{copied ? 'Copied' : 'Copy'}
-        </Button>
+      <CardTitleRow title="My marketing code" description="Share the code or link with ministries so registrations can be tracked to you." />
+      <CardContent className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="min-w-0 flex-1 rounded-md border bg-muted px-3 py-2 text-xs font-semibold tracking-wide break-all sm:text-sm">{referralCode}</div>
+          <Button onClick={() => copyValue(referralCode, 'code')} variant="outline" disabled={!referralCode} className="w-full sm:w-auto">
+            <Copy className="mr-2 h-4 w-4" />{copied === 'code' ? 'Copied' : 'Copy code'}
+          </Button>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="min-w-0 flex-1 rounded-md border bg-muted px-3 py-2 text-xs break-all sm:text-sm">{referralLink}</div>
+          <Button onClick={() => copyValue(referralLink, 'link')} variant="outline" disabled={!referralLink} className="w-full sm:w-auto">
+            <Copy className="mr-2 h-4 w-4" />{copied === 'link' ? 'Copied' : 'Copy link'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

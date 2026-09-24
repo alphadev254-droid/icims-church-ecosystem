@@ -40,7 +40,7 @@ export function PageHeader({
 
 export function SummaryGrid({ children, columns = 4 }: { children: ReactNode; columns?: 3 | 4 }) {
   return (
-    <div className={cn('grid gap-4 sm:grid-cols-2', columns === 3 ? 'xl:grid-cols-3' : 'xl:grid-cols-4')}>
+    <div className={cn('grid grid-cols-2 gap-3 sm:gap-4', columns === 3 ? 'xl:grid-cols-3' : 'xl:grid-cols-4')}>
       {children}
     </div>
   );

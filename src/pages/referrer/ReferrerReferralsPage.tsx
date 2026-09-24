@@ -33,7 +33,7 @@ export default function ReferrerReferralsPage() {
                 <TableRow><TableCell colSpan={2} className="py-8 text-center text-muted-foreground">No ministries yet.</TableCell></TableRow>
               ) : referrals.map((referral: any) => (
                 <TableRow key={referral.id}>
-                  <TableCell>{referral.ministryAdmin?.ministryName || referral.church?.name || 'Ministry'}</TableCell>
+                  <TableCell>{referral.ministryName || 'Ministry'}</TableCell>
                   <TableCell className="capitalize">{referral.status || 'registered'}</TableCell>
                 </TableRow>
               ))}

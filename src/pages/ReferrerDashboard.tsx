@@ -39,7 +39,7 @@ export default function ReferrerDashboard() {
         <SummaryCard title="Partnered Ministries" value={summary.referralsCount} icon={Users} />
       </SummaryGrid>
 
-      <MarketingLinkCard referralLink={referrer?.referralLink} verified={verified} />
+      <MarketingLinkCard referralCode={referrer?.code} referralLink={referrer?.referralLink} verified={verified} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <RecentReferralsCard referrals={referrals} />
