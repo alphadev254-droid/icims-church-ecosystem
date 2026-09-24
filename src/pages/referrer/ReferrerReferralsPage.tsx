@@ -25,22 +25,16 @@ export default function ReferrerReferralsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Ministry</TableHead>
-                <TableHead>Admin</TableHead>
-                <TableHead>Church</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {referrals.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No ministries yet.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={2} className="py-8 text-center text-muted-foreground">No ministries yet.</TableCell></TableRow>
               ) : referrals.map((referral: any) => (
                 <TableRow key={referral.id}>
                   <TableCell>{referral.ministryAdmin?.ministryName || referral.church?.name || 'Ministry'}</TableCell>
-                  <TableCell>{referral.ministryAdmin?.email || `${referral.ministryAdmin?.firstName || ''} ${referral.ministryAdmin?.lastName || ''}`.trim() || '-'}</TableCell>
-                  <TableCell>{referral.church?.name || '-'}</TableCell>
                   <TableCell className="capitalize">{referral.status || 'registered'}</TableCell>
-                  <TableCell>{new Date(referral.createdAt).toLocaleDateString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

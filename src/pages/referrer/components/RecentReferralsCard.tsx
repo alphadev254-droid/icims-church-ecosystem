@@ -21,15 +21,14 @@ export function RecentReferralsCard({ referrals }: { referrals: any[] }) {
       />
       <CardContent>
         <Table>
-          <TableHeader><TableRow><TableHead>Ministry</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Ministry</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
           <TableBody>
             {recentReferrals.length === 0 ? (
-              <TableRow><TableCell colSpan={3} className="py-8 text-center text-muted-foreground">No ministries yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={2} className="py-8 text-center text-muted-foreground">No ministries yet.</TableCell></TableRow>
             ) : recentReferrals.map((referral: any) => (
               <TableRow key={referral.id}>
-                <TableCell>{referral.ministryAdmin?.ministryName || referral.church?.name || referral.ministryAdmin?.email || 'Ministry'}</TableCell>
+                <TableCell>{referral.ministryAdmin?.ministryName || referral.church?.name || 'Ministry'}</TableCell>
                 <TableCell className="capitalize">{referral.status || 'registered'}</TableCell>
-                <TableCell>{new Date(referral.createdAt).toLocaleDateString()}</TableCell>
               </TableRow>
             ))}
           </TableBody>
