@@ -18,7 +18,9 @@ export default function ReferrerPayoutSettingsPage() {
   const [otpCode, setOtpCode] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
   const [otpResendSeconds, setOtpResendSeconds] = useState(0);
+  const [isUnlockingEdit, setIsUnlockingEdit] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [editToken, setEditToken] = useState('');
 
   const { data: payoutOptions, isLoading: optionsLoading } = useQuery({
     queryKey: ['referrer-payout-options'],
@@ -47,7 +49,7 @@ export default function ReferrerPayoutSettingsPage() {
 
   const requestOtp = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.post('/referrals/payout-setup/otp', { payoutPhone: payoutPhone.trim(), payoutProvider });
+      const response = await apiClient.post('/referrals/payout-setup/otp');
       return response.data;
     },
     onSuccess: (response: any) => {
@@ -63,9 +65,26 @@ export default function ReferrerPayoutSettingsPage() {
     },
   });
 
+  const verifyOtp = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post('/referrals/payout-setup/otp/verify', { otp: otpCode });
+      return response.data.data;
+    },
+    onSuccess: (session: any) => {
+      setEditToken(session.editToken);
+      setIsEditing(true);
+      setIsUnlockingEdit(false);
+      setOtpRequested(false);
+      setOtpCode('');
+      setOtpResendSeconds(0);
+      toast.success('Payout settings unlocked');
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to verify OTP'),
+  });
+
   const savePayout = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.put('/referrals/payout-setup', { payoutPhone: payoutPhone.trim(), payoutProvider, otp: otpCode });
+      const response = await apiClient.put('/referrals/payout-setup', { payoutPhone: payoutPhone.trim(), payoutProvider, editToken });
       return response.data.data;
     },
     onSuccess: () => {
@@ -74,6 +93,8 @@ export default function ReferrerPayoutSettingsPage() {
       setOtpRequested(false);
       setOtpCode('');
       setOtpResendSeconds(0);
+      setIsUnlockingEdit(false);
+      setEditToken('');
       queryClient.invalidateQueries({ queryKey: ['referrer-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['referrer-payout-options'] });
     },
@@ -87,7 +108,7 @@ export default function ReferrerPayoutSettingsPage() {
   const verified = isReferrerVerified(data?.referrer);
   const trimmedPayoutPhone = payoutPhone.trim();
   const isPayoutPhoneValid = /^\+?\d{7,16}$/.test(trimmedPayoutPhone);
-  const canRequestOtp = isEditing && verified && isPayoutPhoneValid && Boolean(payoutProvider) && !requestOtp.isPending && otpResendSeconds === 0;
+  const canRequestOtp = isUnlockingEdit && verified && !requestOtp.isPending && otpResendSeconds === 0;
   const requestOtpLabel = requestOtp.isPending
     ? 'Sending OTP...'
     : otpResendSeconds > 0
@@ -101,7 +122,9 @@ export default function ReferrerPayoutSettingsPage() {
     setOtpRequested(false);
     setOtpCode('');
     setOtpResendSeconds(0);
+    setIsUnlockingEdit(false);
     setIsEditing(false);
+    setEditToken('');
   };
 
   return (
@@ -114,8 +137,8 @@ export default function ReferrerPayoutSettingsPage() {
         <CardTitleRow
           title="Mobile payout details"
           description="Providers are loaded from the active market for your registration country."
-          action={verified && isSupported && !isEditing ? (
-            <Button type="button" onClick={() => setIsEditing(true)} className="w-full sm:w-auto">Edit</Button>
+          action={verified && isSupported && !isEditing && !isUnlockingEdit ? (
+            <Button type="button" onClick={() => setIsUnlockingEdit(true)} className="w-full sm:w-auto">Edit</Button>
           ) : null}
         />
         <CardContent className="space-y-4">
@@ -131,12 +154,7 @@ export default function ReferrerPayoutSettingsPage() {
                 <Label htmlFor="payoutProvider">Payout provider</Label>
                 <Select
                   value={payoutProvider}
-                  onValueChange={(value) => {
-                    setPayoutProvider(value);
-                    setOtpRequested(false);
-                    setOtpCode('');
-                    setOtpResendSeconds(0);
-                  }}
+                  onValueChange={setPayoutProvider}
                   disabled={!verified || !isEditing}
                 >
                   <SelectTrigger id="payoutProvider"><SelectValue placeholder="Select provider" /></SelectTrigger>
@@ -152,12 +170,7 @@ export default function ReferrerPayoutSettingsPage() {
                 <Input
                   id="payoutPhone"
                   value={payoutPhone}
-                  onChange={(event) => {
-                    setPayoutPhone(phoneInputValue(event.target.value));
-                    setOtpRequested(false);
-                    setOtpCode('');
-                    setOtpResendSeconds(0);
-                  }}
+                  onChange={(event) => setPayoutPhone(phoneInputValue(event.target.value))}
                   {...phoneInputProps}
                   placeholder="Enter payout phone number"
                   disabled={!verified || !isEditing}
@@ -166,12 +179,22 @@ export default function ReferrerPayoutSettingsPage() {
                   <p className="text-xs text-destructive">Enter a valid phone number using digits and an optional leading +.</p>
                 )}
               </div>
-              {isEditing && otpRequested && (
+              {isUnlockingEdit && (
                 <div className="grid gap-2 rounded-md border bg-muted/40 p-4">
                   <div>
                     <Label htmlFor="payoutOtp">Email OTP</Label>
-                    <p className="text-xs text-muted-foreground">Enter the 6-digit OTP sent to your email to save these payout settings.</p>
+                    <p className="text-xs text-muted-foreground">Request and enter the 6-digit OTP sent to your email to unlock editing.</p>
                   </div>
+                  <ActionGroup>
+                    <Button onClick={() => requestOtp.mutate()} disabled={!canRequestOtp} className="w-full sm:w-auto">
+                      {requestOtpLabel}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={resetEditState} disabled={requestOtp.isPending || verifyOtp.isPending} className="w-full sm:w-auto">
+                      Cancel
+                    </Button>
+                  </ActionGroup>
+                  {otpRequested && (
+                    <>
                   <Input
                     id="payoutOtp"
                     inputMode="numeric"
@@ -180,17 +203,23 @@ export default function ReferrerPayoutSettingsPage() {
                     onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="Enter 6-digit OTP"
                   />
+                  <Button
+                    type="button"
+                    onClick={() => verifyOtp.mutate()}
+                    disabled={verifyOtp.isPending || otpCode.length !== 6}
+                    className="w-full sm:w-auto"
+                  >
+                    {verifyOtp.isPending ? 'Verifying...' : 'Verify and unlock'}
+                  </Button>
+                    </>
+                  )}
                 </div>
               )}
               {isEditing && (
                 <ActionGroup>
-                  <Button onClick={() => requestOtp.mutate()} disabled={!canRequestOtp} className="w-full sm:w-auto">
-                    {requestOtpLabel}
-                  </Button>
                   <Button
-                    variant="outline"
                     onClick={() => savePayout.mutate()}
-                    disabled={!verified || savePayout.isPending || !otpRequested || otpCode.length !== 6 || !isPayoutPhoneValid || !payoutProvider}
+                    disabled={!verified || savePayout.isPending || !editToken || !isPayoutPhoneValid || !payoutProvider}
                     className="w-full sm:w-auto"
                   >
                     {savePayout.isPending ? 'Saving...' : 'Save payout settings'}
