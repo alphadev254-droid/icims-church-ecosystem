@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { locationsService } from '@/services/locations';
+import { Input } from '@/components/ui/input';
 
 export type LocationValue = {
   region?: string;
@@ -26,6 +27,80 @@ interface LocationSelectProps {
     traditionalAuthority?: string;
     village?: string;
   };
+}
+
+interface LocationFieldProps {
+  label: string;
+  value: string;
+  options: string[];
+  required?: boolean;
+  optionalText?: string;
+  error?: string;
+  loading?: boolean;
+  disabled?: boolean;
+  placeholder: string;
+  manualPlaceholder: string;
+  emptyPlaceholder?: string;
+  onChange: (value: string) => void;
+}
+
+function cleanOptions(options: string[]) {
+  return Array.from(new Set(options.map(option => option.trim()).filter(Boolean)));
+}
+
+function mergeSelectedOption(options: string[], selected?: string) {
+  return cleanOptions(selected ? [...options, selected] : options);
+}
+
+function LocationField({
+  label,
+  value,
+  options,
+  required,
+  optionalText = 'optional',
+  error,
+  loading,
+  disabled,
+  placeholder,
+  manualPlaceholder,
+  emptyPlaceholder,
+  onChange,
+}: LocationFieldProps) {
+  const availableOptions = cleanOptions(options);
+  const canSelect = availableOptions.length > 0 || loading;
+  const isDisabled = Boolean(disabled || loading);
+
+  return (
+    <div className="space-y-1">
+      <Label>
+        {label}{required
+          ? <span className="text-destructive">*</span>
+          : <span className="text-muted-foreground text-xs"> ({optionalText})</span>}
+      </Label>
+
+      {canSelect ? (
+        <Select value={value} onValueChange={onChange} disabled={isDisabled}>
+          <SelectTrigger className={error ? 'border-destructive' : ''}>
+            <SelectValue placeholder={loading ? 'Loading...' : placeholder} />
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          </SelectTrigger>
+          <SelectContent>
+            {availableOptions.map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      ) : (
+        <Input
+          value={value}
+          disabled={disabled}
+          className={error ? 'border-destructive' : ''}
+          placeholder={emptyPlaceholder || manualPlaceholder}
+          onChange={event => onChange(event.target.value)}
+        />
+      )}
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
 }
 
 export function LocationSelect({
@@ -61,7 +136,7 @@ export function LocationSelect({
   useEffect(() => {
     setLoading(prev => ({ ...prev, regions: true }));
     locationsService.getRegions()
-      .then(setRegions)
+      .then(data => setRegions(mergeSelectedOption(data, selectedRegion)))
       .catch(() => {})
       .finally(() => setLoading(prev => ({ ...prev, regions: false })));
   }, []);
@@ -70,7 +145,7 @@ export function LocationSelect({
     if (!selectedRegion) { setDistricts([]); return; }
     setLoading(prev => ({ ...prev, districts: true }));
     locationsService.getDistricts(selectedRegion)
-      .then(setDistricts)
+      .then(data => setDistricts(mergeSelectedOption(data, selectedDistrict)))
       .catch(() => {})
       .finally(() => setLoading(prev => ({ ...prev, districts: false })));
   }, [selectedRegion]);
@@ -79,7 +154,7 @@ export function LocationSelect({
     if (!selectedRegion || !selectedDistrict) { setTraditionalAuthorities([]); return; }
     setLoading(prev => ({ ...prev, tas: true }));
     locationsService.getTraditionalAuthorities(selectedRegion, selectedDistrict)
-      .then(setTraditionalAuthorities)
+      .then(data => setTraditionalAuthorities(mergeSelectedOption(data, selectedTA)))
       .catch(() => {})
       .finally(() => setLoading(prev => ({ ...prev, tas: false })));
   }, [selectedRegion, selectedDistrict]);
@@ -88,7 +163,7 @@ export function LocationSelect({
     if (!selectedRegion || !selectedDistrict || !selectedTA) { setVillages([]); return; }
     setLoading(prev => ({ ...prev, villages: true }));
     locationsService.getVillages(selectedRegion, selectedDistrict, selectedTA)
-      .then(setVillages)
+      .then(data => setVillages(mergeSelectedOption(data, selectedVillage)))
       .catch(() => {})
       .finally(() => setLoading(prev => ({ ...prev, villages: false })));
   }, [selectedRegion, selectedDistrict, selectedTA]);
@@ -127,74 +202,59 @@ export function LocationSelect({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>
-            Region/Province/County{required.region
-              ? <span className="text-destructive">*</span>
-              : <span className="text-muted-foreground text-xs"> (optional)</span>}
-          </Label>
-          <Select value={selectedRegion} onValueChange={handleRegionChange}>
-            <SelectTrigger className={errors.region ? 'border-destructive' : ''}>
-              <SelectValue placeholder={loading.regions ? 'Loading...' : 'Select region/province/county'} />
-              {loading.regions && <Loader2 className="h-4 w-4 animate-spin" />}
-            </SelectTrigger>
-            <SelectContent>
-              {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {errors.region && <p className="text-xs text-destructive">{errors.region}</p>}
-        </div>
+        <LocationField
+          label="Region/Province/County"
+          value={selectedRegion}
+          options={regions}
+          required={required.region}
+          error={errors.region}
+          loading={loading.regions}
+          placeholder="Select region/province/county"
+          manualPlaceholder="Type region/province/county"
+          onChange={handleRegionChange}
+        />
 
-        <div className="space-y-1">
-          <Label>
-            District/Constituency{required.district
-              ? <span className="text-destructive">*</span>
-              : <span className="text-muted-foreground text-xs"> (optional)</span>}
-          </Label>
-          <Select value={selectedDistrict} onValueChange={handleDistrictChange} disabled={!selectedRegion}>
-            <SelectTrigger className={errors.district ? 'border-destructive' : ''}>
-              <SelectValue placeholder={loading.districts ? 'Loading...' : 'Select district/constituency'} />
-              {loading.districts && <Loader2 className="h-4 w-4 animate-spin" />}
-            </SelectTrigger>
-            <SelectContent>
-              {districts.filter(d => d !== '').map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {errors.district && <p className="text-xs text-destructive">{errors.district}</p>}
-        </div>
+        <LocationField
+          label="District/Constituency"
+          value={selectedDistrict}
+          options={districts}
+          required={required.district}
+          error={errors.district}
+          loading={loading.districts}
+          disabled={!selectedRegion}
+          placeholder="Select district/constituency"
+          manualPlaceholder="Type district/constituency"
+          onChange={handleDistrictChange}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>
-            Ward/Traditional Authority{required.traditionalAuthority
-              ? <span className="text-destructive">*</span>
-              : <span className="text-muted-foreground text-xs"> (optional)</span>}
-          </Label>
-          <Select value={selectedTA} onValueChange={handleTAChange} disabled={!selectedDistrict}>
-            <SelectTrigger className={errors.traditionalAuthority ? 'border-destructive' : ''}>
-              <SelectValue placeholder={loading.tas ? 'Loading...' : 'Select ward/traditional authority'} />
-              {loading.tas && <Loader2 className="h-4 w-4 animate-spin" />}
-            </SelectTrigger>
-            <SelectContent>
-              {traditionalAuthorities.filter(ta => ta !== '').map(ta => <SelectItem key={ta} value={ta}>{ta}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {errors.traditionalAuthority && <p className="text-xs text-destructive">{errors.traditionalAuthority}</p>}
-        </div>
+        <LocationField
+          label="Ward/Traditional Authority"
+          value={selectedTA}
+          options={traditionalAuthorities}
+          required={required.traditionalAuthority}
+          error={errors.traditionalAuthority}
+          loading={loading.tas}
+          disabled={!selectedDistrict}
+          placeholder="Select ward/traditional authority"
+          manualPlaceholder="Type ward/traditional authority"
+          onChange={handleTAChange}
+        />
 
-        <div className="space-y-1">
-          <Label>Village <span className="text-muted-foreground text-xs">(optional)</span></Label>
-          <Select value={selectedVillage} onValueChange={setSelectedVillage} disabled={!selectedTA || villages.filter(v => v !== '').length === 0}>
-            <SelectTrigger>
-              <SelectValue placeholder={loading.villages ? 'Loading...' : villages.filter(v => v !== '').length === 0 ? 'No villages available' : 'Select village'} />
-              {loading.villages && <Loader2 className="h-4 w-4 animate-spin" />}
-            </SelectTrigger>
-            <SelectContent>
-              {villages.filter(v => v !== '').map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+        <LocationField
+          label="Village"
+          value={selectedVillage}
+          options={villages}
+          required={required.village}
+          error={errors.village}
+          loading={loading.villages}
+          disabled={!selectedTA}
+          placeholder="Select village"
+          manualPlaceholder="Type village"
+          emptyPlaceholder="Type village (optional)"
+          onChange={setSelectedVillage}
+        />
       </div>
     </div>
   );
