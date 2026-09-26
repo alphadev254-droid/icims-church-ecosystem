@@ -95,6 +95,7 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
 
   if (currentUser?.roleName === 'referrer') {
     return [
+      { to: '/dashboard/referrals/profile', label: 'Profile', icon: UserCog },
       { to: '/dashboard/referrals', label: 'Dashboard', icon: Home },
       { to: '/dashboard/referrals/my-referrals', label: 'Partnered Ministries', icon: Users },
       { to: '/dashboard/referrals/wallet', label: 'Wallet', icon: Wallet },
@@ -163,6 +164,7 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
 
   if (currentUser?.roleName === 'referrer') {
     return [
+      '/dashboard/referrals/profile',
       '/dashboard/referrals',
       '/dashboard/referrals/my-referrals',
       '/dashboard/referrals/wallet',

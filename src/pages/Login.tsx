@@ -63,7 +63,7 @@ export default function LoginPage() {
       await fetchMe();
       const user = useAuthStore.getState().user;
       toast.success('Email verified. Welcome to ICIMS.');
-      navigate(user?.roleName === 'referrer' ? '/dashboard/referrals' : '/dashboard');
+      navigate(user?.roleName === 'referrer' ? '/dashboard/referrals/profile' : '/dashboard');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Verification failed');
     } finally {

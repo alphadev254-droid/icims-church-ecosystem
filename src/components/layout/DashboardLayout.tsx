@@ -36,6 +36,7 @@ export default function DashboardLayout() {
   };
 
   const pageTitles: Record<string, string> = {
+    '/dashboard/referrals/profile': 'Marketer Profile',
     '/dashboard/referrals': 'Marketer Dashboard',
     '/dashboard/referrals/my-referrals': 'Partnered Ministries',
     '/dashboard/referrals/wallet': 'Wallet',

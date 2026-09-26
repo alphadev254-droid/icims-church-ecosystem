@@ -31,6 +31,7 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ReferrerDashboard = lazy(() => import("./pages/ReferrerDashboard"));
+const ReferrerProfilePage = lazy(() => import("./pages/referrer/ReferrerProfilePage"));
 const ReferrerReferralsPage = lazy(() => import("./pages/referrer/ReferrerReferralsPage"));
 const ReferrerWalletPage = lazy(() => import("./pages/referrer/ReferrerWalletPage"));
 const ReferrerPayoutSettingsPage = lazy(() => import("./pages/referrer/ReferrerPayoutSettingsPage"));
@@ -153,6 +154,7 @@ const App = () => {
               <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
                 <Route path="referrals" element={<ReferrerDashboard />} />
+                <Route path="referrals/profile" element={<ReferrerProfilePage />} />
                 <Route path="referrals/my-referrals" element={<ReferrerReferralsPage />} />
                 <Route path="referrals/wallet" element={<ReferrerWalletPage />} />
                 <Route path="referrals/payout-settings" element={<ReferrerPayoutSettingsPage />} />

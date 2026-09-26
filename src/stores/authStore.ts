@@ -127,7 +127,7 @@ function applyPermissions(permissions: string[], user: AuthUser) {
 
 function getDefaultRedirect(user: AuthUser, navItems: NavItem[], allowedRoutes: string[]) {
   if (user.roleName === 'system_admin') return '/admin';
-  if (user.roleName === 'referrer') return '/dashboard/referrals';
+  if (user.roleName === 'referrer') return '/dashboard/referrals/profile';
   return navItems[0]?.to ?? allowedRoutes[0] ?? '/dashboard';
 }
 

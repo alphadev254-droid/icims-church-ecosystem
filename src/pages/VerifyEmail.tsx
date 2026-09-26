@@ -33,7 +33,7 @@ export default function VerifyEmail() {
       await fetchMe();
       toast.success('Email verified. Welcome to ICIMS.');
       const user = useAuthStore.getState().user;
-      navigate(user?.roleName === 'referrer' ? '/dashboard/referrals' : '/dashboard');
+      navigate(user?.roleName === 'referrer' ? '/dashboard/referrals/profile' : '/dashboard');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Verification failed');
     } finally {

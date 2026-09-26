@@ -167,6 +167,14 @@ export interface AdminMarketer {
   approvedAt?: string | null;
   approvedById?: string | null;
   rejectionReason?: string | null;
+  agreementTemplateUrl?: string | null;
+  signedAgreementUrl?: string | null;
+  signedAgreementFileName?: string | null;
+  agreementStatus?: 'not_submitted' | 'pending_review' | 'approved' | 'rejected' | string;
+  agreementSubmittedAt?: string | null;
+  agreementReviewedAt?: string | null;
+  agreementReviewedById?: string | null;
+  agreementRejectionReason?: string | null;
   createdAt: string;
   updatedAt: string;
   user?: {
@@ -740,6 +748,9 @@ export const adminApi = {
 
   updateMarketerStatus: (id: string, data: { status: string; reason?: string }) =>
     apiClient.patch<{ success: boolean; data: AdminMarketer }>(`/referrals/admin/referrers/${id}/status`, data),
+
+  reviewMarketerAgreement: (id: string, data: { status: 'approved' | 'rejected'; reason?: string }) =>
+    apiClient.patch<{ success: boolean; data: AdminMarketer }>(`/referrals/admin/referrers/${id}/agreement`, data),
 
   previewMarketerWithdrawal: (id: string, amount: number) =>
     apiClient.post<{ success: boolean; data: AdminMarketerPayoutPreview }>(`/referrals/admin/referrers/${id}/withdrawals/preview`, { amount }),

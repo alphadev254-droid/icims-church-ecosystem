@@ -1,3 +1,3 @@
 export function isReferrerVerified(referrer: any) {
-  return referrer?.status === 'approved';
+  return referrer?.status === 'approved' && referrer?.agreementStatus === 'approved';
 }

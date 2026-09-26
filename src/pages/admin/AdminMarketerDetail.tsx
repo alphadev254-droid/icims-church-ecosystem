@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Banknote, Edit2, ExternalLink, Handshake, Mail, Users, Wallet } from 'lucide-react';
+import { ArrowLeft, Banknote, CheckCircle2, Edit2, ExternalLink, FileText, Handshake, Users, Wallet, XCircle } from 'lucide-react';
 import { adminApi, type AdminMarketerPayoutPreview } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,10 @@ export default function AdminMarketerDetail() {
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutPreview, setPayoutPreview] = useState<AdminMarketerPayoutPreview | null>(null);
   const [payoutPreviewError, setPayoutPreviewError] = useState('');
+  const [agreementOpen, setAgreementOpen] = useState(false);
+  const [agreementStatus, setAgreementStatus] = useState<'approved' | 'rejected'>('approved');
+  const [agreementReason, setAgreementReason] = useState('');
+  const staticBase = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/['"]|\/$|^\/api$/g, '');
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-marketer', id],
@@ -59,6 +63,20 @@ export default function AdminMarketerDetail() {
       queryClient.invalidateQueries({ queryKey: ['admin-marketers'] });
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to update marketer'),
+  });
+
+  const agreementMutation = useMutation({
+    mutationFn: () => adminApi.reviewMarketerAgreement(id!, {
+      status: agreementStatus,
+      reason: agreementReason.trim() || undefined,
+    }),
+    onSuccess: () => {
+      toast.success(agreementStatus === 'approved' ? 'Agreement approved' : 'Agreement rejected');
+      setAgreementOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['admin-marketer', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin-marketers'] });
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to review agreement'),
   });
 
   const reconcileMutation = useMutation({
@@ -124,6 +142,14 @@ export default function AdminMarketerDetail() {
     setReason('');
     setStatusOpen(true);
   };
+  const openAgreementReview = (nextStatus: 'approved' | 'rejected') => {
+    setAgreementStatus(nextStatus);
+    setAgreementReason('');
+    setAgreementOpen(true);
+  };
+  const agreementUrl = data.signedAgreementUrl
+    ? (data.signedAgreementUrl.startsWith('http') ? data.signedAgreementUrl : `${staticBase}${data.signedAgreementUrl}`)
+    : '';
   const openPayout = () => {
     setPayoutAmount(Number(data.balance || 0).toFixed(2));
     setPayoutPreview(null);
@@ -203,6 +229,39 @@ export default function AdminMarketerDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Signed Agreement</CardTitle>
+          <CardDescription>Review the marketer agreement before account activation.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 text-sm md:grid-cols-2">
+            <InfoRow label="Agreement Status" value={String(data.agreementStatus || 'not_submitted').replace(/_/g, ' ')} />
+            <InfoRow label="Submitted" value={data.agreementSubmittedAt ? new Date(data.agreementSubmittedAt).toLocaleString() : null} />
+            <InfoRow label="Reviewed" value={data.agreementReviewedAt ? new Date(data.agreementReviewedAt).toLocaleString() : null} />
+            <InfoRow label="File" value={data.signedAgreementFileName || null} />
+          </div>
+          {data.agreementRejectionReason && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              {data.agreementRejectionReason}
+            </div>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button asChild variant="outline" size="sm" disabled={!agreementUrl}>
+              <a href={agreementUrl || undefined} target="_blank" rel="noreferrer">
+                <FileText className="mr-2 h-4 w-4" /> View Signed Agreement
+              </a>
+            </Button>
+            <Button size="sm" disabled={!data.signedAgreementUrl || data.agreementStatus === 'approved'} onClick={() => openAgreementReview('approved')}>
+              <CheckCircle2 className="mr-2 h-4 w-4" /> Approve Agreement
+            </Button>
+            <Button size="sm" variant="destructive" disabled={!data.signedAgreementUrl} onClick={() => openAgreementReview('rejected')}>
+              <XCircle className="mr-2 h-4 w-4" /> Reject Agreement
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -326,6 +385,41 @@ export default function AdminMarketerDetail() {
         onReasonChange={setReason}
         onSave={() => statusMutation.mutate()}
       />
+
+      <Dialog open={agreementOpen} onOpenChange={setAgreementOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{agreementStatus === 'approved' ? 'Approve Agreement' : 'Reject Agreement'}</DialogTitle>
+            <DialogDescription>
+              {agreementStatus === 'approved'
+                ? 'Approving locks the marketer profile and signed agreement.'
+                : 'Rejecting reopens upload on the marketer side. Add a clear reason.'}
+            </DialogDescription>
+          </DialogHeader>
+          {agreementStatus === 'rejected' && (
+            <div className="space-y-2">
+              <Label htmlFor="agreementReason">Reason</Label>
+              <Input
+                id="agreementReason"
+                value={agreementReason}
+                onChange={event => setAgreementReason(event.target.value)}
+                placeholder="Explain what needs to be fixed"
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAgreementOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant={agreementStatus === 'rejected' ? 'destructive' : 'default'}
+              disabled={agreementMutation.isPending || (agreementStatus === 'rejected' && !agreementReason.trim())}
+              onClick={() => agreementMutation.mutate()}
+            >
+              {agreementMutation.isPending ? 'Saving...' : agreementStatus === 'approved' ? 'Approve' : 'Reject'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={payoutOpen} onOpenChange={setPayoutOpen}>
         <DialogContent className="sm:max-w-lg">
