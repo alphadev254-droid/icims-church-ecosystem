@@ -84,6 +84,7 @@ export default function ReferrerProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState('');
   const [agreementFile, setAgreementFile] = useState<File | null>(null);
   const [agreementPreviewUrl, setAgreementPreviewUrl] = useState('');
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['referrer-profile'],
@@ -185,6 +186,33 @@ export default function ReferrerProfilePage() {
     uploadAgreementMutation.mutate(agreementFile);
   };
 
+  const downloadAgreementTemplate = async () => {
+    const url = fileUrl(data?.referrer.agreementTemplateUrl);
+    if (!url) {
+      toast.error('Agreement template is not available');
+      return;
+    }
+
+    setDownloadingTemplate(true);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = 'Midas_Marketer_Referral_Agreement.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error('Could not download agreement document');
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+
   if (isLoading) return <LoadingState label="Loading marketer profile..." />;
   if (!data) return <p className="text-sm text-muted-foreground">Marketer profile not found.</p>;
 
@@ -251,10 +279,8 @@ export default function ReferrerProfilePage() {
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button asChild variant="outline">
-                <a href={fileUrl(data.referrer.agreementTemplateUrl)} download="Midas_Marketer_Referral_Agreement.pdf">
-                  <Download className="mr-2 h-4 w-4" /> Download blank agreement
-                </a>
+              <Button type="button" variant="outline" disabled={downloadingTemplate} onClick={downloadAgreementTemplate}>
+                <Download className="mr-2 h-4 w-4" /> {downloadingTemplate ? 'Downloading...' : 'Download blank agreement'}
               </Button>
               {agreementPreviewUrl && (
                 <Button asChild variant="outline">
