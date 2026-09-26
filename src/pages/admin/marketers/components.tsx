@@ -31,6 +31,21 @@ export function payoutStatusBadge(status?: string | null) {
   return <Badge variant="outline" className="text-xs capitalize">{status || 'Pending'}</Badge>;
 }
 
+export function agreementStatusLabel(status?: string | null) {
+  if (status === 'approved') return 'Approved';
+  if (status === 'pending_review') return 'Pending Review';
+  if (status === 'rejected') return 'Rejected';
+  if (status === 'not_submitted') return 'Not Submitted';
+  return status?.replace(/_/g, ' ') || 'Not Submitted';
+}
+
+export function agreementStatusBadge(status?: string | null) {
+  if (status === 'approved') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Approved</Badge>;
+  if (status === 'pending_review') return <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Pending Review</Badge>;
+  if (status === 'rejected') return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Rejected</Badge>;
+  return <Badge variant="outline" className="text-xs">Not Submitted</Badge>;
+}
+
 export function money(currency?: string | null, value?: number | string | null) {
   const amount = Number(value || 0);
   return `${String(currency || '').toUpperCase() || '—'} ${amount.toLocaleString(undefined, {

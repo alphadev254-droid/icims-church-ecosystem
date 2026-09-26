@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { marketerName, marketerStatusBadge, payoutStatusBadge, StatusDialog } from './marketers/components';
+import { agreementStatusBadge, marketerName, marketerStatusBadge, payoutStatusBadge, StatusDialog } from './marketers/components';
 
 function SummaryCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: typeof Users }) {
   return (
@@ -127,6 +127,7 @@ export default function AdminMarketers() {
                   <TableHead>Code</TableHead>
                   <TableHead>Country / Market</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Document</TableHead>
                   <TableHead>Payout</TableHead>
                   <TableHead className="text-right">Ministries</TableHead>
                   <TableHead>Joined</TableHead>
@@ -137,11 +138,11 @@ export default function AdminMarketers() {
                 {isLoading ? (
                   Array.from({ length: 6 }).map((_, index) => (
                     <TableRow key={index}>
-                      {Array.from({ length: 8 }).map((__, cell) => <TableCell key={cell}><div className="h-4 w-24 rounded bg-muted animate-pulse" /></TableCell>)}
+                      {Array.from({ length: 9 }).map((__, cell) => <TableCell key={cell}><div className="h-4 w-24 rounded bg-muted animate-pulse" /></TableCell>)}
                     </TableRow>
                   ))
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="py-10 text-center text-muted-foreground">No marketers found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="py-10 text-center text-muted-foreground">No marketers found.</TableCell></TableRow>
                 ) : filtered.map(marketer => (
                   <TableRow key={marketer.id}>
                     <TableCell>
@@ -154,6 +155,7 @@ export default function AdminMarketers() {
                       <div className="text-xs text-muted-foreground">{marketer.pricingMarket?.name || 'No market'} {marketer.pricingMarket?.currencyCode ? `· ${marketer.pricingMarket.currencyCode}` : ''}</div>
                     </TableCell>
                     <TableCell>{marketerStatusBadge(marketer.status)}</TableCell>
+                    <TableCell>{agreementStatusBadge(marketer.agreementStatus)}</TableCell>
                     <TableCell>{payoutStatusBadge(marketer.payoutSetupStatus)}</TableCell>
                     <TableCell className="text-right text-xs">{marketer._count?.referrals ?? 0}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{new Date(marketer.createdAt).toLocaleDateString()}</TableCell>

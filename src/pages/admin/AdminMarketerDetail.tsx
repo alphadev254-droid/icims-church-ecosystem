@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import {
   InfoRow,
+  agreementStatusBadge,
+  agreementStatusLabel,
   marketerName,
   marketerStatusBadge,
   marketerStatusLabel,
@@ -209,6 +211,10 @@ export default function AdminMarketerDetail() {
               {marketerStatusBadge(data.status)}
             </div>
             <InfoRow label="Status Text" value={marketerStatusLabel(data.status)} />
+            <div className="flex items-start gap-2 py-1.5 border-b">
+              <span className="text-xs text-muted-foreground w-32 shrink-0">Document Status</span>
+              {agreementStatusBadge(data.agreementStatus)}
+            </div>
             <InfoRow label="Joined" value={new Date(data.createdAt).toLocaleDateString()} />
           </CardContent>
         </Card>
@@ -237,7 +243,7 @@ export default function AdminMarketerDetail() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2 text-sm md:grid-cols-2">
-            <InfoRow label="Agreement Status" value={String(data.agreementStatus || 'not_submitted').replace(/_/g, ' ')} />
+            <InfoRow label="Agreement Status" value={agreementStatusLabel(data.agreementStatus)} />
             <InfoRow label="Submitted" value={data.agreementSubmittedAt ? new Date(data.agreementSubmittedAt).toLocaleString() : null} />
             <InfoRow label="Reviewed" value={data.agreementReviewedAt ? new Date(data.agreementReviewedAt).toLocaleString() : null} />
             <InfoRow label="File" value={data.signedAgreementFileName || null} />
