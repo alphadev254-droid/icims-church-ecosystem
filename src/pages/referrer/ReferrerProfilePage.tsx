@@ -222,7 +222,7 @@ export default function ReferrerProfilePage() {
 
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button asChild variant="outline">
-                <a href={fileUrl(data.referrer.agreementTemplateUrl)} target="_blank" rel="noreferrer">
+                <a href={fileUrl(data.referrer.agreementTemplateUrl)} download="Midas_Marketer_Referral_Agreement.pdf">
                   <Download className="mr-2 h-4 w-4" /> Download blank agreement
                 </a>
               </Button>
