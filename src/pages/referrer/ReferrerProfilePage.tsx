@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PageHeader, PageShell, LoadingState, CardTitleRow } from './shared';
+import { PageHeader, PageShell, LoadingState, CardTitleRow, ActionGroup } from './shared';
 
 const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/["']|\/$|^\/api$/g, '');
 const AGREEMENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg'];
@@ -51,26 +51,27 @@ function agreementStatusLabel(status?: string | null) {
 
 function AgreementNotice({ data }: { data: ReferrerProfileResponse }) {
   const status = data.referrer.agreementStatus || 'not_submitted';
+  const baseClasses = 'rounded-lg border p-3 text-xs leading-relaxed sm:p-4 sm:text-sm';
   if (status === 'approved') {
     return (
-      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-700 dark:text-emerald-300">
+      <div className={`${baseClasses} border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`}>
         <div className="flex items-center gap-2 font-medium"><CheckCircle2 className="h-4 w-4" /> Agreement approved</div>
         <p className="mt-1">Your marketer profile and signed agreement are locked. Contact support if anything needs correction.</p>
       </div>
     );
   }
   if (status === 'pending_review') {
-    return <div className="rounded-lg border bg-muted p-4 text-sm text-muted-foreground">Your signed agreement has been submitted. Please wait for admin verification before using marketer features.</div>;
+    return <div className={`${baseClasses} bg-muted text-muted-foreground`}>Your signed agreement has been submitted. Please wait for admin verification before using marketer features.</div>;
   }
   if (status === 'rejected') {
     return (
-      <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+      <div className={`${baseClasses} border-destructive/40 bg-destructive/10 text-destructive`}>
         <div className="flex items-center gap-2 font-medium"><XCircle className="h-4 w-4" /> Agreement rejected</div>
         <p className="mt-1">{data.referrer.agreementRejectionReason || 'Please download, sign, and upload the agreement again.'}</p>
       </div>
     );
   }
-  return <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300">Download the marketer agreement, sign it, then upload the signed PDF/PNG/JPG for verification.</div>;
+  return <div className={`${baseClasses} border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300`}>Download the marketer agreement, sign it, then upload the signed PDF/PNG/JPG for verification.</div>;
 }
 
 export default function ReferrerProfilePage() {
@@ -221,18 +222,18 @@ export default function ReferrerProfilePage() {
       <PageHeader title="Marketer Profile" description="Complete your profile and signed agreement verification." />
       <AgreementNotice data={data} />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.9fr)_minmax(320px,1.1fr)]">
         <Card>
           <CardTitleRow title="Profile details" description={profileLocked ? 'Locked after agreement approval.' : 'Update your name and profile image before approval.'} />
-          <CardContent>
+          <CardContent className="space-y-4 p-4 sm:p-6">
             <form onSubmit={submitProfile} className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="h-20 w-20 overflow-hidden rounded-full bg-muted flex items-center justify-center">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
                   {avatarUrl ? <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" /> : <Camera className="h-7 w-7 text-muted-foreground" />}
                 </div>
-                <div>
-                  <Button type="button" variant="outline" disabled={profileLocked} onClick={() => avatarInputRef.current?.click()}>Choose image</Button>
-                  <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, WebP, or GIF up to 5MB.</p>
+                <div className="min-w-0 space-y-1">
+                  <Button type="button" variant="outline" disabled={profileLocked} onClick={() => avatarInputRef.current?.click()} className="w-full sm:w-auto">Choose image</Button>
+                  <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">JPG, PNG, WebP, or GIF up to 5MB.</p>
                   <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleAvatar} />
                 </div>
               </div>
@@ -253,23 +254,25 @@ export default function ReferrerProfilePage() {
                 <Input value={data.user.email} disabled />
               </div>
 
-              <Button type="submit" disabled={profileLocked || !profileChanged || updateProfileMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                {updateProfileMutation.isPending ? 'Saving...' : 'Save profile'}
-              </Button>
+              <ActionGroup>
+                <Button type="submit" disabled={profileLocked || !profileChanged || updateProfileMutation.isPending} className="w-full bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto">
+                  {updateProfileMutation.isPending ? 'Saving...' : 'Save profile'}
+                </Button>
+              </ActionGroup>
             </form>
           </CardContent>
         </Card>
 
         <Card>
           <CardTitleRow title="Signed marketer agreement" description="Sign and upload your agreement for admin verification." />
-          <CardContent className="space-y-4">
-            <div className="rounded-lg border bg-muted/40 p-4 text-sm">
-              <div className="flex items-center justify-between gap-3">
+          <CardContent className="space-y-4 p-4 sm:p-6">
+            <div className="rounded-lg border bg-muted/40 p-3 text-xs leading-relaxed sm:p-4 sm:text-sm">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <span className="text-muted-foreground">Status</span>
                 <span className="font-medium">{agreementStatusLabel(data.referrer.agreementStatus)}</span>
               </div>
               {data.referrer.agreementSubmittedAt && (
-                <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                   <span className="text-muted-foreground">Submitted</span>
                   <span>{new Date(data.referrer.agreementSubmittedAt).toLocaleString()}</span>
                 </div>
@@ -278,33 +281,33 @@ export default function ReferrerProfilePage() {
               {agreementFile && <p className="mt-3 truncate font-medium text-foreground">Selected file: {agreementFile.name}</p>}
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button type="button" variant="outline" disabled={downloadingTemplate} onClick={downloadAgreementTemplate}>
+            <ActionGroup>
+              <Button type="button" variant="outline" disabled={downloadingTemplate} onClick={downloadAgreementTemplate} className="w-full sm:w-auto">
                 <Download className="mr-2 h-4 w-4" /> {downloadingTemplate ? 'Downloading...' : 'Download blank agreement'}
               </Button>
               {agreementPreviewUrl && (
                 <Button asChild variant="outline">
-                  <a href={agreementPreviewUrl} target="_blank" rel="noreferrer">
+                  <a href={agreementPreviewUrl} target="_blank" rel="noreferrer" className="w-full sm:w-auto">
                     <FileText className="mr-2 h-4 w-4" /> Preview selected file
                   </a>
                 </Button>
               )}
               {!agreementPreviewUrl && data.referrer.signedAgreementUrl && (
                 <Button asChild variant="outline">
-                  <a href={fileUrl(data.referrer.signedAgreementUrl)} target="_blank" rel="noreferrer">
+                  <a href={fileUrl(data.referrer.signedAgreementUrl)} target="_blank" rel="noreferrer" className="w-full sm:w-auto">
                     <FileText className="mr-2 h-4 w-4" /> View submitted agreement
                   </a>
                 </Button>
               )}
-              <Button type="button" variant="outline" disabled={!canUploadAgreement || uploadAgreementMutation.isPending} onClick={() => agreementInputRef.current?.click()}>
+              <Button type="button" variant="outline" disabled={!canUploadAgreement || uploadAgreementMutation.isPending} onClick={() => agreementInputRef.current?.click()} className="w-full sm:w-auto">
                 <Upload className="mr-2 h-4 w-4" /> Choose signed agreement
               </Button>
-              <Button type="button" disabled={!canUploadAgreement || !agreementFile || uploadAgreementMutation.isPending} onClick={submitAgreement} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              <Button type="button" disabled={!canUploadAgreement || !agreementFile || uploadAgreementMutation.isPending} onClick={submitAgreement} className="w-full bg-accent text-accent-foreground hover:bg-accent/90 sm:w-auto">
                 {uploadAgreementMutation.isPending ? 'Submitting...' : 'Submit for approval'}
               </Button>
-            </div>
+            </ActionGroup>
             <input ref={agreementInputRef} type="file" accept="application/pdf,image/png,image/jpeg" className="hidden" onChange={handleAgreement} />
-            {!canUploadAgreement && <p className="text-xs text-muted-foreground">Upload is locked while pending review or after approval. If rejected, upload will reopen.</p>}
+            {!canUploadAgreement && <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">Upload is locked while pending review or after approval. If rejected, upload will reopen.</p>}
           </CardContent>
         </Card>
       </div>
