@@ -82,6 +82,8 @@ export default function ReferrerProfilePage() {
   const [lastName, setLastName] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState('');
+  const [agreementFile, setAgreementFile] = useState<File | null>(null);
+  const [agreementPreviewUrl, setAgreementPreviewUrl] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['referrer-profile'],
@@ -94,11 +96,26 @@ export default function ReferrerProfilePage() {
     setLastName(data.user.lastName || '');
     setAvatarFile(null);
     setAvatarPreview('');
+    setAgreementFile(null);
+    setAgreementPreviewUrl('');
   }, [data]);
+
+  useEffect(() => () => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+  }, [avatarPreview]);
+
+  useEffect(() => () => {
+    if (agreementPreviewUrl) URL.revokeObjectURL(agreementPreviewUrl);
+  }, [agreementPreviewUrl]);
 
   const profileLocked = data?.referrer.agreementStatus === 'approved';
   const canUploadAgreement = ['not_submitted', 'rejected', undefined, null].includes(data?.referrer.agreementStatus as any);
   const avatarUrl = avatarPreview || fileUrl(data?.user.avatar);
+  const profileChanged = Boolean(data && (
+    firstName.trim() !== (data.user.firstName || '') ||
+    lastName.trim() !== (data.user.lastName || '') ||
+    avatarFile
+  ));
 
   const updateProfileMutation = useMutation({
     mutationFn: async () => {
@@ -126,6 +143,8 @@ export default function ReferrerProfilePage() {
     onSuccess: () => {
       toast.success('Signed agreement submitted for verification');
       if (agreementInputRef.current) agreementInputRef.current.value = '';
+      setAgreementFile(null);
+      setAgreementPreviewUrl('');
       queryClient.invalidateQueries({ queryKey: ['referrer-profile'] });
       queryClient.invalidateQueries({ queryKey: ['referrer-dashboard'] });
     },
@@ -146,7 +165,9 @@ export default function ReferrerProfilePage() {
     if (!file) return;
     if (!AGREEMENT_TYPES.includes(file.type)) { toast.error('Upload the signed agreement as PDF, PNG, or JPG'); return; }
     if (file.size > AGREEMENT_MAX_SIZE) { toast.error('Signed agreement must be 10MB or less'); return; }
-    uploadAgreementMutation.mutate(file);
+    if (agreementPreviewUrl) URL.revokeObjectURL(agreementPreviewUrl);
+    setAgreementFile(file);
+    setAgreementPreviewUrl(URL.createObjectURL(file));
   };
 
   const submitProfile = (event: FormEvent) => {
@@ -154,6 +175,14 @@ export default function ReferrerProfilePage() {
     if (profileLocked) return;
     if (!firstName.trim() || !lastName.trim()) { toast.error('First and last name are required'); return; }
     updateProfileMutation.mutate();
+  };
+
+  const submitAgreement = () => {
+    if (!agreementFile) {
+      toast.error('Choose a signed agreement first');
+      return;
+    }
+    uploadAgreementMutation.mutate(agreementFile);
   };
 
   if (isLoading) return <LoadingState label="Loading marketer profile..." />;
@@ -196,7 +225,7 @@ export default function ReferrerProfilePage() {
                 <Input value={data.user.email} disabled />
               </div>
 
-              <Button type="submit" disabled={profileLocked || updateProfileMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">
+              <Button type="submit" disabled={profileLocked || !profileChanged || updateProfileMutation.isPending} className="bg-accent text-accent-foreground hover:bg-accent/90">
                 {updateProfileMutation.isPending ? 'Saving...' : 'Save profile'}
               </Button>
             </form>
@@ -217,7 +246,8 @@ export default function ReferrerProfilePage() {
                   <span>{new Date(data.referrer.agreementSubmittedAt).toLocaleString()}</span>
                 </div>
               )}
-              {data.referrer.signedAgreementFileName && <p className="mt-3 truncate text-muted-foreground">Uploaded: {data.referrer.signedAgreementFileName}</p>}
+              {data.referrer.signedAgreementFileName && <p className="mt-3 truncate text-muted-foreground">Submitted file: {data.referrer.signedAgreementFileName}</p>}
+              {agreementFile && <p className="mt-3 truncate font-medium text-foreground">Selected file: {agreementFile.name}</p>}
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -226,15 +256,25 @@ export default function ReferrerProfilePage() {
                   <Download className="mr-2 h-4 w-4" /> Download blank agreement
                 </a>
               </Button>
-              {data.referrer.signedAgreementUrl && (
+              {agreementPreviewUrl && (
                 <Button asChild variant="outline">
-                  <a href={fileUrl(data.referrer.signedAgreementUrl)} target="_blank" rel="noreferrer">
-                    <FileText className="mr-2 h-4 w-4" /> View uploaded agreement
+                  <a href={agreementPreviewUrl} target="_blank" rel="noreferrer">
+                    <FileText className="mr-2 h-4 w-4" /> Preview selected file
                   </a>
                 </Button>
               )}
-              <Button type="button" disabled={!canUploadAgreement || uploadAgreementMutation.isPending} onClick={() => agreementInputRef.current?.click()} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                <Upload className="mr-2 h-4 w-4" /> {uploadAgreementMutation.isPending ? 'Uploading...' : 'Upload signed agreement'}
+              {!agreementPreviewUrl && data.referrer.signedAgreementUrl && (
+                <Button asChild variant="outline">
+                  <a href={fileUrl(data.referrer.signedAgreementUrl)} target="_blank" rel="noreferrer">
+                    <FileText className="mr-2 h-4 w-4" /> View submitted agreement
+                  </a>
+                </Button>
+              )}
+              <Button type="button" variant="outline" disabled={!canUploadAgreement || uploadAgreementMutation.isPending} onClick={() => agreementInputRef.current?.click()}>
+                <Upload className="mr-2 h-4 w-4" /> Choose signed agreement
+              </Button>
+              <Button type="button" disabled={!canUploadAgreement || !agreementFile || uploadAgreementMutation.isPending} onClick={submitAgreement} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                {uploadAgreementMutation.isPending ? 'Submitting...' : 'Submit for approval'}
               </Button>
             </div>
             <input ref={agreementInputRef} type="file" accept="application/pdf,image/png,image/jpeg" className="hidden" onChange={handleAgreement} />
