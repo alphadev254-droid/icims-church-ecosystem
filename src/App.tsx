@@ -20,6 +20,7 @@ const Pricing = lazy(() => import("./pages/Pricing"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Terms = lazy(() => import("./pages/Terms"));
+const MarketerTerms = lazy(() => import("./pages/MarketerTerms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
@@ -129,6 +130,7 @@ const App = () => {
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/terms" element={<Terms />} />
+                <Route path="/terms/marketers" element={<MarketerTerms />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/events/:id" element={<PublicEvent />} />
                 <Route path="/giving/:id" element={<PublicCampaign />} />

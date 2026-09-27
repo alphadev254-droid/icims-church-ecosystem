@@ -24,7 +24,7 @@ const schema = z.object({
   district: z.string().min(1, 'District is required'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
-  acceptedTerms: z.boolean().refine(Boolean, 'You must accept the Partner Terms'),
+  acceptedTerms: z.boolean().refine(Boolean, 'You must accept the Marketer Terms'),
 }).refine(values => values.password === values.confirmPassword, {
   path: ['confirmPassword'],
   message: 'Passwords do not match',
@@ -325,8 +325,8 @@ export default function ReferrerRegister() {
               <input type="checkbox" className="mt-1" {...register('acceptedTerms')} />
               <span>
                 I accept the ICIMS{' '}
-                <Link to="/terms" className="text-accent hover:underline" target="_blank" rel="noreferrer">
-                  Terms and Conditions
+                <Link to="/terms/marketers" className="text-accent hover:underline" target="_blank" rel="noreferrer">
+                  Marketer Terms and Conditions
                 </Link>
                 {' '}and understand approval is required before earning commission.
                 {errors.acceptedTerms && <p className="mt-1 text-xs text-destructive">{errors.acceptedTerms.message}</p>}
