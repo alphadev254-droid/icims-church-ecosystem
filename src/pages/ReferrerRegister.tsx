@@ -328,7 +328,6 @@ export default function ReferrerRegister() {
                 <Link to="/terms/marketers" className="text-accent hover:underline" target="_blank" rel="noreferrer">
                   Marketer Terms and Conditions
                 </Link>
-                {' '}and understand approval is required before earning commission.
                 {errors.acceptedTerms && <p className="mt-1 text-xs text-destructive">{errors.acceptedTerms.message}</p>}
               </span>
             </label>

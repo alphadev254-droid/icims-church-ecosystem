@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 const scheduleItems = [
   { label: 'Standard commission rate', value: '20% of eligible subscription fees actually received by ICIMS' },
   { label: 'Commission eligibility period', value: '4 running calendar months from the first paid subscription' },
-  { label: 'Minimum payout threshold', value: 'MWK 10,000, unless a market-specific threshold is configured' },
+  { label: 'Minimum payout threshold', value: 'Varies by country and market currency, based on the active threshold configured for your market' },
   { label: 'Payout review target', value: 'Within 3 business days after an eligible payout is submitted for review' },
   { label: 'Payment target after approval', value: 'Within 5 business days after approval, subject to provider confirmation' },
 ];
