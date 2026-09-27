@@ -332,8 +332,7 @@ export default function ReferrerRegister() {
               </span>
             </label>
 
-            <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-muted-foreground">Your account starts as pending until approved by ICIMS.</p>
+            <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-end">
               <Button type="submit" disabled={isSubmitting} className="h-11 bg-accent text-accent-foreground hover:bg-accent/90">
                 {isSubmitting ? 'Creating account...' : 'Create marketer account'}
               </Button>
