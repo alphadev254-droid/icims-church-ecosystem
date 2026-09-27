@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Search, X } from 'lucide-react';
+import { Check, MoreHorizontal, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { usersService, type AppUser } from '@/services/users';
 import { churchesService } from '@/services/churches';
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 function displayName(user: AppUser) {
   return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email;
@@ -115,12 +116,12 @@ export default function RegistrationRequests() {
                   <TableHead className="hidden md:table-cell">Phone</TableHead>
                   <TableHead className="hidden lg:table-cell">Church</TableHead>
                   <TableHead>Status</TableHead>
-                  {(canApprove || canReject) && <TableHead className="text-right">Actions</TableHead>}
+                  {(canApprove || canReject) && <TableHead className="w-20 text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {requests.map(user => (
-                  <TableRow key={user.id}>
+                  <TableRow key={user.id} className="h-9 text-xs sm:text-sm">
                     <TableCell className="font-medium">{displayName(user)}</TableCell>
                     <TableCell className="hidden text-muted-foreground sm:table-cell">{user.email}</TableCell>
                     <TableCell className="hidden text-muted-foreground md:table-cell">{user.phone ?? '-'}</TableCell>
@@ -128,17 +129,29 @@ export default function RegistrationRequests() {
                     <TableCell><Badge variant="secondary">Pending</Badge></TableCell>
                     {(canApprove || canReject) && (
                       <TableCell>
-                        <div className="flex justify-end gap-2">
-                          {canApprove && (
-                            <Button size="sm" className="h-8 gap-1.5" onClick={() => setDecision({ user, action: 'approve' })}>
-                              <Check className="h-3.5 w-3.5" /> Approve
-                            </Button>
-                          )}
-                          {canReject && (
-                            <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setDecision({ user, action: 'reject' })}>
-                              <X className="h-3.5 w-3.5" /> Reject
-                            </Button>
-                          )}
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-36">
+                              {canApprove && (
+                                <DropdownMenuItem onSelect={() => setDecision({ user, action: 'approve' })}>
+                                  <Check className="mr-2 h-4 w-4" />
+                                  Approve
+                                </DropdownMenuItem>
+                              )}
+                              {canReject && (
+                                <DropdownMenuItem onSelect={() => setDecision({ user, action: 'reject' })} className="text-destructive focus:text-destructive">
+                                  <X className="mr-2 h-4 w-4" />
+                                  Reject
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     )}
