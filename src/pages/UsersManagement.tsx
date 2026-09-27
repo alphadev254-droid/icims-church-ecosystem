@@ -1376,7 +1376,7 @@ export default function UsersManagement() {
         <Card>
           <CardContent className="flex items-center justify-between gap-3 p-4">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Not in Cells</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Members Not in Cells</p>
               <p className="font-heading text-2xl font-bold">{membersNotInCells}</p>
               <p className="text-xs text-muted-foreground">Adult members only</p>
             </div>
