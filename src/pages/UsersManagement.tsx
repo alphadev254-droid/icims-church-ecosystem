@@ -9,6 +9,7 @@ import { rolesService } from '@/services/roles';
 import { churchesService } from '@/services/churches';
 import { locationsService } from '@/services/locations';
 import { cellsService } from '@/services/cells';
+import { teamsService } from '@/services/teams';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature } from '@/hooks/usePackageFeatures';
 import { useAuthStore } from '@/stores/authStore';
@@ -874,6 +875,7 @@ export default function UsersManagement() {
   const [churchFilter, setChurchFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [cellFilter, setCellFilter] = useState<string>('all');
+  const [teamFilter, setTeamFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('active');
   const [minAge, setMinAge] = useState<number | undefined>();
   const [maxAge, setMaxAge] = useState<number | undefined>();
@@ -892,7 +894,7 @@ export default function UsersManagement() {
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', page, limit, debouncedSearch, churchFilter, roleFilter, cellFilter, statusFilter, minAge, maxAge],
+    queryKey: ['users', page, limit, debouncedSearch, churchFilter, roleFilter, cellFilter, teamFilter, statusFilter, minAge, maxAge],
     queryFn: () => usersService.getAll({ 
       page, 
       limit, 
@@ -900,6 +902,7 @@ export default function UsersManagement() {
       churchId: churchFilter !== 'all' ? churchFilter : undefined,
       roleId: roleFilter !== 'all' ? roleFilter : undefined,
       cellId: cellFilter !== 'all' ? cellFilter : undefined,
+      teamId: teamFilter !== 'all' ? teamFilter : undefined,
       status: statusFilter,
       minAge,
       maxAge,
@@ -922,6 +925,13 @@ export default function UsersManagement() {
   const { data: cellsForFilter = [] } = useQuery({
     queryKey: ['cells-simple-for-filter'],
     queryFn: () => cellsService.getSimple(),
+    enabled: hasUsers,
+    staleTime: 60_000,
+  });
+
+  const { data: teamsForFilter = [] } = useQuery({
+    queryKey: ['teams-for-users-filter', churchFilter],
+    queryFn: () => teamsService.getAll(churchFilter !== 'all' ? churchFilter : undefined),
     enabled: hasUsers,
     staleTime: 60_000,
   });
@@ -1018,8 +1028,9 @@ export default function UsersManagement() {
   const users = data?.data || [];
   const pagination = data?.pagination;
   const totalUsers = data?.summary?.total ?? pagination?.total ?? 0;
-  const maleUsers = data?.summary?.gender?.male ?? 0;
-  const femaleUsers = data?.summary?.gender?.female ?? 0;
+  const membersNotInCells = data?.summary?.membersNotInCells ?? 0;
+  const childrenTotal = data?.summary?.childrenTotal ?? 0;
+  const adultMembers = data?.summary?.adultMembers ?? 0;
 
   function handleCreate(v: CreateValues, districts: string[], tas: string[], regions: string[]) {
     console.log('=== CREATE USER SUBMISSION ===');
@@ -1365,11 +1376,11 @@ export default function UsersManagement() {
         <Card>
           <CardContent className="flex items-center justify-between gap-3 p-4">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total users</p>
-              <p className="font-heading text-2xl font-bold">{totalUsers}</p>
-              <p className="text-xs text-muted-foreground">Within current filters</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Not in Cells</p>
+              <p className="font-heading text-2xl font-bold">{membersNotInCells}</p>
+              <p className="text-xs text-muted-foreground">Adult members only</p>
             </div>
-            <div className="rounded-md bg-accent/10 p-3 text-accent">
+            <div className="rounded-md bg-amber-500/10 p-3 text-amber-600">
               <Users className="h-5 w-5" />
             </div>
           </CardContent>
@@ -1377,8 +1388,8 @@ export default function UsersManagement() {
         <Card>
           <CardContent className="flex items-center justify-between gap-3 p-4">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Male</p>
-              <p className="font-heading text-2xl font-bold">{maleUsers}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Children Total</p>
+              <p className="font-heading text-2xl font-bold">{childrenTotal}</p>
               <p className="text-xs text-muted-foreground">Within current filters</p>
             </div>
             <div className="rounded-md bg-blue-500/10 p-3 text-blue-500">
@@ -1389,11 +1400,11 @@ export default function UsersManagement() {
         <Card>
           <CardContent className="flex items-center justify-between gap-3 p-4">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Female</p>
-              <p className="font-heading text-2xl font-bold">{femaleUsers}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Adult Members</p>
+              <p className="font-heading text-2xl font-bold">{adultMembers}</p>
               <p className="text-xs text-muted-foreground">Within current filters</p>
             </div>
-            <div className="rounded-md bg-rose-500/10 p-3 text-rose-500">
+            <div className="rounded-md bg-accent/10 p-3 text-accent">
               <Users className="h-5 w-5" />
             </div>
           </CardContent>
@@ -1450,9 +1461,21 @@ export default function UsersManagement() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Cells</SelectItem>
-            <SelectItem value="none">No Cell</SelectItem>
+            <SelectItem value="none">Not in Cells</SelectItem>
             {(cellsForFilter as any[]).map((c: any) => (
               <SelectItem key={c.id} value={c.id}>{c.name}{c.zone ? ` (${c.zone})` : ''}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={teamFilter} onValueChange={(v) => { setTeamFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-44 h-8 text-xs sm:h-10 sm:text-sm">
+            <SelectValue placeholder="All Teams" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Teams</SelectItem>
+            <SelectItem value="none">Not in Teams</SelectItem>
+            {teamsForFilter.map((team: any) => (
+              <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>

@@ -29,6 +29,7 @@ export default function DashboardLayout() {
   const roleLabel = user?.roleName === 'referrer'
     ? 'Marketer'
     : user?.roleDisplayName || user?.roleName?.replace(/_/g, ' ');
+  const showApprovalNotice = user?.roleName === 'member' && user.membershipApprovalStatus && user.membershipApprovalStatus !== 'approved';
 
   const handleLogout = async () => {
     await logout();
@@ -65,21 +66,53 @@ export default function DashboardLayout() {
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navItems.map(item => (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={() => setSidebarOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-              isActive(item.to)
-                ? 'bg-sidebar-accent text-sidebar-primary'
-                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
-            }`}
-          >
-            <item.icon className="h-4 w-4 flex-shrink-0" />
-            {item.label}
-          </Link>
-        ))}
+        {navItems.map(item => {
+          const showUserSubnav = item.to === '/dashboard/users' && user?.permissions?.includes('registration_requests:read');
+          const usersSectionActive = location.pathname === '/dashboard/users' || location.pathname.startsWith('/dashboard/users/');
+
+          return (
+            <div key={item.to}>
+              <Link
+                to={item.to}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  isActive(item.to)
+                    ? 'bg-sidebar-accent text-sidebar-primary'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                }`}
+              >
+                <item.icon className="h-4 w-4 flex-shrink-0" />
+                {item.label}
+              </Link>
+              {showUserSubnav && usersSectionActive && (
+                <div className="ml-7 mt-1 space-y-1 border-l border-sidebar-border pl-2">
+                  <Link
+                    to="/dashboard/users"
+                    onClick={() => setSidebarOpen(false)}
+                    className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${
+                      location.pathname === '/dashboard/users'
+                        ? 'bg-sidebar-accent text-sidebar-primary'
+                        : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    }`}
+                  >
+                    All Users
+                  </Link>
+                  <Link
+                    to="/dashboard/users/registration-requests"
+                    onClick={() => setSidebarOpen(false)}
+                    className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${
+                      location.pathname === '/dashboard/users/registration-requests'
+                        ? 'bg-sidebar-accent text-sidebar-primary'
+                        : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    }`}
+                  >
+                    Registration Requests
+                  </Link>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Pinned footer — always visible, never scrolls away */}
@@ -168,6 +201,13 @@ export default function DashboardLayout() {
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+          {showApprovalNotice && (
+            <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">
+              {user?.membershipApprovalStatus === 'rejected'
+                ? 'Your registration was not approved. Please contact your church office if you believe this was a mistake.'
+                : 'Your membership is awaiting activation by your church. Some member features may be limited until approval.'}
+            </div>
+          )}
           <SubscriptionCheck />
           <Suspense fallback={<DashboardPageLoader />}>
             <Outlet />

@@ -161,7 +161,7 @@ export default function MemberRegisterPage() {
         navigate(result.redirectTo);
         return;
       }
-      toast.success('Account created! Welcome to the church.');
+      toast.success(result.message || 'Account created! Welcome to the church.');
       navigate('/dashboard');
     } else {
       toast.error(result.message || 'Registration failed');

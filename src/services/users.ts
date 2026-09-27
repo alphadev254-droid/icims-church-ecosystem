@@ -12,6 +12,7 @@ export interface AppUser {
   churchId?: string | null;
   status?: string;
   memberType?: 'adult' | 'child' | string | null;
+  membershipApprovalStatus?: 'pending' | 'approved' | 'rejected' | string | null;
   loginEnabled?: boolean;
   childProfile?: Child | null;
   districts?: string[] | null;
@@ -97,11 +98,14 @@ interface PaginationResponse {
       other?: number;
       unknown?: number;
     };
+    membersNotInCells?: number;
+    childrenTotal?: number;
+    adultMembers?: number;
   };
 }
 
 export const usersService = {
-  getAll: async (params?: { page?: number; limit?: number; search?: string; churchId?: string; role?: string; roleId?: string; cellId?: string; status?: string; minAge?: number; maxAge?: number }): Promise<PaginationResponse> => {
+  getAll: async (params?: { page?: number; limit?: number; search?: string; churchId?: string; role?: string; roleId?: string; cellId?: string; teamId?: string; status?: string; minAge?: number; maxAge?: number }): Promise<PaginationResponse> => {
     const { data } = await apiClient.get('/users', { params });
     return data;
   },
@@ -123,5 +127,17 @@ export const usersService = {
   bulkCreate: async (users: any[]): Promise<{ success: number; failed: number; errors: any[] }> => {
     const { data } = await apiClient.post('/users/bulk', { users });
     return data;
+  },
+  getRegistrationRequests: async (params?: { page?: number; limit?: number; search?: string; churchId?: string }): Promise<PaginationResponse> => {
+    const { data } = await apiClient.get('/users/registration-requests', { params });
+    return data;
+  },
+  approveRegistrationRequest: async (id: string): Promise<AppUser> => {
+    const { data } = await apiClient.post(`/users/registration-requests/${id}/approve`);
+    return data.data;
+  },
+  rejectRegistrationRequest: async (id: string): Promise<AppUser> => {
+    const { data } = await apiClient.post(`/users/registration-requests/${id}/reject`);
+    return data.data;
   },
 };

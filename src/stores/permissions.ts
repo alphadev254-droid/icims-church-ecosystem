@@ -63,6 +63,7 @@ const PERMISSION_TO_ROUTE: Array<{ permission: string; route: string }> = [
   { permission: 'tickets:read', route: '/dashboard/my-tickets' },
   { permission: 'attendance:read', route: '/dashboard/event-attendance' },
   { permission: 'subaccounts:view', route: '/dashboard/subaccount' },
+  { permission: 'registration_requests:read', route: '/dashboard/users/registration-requests' },
 ];
 
 function userHasPackageFeature(user: any, featureName: string) {
@@ -72,6 +73,7 @@ function userHasPackageFeature(user: any, featureName: string) {
 
 function routePackageFeature(route: string): string | null {
   if (route === '/dashboard/users') return PACKAGE_FEATURES.USERS_MANAGEMENT;
+  if (route === '/dashboard/users/registration-requests') return PACKAGE_FEATURES.USERS_MANAGEMENT;
   if (route === '/dashboard/children') return PACKAGE_FEATURES.USERS_MANAGEMENT;
   if (route === '/dashboard/giving') return PACKAGE_FEATURES.GIVING_TRACKING;
   if (route === '/dashboard/donations') return PACKAGE_FEATURES.TRANSACTIONS_VIEW;

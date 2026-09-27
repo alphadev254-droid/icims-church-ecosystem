@@ -43,6 +43,7 @@ const schema = z.object({
   website: z.string().optional().default(''),
   address: z.string().optional().default(''),
   pastorName: z.string().optional().default(''),
+  memberApprovalMode: z.enum(['auto', 'manual']).default('auto'),
   region: z.string().min(1, 'Region is required'),
   district: z.string().min(1, 'District is required'),
   traditionalAuthority: z.string().min(1, 'Traditional Authority is required'),
@@ -70,6 +71,7 @@ function ChurchForm({ defaultValues, defaultLocation, existingLogoUrl, onSubmit,
     resolver: zodResolver(schema),
     defaultValues: {
       phone: '', email: '', website: '', address: '', village: '', pastorName: '',
+      memberApprovalMode: 'auto',
       latitude: '' as any, longitude: '' as any,
       region: defaultLocation?.region || '',
       district: defaultLocation?.district || '',
@@ -176,6 +178,26 @@ function ChurchForm({ defaultValues, defaultLocation, existingLogoUrl, onSubmit,
       <div>
         <Label>Address <span className="text-muted-foreground text-xs">(optional)</span></Label>
         <Input {...register('address')} />
+      </div>
+
+      <div className="rounded-lg border p-3 space-y-3 bg-muted/30">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Member Registration Approval</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="flex cursor-pointer gap-2 rounded-md border bg-background p-3 text-sm">
+            <input type="radio" value="auto" {...register('memberApprovalMode')} className="mt-1" />
+            <span>
+              <span className="block font-medium">Auto approval</span>
+              <span className="block text-xs text-muted-foreground">Members are activated immediately after registration.</span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer gap-2 rounded-md border bg-background p-3 text-sm">
+            <input type="radio" value="manual" {...register('memberApprovalMode')} className="mt-1" />
+            <span>
+              <span className="block font-medium">Manual approval</span>
+              <span className="block text-xs text-muted-foreground">Members wait for branch approval before full access.</span>
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* Coordinates */}
@@ -335,6 +357,7 @@ export default function ChurchesPage() {
     if (v.website) fd.append('website', v.website);
     if (v.address) fd.append('address', v.address);
     if (v.pastorName) fd.append('pastorName', v.pastorName);
+    fd.append('memberApprovalMode', v.memberApprovalMode);
     if (v.latitude !== '' && v.latitude != null) fd.append('latitude', String(v.latitude));
     if (v.longitude !== '' && v.longitude != null) fd.append('longitude', String(v.longitude));
     if (logoFile) fd.append('logo', logoFile);
@@ -505,6 +528,7 @@ export default function ChurchesPage() {
                 website: editChurch.website ?? '',
                 address: editChurch.address ?? '',
                 pastorName: editChurch.pastorName ?? '',
+                memberApprovalMode: editChurch.memberApprovalMode ?? 'auto',
                 region: editChurch.region ?? '',
                 district: editChurch.district ?? '',
                 traditionalAuthority: editChurch.traditionalAuthority ?? '',

@@ -19,6 +19,7 @@ export interface AuthUser {
   phone?: string | null;
   avatar?: string | null;
   churchId?: string | null;
+  membershipApprovalStatus?: 'pending' | 'approved' | 'rejected' | string | null;
   accountCountry?: string | null;
   isSystemAdmin?: boolean;
   church?: {
@@ -234,7 +235,7 @@ export const useAuthStore = create<AuthState>()(
               ...applyPermissions(permissions, data.user),
               isLoading: false,
             });
-            return { success: true };
+            return { success: true, message: data.message };
           }
           return { success: false, message: data.message };
         } catch (err: any) {

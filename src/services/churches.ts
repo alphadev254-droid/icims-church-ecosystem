@@ -24,6 +24,7 @@ export interface Church {
   branchCode?: string | null;
   status?: 'active' | 'cancelled';
   inviteToken?: string | null;
+  memberApprovalMode?: 'auto' | 'manual';
   latitude?: number | null;
   longitude?: number | null;
   createdAt: string;
@@ -47,6 +48,7 @@ export interface CreateChurchDto {
   pastorName?: string;
   yearFounded?: number;
   parentId?: string;
+  memberApprovalMode?: 'auto' | 'manual';
 }
 
 export type UpdateChurchDto = Partial<CreateChurchDto>;

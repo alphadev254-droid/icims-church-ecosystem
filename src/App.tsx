@@ -54,6 +54,7 @@ const Performance = lazy(() => import("./pages/Performance"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 const UsersManagement = lazy(() => import("./pages/UsersManagement"));
+const RegistrationRequests = lazy(() => import("./pages/RegistrationRequests"));
 const Children = lazy(() => import("./pages/Children"));
 const RolesManagement = lazy(() => import("./pages/RolesManagement"));
 const Teams = lazy(() => import("./pages/Teams"));
@@ -181,6 +182,7 @@ const App = () => {
                 <Route path="reports" element={<Reports />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="users" element={<UsersManagement />} />
+                <Route path="users/registration-requests" element={<RegistrationRequests />} />
                 <Route path="children" element={<Children />} />
                 <Route path="roles" element={<RolesManagement />} />
                 <Route path="teams" element={<Teams />} />
