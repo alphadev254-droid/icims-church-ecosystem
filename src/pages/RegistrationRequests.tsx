@@ -81,7 +81,7 @@ export default function RegistrationRequests() {
           <Input
             value={search}
             onChange={event => setSearch(event.target.value)}
-            placeholder="Search pending members..."
+            placeholder="Search by name, email, or phone..."
             className="pl-9"
           />
         </div>
