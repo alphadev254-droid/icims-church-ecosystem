@@ -892,6 +892,9 @@ export default function UsersManagement() {
   const hasUsers = useHasFeature('users_management');
   const currentUser = useAuthStore(s => s.user);
   const qc = useQueryClient();
+  const roleMemberTypeMatch = roleFilter.match(/^member-(adult|child):(.+)$/);
+  const selectedRoleId = roleMemberTypeMatch ? roleMemberTypeMatch[2] : roleFilter !== 'all' ? roleFilter : undefined;
+  const selectedMemberType = roleMemberTypeMatch?.[1] as 'adult' | 'child' | undefined;
 
   const { data, isLoading } = useQuery({
     queryKey: ['users', page, limit, debouncedSearch, churchFilter, roleFilter, cellFilter, teamFilter, statusFilter, minAge, maxAge],
@@ -900,7 +903,8 @@ export default function UsersManagement() {
       limit, 
       search: debouncedSearch || undefined,
       churchId: churchFilter !== 'all' ? churchFilter : undefined,
-      roleId: roleFilter !== 'all' ? roleFilter : undefined,
+      roleId: selectedRoleId,
+      memberType: selectedMemberType,
       cellId: cellFilter !== 'all' ? cellFilter : undefined,
       teamId: teamFilter !== 'all' ? teamFilter : undefined,
       status: statusFilter,
@@ -1452,11 +1456,16 @@ export default function UsersManagement() {
             <SelectItem value="all">All Roles</SelectItem>
             {rolesForFilter
               .filter(role => role.name !== 'system_admin')
-              .map(role => (
-                <SelectItem key={role.id} value={role.id}>
-                  {ROLE_DISPLAY[role.name] ?? role.displayName}
-                </SelectItem>
-              ))}
+              .flatMap(role => role.name === 'member'
+                ? [
+                    <SelectItem key={`${role.id}-adult`} value={`member-adult:${role.id}`}>Members (Adult)</SelectItem>,
+                    <SelectItem key={`${role.id}-child`} value={`member-child:${role.id}`}>Children</SelectItem>,
+                  ]
+                : [
+                    <SelectItem key={role.id} value={role.id}>
+                      {ROLE_DISPLAY[role.name] ?? role.displayName}
+                    </SelectItem>,
+                  ])}
           </SelectContent>
         </Select>
         <Select value={churchFilter} onValueChange={(v) => { setChurchFilter(v); setPage(1); }}>
