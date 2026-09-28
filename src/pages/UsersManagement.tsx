@@ -1031,6 +1031,7 @@ export default function UsersManagement() {
   const membersNotInCells = data?.summary?.membersNotInCells ?? 0;
   const childrenTotal = data?.summary?.childrenTotal ?? 0;
   const adultMembers = data?.summary?.adultMembers ?? 0;
+  const genderSummary = data?.summary?.gender;
 
   function handleCreate(v: CreateValues, districts: string[], tas: string[], regions: string[]) {
     console.log('=== CREATE USER SUBMISSION ===');
@@ -1372,7 +1373,7 @@ export default function UsersManagement() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardContent className="flex items-center justify-between gap-3 p-4">
             <div>
@@ -1405,6 +1406,20 @@ export default function UsersManagement() {
               <p className="text-xs text-muted-foreground">Within current filters</p>
             </div>
             <div className="rounded-md bg-accent/10 p-3 text-accent">
+              <Users className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Gender Summary</p>
+              <p className="font-heading text-2xl font-bold">{(genderSummary?.male ?? 0) + (genderSummary?.female ?? 0) + (genderSummary?.other ?? 0) + (genderSummary?.unknown ?? 0)}</p>
+              <p className="text-xs text-muted-foreground">
+                M {genderSummary?.male ?? 0} / F {genderSummary?.female ?? 0}
+              </p>
+            </div>
+            <div className="rounded-md bg-emerald-500/10 p-3 text-emerald-600">
               <Users className="h-5 w-5" />
             </div>
           </CardContent>
