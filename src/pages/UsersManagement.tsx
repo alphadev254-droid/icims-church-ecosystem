@@ -68,6 +68,17 @@ function userDisplayName(user: { firstName?: string; lastName?: string; memberTy
   return user.memberType === 'child' ? `${name} (Child)` : name;
 }
 
+const CSV_FIELD_LABELS: Record<string, string> = {
+  firstName: 'First Name',
+  lastName: 'Last Name',
+  email: 'Email',
+  phone: 'Phone',
+  dateOfBirth: 'DOB',
+  maritalStatus: 'Marital Status',
+  residentialNeighbourhood: 'Neighbourhood',
+  churchId: 'Church',
+};
+
 function calculateAge(value?: string | null) {
   if (!value) return null;
   const dateOnly = value.split('T')[0];
@@ -896,6 +907,13 @@ export default function UsersManagement() {
   const selectedLeadership = roleFilter === 'cell_leader' || roleFilter === 'team_leader' ? roleFilter : undefined;
   const selectedRoleId = roleMemberTypeMatch ? roleMemberTypeMatch[2] : roleFilter !== 'all' && !selectedLeadership ? roleFilter : undefined;
   const selectedMemberType = roleMemberTypeMatch?.[1] as 'adult' | 'child' | undefined;
+  const csvValidationSummary = Object.entries(validationErrors).flatMap(([rowIndex, rowErrors]) =>
+    Object.entries(rowErrors).map(([field, message]) => ({
+      row: Number(rowIndex) + 1,
+      field: CSV_FIELD_LABELS[field] ?? field,
+      message,
+    })),
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ['users', page, limit, debouncedSearch, churchFilter, roleFilter, cellFilter, teamFilter, statusFilter, minAge, maxAge],
@@ -1820,6 +1838,21 @@ export default function UsersManagement() {
           <DialogHeader>
             <DialogTitle>Review CSV Data ({csvData.length} users)</DialogTitle>
           </DialogHeader>
+          {csvValidationSummary.length > 0 && (
+            <Alert variant="destructive" className="mx-1 mb-2">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-semibold">Fix {csvValidationSummary.length} validation issue{csvValidationSummary.length === 1 ? '' : 's'} before uploading.</p>
+                <div className="mt-1 max-h-24 overflow-auto text-xs">
+                  {csvValidationSummary.map((item, idx) => (
+                    <p key={`${item.row}-${item.field}-${idx}`}>
+                      Row {item.row}, {item.field}: {item.message}
+                    </p>
+                  ))}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
           {Object.keys(precisionWarnings).length > 0 && (
             <div className="mx-1 mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 space-y-1">
               <p className="font-semibold">⚠️ Phone number precision warning</p>
@@ -1898,6 +1931,7 @@ export default function UsersManagement() {
                           }}
                           className={errors.firstName ? 'border-destructive' : ''}
                         />
+                        {errors.firstName && <p className="mt-1 text-xs text-destructive">{errors.firstName}</p>}
                       </td>
                       <td className="p-2">
                         <Input
@@ -1915,6 +1949,7 @@ export default function UsersManagement() {
                           }}
                           className={errors.lastName ? 'border-destructive' : ''}
                         />
+                        {errors.lastName && <p className="mt-1 text-xs text-destructive">{errors.lastName}</p>}
                       </td>
                       <td className="p-2">
                         <Input
@@ -1932,6 +1967,7 @@ export default function UsersManagement() {
                           }}
                           className={errors.email ? 'border-destructive' : ''}
                         />
+                        {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email}</p>}
                       </td>
                       <td className="p-2">
                         <Input
@@ -1951,6 +1987,7 @@ export default function UsersManagement() {
                           }}
                           className={errors.phone ? 'border-destructive' : ''}
                         />
+                        {errors.phone && <p className="mt-1 text-xs text-destructive">{errors.phone}</p>}
                       </td>
                       <td className="p-2">
                         <Input
@@ -1979,6 +2016,7 @@ export default function UsersManagement() {
                           }}
                           className={errors.dateOfBirth ? 'border-destructive' : ''}
                         />
+                        {errors.dateOfBirth && <p className="mt-1 text-xs text-destructive">{errors.dateOfBirth}</p>}
                       </td>
                       <td className="p-2">
                         <Input
@@ -1996,6 +2034,7 @@ export default function UsersManagement() {
                           }}
                           className={errors.maritalStatus ? 'border-destructive' : ''}
                         />
+                        {errors.maritalStatus && <p className="mt-1 text-xs text-destructive">{errors.maritalStatus}</p>}
                       </td>
                       <td className="p-2">
                         <Input
@@ -2024,6 +2063,7 @@ export default function UsersManagement() {
                           }}
                           className={errors.residentialNeighbourhood ? 'border-destructive' : ''}
                         />
+                        {errors.residentialNeighbourhood && <p className="mt-1 text-xs text-destructive">{errors.residentialNeighbourhood}</p>}
                       </td>
                       <td className="p-2">
                         <Input
@@ -2079,6 +2119,7 @@ export default function UsersManagement() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {errors.churchId && <p className="mt-1 text-xs text-destructive">{errors.churchId}</p>}
                       </td>
                     </tr>
                   );
