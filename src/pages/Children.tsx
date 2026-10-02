@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Baby, Info, Link2, MoreHorizontal, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
+import { Baby, Info, Link2, MoreHorizontal, Pencil, Plus, Search, Trash2, Upload, Users } from 'lucide-react';
 import { childrenService, type Child } from '@/services/children';
 import { usersService, type AppUser } from '@/services/users';
 import { churchesService } from '@/services/churches';
@@ -32,8 +33,24 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 const PAGE_SIZE = 50;
+const MAX_IMPORT_ROWS = 100;
+
+const CHILD_IMPORT_FIELD_LABELS: Record<string, string> = {
+  firstName: 'First Name',
+  lastName: 'Last Name',
+  dateOfBirth: 'Date of Birth',
+  age: 'Age',
+  gender: 'Gender',
+  phone: 'Phone',
+  churchId: 'Church',
+  guardianEmail: 'Guardian Email',
+  guardianPhone: 'Guardian Phone',
+  relationship: 'Relationship',
+  status: 'Status',
+};
 
 const RELATIONSHIP_OPTIONS = [
   { value: 'mother', label: 'Mother' },
@@ -445,12 +462,24 @@ export default function ChildrenPage() {
   const [editChild, setEditChild] = useState<Child | null>(null);
   const [deleteChild, setDeleteChild] = useState<Child | null>(null);
   const [linkChild, setLinkChild] = useState<Child | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [importErrors, setImportErrors] = useState<Record<number, Record<string, string>>>({});
+  const [importWarnings, setImportWarnings] = useState<Array<{ row: number; childName: string; warning: string }>>([]);
+  const [bulkChurchId, setBulkChurchId] = useState('');
   const [unlinkTarget, setUnlinkTarget] = useState<{ child: Child; guardianId: string; guardianName: string } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
   const canCreate = hasPermission('children:create');
   const canUpdate = hasPermission('children:update');
   const canDelete = hasPermission('children:delete');
   const canLinkGuardians = canUpdate && !isMember;
+  const importValidationSummary = Object.entries(importErrors).flatMap(([rowIndex, rowErrors]) =>
+    Object.entries(rowErrors).map(([field, message]) => ({
+      row: Number(rowIndex) + 1,
+      field: CHILD_IMPORT_FIELD_LABELS[field] ?? field,
+      message,
+    })),
+  );
 
   const { data: churches = [] } = useQuery({
     queryKey: ['churches'],
@@ -526,6 +555,128 @@ export default function ChildrenPage() {
     onError: (err: any) => toast.error(err?.response?.data?.message || 'Failed to unlink guardian'),
   });
 
+  const bulkUploadMutation = useMutation({
+    mutationFn: (children: any[]) => childrenService.bulkCreate(children),
+    onSuccess: (result) => {
+      toast.success(`Imported ${result.success} children`);
+      if (result.failed > 0) toast.warning(`${result.failed} children failed to import`);
+      if (result.dropped) toast.warning(`${result.dropped} rows were dropped because only ${MAX_IMPORT_ROWS} can be uploaded at once`);
+      setImportWarnings(result.warnings ?? []);
+      if (result.errors?.length) {
+        const nextErrors: Record<number, Record<string, string>> = {};
+        result.errors.forEach(error => {
+          const index = Math.max(error.row - 1, 0);
+          const field = error.field || 'firstName';
+          nextErrors[index] = { ...(nextErrors[index] || {}), [field]: error.error };
+        });
+        setImportErrors(nextErrors);
+      }
+      qc.invalidateQueries({ queryKey: ['children'] });
+      if (!result.failed) {
+        setUploadOpen(false);
+        setImportRows([]);
+        setImportErrors({});
+      }
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Failed to upload children'),
+  });
+
+  const normalizeDate = (value: any) => {
+    if (!value) return '';
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().split('T')[0];
+    const raw = String(value).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+    return raw;
+  };
+
+  const normalizeBoolean = (value: any, fallback = '') => {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (!raw) return fallback;
+    if (['true', 'yes', 'y', '1'].includes(raw)) return true;
+    if (['false', 'no', 'n', '0'].includes(raw)) return false;
+    return fallback;
+  };
+
+  const parseImportRows = (rows: any[]) => {
+    const mapped = rows
+      .filter(row => !String(row.firstName ?? row.FirstName ?? row['First Name'] ?? '').startsWith('#'))
+      .map(row => ({
+        firstName: String(row.firstName ?? row.FirstName ?? row['First Name'] ?? '').trim(),
+        lastName: String(row.lastName ?? row.LastName ?? row['Last Name'] ?? '').trim(),
+        phone: String(row.phone ?? row.Phone ?? '').trim(),
+        gender: String(row.gender ?? row.Gender ?? '').trim().toLowerCase(),
+        dateOfBirth: normalizeDate(row.dateOfBirth ?? row.DateOfBirth ?? row['Date of Birth'] ?? ''),
+        age: String(row.age ?? row.Age ?? '').trim(),
+        churchId: String(row.churchId ?? row.ChurchId ?? row['Church ID'] ?? '').trim(),
+        guardianEmail: String(row.guardianEmail ?? row.GuardianEmail ?? row['Guardian Email'] ?? '').trim(),
+        guardianPhone: String(row.guardianPhone ?? row.GuardianPhone ?? row['Guardian Phone'] ?? '').trim(),
+        relationship: String(row.relationship ?? row.guardianRelationship ?? row.Relationship ?? row['Guardian Relationship'] ?? '').trim() || 'guardian',
+        isPrimary: normalizeBoolean(row.isPrimary ?? row.IsPrimary ?? row['Primary Guardian'], true),
+        canPickup: normalizeBoolean(row.canPickup ?? row.CanPickup ?? row['Can Pickup'], true),
+        emergencyContact: normalizeBoolean(row.emergencyContact ?? row.EmergencyContact ?? row['Emergency Contact'], false),
+        status: String(row.status ?? row.Status ?? '').trim().toLowerCase() || 'active',
+        notes: String(row.notes ?? row.Notes ?? '').trim(),
+      }))
+      .filter(row => !(row.firstName.toLowerCase() === 'first name' && row.lastName.toLowerCase() === 'last name'));
+    return mapped.slice(0, MAX_IMPORT_ROWS);
+  };
+
+  const validateImportRows = (rows: any[]) => {
+    const errors: Record<number, Record<string, string>> = {};
+    rows.forEach((row, index) => {
+      const rowErrors: Record<string, string> = {};
+      if (!row.firstName) rowErrors.firstName = 'Required';
+      if (!row.lastName) rowErrors.lastName = 'Required';
+      if (!row.dateOfBirth && !row.age) rowErrors.dateOfBirth = 'DOB or age required';
+      if (row.gender && !['male', 'female', 'other'].includes(row.gender)) rowErrors.gender = 'Use male, female, or other';
+      if (row.status && !['active', 'inactive'].includes(row.status)) rowErrors.status = 'Use active or inactive';
+      if (!row.churchId) rowErrors.churchId = 'Select or apply a church';
+      if (Object.keys(rowErrors).length > 0) errors[index] = rowErrors;
+    });
+    return errors;
+  };
+
+  const openChildrenImport = (rows: any[], originalCount: number) => {
+    const parsedRows = parseImportRows(rows);
+    const errors = validateImportRows(parsedRows);
+    setImportRows(parsedRows);
+    setImportErrors(errors);
+    setImportWarnings(originalCount > MAX_IMPORT_ROWS
+      ? [{ row: MAX_IMPORT_ROWS + 1, childName: 'Extra rows', warning: `${originalCount - MAX_IMPORT_ROWS} rows were dropped. Upload a maximum of ${MAX_IMPORT_ROWS} at a time.` }]
+      : []);
+    setUploadOpen(true);
+  };
+
+  const handleChildrenImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext === 'xlsx' || ext === 'xls') {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array', cellText: false, cellDates: true });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(sheet, { raw: true, defval: '' });
+      openChildrenImport(rows, rows.length);
+      event.target.value = '';
+      return;
+    }
+
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter(line => line.trim());
+    const headers = (lines[0] ?? '').split(',').map(header => header.trim());
+    const rows = lines.slice(1).map(line => {
+      const values = line.split(',');
+      return headers.reduce((acc: any, header, index) => {
+        acc[header] = String(values[index] ?? '').trim();
+        return acc;
+      }, {});
+    });
+    openChildrenImport(rows, rows.length);
+    event.target.value = '';
+  };
+
   if (!hasChildrenFeature) {
     return (
       <div className="space-y-6">
@@ -554,20 +705,46 @@ export default function ChildrenPage() {
           <p className="text-xs sm:text-sm text-muted-foreground">Manage dependents and guardian links</p>
         </div>
         {canCreate && (
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-1.5"><Plus className="h-4 w-4" /> Add Child</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Add Child</DialogTitle></DialogHeader>
-              <ChildForm
-                defaultChurchId={defaultChurchId}
-                fixedGuardian={fixedGuardian}
-                onSubmit={payload => createMutation.mutate(payload)}
-                isPending={createMutation.isPending}
-              />
-            </DialogContent>
-          </Dialog>
+          <div className="flex flex-wrap gap-2">
+            {!isMember && (
+              <>
+                <Button
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    const headers = ['firstName','lastName','dateOfBirth','age','gender','phone','churchId','guardianEmail','guardianPhone','relationship','isPrimary','canPickup','emergencyContact','status','notes'];
+                    const notes = ['First Name','Last Name','YYYY-MM-DD','Optional if DOB is present','male/female/other','Optional','Apply church in preview if blank','Existing guardian email','Existing guardian phone','mother/father/parent/guardian','true/false','true/false','true/false','active/inactive','Optional'];
+                    const example = ['William','Mvula','2018-10-10','','male','','','','','guardian','true','true','false','active',''];
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.aoa_to_sheet([headers, notes, example]);
+                    ws['!cols'] = headers.map(() => ({ wch: 22 }));
+                    XLSX.utils.book_append_sheet(wb, ws, 'Children Template');
+                    XLSX.writeFile(wb, 'children-import-template.xlsx');
+                  }}
+                >
+                  Template
+                </Button>
+                <Button variant="outline" className="gap-1.5" onClick={() => document.getElementById('children-upload')?.click()}>
+                  <Upload className="h-4 w-4" /> Upload
+                </Button>
+                <input id="children-upload" type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleChildrenImportFile} />
+              </>
+            )}
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-1.5"><Plus className="h-4 w-4" /> Add Child</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Add Child</DialogTitle></DialogHeader>
+                <ChildForm
+                  defaultChurchId={defaultChurchId}
+                  fixedGuardian={fixedGuardian}
+                  onSubmit={payload => createMutation.mutate(payload)}
+                  isPending={createMutation.isPending}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
 
@@ -769,6 +946,119 @@ export default function ChildrenPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader><DialogTitle>Review Children Import ({importRows.length} children)</DialogTitle></DialogHeader>
+          {importValidationSummary.length > 0 && (
+            <div className="rounded-md border border-destructive/60 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p className="font-semibold">Fix {importValidationSummary.length} validation issue{importValidationSummary.length === 1 ? '' : 's'} before uploading.</p>
+              <div className="mt-1 max-h-24 overflow-auto text-xs">
+                {importValidationSummary.map((item, index) => (
+                  <p key={`${item.row}-${item.field}-${index}`}>Row {item.row}, {item.field}: {item.message}</p>
+                ))}
+              </div>
+            </div>
+          )}
+          {importWarnings.length > 0 && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {importWarnings.map((warning, index) => (
+                <p key={`${warning.row}-${index}`}>Row {warning.row}, {warning.childName}: {warning.warning}</p>
+              ))}
+            </div>
+          )}
+          <div className="flex-1 overflow-auto">
+            <table className="w-full min-w-[1500px] text-sm">
+              <thead className="sticky top-0 z-10 bg-background border-b">
+                <tr>
+                  <th className="p-2 text-left min-w-[130px]">First Name</th>
+                  <th className="p-2 text-left min-w-[130px]">Last Name</th>
+                  <th className="p-2 text-left min-w-[130px]">DOB</th>
+                  <th className="p-2 text-left min-w-[90px]">Age</th>
+                  <th className="p-2 text-left min-w-[110px]">Gender</th>
+                  <th className="p-2 text-left min-w-[130px]">Phone</th>
+                  <th className="p-2 text-left min-w-[220px]">
+                    <div>
+                      <div>Church</div>
+                      <Select value={bulkChurchId} onValueChange={(value) => {
+                        setBulkChurchId(value);
+                        const nextRows = importRows.map(row => ({ ...row, churchId: value }));
+                        setImportRows(nextRows);
+                        setImportErrors(validateImportRows(nextRows));
+                      }}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Apply to all" /></SelectTrigger>
+                        <SelectContent>
+                          {churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </th>
+                  <th className="p-2 text-left min-w-[180px]">Guardian Email</th>
+                  <th className="p-2 text-left min-w-[150px]">Guardian Phone</th>
+                  <th className="p-2 text-left min-w-[130px]">Relationship</th>
+                  <th className="p-2 text-left min-w-[110px]">Can Pickup</th>
+                  <th className="p-2 text-left min-w-[120px]">Emergency</th>
+                  <th className="p-2 text-left min-w-[110px]">Status</th>
+                  <th className="p-2 text-left min-w-[200px]">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importRows.map((row, index) => {
+                  const errors = importErrors[index] || {};
+                  const updateRow = (field: string, value: any) => {
+                    const nextRows = [...importRows];
+                    nextRows[index] = { ...nextRows[index], [field]: value };
+                    setImportRows(nextRows);
+                    setImportErrors(validateImportRows(nextRows));
+                  };
+                  return (
+                    <tr key={index} className={Object.keys(errors).length ? 'bg-destructive/10' : ''}>
+                      <td className="p-2"><Input value={row.firstName} onChange={e => updateRow('firstName', e.target.value)} className={errors.firstName ? 'border-destructive' : ''} />{errors.firstName && <p className="mt-1 text-xs text-destructive">{errors.firstName}</p>}</td>
+                      <td className="p-2"><Input value={row.lastName} onChange={e => updateRow('lastName', e.target.value)} className={errors.lastName ? 'border-destructive' : ''} />{errors.lastName && <p className="mt-1 text-xs text-destructive">{errors.lastName}</p>}</td>
+                      <td className="p-2"><Input type="date" value={row.dateOfBirth} onChange={e => updateRow('dateOfBirth', e.target.value)} className={errors.dateOfBirth ? 'border-destructive' : ''} />{errors.dateOfBirth && <p className="mt-1 text-xs text-destructive">{errors.dateOfBirth}</p>}</td>
+                      <td className="p-2"><Input value={row.age} onChange={e => updateRow('age', e.target.value.replace(/\D/g, ''))} /></td>
+                      <td className="p-2"><Input value={row.gender} onChange={e => updateRow('gender', e.target.value.toLowerCase())} className={errors.gender ? 'border-destructive' : ''} />{errors.gender && <p className="mt-1 text-xs text-destructive">{errors.gender}</p>}</td>
+                      <td className="p-2"><Input value={row.phone} onChange={e => updateRow('phone', e.target.value)} /></td>
+                      <td className="p-2">
+                        <Select value={row.churchId || ''} onValueChange={value => updateRow('churchId', value)}>
+                          <SelectTrigger className={errors.churchId ? 'border-destructive h-9' : 'h-9'}><SelectValue placeholder="Select church" /></SelectTrigger>
+                          <SelectContent>{churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                        {errors.churchId && <p className="mt-1 text-xs text-destructive">{errors.churchId}</p>}
+                      </td>
+                      <td className="p-2"><Input value={row.guardianEmail} onChange={e => updateRow('guardianEmail', e.target.value)} /></td>
+                      <td className="p-2"><Input value={row.guardianPhone} onChange={e => updateRow('guardianPhone', e.target.value)} /></td>
+                      <td className="p-2"><Input value={row.relationship} onChange={e => updateRow('relationship', e.target.value)} /></td>
+                      <td className="p-2"><Checkbox checked={Boolean(row.canPickup)} onCheckedChange={value => updateRow('canPickup', Boolean(value))} /></td>
+                      <td className="p-2"><Checkbox checked={Boolean(row.emergencyContact)} onCheckedChange={value => updateRow('emergencyContact', Boolean(value))} /></td>
+                      <td className="p-2"><Input value={row.status} onChange={e => updateRow('status', e.target.value.toLowerCase())} className={errors.status ? 'border-destructive' : ''} />{errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}</td>
+                      <td className="p-2"><Input value={row.notes} onChange={e => updateRow('notes', e.target.value)} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex gap-2 border-t pt-4">
+            <Button variant="outline" onClick={() => setUploadOpen(false)}>Cancel</Button>
+            <Button
+              disabled={bulkUploadMutation.isPending || importRows.length === 0}
+              onClick={() => {
+                const errors = validateImportRows(importRows);
+                setImportErrors(errors);
+                if (Object.keys(errors).length > 0) {
+                  toast.error('Please fix validation errors');
+                  return;
+                }
+                bulkUploadMutation.mutate(importRows);
+              }}
+              className={Object.keys(importErrors).length === 0 && importRows.length > 0 ? 'bg-green-600 hover:bg-green-700' : ''}
+            >
+              {bulkUploadMutation.isPending ? 'Uploading...' : `Upload ${importRows.length} Children`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <ChildDetailsDialog child={viewChild} onOpenChange={open => !open && setViewChild(null)} />
 

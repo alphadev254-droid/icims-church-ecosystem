@@ -38,6 +38,8 @@ import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { digitsInputProps, digitsOnly, phoneInputProps, sanitizeDigitsInput, sanitizePhoneInput } from '@/lib/numeric-input';
 
+const MAX_IMPORT_ROWS = 100;
+
 // ─── Role display helpers ─────────────────────────────────────────────────────
 const ROLE_DISPLAY: Record<string, string> = {
   ministry_admin: 'Ministry Administrator',
@@ -1018,6 +1020,9 @@ export default function UsersManagement() {
         toast.warning(`${data.failed} users failed to upload`);
         console.error('Failed users:', data.errors);
       }
+      if (data.dropped) {
+        toast.warning(`${data.dropped} rows were dropped because only ${MAX_IMPORT_ROWS} can be uploaded at once`);
+      }
       qc.invalidateQueries({ queryKey: ['users'] });
       setUploadOpen(false);
       setCsvData([]);
@@ -1299,8 +1304,9 @@ export default function UsersManagement() {
               };
 
               const validateAndOpen = (data: any[], warnings: Record<number, string>) => {
+                const rows = data.slice(0, MAX_IMPORT_ROWS);
                 const errors: Record<number, Record<string, string>> = {};
-                data.forEach((row, idx) => {
+                rows.forEach((row, idx) => {
                   const rowErrors: Record<string, string> = {};
                   if (!row.firstName) rowErrors.firstName = 'Required';
                   if (!row.lastName) rowErrors.lastName = 'Required';
@@ -1312,7 +1318,10 @@ export default function UsersManagement() {
                   if (!row.churchId || row.churchId === 'CHURCH_ID_HERE') rowErrors.churchId = 'Valid church required';
                   if (Object.keys(rowErrors).length > 0) errors[idx] = rowErrors;
                 });
-                setCsvData(data);
+                if (data.length > MAX_IMPORT_ROWS) {
+                  toast.warning(`${data.length - MAX_IMPORT_ROWS} rows were dropped. Upload a maximum of ${MAX_IMPORT_ROWS} users at a time.`);
+                }
+                setCsvData(rows);
                 setValidationErrors(errors);
                 setPrecisionWarnings(warnings);
                 setUploadOpen(true);

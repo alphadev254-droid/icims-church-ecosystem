@@ -54,6 +54,14 @@ export interface ChildPayload {
   emergencyContact?: boolean;
 }
 
+export interface ChildrenBulkResult {
+  success: number;
+  failed: number;
+  dropped?: number;
+  warnings?: Array<{ row: number; childName: string; warning: string }>;
+  errors?: Array<{ row: number; childName: string; field?: string; error: string }>;
+}
+
 export interface GenderSummary {
   total: number;
   gender: {
@@ -112,6 +120,11 @@ export const childrenService = {
   async create(payload: ChildPayload): Promise<Child> {
     const { data } = await apiClient.post('/children', payload);
     return normalizeChild(data.data);
+  },
+
+  async bulkCreate(children: any[]): Promise<ChildrenBulkResult> {
+    const { data } = await apiClient.post('/children/bulk', { children });
+    return data;
   },
 
   async update(id: string, payload: Partial<Omit<ChildPayload, 'guardianId'>>): Promise<Child> {
