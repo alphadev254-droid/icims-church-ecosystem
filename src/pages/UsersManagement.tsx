@@ -1291,6 +1291,13 @@ export default function UsersManagement() {
                 return { value: v };
               };
 
+              const isTemplateInstructionRow = (row: Record<string, any>) => {
+                const firstName = String(row.firstName ?? '').trim().toLowerCase();
+                const lastName = String(row.lastName ?? '').trim().toLowerCase();
+                const email = String(row.email ?? '').trim().toLowerCase();
+                return firstName === 'first name' && lastName === 'last name' && email === 'email';
+              };
+
               const validateAndOpen = (data: any[], warnings: Record<number, string>) => {
                 const errors: Record<number, Record<string, string>> = {};
                 data.forEach((row, idx) => {
@@ -1321,6 +1328,7 @@ export default function UsersManagement() {
                 const warnings: Record<number, string> = {};
                 const data = rows
                   .filter(row => !String(row.firstName ?? '').startsWith('#'))
+                  .filter(row => !isTemplateInstructionRow(row))
                   .map((row, idx) => {
                     const { value: phone, warning } = normalizePhone(row.phone ?? row.Phone ?? '');
                     if (warning) warnings[idx] = warning;
@@ -1374,7 +1382,8 @@ export default function UsersManagement() {
                       }
                     });
                     return obj;
-                  });
+                  })
+                  .filter(row => !isTemplateInstructionRow(row));
 
                 validateAndOpen(data, warnings);
               };
