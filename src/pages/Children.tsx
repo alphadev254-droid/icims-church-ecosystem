@@ -971,15 +971,16 @@ export default function ChildrenPage() {
             <table className="w-full min-w-[1500px] text-sm">
               <thead className="sticky top-0 z-10 bg-background border-b">
                 <tr>
-                  <th className="p-2 text-left min-w-[130px]">First Name</th>
-                  <th className="p-2 text-left min-w-[130px]">Last Name</th>
-                  <th className="p-2 text-left min-w-[130px]">DOB</th>
-                  <th className="p-2 text-left min-w-[90px]">Age</th>
-                  <th className="p-2 text-left min-w-[110px]">Gender</th>
-                  <th className="p-2 text-left min-w-[130px]">Phone</th>
+                  <th className="p-2 text-left min-w-[130px]"><div>First Name</div><div className="text-[10px] font-normal text-muted-foreground">e.g. William</div></th>
+                  <th className="p-2 text-left min-w-[130px]"><div>Last Name</div><div className="text-[10px] font-normal text-muted-foreground">e.g. Mvula</div></th>
+                  <th className="p-2 text-left min-w-[130px]"><div>DOB</div><div className="text-[10px] font-normal text-muted-foreground">YYYY-MM-DD</div></th>
+                  <th className="p-2 text-left min-w-[90px]"><div>Age</div><div className="text-[10px] font-normal text-muted-foreground">if no DOB</div></th>
+                  <th className="p-2 text-left min-w-[130px]"><div>Gender</div><div className="text-[10px] font-normal text-muted-foreground">male/female/other</div></th>
+                  <th className="p-2 text-left min-w-[130px]"><div>Phone</div><div className="text-[10px] font-normal text-muted-foreground">optional</div></th>
                   <th className="p-2 text-left min-w-[220px]">
                     <div>
                       <div>Church</div>
+                      <div className="mb-1 text-[10px] font-normal text-muted-foreground">select or apply all</div>
                       <Select value={bulkChurchId} onValueChange={(value) => {
                         setBulkChurchId(value);
                         const nextRows = importRows.map(row => ({ ...row, churchId: value }));
@@ -993,13 +994,13 @@ export default function ChildrenPage() {
                       </Select>
                     </div>
                   </th>
-                  <th className="p-2 text-left min-w-[180px]">Guardian Email</th>
-                  <th className="p-2 text-left min-w-[150px]">Guardian Phone</th>
-                  <th className="p-2 text-left min-w-[130px]">Relationship</th>
-                  <th className="p-2 text-left min-w-[110px]">Can Pickup</th>
-                  <th className="p-2 text-left min-w-[120px]">Emergency</th>
-                  <th className="p-2 text-left min-w-[110px]">Status</th>
-                  <th className="p-2 text-left min-w-[200px]">Notes</th>
+                  <th className="p-2 text-left min-w-[180px]"><div>Guardian Email</div><div className="text-[10px] font-normal text-muted-foreground">existing member</div></th>
+                  <th className="p-2 text-left min-w-[150px]"><div>Guardian Phone</div><div className="text-[10px] font-normal text-muted-foreground">existing member</div></th>
+                  <th className="p-2 text-left min-w-[150px]"><div>Relationship</div><div className="text-[10px] font-normal text-muted-foreground">mother/father/etc.</div></th>
+                  <th className="p-2 text-left min-w-[110px]"><div>Can Pickup</div><div className="text-[10px] font-normal text-muted-foreground">yes/no</div></th>
+                  <th className="p-2 text-left min-w-[120px]"><div>Emergency</div><div className="text-[10px] font-normal text-muted-foreground">yes/no</div></th>
+                  <th className="p-2 text-left min-w-[130px]"><div>Status</div><div className="text-[10px] font-normal text-muted-foreground">active/inactive</div></th>
+                  <th className="p-2 text-left min-w-[200px]"><div>Notes</div><div className="text-[10px] font-normal text-muted-foreground">optional</div></th>
                 </tr>
               </thead>
               <tbody>
@@ -1017,7 +1018,18 @@ export default function ChildrenPage() {
                       <td className="p-2"><Input value={row.lastName} onChange={e => updateRow('lastName', e.target.value)} className={errors.lastName ? 'border-destructive' : ''} />{errors.lastName && <p className="mt-1 text-xs text-destructive">{errors.lastName}</p>}</td>
                       <td className="p-2"><Input type="date" value={row.dateOfBirth} onChange={e => updateRow('dateOfBirth', e.target.value)} className={errors.dateOfBirth ? 'border-destructive' : ''} />{errors.dateOfBirth && <p className="mt-1 text-xs text-destructive">{errors.dateOfBirth}</p>}</td>
                       <td className="p-2"><Input value={row.age} onChange={e => updateRow('age', e.target.value.replace(/\D/g, ''))} /></td>
-                      <td className="p-2"><Input value={row.gender} onChange={e => updateRow('gender', e.target.value.toLowerCase())} className={errors.gender ? 'border-destructive' : ''} />{errors.gender && <p className="mt-1 text-xs text-destructive">{errors.gender}</p>}</td>
+                      <td className="p-2">
+                        <Select value={row.gender || 'none'} onValueChange={value => updateRow('gender', value === 'none' ? '' : value)}>
+                          <SelectTrigger className={errors.gender ? 'border-destructive h-9' : 'h-9'}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Not set</SelectItem>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {errors.gender && <p className="mt-1 text-xs text-destructive">{errors.gender}</p>}
+                      </td>
                       <td className="p-2"><Input value={row.phone} onChange={e => updateRow('phone', e.target.value)} /></td>
                       <td className="p-2">
                         <Select value={row.churchId || ''} onValueChange={value => updateRow('churchId', value)}>
@@ -1028,10 +1040,28 @@ export default function ChildrenPage() {
                       </td>
                       <td className="p-2"><Input value={row.guardianEmail} onChange={e => updateRow('guardianEmail', e.target.value)} /></td>
                       <td className="p-2"><Input value={row.guardianPhone} onChange={e => updateRow('guardianPhone', e.target.value)} /></td>
-                      <td className="p-2"><Input value={row.relationship} onChange={e => updateRow('relationship', e.target.value)} /></td>
+                      <td className="p-2">
+                        <Select value={row.relationship || 'guardian'} onValueChange={value => updateRow('relationship', value)}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {RELATIONSHIP_OPTIONS.map(option => (
+                              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
                       <td className="p-2"><Checkbox checked={Boolean(row.canPickup)} onCheckedChange={value => updateRow('canPickup', Boolean(value))} /></td>
                       <td className="p-2"><Checkbox checked={Boolean(row.emergencyContact)} onCheckedChange={value => updateRow('emergencyContact', Boolean(value))} /></td>
-                      <td className="p-2"><Input value={row.status} onChange={e => updateRow('status', e.target.value.toLowerCase())} className={errors.status ? 'border-destructive' : ''} />{errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}</td>
+                      <td className="p-2">
+                        <Select value={row.status || 'active'} onValueChange={value => updateRow('status', value)}>
+                          <SelectTrigger className={errors.status ? 'border-destructive h-9' : 'h-9'}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {errors.status && <p className="mt-1 text-xs text-destructive">{errors.status}</p>}
+                      </td>
                       <td className="p-2"><Input value={row.notes} onChange={e => updateRow('notes', e.target.value)} /></td>
                     </tr>
                   );
