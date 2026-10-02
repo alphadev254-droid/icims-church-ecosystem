@@ -135,7 +135,7 @@ export interface CellStats {
 const BASE = '/cells';
 
 export const cellsService = {
-  getAll: async (params?: { churchId?: string; cellId?: string; search?: string; status?: string; page?: number; limit?: number; export?: boolean }): Promise<{ data: Cell[]; pagination?: { total: number; page: number; limit: number; pages: number } }> => {
+  getAll: async (params?: { churchId?: string; cellId?: string; search?: string; status?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean }): Promise<{ data: Cell[]; pagination?: { total: number; page: number; limit: number; pages: number } }> => {
     const { data } = await apiClient.get(BASE, { params });
     // Members get plain array, admins get { data, pagination }
     if (params?.export) return data;
@@ -144,7 +144,7 @@ export const cellsService = {
   },
 
   getOverviewStats: async (params?: {
-    givingPeriod?: 'this_week' | 'this_month' | 'last_month' | 'last_3_months' | 'custom';
+    givingPeriod?: 'this_week' | 'this_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'custom';
     givingStartDate?: string;
     givingEndDate?: string;
   }): Promise<any> => {

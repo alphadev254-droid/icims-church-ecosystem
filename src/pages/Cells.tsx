@@ -23,7 +23,7 @@ import { STALE_TIME } from '@/lib/query-config';
 import { useDebounce } from '@/hooks/use-debounce';
 
 const MEETING_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-type CellGivingPeriod = 'this_week' | 'this_month' | 'last_month' | 'last_3_months' | 'custom';
+type CellGivingPeriod = 'this_week' | 'this_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'custom';
 
 function toDateInputValue(date: Date) {
   const copy = new Date(date);
@@ -51,6 +51,8 @@ function getCellGivingDateRange(period: CellGivingPeriod, customStart: string, c
     end.setDate(0);
   } else if (period === 'last_3_months') {
     start.setMonth(start.getMonth() - 3);
+  } else if (period === 'last_6_months') {
+    start.setMonth(start.getMonth() - 6);
   }
 
   return {
@@ -365,10 +367,10 @@ export default function CellsPage() {
             {[
               { label: 'Total Cells',     value: overviewStats.totalCells },
               { label: 'Active Cells',    value: overviewStats.activeCells },
-              { label: 'Total Members',   value: overviewStats.totalMembers },
-              { label: 'Total Meetings',  value: overviewStats.totalMeetings },
+              { label: 'Members in Period', value: overviewStats.totalMembers },
+              { label: 'Meetings in Period', value: overviewStats.totalMeetings },
               { label: 'Attendance Rate', value: `${overviewStats.attendanceRate}%` },
-              { label: 'Total Visitors',  value: overviewStats.totalVisitors },
+              { label: 'Visitors in Period', value: overviewStats.totalVisitors },
               { label: 'Conversion Rate', value: `${overviewStats.cumulativeConversionRate ?? 0}%`, highlight: true },
             ].map(s => (
               <Card key={s.label} className={(s as any).highlight ? 'border-accent' : ''}>
@@ -385,14 +387,14 @@ export default function CellsPage() {
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-xs sm:text-sm text-muted-foreground">Cell/Fellowship Giving</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Cell/Fellowship Activity</p>
                     <HandCoins className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <p className="break-words text-xl font-bold sm:text-2xl">
                     {overviewStats.cellGivingSummary?.currency ?? 'MWK'} {(overviewStats.cellGivingSummary?.totalRaised ?? 0).toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatCellGivingDate(overviewStats.cellGivingSummary?.startDate) ?? 'Start'} to {formatCellGivingDate(overviewStats.cellGivingSummary?.endDate) ?? 'today'}
+                    Giving, meetings, attendance, and visitors: {formatCellGivingDate(overviewStats.cellGivingSummary?.startDate) ?? 'Start'} to {formatCellGivingDate(overviewStats.cellGivingSummary?.endDate) ?? 'today'}
                   </p>
                 </div>
                 <div className="min-w-0 flex flex-col gap-2 sm:flex-row md:justify-end">
@@ -405,6 +407,7 @@ export default function CellsPage() {
                       <SelectItem value="this_month">This month</SelectItem>
                       <SelectItem value="last_month">Last month</SelectItem>
                       <SelectItem value="last_3_months">Last 3 months</SelectItem>
+                      <SelectItem value="last_6_months">Last 6 months</SelectItem>
                       <SelectItem value="custom">Custom dates</SelectItem>
                     </SelectContent>
                   </Select>
@@ -429,8 +432,8 @@ export default function CellsPage() {
               <div className="grid gap-2 sm:grid-cols-3">
                 {[
                   { label: 'Attendance rate', value: `${overviewStats.attendanceRate ?? 0}%` },
-                  { label: 'Visitors', value: overviewStats.totalVisitors ?? 0 },
-                  { label: 'Total meetings', value: overviewStats.totalMeetings ?? 0 },
+                  { label: 'Visitors in period', value: overviewStats.totalVisitors ?? 0 },
+                  { label: 'Meetings in period', value: overviewStats.totalMeetings ?? 0 },
                 ].map(item => (
                   <div key={item.label} className="min-w-0 rounded-md border bg-muted/30 px-3 py-2">
                     <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">{item.label}</p>

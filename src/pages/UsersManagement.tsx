@@ -893,7 +893,8 @@ export default function UsersManagement() {
   const currentUser = useAuthStore(s => s.user);
   const qc = useQueryClient();
   const roleMemberTypeMatch = roleFilter.match(/^member-(adult|child):(.+)$/);
-  const selectedRoleId = roleMemberTypeMatch ? roleMemberTypeMatch[2] : roleFilter !== 'all' ? roleFilter : undefined;
+  const selectedLeadership = roleFilter === 'cell_leader' || roleFilter === 'team_leader' ? roleFilter : undefined;
+  const selectedRoleId = roleMemberTypeMatch ? roleMemberTypeMatch[2] : roleFilter !== 'all' && !selectedLeadership ? roleFilter : undefined;
   const selectedMemberType = roleMemberTypeMatch?.[1] as 'adult' | 'child' | undefined;
 
   const { data, isLoading } = useQuery({
@@ -905,6 +906,7 @@ export default function UsersManagement() {
       churchId: churchFilter !== 'all' ? churchFilter : undefined,
       roleId: selectedRoleId,
       memberType: selectedMemberType,
+      leadership: selectedLeadership,
       cellId: cellFilter !== 'all' ? cellFilter : undefined,
       teamId: teamFilter !== 'all' ? teamFilter : undefined,
       status: statusFilter,
@@ -1454,6 +1456,8 @@ export default function UsersManagement() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="cell_leader">Cell Leaders</SelectItem>
+            <SelectItem value="team_leader">Team Leaders</SelectItem>
             {rolesForFilter
               .filter(role => role.name !== 'system_admin')
               .flatMap(role => role.name === 'member'
