@@ -27,6 +27,7 @@ export interface CalendarActivityFilters {
   endDate: string;
   churchId?: string;
   types?: CalendarActivityType[];
+  statuses?: string[];
 }
 
 export const calendarService = {
@@ -37,6 +38,7 @@ export const calendarService = {
         endDate: filters.endDate,
         churchId: filters.churchId,
         types: filters.types?.join(','),
+        statuses: filters.statuses?.join(','),
       },
     });
     return data.data;

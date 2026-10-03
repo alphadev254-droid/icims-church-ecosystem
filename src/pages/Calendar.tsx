@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { addMonths, endOfMonth, format, isSameDay, isSameMonth, startOfMonth, startOfWeek, subMonths } from 'date-fns';
-import { CalendarDays, ChevronLeft, ChevronRight, Circle, Download, Filter, Lock } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Circle, Download, ExternalLink, Filter, List, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { calendarService, CalendarActivity, CalendarActivityType } from '@/services/calendar';
 import { churchesService } from '@/services/churches';
@@ -25,6 +25,19 @@ const ACTIVITY_TYPES: Array<{ value: CalendarActivityType; label: string; color:
   { value: 'giving_deadline', label: 'Giving Deadlines', color: 'bg-violet-500' },
   { value: 'pledge_due', label: 'Pledge Due Dates', color: 'bg-red-500' },
 ];
+
+const STATUS_OPTIONS = [
+  { value: 'upcoming', label: 'Upcoming' },
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'active', label: 'Active' },
+  { value: 'recorded', label: 'Recorded' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'partial', label: 'Partial' },
+  { value: 'overdue', label: 'Overdue' },
+  { value: 'completed', label: 'Completed' },
+];
+
+type CalendarView = 'month' | 'agenda';
 
 function toDateInput(date: Date) {
   return format(date, 'yyyy-MM-dd');
@@ -56,6 +69,58 @@ function activityDate(activity: CalendarActivity) {
   return new Date(activity.startsAt);
 }
 
+function getActivityRoute(activity: CalendarActivity) {
+  if (activity.type === 'attendance') return `/dashboard/attendance/${activity.sourceId}`;
+  if (activity.type === 'cell_meeting' && typeof activity.meta?.cellId === 'string') return `/dashboard/cells/${activity.meta.cellId}`;
+  if (activity.type === 'pledge_due') return `/dashboard/pledges/${activity.sourceId}`;
+  if (activity.type === 'giving_deadline') return '/dashboard/giving';
+  if (activity.type === 'event') return '/dashboard/events';
+  if (activity.type === 'reminder') return '/dashboard/reminders';
+  return null;
+}
+
+function groupActivitiesByType(activities: CalendarActivity[]) {
+  return ACTIVITY_TYPES
+    .map(type => ({
+      ...type,
+      activities: activities.filter(activity => activity.type === type.value),
+    }))
+    .filter(group => group.activities.length > 0);
+}
+
+function ActivityItem({ activity }: { activity: CalendarActivity }) {
+  const route = getActivityRoute(activity);
+
+  return (
+    <div className="rounded-md border p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Circle className={`h-2.5 w-2.5 fill-current ${activityColor(activity.type).replace('bg-', 'text-')}`} />
+            <Badge variant="secondary" className="text-[11px]">{activityLabel(activity.type)}</Badge>
+          </div>
+          <h3 className="mt-2 truncate text-sm font-semibold">{activity.title}</h3>
+          <p className="text-xs text-muted-foreground">{activity.churchName || 'Church'}</p>
+        </div>
+        {activity.status && <Badge variant="outline" className="text-[11px] capitalize">{activity.status}</Badge>}
+      </div>
+      {activity.description && (
+        <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{activity.description}</p>
+      )}
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">{format(activityDate(activity), 'p')}</p>
+        {route && (
+          <Button asChild variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
+            <Link to={route}>
+              Open <ExternalLink className="h-3 w-3" />
+            </Link>
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CalendarPage() {
   const { user } = useAuth();
   const { hasPermission } = useRole();
@@ -66,6 +131,8 @@ export default function CalendarPage() {
   const [month, setMonth] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState(() => new Date());
   const [churchId, setChurchId] = useState('all');
+  const [view, setView] = useState<CalendarView>('month');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedTypes, setSelectedTypes] = useState<CalendarActivityType[]>(ACTIVITY_TYPES.map(type => type.value));
 
   const monthStart = startOfMonth(month);
@@ -78,18 +145,28 @@ export default function CalendarPage() {
   });
 
   const { data: activities = [], isLoading } = useQuery({
-    queryKey: ['calendar-activities', toDateInput(monthStart), toDateInput(monthEnd), churchId, selectedTypes],
+    queryKey: ['calendar-activities', toDateInput(monthStart), toDateInput(monthEnd), churchId, selectedTypes, statusFilter],
     queryFn: () => calendarService.getActivities({
       startDate: toDateInput(monthStart),
       endDate: toDateInput(monthEnd),
       churchId: churchId !== 'all' ? churchId : undefined,
       types: selectedTypes,
+      statuses: statusFilter !== 'all' ? [statusFilter] : undefined,
     }),
     enabled: canReadCalendar && hasCalendarFeature && selectedTypes.length > 0,
   });
 
   const days = useMemo(() => getMonthDays(month), [month]);
   const selectedDayActivities = activities.filter(activity => isSameDay(activityDate(activity), selectedDay));
+  const selectedDayGroups = groupActivitiesByType(selectedDayActivities);
+  const agendaGroups = useMemo(() => {
+    const groups = new Map<string, CalendarActivity[]>();
+    activities.forEach(activity => {
+      const key = format(activityDate(activity), 'yyyy-MM-dd');
+      groups.set(key, [...(groups.get(key) || []), activity]);
+    });
+    return Array.from(groups.entries()).map(([date, items]) => ({ date, items }));
+  }, [activities]);
   const exportRows = activities.map(activity => ({
     date: format(activityDate(activity), 'yyyy-MM-dd'),
     type: activityLabel(activity.type),
@@ -137,6 +214,24 @@ export default function CalendarPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-md border p-1">
+            <Button
+              variant={view === 'month' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={() => setView('month')}
+            >
+              <CalendarDays className="h-3.5 w-3.5" /> Month
+            </Button>
+            <Button
+              variant={view === 'agenda' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={() => setView('agenda')}
+            >
+              <List className="h-3.5 w-3.5" /> Agenda
+            </Button>
+          </div>
           {!isMember && churches.length > 0 && (
             <Select value={churchId} onValueChange={setChurchId}>
               <SelectTrigger className="h-9 w-44 text-xs sm:text-sm">
@@ -150,6 +245,17 @@ export default function CalendarPage() {
               </SelectContent>
             </Select>
           )}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-9 w-40 text-xs sm:text-sm">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {STATUS_OPTIONS.map(status => (
+                <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {canExportCalendar && (
             <ExportImportButtons
               data={exportRows}
@@ -216,38 +322,62 @@ export default function CalendarPage() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Card>
           <CardContent className="p-2 sm:p-4">
-            <div className="grid grid-cols-7 border-b text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                <div key={day} className="py-2">{day}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7">
-              {days.map(day => {
-                const dayActivities = activities.filter(activity => isSameDay(activityDate(activity), day));
-                const selected = isSameDay(day, selectedDay);
-                return (
-                  <button
-                    key={day.toISOString()}
-                    type="button"
-                    onClick={() => setSelectedDay(day)}
-                    className={`min-h-[92px] border-b border-r p-2 text-left transition hover:bg-muted/60 sm:min-h-[118px] ${selected ? 'bg-accent/10 ring-1 ring-inset ring-accent' : ''} ${!isSameMonth(day, month) ? 'bg-muted/30 text-muted-foreground' : ''}`}
-                  >
-                    <span className="text-xs font-medium sm:text-sm">{format(day, 'd')}</span>
-                    <div className="mt-2 space-y-1">
-                      {dayActivities.slice(0, 3).map(activity => (
-                        <div key={activity.id} className="flex items-center gap-1 truncate text-[11px]">
-                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${activityColor(activity.type)}`} />
-                          <span className="truncate">{activity.title}</span>
+            {view === 'month' ? (
+              <>
+                <div className="grid grid-cols-7 border-b text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                    <div key={day} className="py-2">{day}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7">
+                  {days.map(day => {
+                    const dayActivities = activities.filter(activity => isSameDay(activityDate(activity), day));
+                    const selected = isSameDay(day, selectedDay);
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        type="button"
+                        onClick={() => setSelectedDay(day)}
+                        className={`min-h-[92px] border-b border-r p-2 text-left transition hover:bg-muted/60 sm:min-h-[118px] ${selected ? 'bg-accent/10 ring-1 ring-inset ring-accent' : ''} ${!isSameMonth(day, month) ? 'bg-muted/30 text-muted-foreground' : ''}`}
+                      >
+                        <span className="text-xs font-medium sm:text-sm">{format(day, 'd')}</span>
+                        <div className="mt-2 space-y-1">
+                          {dayActivities.slice(0, 3).map(activity => (
+                            <div key={activity.id} className="flex items-center gap-1 truncate text-[11px]">
+                              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${activityColor(activity.type)}`} />
+                              <span className="truncate">{activity.title}</span>
+                            </div>
+                          ))}
+                          {dayActivities.length > 3 && (
+                            <div className="text-[11px] text-muted-foreground">+{dayActivities.length - 3} more</div>
+                          )}
                         </div>
-                      ))}
-                      {dayActivities.length > 3 && (
-                        <div className="text-[11px] text-muted-foreground">+{dayActivities.length - 3} more</div>
-                      )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                {agendaGroups.length === 0 ? (
+                  <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+                    No activities match the current filters.
+                  </div>
+                ) : (
+                  agendaGroups.map(group => (
+                    <div key={group.date} className="space-y-2">
+                      <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background py-2">
+                        <h2 className="text-sm font-semibold">{format(new Date(`${group.date}T00:00:00`), 'EEEE, MMMM d')}</h2>
+                        <Badge variant="secondary">{group.items.length}</Badge>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {group.items.map(activity => <ActivityItem key={activity.id} activity={activity} />)}
+                      </div>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+                  ))
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -271,23 +401,16 @@ export default function CalendarPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {selectedDayActivities.map(activity => (
-                  <div key={activity.id} className="rounded-md border p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Circle className={`h-2.5 w-2.5 fill-current ${activityColor(activity.type).replace('bg-', 'text-')}`} />
-                          <Badge variant="secondary" className="text-[11px]">{activityLabel(activity.type)}</Badge>
-                        </div>
-                        <h3 className="mt-2 truncate text-sm font-semibold">{activity.title}</h3>
-                        <p className="text-xs text-muted-foreground">{activity.churchName || 'Church'}</p>
-                      </div>
-                      {activity.status && <Badge variant="outline" className="text-[11px]">{activity.status}</Badge>}
+                {selectedDayGroups.map(group => (
+                  <div key={group.value} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span className={`h-2 w-2 rounded-full ${group.color}`} />
+                        {group.label}
+                      </h3>
+                      <Badge variant="secondary" className="text-[11px]">{group.activities.length}</Badge>
                     </div>
-                    {activity.description && (
-                      <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{activity.description}</p>
-                    )}
-                    <p className="mt-2 text-xs text-muted-foreground">{format(activityDate(activity), 'p')}</p>
+                    {group.activities.map(activity => <ActivityItem key={activity.id} activity={activity} />)}
                   </div>
                 ))}
               </div>
