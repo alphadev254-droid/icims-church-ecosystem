@@ -11,6 +11,7 @@ export const PACKAGE_FEATURES = {
   GIVING_CELL_OFFERING: 'giving_cell_offering',
   PLEDGES_MANAGEMENT: 'pledges_management',
   TRANSACTIONS_VIEW: 'transactions_view',
+  CALENDAR: 'calendar',
   EVENTS_MANAGEMENT: 'events_management',
   EVENT_PUBLIC_LINKS: 'event_public_links',
   EVENT_QR_CODES: 'event_qr_codes',

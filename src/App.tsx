@@ -37,6 +37,7 @@ const ReferrerReferralsPage = lazy(() => import("./pages/referrer/ReferrerReferr
 const ReferrerWalletPage = lazy(() => import("./pages/referrer/ReferrerWalletPage"));
 const ReferrerPayoutSettingsPage = lazy(() => import("./pages/referrer/ReferrerPayoutSettingsPage"));
 const Events = lazy(() => import("./pages/Events"));
+const CalendarPage = lazy(() => import("./pages/Calendar"));
 const Reminders = lazy(() => import("./pages/Reminders"));
 const Giving = lazy(() => import("./pages/Giving"));
 const Donations = lazy(() => import("./pages/Donations"));
@@ -161,6 +162,7 @@ const App = () => {
                 <Route path="referrals/my-referrals" element={<ReferrerReferralsPage />} />
                 <Route path="referrals/wallet" element={<ReferrerWalletPage />} />
                 <Route path="referrals/payout-settings" element={<ReferrerPayoutSettingsPage />} />
+                <Route path="calendar" element={<CalendarPage />} />
                 <Route path="events" element={<Events />} />
                 <Route path="events/:id/tickets" element={<EventTickets />} />
                 <Route path="my-tickets" element={<MyTickets />} />

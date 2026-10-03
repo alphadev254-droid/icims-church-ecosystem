@@ -53,6 +53,17 @@ function subStatusBadge(status: string) {
   return <Badge variant="outline" className="text-xs">{status}</Badge>;
 }
 
+function formatMetricMoney(amount?: number | null, currency = 'MWK') {
+  return `${currency} ${Number(amount ?? 0).toLocaleString()}`;
+}
+
+function changeText(value?: number | null) {
+  const number = Number(value ?? 0);
+  if (number > 0) return `+${number}% vs last month`;
+  if (number < 0) return `${number}% vs last month`;
+  return '0% vs last month';
+}
+
 function addMonths(date: Date, months: number) {
   const d = new Date(date);
   d.setMonth(d.getMonth() + months);
@@ -621,6 +632,39 @@ export default function AdminUserDetail() {
           />
         </div>
       </div>
+
+      {isMinistryAdmin && data.usageMetrics && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Giving Transactions This Month</p>
+              <p className="text-2xl font-bold">{data.usageMetrics.giving.thisMonthTransactions}</p>
+              <p className="text-xs text-muted-foreground">{formatMetricMoney(data.usageMetrics.giving.thisMonthAmount)} · {changeText(data.usageMetrics.giving.transactionChangePercent)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Event Payments This Month</p>
+              <p className="text-2xl font-bold">{data.usageMetrics.events.thisMonthTransactions}</p>
+              <p className="text-xs text-muted-foreground">{formatMetricMoney(data.usageMetrics.events.thisMonthAmount)} · {changeText(data.usageMetrics.events.transactionChangePercent)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">All-Time Giving Usage</p>
+              <p className="text-2xl font-bold">{data.usageMetrics.giving.allTimeTransactions}</p>
+              <p className="text-xs text-muted-foreground">{formatMetricMoney(data.usageMetrics.giving.allTimeAmount)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Active Giving / Events</p>
+              <p className="text-2xl font-bold">{data.usageMetrics.activeGivingCampaigns} / {data.usageMetrics.publishedEvents}</p>
+              <p className="text-xs text-muted-foreground">Campaigns / published events</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Profile */}

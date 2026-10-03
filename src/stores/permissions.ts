@@ -1,5 +1,5 @@
 import {
-  Home, Calendar, HandCoins, ClipboardList, MessageSquare,
+  Home, Calendar, CalendarDays, HandCoins, ClipboardList, MessageSquare,
   BookOpen, Building2, TrendingUp, BarChart3, Settings, Shield, UserCog, Package2, Receipt, Wallet, Users, Bell, Handshake, Globe, Baby, Banknote, type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from './authStore';
@@ -33,6 +33,7 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   { permission: 'cells:read',         item: { to: '/dashboard/cells',         label: 'Cells',         icon: Users } },
   
   // Activities & Engagement
+  { permission: 'calendar:read',      item: { to: '/dashboard/calendar',      label: 'Calendar',      icon: CalendarDays } },
   { permission: 'events:read',        item: { to: '/dashboard/events',        label: 'Events',        icon: Calendar } },
   { permission: 'attendance:read',    item: { to: '/dashboard/attendance',    label: 'Attendance',    icon: ClipboardList } },
   { permission: 'reminders:read',     item: { to: '/dashboard/reminders',     label: 'Reminders',     icon: Bell } },
@@ -80,6 +81,7 @@ function routePackageFeature(route: string): string | null {
   if (route === '/dashboard/pledges') return PACKAGE_FEATURES.PLEDGES_MANAGEMENT;
   if (route === '/dashboard/transactions') return PACKAGE_FEATURES.TRANSACTIONS_VIEW;
   if (route === '/dashboard/withdrawals') return PACKAGE_FEATURES.GIVING_WALLETS;
+  if (route === '/dashboard/calendar') return PACKAGE_FEATURES.CALENDAR;
   if (route === '/dashboard/events') return PACKAGE_FEATURES.EVENTS_MANAGEMENT;
   if (route === '/dashboard/my-tickets') return PACKAGE_FEATURES.EVENT_MEMBER_BOOKING;
   return null;

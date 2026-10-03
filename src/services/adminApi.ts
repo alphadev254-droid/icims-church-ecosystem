@@ -147,6 +147,29 @@ export interface AdminUserDetail extends AdminUser {
   subscription?: AdminSubscription | null;
   subscriptions: AdminSubscription[];
   payments: AdminPayment[];
+  usageMetrics?: {
+    period: { thisMonthStart: string; lastMonthStart: string; nextMonthStart: string };
+    giving: {
+      thisMonthTransactions: number;
+      thisMonthAmount: number;
+      lastMonthTransactions: number;
+      lastMonthAmount: number;
+      allTimeTransactions: number;
+      allTimeAmount: number;
+      transactionChangePercent: number;
+    };
+    events: {
+      thisMonthTransactions: number;
+      thisMonthAmount: number;
+      lastMonthTransactions: number;
+      lastMonthAmount: number;
+      allTimeTransactions: number;
+      allTimeAmount: number;
+      transactionChangePercent: number;
+    };
+    activeGivingCampaigns: number;
+    publishedEvents: number;
+  } | null;
 }
 
 export interface AdminMarketer {
@@ -720,7 +743,16 @@ export const adminApi = {
     country?: string;
     status?: string;
     ministry?: string;
-  }) => apiClient.get<{ success: boolean; data: AdminUser[]; pagination: Pagination }>('/admin/users', { params }),
+    memberType?: string;
+  }) => apiClient.get<{
+    success: boolean;
+    data: AdminUser[];
+    pagination: Pagination;
+    summary?: {
+      gender: { male: number; female: number; other: number; unknown: number };
+      memberType: { adult: number; child: number };
+    };
+  }>('/admin/users', { params }),
 
   getUser: (id: string) =>
     apiClient.get<{ success: boolean; data: AdminUserDetail }>(`/admin/users/${id}`),

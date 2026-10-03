@@ -17,6 +17,10 @@ import { ExportImportButtons } from '@/components/ExportImportButtons';
 const ROLES = ['ministry_admin', 'member'];
 const COUNTRIES = ['Malawi', 'Kenya'];
 const STATUSES = ['active', 'suspended', 'inactive', 'cancelled'];
+const MEMBER_TYPES = [
+  { value: 'adult', label: 'Adults' },
+  { value: 'child', label: 'Children' },
+];
 
 function roleLabel(role?: string | null) {
   if (role === 'referrer') return 'Marketer';
@@ -47,6 +51,7 @@ export default function AdminUsers() {
   const [country, setCountry] = useState('');
   const [status, setStatus] = useState('');
   const [ministry, setMinistry] = useState('');
+  const [memberType, setMemberType] = useState('');
   const [page, setPage] = useState(1);
 
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
@@ -64,13 +69,14 @@ export default function AdminUsers() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-users', debouncedSearch, role, country, status, ministry, page],
+    queryKey: ['admin-users', debouncedSearch, role, country, status, ministry, memberType, page],
     queryFn: () => adminApi.getUsers({
       search: debouncedSearch || undefined,
       role: role || undefined,
       country: country || undefined,
       status: status || undefined,
       ministry: ministry || undefined,
+      memberType: memberType || undefined,
       page,
       limit: 70,
     }).then(r => r.data),
@@ -107,6 +113,8 @@ export default function AdminUsers() {
 
   const pagination = data?.pagination;
   const users = data?.data ?? [];
+  const summary = data?.summary;
+  const genderTotal = (summary?.gender.male ?? 0) + (summary?.gender.female ?? 0) + (summary?.gender.other ?? 0) + (summary?.gender.unknown ?? 0);
 
   return (
     <div className="space-y-4">
@@ -123,6 +131,8 @@ export default function AdminUsers() {
           data={users.map(u => ({
             firstName: u.firstName, lastName: u.lastName, email: u.email,
             phone: u.phone ?? '', role: roleLabel(u.roleName),
+            memberType: u.memberType === 'child' ? 'Child' : 'Adult',
+            gender: u.gender ?? '',
             marketerStatus: u.roleName === 'referrer' ? (u.referrer?.status === 'approved' ? 'Verified' : u.referrer?.status ?? '') : '',
             ministry: u.resolvedMinistryName ?? u.ministryName ?? '',
             country: u.resolvedCountry ?? u.accountCountry ?? '',
@@ -133,14 +143,36 @@ export default function AdminUsers() {
           headers={[
             { label: 'First Name', key: 'firstName' }, { label: 'Last Name', key: 'lastName' },
             { label: 'Email', key: 'email' }, { label: 'Phone', key: 'phone' },
-            { label: 'Role', key: 'role' }, { label: 'Marketer Status', key: 'marketerStatus' },
+            { label: 'Role', key: 'role' }, { label: 'Member Type', key: 'memberType' },
+            { label: 'Gender', key: 'gender' }, { label: 'Marketer Status', key: 'marketerStatus' },
             { label: 'Ministry', key: 'ministry' },
             { label: 'Country', key: 'country' }, { label: 'Church', key: 'church' },
             { label: 'Churches', key: 'churches' }, { label: 'Status', key: 'status' },
             { label: 'Joined', key: 'joined' },
           ]}
-          pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Marketer Status', 'Ministry', 'Country', 'Church', 'Churches', 'Status', 'Joined']}
+          pdfColumns={['First Name', 'Last Name', 'Email', 'Phone', 'Role', 'Member Type', 'Gender', 'Marketer Status', 'Ministry', 'Country', 'Church', 'Churches', 'Status', 'Joined']}
         />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border p-3">
+          <p className="text-xs text-muted-foreground">Adults</p>
+          <p className="text-2xl font-bold">{summary?.memberType.adult ?? 0}</p>
+        </div>
+        <div className="rounded-lg border p-3">
+          <p className="text-xs text-muted-foreground">Children</p>
+          <p className="text-2xl font-bold">{summary?.memberType.child ?? 0}</p>
+        </div>
+        <div className="rounded-lg border p-3">
+          <p className="text-xs text-muted-foreground">Gender Summary</p>
+          <p className="text-2xl font-bold">{genderTotal}</p>
+          <p className="text-xs text-muted-foreground">M {summary?.gender.male ?? 0} / F {summary?.gender.female ?? 0}</p>
+        </div>
+        <div className="rounded-lg border p-3">
+          <p className="text-xs text-muted-foreground">Other / Unknown</p>
+          <p className="text-2xl font-bold">{(summary?.gender.other ?? 0) + (summary?.gender.unknown ?? 0)}</p>
+          <p className="text-xs text-muted-foreground">Within current filters</p>
+        </div>
       </div>
 
       {/* Filters */}
@@ -177,6 +209,13 @@ export default function AdminUsers() {
             {STATUSES.map(s => <SelectItem key={s} value={s} className="text-xs capitalize">{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={memberType} onValueChange={v => { setMemberType(v === 'all' ? '' : v); setPage(1); }}>
+          <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="Age group" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">Adults + Children</SelectItem>
+            {MEMBER_TYPES.map(item => <SelectItem key={item.value} value={item.value} className="text-xs">{item.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={ministry} onValueChange={v => { setMinistry(v === 'all' ? '' : v); setPage(1); }}>
           <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="All ministries" /></SelectTrigger>
           <SelectContent>
@@ -197,6 +236,8 @@ export default function AdminUsers() {
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Name</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden sm:table-cell">Phone</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Role</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Type</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden xl:table-cell">Gender</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Ministry</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Country</th>
                 <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Church</th>
@@ -229,6 +270,12 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell">
                         <Badge variant="outline" className="text-xs capitalize">{roleLabel(user.roleName)}</Badge>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <Badge variant="secondary" className="text-xs">{user.memberType === 'child' ? 'Child' : 'Adult'}</Badge>
+                      </td>
+                      <td className="px-4 py-3 hidden xl:table-cell">
+                        <span className="text-xs capitalize">{user.gender || '—'}</span>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-xs">{user.resolvedMinistryName || user.ministryName || '—'}</span>
