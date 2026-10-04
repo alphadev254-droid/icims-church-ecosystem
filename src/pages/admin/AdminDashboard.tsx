@@ -109,23 +109,32 @@ export default function AdminDashboard() {
       country: 'Malawi',
       ministries: s.malawiMinistryAdmins ?? 0,
       users: s.malawiUsers,
-      packagePayments: `MWK ${(s.malawiRevenue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+      subscriptionRevenue: `MWK ${(s.malawiRevenue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+      transactionVolume: `MWK ${(s.malawiTransactionVolume ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
       platformFees: `MWK ${(s.malawiMainRevenue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-      payments: s.malawiPayments,
+      packagePayments: s.malawiPayments,
+      transactions: s.malawiTransactionCount ?? 0,
     },
     {
       country: 'Kenya',
       ministries: s.kenyaMinistryAdmins ?? 0,
       users: s.kenyaUsers,
-      packagePayments: `KES ${(s.kenyaRevenue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+      subscriptionRevenue: `KES ${(s.kenyaRevenue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+      transactionVolume: `KES ${(s.kenyaTransactionVolume ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
       platformFees: `KES ${(s.kenyaMainRevenue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-      payments: s.kenyaPayments,
+      packagePayments: s.kenyaPayments,
+      transactions: s.kenyaTransactionCount ?? 0,
     },
   ];
 
-  const packagePaymentsText = [
+  const subscriptionRevenueText = [
     `MWK ${(s.malawiRevenue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
     `KES ${(s.kenyaRevenue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+  ].join(' / ');
+
+  const transactionVolumeText = [
+    `MWK ${(s.malawiTransactionVolume ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+    `KES ${(s.kenyaTransactionVolume ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
   ].join(' / ');
 
   const platformFeesText = [
@@ -140,7 +149,7 @@ export default function AdminDashboard() {
         <div>
           <h1 className="font-heading text-xl sm:text-2xl font-bold">System Dashboard</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Active ministries, subscriptions, payments, and platform revenue.
+            Active ministries, subscriptions, church transactions, and ICIMS earnings.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -163,8 +172,9 @@ export default function AdminDashboard() {
         <StatCard label="Active Users" value={s.activeUsers ?? 0} icon={Users} sub={`${activeUserRate}% of all users`} />
         <StatCard label="Active Subscriptions" value={activeSubscriptions} icon={Package} tone="accent" sub={`${activeSubscriptionRate}% current`} />
         <StatCard label="Expiring Soon" value={s.expiringSoonSubscriptions ?? 0} icon={AlertTriangle} tone="warning" sub="Next 14 days" />
-        <StatCard label="Package Revenue" value={packagePaymentsText} icon={CreditCard} sub={`${s.totalPayments} completed package payments`} wrapValue />
-        <StatCard label="Platform Fees" value={platformFeesText} icon={TrendingUp} tone="accent" sub={`${s.mainRevenueTransactions ?? 0} payment/withdrawal fees`} wrapValue />
+        <StatCard label="Subscription Revenue" value={subscriptionRevenueText} icon={CreditCard} sub={`${s.totalPayments} completed package payments`} wrapValue />
+        <StatCard label="Church Transaction Volume" value={transactionVolumeText} icon={TrendingUp} sub={`${s.transactionVolumeCount ?? 0} giving/event transactions`} wrapValue />
+        <StatCard label="ICIMS Platform Fees" value={platformFeesText} icon={TrendingUp} tone="accent" sub={`${s.mainRevenueTransactions ?? 0} payment/withdrawal fees`} wrapValue />
         <StatCard label="Payment Issues" value={paymentIssueCount} icon={AlertTriangle} tone={paymentIssueCount > 0 ? 'warning' : 'default'} sub={`${s.pendingPayments ?? 0} pending · ${s.failedPayments ?? 0} failed`} />
         <StatCard label="Active Packages" value={s.totalPackages ?? 0} icon={Layers3} />
       </div>
@@ -220,9 +230,10 @@ export default function AdminDashboard() {
                     <th className="py-2 text-left font-medium">Country</th>
                     <th className="py-2 text-right font-medium">Ministries</th>
                     <th className="py-2 text-right font-medium">Users</th>
-                    <th className="py-2 text-right font-medium">Package Payments</th>
-                    <th className="py-2 text-right font-medium">Platform Fees</th>
-                    <th className="py-2 text-right font-medium">Payments</th>
+                    <th className="py-2 text-right font-medium">Subscription Revenue</th>
+                    <th className="py-2 text-right font-medium">Church Transactions</th>
+                    <th className="py-2 text-right font-medium">ICIMS Fees</th>
+                    <th className="py-2 text-right font-medium">Counts</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -231,9 +242,10 @@ export default function AdminDashboard() {
                       <td className="py-3 font-medium">{row.country}</td>
                       <td className="py-3 text-right">{row.ministries.toLocaleString()}</td>
                       <td className="py-3 text-right">{row.users.toLocaleString()}</td>
-                      <td className="py-3 text-right">{row.packagePayments}</td>
+                      <td className="py-3 text-right">{row.subscriptionRevenue}</td>
+                      <td className="py-3 text-right">{row.transactionVolume}</td>
                       <td className="py-3 text-right">{row.platformFees}</td>
-                      <td className="py-3 text-right">{row.payments.toLocaleString()}</td>
+                      <td className="py-3 text-right">{row.packagePayments.toLocaleString()} packages · {row.transactions.toLocaleString()} txns</td>
                     </tr>
                   ))}
                 </tbody>

@@ -24,6 +24,12 @@ export interface AdminStats {
   malawiPayments: number;
   kenyaRevenue: number;
   kenyaPayments: number;
+  transactionVolume: number;
+  transactionVolumeCount: number;
+  malawiTransactionVolume: number;
+  malawiTransactionCount: number;
+  kenyaTransactionVolume: number;
+  kenyaTransactionCount: number;
   mainRevenue: number;
   mainRevenueTransactions: number;
   malawiMainRevenue: number;
