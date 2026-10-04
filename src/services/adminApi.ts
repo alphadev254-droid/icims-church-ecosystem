@@ -9,6 +9,9 @@ export interface AdminStats {
   kenyaUsers: number;
   activeUsers: number;
   suspendedUsers: number;
+  activeMinistryAdmins: number;
+  malawiMinistryAdmins: number;
+  kenyaMinistryAdmins: number;
   activeSubscriptions: number;
   expiredSubscriptions: number;
   expiringSoonSubscriptions: number;
@@ -148,6 +151,8 @@ export interface AdminUserDetail extends AdminUser {
   subscriptions: AdminSubscription[];
   payments: AdminPayment[];
   usageMetrics?: {
+    currencyCode: string;
+    market?: { code: string; name: string; country?: string | null };
     period: { thisMonthStart: string; lastMonthStart: string; nextMonthStart: string };
     giving: {
       thisMonthTransactions: number;

@@ -570,6 +570,7 @@ export default function AdminUserDetail() {
   const showMinistryProfile = isMinistryAdmin;
   const showMemberProfile = isMemberUser || hasChurchProfile;
   const showScopeProfile = !isMemberUser && !isMinistryAdmin && !isMarketer;
+  const usageMetricCurrency = data.usageMetrics?.currencyCode || fallbackInvoiceCurrency(data.accountCountry);
 
   return (
     <div className="space-y-4">
@@ -639,21 +640,21 @@ export default function AdminUserDetail() {
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">Giving Transactions This Month</p>
               <p className="text-2xl font-bold">{data.usageMetrics.giving.thisMonthTransactions}</p>
-              <p className="text-xs text-muted-foreground">{formatMetricMoney(data.usageMetrics.giving.thisMonthAmount)} · {changeText(data.usageMetrics.giving.transactionChangePercent)}</p>
+              <p className="text-xs text-muted-foreground">{formatMetricMoney(data.usageMetrics.giving.thisMonthAmount, usageMetricCurrency)} · {changeText(data.usageMetrics.giving.transactionChangePercent)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">Event Payments This Month</p>
               <p className="text-2xl font-bold">{data.usageMetrics.events.thisMonthTransactions}</p>
-              <p className="text-xs text-muted-foreground">{formatMetricMoney(data.usageMetrics.events.thisMonthAmount)} · {changeText(data.usageMetrics.events.transactionChangePercent)}</p>
+              <p className="text-xs text-muted-foreground">{formatMetricMoney(data.usageMetrics.events.thisMonthAmount, usageMetricCurrency)} · {changeText(data.usageMetrics.events.transactionChangePercent)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">All-Time Giving Usage</p>
               <p className="text-2xl font-bold">{data.usageMetrics.giving.allTimeTransactions}</p>
-              <p className="text-xs text-muted-foreground">{formatMetricMoney(data.usageMetrics.giving.allTimeAmount)}</p>
+              <p className="text-xs text-muted-foreground">{formatMetricMoney(data.usageMetrics.giving.allTimeAmount, usageMetricCurrency)}</p>
             </CardContent>
           </Card>
           <Card>
