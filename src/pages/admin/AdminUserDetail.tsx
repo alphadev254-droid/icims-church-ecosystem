@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Building2, ShieldOff, ShieldCheck, Trash2, KeyRound, Edit2, Package, Plus, RefreshCw, Mail, FileText } from 'lucide-react';
-import { adminApi, type AdminSubscription } from '@/services/adminApi';
+import { ArrowLeft, Building2, ShieldOff, ShieldCheck, Trash2, KeyRound, Edit2, Package, Plus, RefreshCw, Mail, FileText, MoreHorizontal, Eye, Download, Link as LinkIcon, Send, Ban } from 'lucide-react';
+import { adminApi, type AdminPackageInvoice, type AdminSubscription } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { useDebounce } from '@/hooks/use-debounce';
+import { downloadPackageInvoicePdf } from '@/lib/invoice-pdf';
 
 function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -53,6 +55,15 @@ function subStatusBadge(status: string) {
   return <Badge variant="outline" className="text-xs">{status}</Badge>;
 }
 
+function invoiceStatusBadge(status: string) {
+  if (status === 'paid') return <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Paid</Badge>;
+  if (status === 'partially_paid') return <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">Part Paid</Badge>;
+  if (status === 'sent') return <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Sent</Badge>;
+  if (status === 'overdue') return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Overdue</Badge>;
+  if (status === 'cancelled') return <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">Cancelled</Badge>;
+  return <Badge variant="outline" className="text-xs capitalize">{status.replace('_', ' ')}</Badge>;
+}
+
 function formatMetricMoney(amount?: number | null, currency = 'MWK') {
   return `${currency} ${Number(amount ?? 0).toLocaleString()}`;
 }
@@ -77,8 +88,22 @@ function addMonthsMinusDay(date: Date, months: number) {
   return d.toISOString().split('T')[0];
 }
 
+function monthsFromInvoicePeriod(startIso: string, endIso: string, billingCycle: string) {
+  if (billingCycle === 'yearly') return 12;
+  if (!startIso || !endIso) return 1;
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 1;
+  const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+  return Math.max(1, Math.min(12, months));
+}
+
 function toDateInput(iso: string) {
   return iso ? new Date(iso).toISOString().split('T')[0] : '';
+}
+
+function invoicePayUrl(token?: string | null) {
+  return token ? `${window.location.origin}/invoice/pay/${token}` : '';
 }
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -275,6 +300,8 @@ export default function AdminUserDetail() {
   const [editingSub, setEditingSub] = useState<AdminSubscription | null>(null);
   const [subForm, setSubForm] = useState<SubForm>({ packageId: '', startsAt: today(), expiresAt: addMonths(new Date(), 1), status: 'active' });
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<AdminPackageInvoice | null>(null);
+  const [viewingInvoice, setViewingInvoice] = useState<AdminPackageInvoice | null>(null);
   const [invoiceForm, setInvoiceForm] = useState<InvoiceForm>({
     packageId: '',
     billingCycle: 'monthly',
@@ -292,6 +319,13 @@ export default function AdminUserDetail() {
     queryKey: ['admin-user', id],
     queryFn: () => adminApi.getUser(id!).then(r => r.data.data),
     enabled: !!id,
+  });
+  const queryRoleName = data?.roleName ?? data?.role?.name;
+
+  const { data: invoicesResponse, isLoading: invoicesLoading } = useQuery({
+    queryKey: ['admin-user-invoices', id],
+    queryFn: () => adminApi.getInvoices({ ministry: id!, limit: 10 }).then(r => r.data),
+    enabled: !!id && queryRoleName === 'ministry_admin',
   });
 
   const { data: packagesData } = useQuery({
@@ -399,8 +433,52 @@ export default function AdminUserDetail() {
       toast.success('Invoice created');
       setInvoiceOpen(false);
       qc.invalidateQueries({ queryKey: ['admin-invoices'] });
+      qc.invalidateQueries({ queryKey: ['admin-user-invoices', id] });
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create invoice'),
+  });
+
+  const updateInvoiceMutation = useMutation({
+    mutationFn: () => adminApi.updateInvoice(editingInvoice!.id, {
+      packageId: invoiceForm.packageId,
+      billingCycle: invoiceForm.billingCycle,
+      amount: Number(invoiceForm.amount) || 0,
+      currency: selectedInvoicePricing.currency,
+      dueDate: invoiceForm.dueDate,
+      servicePeriodStart: invoiceForm.servicePeriodStart,
+      servicePeriodEnd: invoiceForm.servicePeriodEnd,
+      notes: invoiceForm.notes || undefined,
+      terms: invoiceForm.terms || undefined,
+      status: invoiceForm.status,
+    }),
+    onSuccess: () => {
+      toast.success('Invoice updated');
+      setInvoiceOpen(false);
+      setEditingInvoice(null);
+      qc.invalidateQueries({ queryKey: ['admin-invoices'] });
+      qc.invalidateQueries({ queryKey: ['admin-user-invoices', id] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update invoice'),
+  });
+
+  const sendInvoiceMutation = useMutation({
+    mutationFn: (invoiceId: string) => adminApi.sendInvoice(invoiceId),
+    onSuccess: () => {
+      toast.success('Invoice sent');
+      qc.invalidateQueries({ queryKey: ['admin-invoices'] });
+      qc.invalidateQueries({ queryKey: ['admin-user-invoices', id] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to send invoice'),
+  });
+
+  const cancelInvoiceMutation = useMutation({
+    mutationFn: (invoiceId: string) => adminApi.cancelInvoice(invoiceId),
+    onSuccess: () => {
+      toast.success('Invoice cancelled');
+      qc.invalidateQueries({ queryKey: ['admin-invoices'] });
+      qc.invalidateQueries({ queryKey: ['admin-user-invoices', id] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to cancel invoice'),
   });
 
   const openEditUser = () => {
@@ -523,6 +601,7 @@ export default function AdminUserDetail() {
   };
 
   const openCreateInvoice = () => {
+    setEditingInvoice(null);
     const current = data?.subscription || data?.subscriptions?.find(sub => sub.status === 'active') || data?.subscriptions?.[0];
     const periodStart = current?.expiresAt ? addMonths(new Date(current.expiresAt), 0) : today();
     const startDate = new Date(periodStart);
@@ -548,6 +627,36 @@ export default function AdminUserDetail() {
     setInvoiceOpen(true);
   };
 
+  const openEditInvoice = (invoice: AdminPackageInvoice) => {
+    const start = toDateInput(invoice.servicePeriodStart);
+    const end = toDateInput(invoice.servicePeriodEnd);
+    const months = monthsFromInvoicePeriod(start, end, invoice.billingCycle);
+    setEditingInvoice(invoice);
+    setInvoiceForm({
+      packageId: invoice.packageId,
+      billingCycle: invoice.billingCycle || 'monthly',
+      months: String(months),
+      amount: String(invoice.amount ?? ''),
+      dueDate: toDateInput(invoice.dueDate),
+      servicePeriodStart: start,
+      servicePeriodEnd: end,
+      notes: invoice.notes || DEFAULT_INVOICE_NOTES,
+      terms: invoice.terms || DEFAULT_INVOICE_TERMS,
+      status: invoice.status === 'sent' ? 'sent' : 'draft',
+    });
+    setInvoiceOpen(true);
+  };
+
+  const copyInvoicePaymentLink = (invoice: AdminPackageInvoice) => {
+    const url = invoicePayUrl(invoice.publicToken);
+    if (!url) {
+      toast.error('Payment link is not available for this invoice yet');
+      return;
+    }
+    navigator.clipboard.writeText(url);
+    toast.success('Invoice payment link copied');
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -571,6 +680,11 @@ export default function AdminUserDetail() {
   const showMemberProfile = isMemberUser || hasChurchProfile;
   const showScopeProfile = !isMemberUser && !isMinistryAdmin && !isMarketer;
   const usageMetricCurrency = data.usageMetrics?.currencyCode || fallbackInvoiceCurrency(data.accountCountry);
+  const invoices = invoicesResponse?.data ?? [];
+  const canEditInvoice = (invoice: AdminPackageInvoice) =>
+    ['draft', 'sent', 'overdue'].includes(invoice.status) && Number(invoice.amountPaid || 0) <= 0;
+  const canSendInvoice = (invoice: AdminPackageInvoice) =>
+    invoice.status !== 'paid' && invoice.status !== 'cancelled';
 
   return (
     <div className="space-y-4">
@@ -883,6 +997,94 @@ export default function AdminUserDetail() {
         </Card>
       )}
 
+      {isMinistryAdmin && (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-sm">Package Invoices ({invoicesResponse?.pagination?.total ?? invoices.length})</CardTitle>
+              <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={openCreateInvoice}>
+                <FileText className="h-3.5 w-3.5" /> New Invoice
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Invoice</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Package</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Period</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Due</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Amount</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Balance</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Status</th>
+                    <th className="px-4 py-2 w-24 text-right font-medium text-muted-foreground">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {invoicesLoading ? (
+                    <tr><td colSpan={8} className="px-4 py-6 text-center text-muted-foreground">Loading invoices...</td></tr>
+                  ) : invoices.length === 0 ? (
+                    <tr><td colSpan={8} className="px-4 py-6 text-center text-muted-foreground">No package invoices yet.</td></tr>
+                  ) : invoices.map(invoice => (
+                    <tr key={invoice.id} className="hover:bg-muted/30">
+                      <td className="px-4 py-2.5 font-medium">{invoice.invoiceNumber}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{invoice.package?.displayName || invoice.packageName}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
+                        {new Date(invoice.servicePeriodStart).toLocaleDateString()} - {new Date(invoice.servicePeriodEnd).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{new Date(invoice.dueDate).toLocaleDateString()}</td>
+                      <td className="px-4 py-2.5 font-medium">{formatMetricMoney(invoice.amount, invoice.currency)}</td>
+                      <td className="px-4 py-2.5">{formatMetricMoney(invoice.balanceDue, invoice.currency)}</td>
+                      <td className="px-4 py-2.5">{invoiceStatusBadge(invoice.status)}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
+                                <MoreHorizontal className="h-4 w-4" /> Actions
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem className="gap-2 text-xs" onClick={() => setViewingInvoice(invoice)}>
+                                <Eye className="h-4 w-4" /> View details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="gap-2 text-xs" onClick={() => downloadPackageInvoicePdf(invoice)}>
+                                <Download className="h-4 w-4" /> Download PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="gap-2 text-xs" onClick={() => copyInvoicePaymentLink(invoice)}>
+                                <LinkIcon className="h-4 w-4" /> Copy payment link
+                              </DropdownMenuItem>
+                              {canSendInvoice(invoice) && (
+                                <DropdownMenuItem className="gap-2 text-xs" onClick={() => sendInvoiceMutation.mutate(invoice.id)}>
+                                  <Send className="h-4 w-4" /> {invoice.status === 'draft' ? 'Send invoice' : 'Resend invoice'}
+                                </DropdownMenuItem>
+                              )}
+                              {canEditInvoice(invoice) && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="gap-2 text-xs" onClick={() => openEditInvoice(invoice)}>
+                                    <Edit2 className="h-4 w-4" /> Edit invoice
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="gap-2 text-xs text-destructive" onClick={() => cancelInvoiceMutation.mutate(invoice.id)}>
+                                    <Ban className="h-4 w-4" /> Cancel invoice
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Manage Subscription Dialog */}
       <Dialog open={subOpen} onOpenChange={setSubOpen}>
         <DialogContent className="max-w-sm">
@@ -943,11 +1145,14 @@ export default function AdminUserDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Generate Invoice Dialog */}
-      <Dialog open={invoiceOpen} onOpenChange={setInvoiceOpen}>
+      {/* Package Invoice Dialog */}
+      <Dialog open={invoiceOpen} onOpenChange={open => {
+        setInvoiceOpen(open);
+        if (!open) setEditingInvoice(null);
+      }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-base">Generate Package Invoice</DialogTitle>
+            <DialogTitle className="text-base">{editingInvoice ? 'Edit Package Invoice' : 'Generate Package Invoice'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 overflow-y-auto pr-1">
             <div className="space-y-1">
@@ -1063,9 +1268,17 @@ export default function AdminUserDetail() {
               <div className="space-y-1">
                 <Label className="text-xs">Period End</Label>
                 <Input className="h-8 text-xs" type="date" value={invoiceForm.servicePeriodEnd}
-                  readOnly
-                  aria-readonly="true"
-                  title="Period end is calculated from the start date and selected months" />
+                  min={invoiceForm.servicePeriodStart || undefined}
+                  onChange={e => setInvoiceForm(f => {
+                    const months = monthsFromInvoicePeriod(f.servicePeriodStart, e.target.value, f.billingCycle);
+                    const pricing = resolveInvoicePackagePricing(selectedInvoicePackage, f.billingCycle, invoiceCountry, months);
+                    return {
+                      ...f,
+                      servicePeriodEnd: e.target.value,
+                      months: String(months),
+                      amount: pricing.amount || f.amount,
+                    };
+                  })} />
               </div>
             </div>
             <div className="space-y-1">
@@ -1082,10 +1295,42 @@ export default function AdminUserDetail() {
           <DialogFooter className="gap-2 pt-2 border-t">
             <Button variant="outline" size="sm" onClick={() => setInvoiceOpen(false)}>Cancel</Button>
             <Button size="sm"
-              disabled={!invoiceForm.packageId || !invoiceForm.dueDate || !invoiceForm.servicePeriodStart || !invoiceForm.servicePeriodEnd || createInvoiceMutation.isPending}
-              onClick={() => createInvoiceMutation.mutate()}>
-              {createInvoiceMutation.isPending ? 'Creating...' : 'Create Invoice'}
+              disabled={!invoiceForm.packageId || !invoiceForm.dueDate || !invoiceForm.servicePeriodStart || !invoiceForm.servicePeriodEnd || createInvoiceMutation.isPending || updateInvoiceMutation.isPending}
+              onClick={() => editingInvoice ? updateInvoiceMutation.mutate() : createInvoiceMutation.mutate()}>
+              {(createInvoiceMutation.isPending || updateInvoiceMutation.isPending)
+                ? 'Saving...'
+                : editingInvoice ? 'Save Invoice' : 'Create Invoice'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewingInvoice} onOpenChange={open => !open && setViewingInvoice(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base">{viewingInvoice?.invoiceNumber}</DialogTitle>
+          </DialogHeader>
+          {viewingInvoice && (
+            <div className="grid gap-3 text-sm sm:grid-cols-2">
+              <div><p className="text-xs text-muted-foreground">Package</p><p className="font-medium">{viewingInvoice.package?.displayName || viewingInvoice.packageName}</p></div>
+              <div><p className="text-xs text-muted-foreground">Status</p>{invoiceStatusBadge(viewingInvoice.status)}</div>
+              <div><p className="text-xs text-muted-foreground">Billing</p><p className="capitalize">{viewingInvoice.billingCycle}</p></div>
+              <div><p className="text-xs text-muted-foreground">Due Date</p><p>{new Date(viewingInvoice.dueDate).toLocaleDateString()}</p></div>
+              <div><p className="text-xs text-muted-foreground">Service Period</p><p>{new Date(viewingInvoice.servicePeriodStart).toLocaleDateString()} - {new Date(viewingInvoice.servicePeriodEnd).toLocaleDateString()}</p></div>
+              <div><p className="text-xs text-muted-foreground">Amount</p><p>{formatMetricMoney(viewingInvoice.amount, viewingInvoice.currency)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Paid</p><p>{formatMetricMoney(viewingInvoice.amountPaid, viewingInvoice.currency)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Balance</p><p>{formatMetricMoney(viewingInvoice.balanceDue, viewingInvoice.currency)}</p></div>
+              {viewingInvoice.notes && <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Notes</p><p>{viewingInvoice.notes}</p></div>}
+              {viewingInvoice.terms && <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Terms</p><p>{viewingInvoice.terms}</p></div>}
+            </div>
+          )}
+          <DialogFooter>
+            {viewingInvoice && (
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => downloadPackageInvoicePdf(viewingInvoice)}>
+                <Download className="h-4 w-4" /> Download PDF
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setViewingInvoice(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
