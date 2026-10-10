@@ -69,7 +69,6 @@ export default function DashboardLayout() {
         {navItems.map(item => {
           const showUserSubnav = item.to === '/dashboard/users' && user?.permissions?.includes('registration_requests:read');
           const usersSectionActive = location.pathname === '/dashboard/users' || location.pathname.startsWith('/dashboard/users/');
-          const showAttendanceSubnav = item.to === '/dashboard/attendance' && user?.permissions?.includes('attendance:read');
 
           return (
             <div key={item.to}>
@@ -109,12 +108,6 @@ export default function DashboardLayout() {
                   >
                     Registration Requests
                   </Link>
-                </div>
-              )}
-              {showAttendanceSubnav && location.pathname.startsWith('/dashboard/attendance') && (
-                <div className="ml-7 mt-1 space-y-1 border-l border-sidebar-border pl-2">
-                  <Link to="/dashboard/attendance" onClick={() => setSidebarOpen(false)} className={`block rounded-md px-3 py-1.5 text-xs ${location.pathname === '/dashboard/attendance' ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`}>Attendance records</Link>
-                  <Link to="/dashboard/attendance/services" onClick={() => setSidebarOpen(false)} className={`block rounded-md px-3 py-1.5 text-xs ${location.pathname === '/dashboard/attendance/services' ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`}>Services</Link>
                 </div>
               )}
             </div>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'icims-app-shell-v1';
+const CACHE_NAME = 'icims-app-shell-v2';
 const APP_SHELL = ['/', '/manifest.json', '/logo192.png', '/logo512.png'];
 
 self.addEventListener('install', (event) => {
@@ -25,11 +25,22 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/')));
+    event.respondWith(
+      fetch(request).catch(async () =>
+        (await caches.match('/')) || new Response('You are offline. Reconnect and try again.', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }),
+      ),
+    );
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request)),
-  );
+  if (APP_SHELL.includes(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cached) => cached || fetch(request).catch(() =>
+        new Response('Offline', { status: 503 }),
+      )),
+    );
+  }
 });

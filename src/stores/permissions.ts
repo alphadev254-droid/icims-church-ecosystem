@@ -35,6 +35,7 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   // Activities & Engagement
   { permission: 'calendar:read',      item: { to: '/dashboard/calendar',      label: 'Calendar',      icon: CalendarDays } },
   { permission: 'events:read',        item: { to: '/dashboard/events',        label: 'Events',        icon: Calendar } },
+  { permission: 'attendance:read',    item: { to: '/dashboard/services',      label: 'Services',      icon: CalendarDays } },
   { permission: 'attendance:read',    item: { to: '/dashboard/attendance',    label: 'Attendance',    icon: ClipboardList } },
   { permission: 'reminders:read',     item: { to: '/dashboard/reminders',     label: 'Reminders',     icon: Bell } },
   
@@ -63,7 +64,6 @@ const PERMISSION_TO_ROUTE: Array<{ permission: string; route: string }> = [
   { permission: 'donations:read', route: '/dashboard/donations' },
   { permission: 'tickets:read', route: '/dashboard/my-tickets' },
   { permission: 'attendance:read', route: '/dashboard/event-attendance' },
-  { permission: 'attendance:read', route: '/dashboard/attendance/services' },
   { permission: 'subaccounts:view', route: '/dashboard/subaccount' },
   { permission: 'registration_requests:read', route: '/dashboard/users/registration-requests' },
 ];

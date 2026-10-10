@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -174,7 +174,8 @@ const App = () => {
                 <Route path="pledges/:id" element={<PledgeDetail />} />
                 <Route path="church-profile" element={<ChurchProfileSettings />} />
                 <Route path="attendance" element={<Attendance />} />
-                <Route path="attendance/services" element={<Services />} />
+                <Route path="attendance/services" element={<Navigate to="/dashboard/services" replace />} />
+                <Route path="services" element={<Services />} />
                 <Route path="attendance/:id" element={<AttendanceDetail />} />
                 <Route path="attendance/:id/scan" element={<AttendanceScanner />} />
                 <Route path="event-attendance" element={<EventAttendance />} />

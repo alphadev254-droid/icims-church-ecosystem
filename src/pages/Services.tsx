@@ -197,17 +197,6 @@ export default function ServicesPage() {
           </Button>
         )}
       </div>
-      <div className="flex border-b text-sm">
-        <Link
-          to="/dashboard/attendance"
-          className="px-4 py-2 text-muted-foreground hover:text-foreground"
-        >
-          Attendance
-        </Link>
-        <span className="border-b-2 border-primary px-4 py-2 font-medium">
-          Services
-        </span>
-      </div>
       <div className="flex flex-wrap gap-2">
         <Input
           className="min-w-[180px] flex-1 sm:max-w-xs"

@@ -93,7 +93,11 @@ export default function AttendancePage() {
     queryKey: ['events-select'],
     queryFn: eventsService.getSimple,
   });
-  const { data: services = [] } = useQuery({ queryKey: ['services'], queryFn: () => servicesService.list(), enabled: hasAttendanceFeature });
+  const { data: services = [], isLoading: servicesLoading, isError: servicesError, refetch: refetchServices } = useQuery({
+    queryKey: ['services'],
+    queryFn: () => servicesService.list(),
+    enabled: hasAttendanceFeature,
+  });
   const selectedService = services.find(service => service.id === selectedServiceId);
   const availableServices = services.filter(service => service.status !== 'cancelled' && !service.attendance);
   useEffect(() => {
@@ -212,6 +216,19 @@ export default function AttendancePage() {
   const canCreate = hasPermission('attendance:create') && hasAttendanceFeature;
   const canUpdate = hasPermission('attendance:update') && hasAttendanceFeature;
   const canDelete = hasPermission('attendance:update') && hasAttendanceFeature;
+  const servicePickerStatus = servicesLoading ? (
+    <p className="text-xs text-muted-foreground">Loading services...</p>
+  ) : servicesError ? (
+    <div className="flex items-center gap-2 text-xs text-destructive">
+      <span>Could not load services.</span>
+      <Button type="button" size="sm" variant="outline" onClick={() => refetchServices()}>Retry</Button>
+    </div>
+  ) : !availableServices.length ? (
+    <p className="text-xs text-muted-foreground">
+      {services.length ? 'All services already have attendance or are cancelled.' : 'No services have been created yet.'}{' '}
+      <Link to="/dashboard/services" className="font-medium text-primary underline" onClick={() => { setDialogOpen(false); setStartQrOpen(false); }}>Create a service</Link> to start attendance.
+    </p>
+  ) : null;
 
   if (!hasAttendanceFeature) {
     return (
@@ -326,8 +343,6 @@ export default function AttendancePage() {
           )}
         </div>
       </div>
-
-      <div className="flex border-b text-sm"><span className="border-b-2 border-primary px-4 py-2 font-medium">Attendance</span><Link to="/dashboard/attendance/services" className="px-4 py-2 text-muted-foreground hover:text-foreground">Services</Link></div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 sm:gap-4">
         <Card>
@@ -770,7 +785,7 @@ export default function AttendancePage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {!availableServices.length && <p className="text-xs text-muted-foreground">Create a service on the Services page first.</p>}
+                {servicePickerStatus}
               </div>
             )}
             {startQrServiceType === 'Event' && <div className="space-y-1.5">
@@ -838,7 +853,7 @@ export default function AttendancePage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {!availableServices.length && <p className="text-xs text-muted-foreground">Create a service on the Services page first.</p>}
+                {servicePickerStatus}
               </div>
             )}
             <div className="grid gap-4 sm:grid-cols-2">
