@@ -45,6 +45,7 @@ const Pledges = lazy(() => import("./pages/Pledges"));
 const PledgeDetail = lazy(() => import("./pages/PledgeDetail"));
 const ChurchProfileSettings = lazy(() => import("./pages/ChurchProfileSettings"));
 const Attendance = lazy(() => import("./pages/Attendance"));
+const Services = lazy(() => import("./pages/Services"));
 const AttendanceDetail = lazy(() => import("./pages/AttendanceDetail"));
 const AttendanceScanner = lazy(() => import("./pages/AttendanceScanner"));
 const EventAttendance = lazy(() => import("./pages/EventAttendance"));
@@ -173,6 +174,7 @@ const App = () => {
                 <Route path="pledges/:id" element={<PledgeDetail />} />
                 <Route path="church-profile" element={<ChurchProfileSettings />} />
                 <Route path="attendance" element={<Attendance />} />
+                <Route path="attendance/services" element={<Services />} />
                 <Route path="attendance/:id" element={<AttendanceDetail />} />
                 <Route path="attendance/:id/scan" element={<AttendanceScanner />} />
                 <Route path="event-attendance" element={<EventAttendance />} />

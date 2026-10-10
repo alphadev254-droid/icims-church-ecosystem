@@ -19,9 +19,10 @@ interface Props {
   submitLabel?: string;
   hideChurchSelect?: boolean;
   summaryLocked?: boolean;
+  linkedService?: { title: string } | null;
 }
 
-export function RegularServiceForm({ onSubmit, isPending, defaultValues, defaultVisitors = [], submitLabel = 'Save Record', hideChurchSelect = false, summaryLocked = false }: Props) {
+export function RegularServiceForm({ onSubmit, isPending, defaultValues, defaultVisitors = [], submitLabel = 'Save Record', hideChurchSelect = false, summaryLocked = false, linkedService = null }: Props) {
   const [churchId, setChurchId] = useState(defaultValues?.churchId ?? '');
   const [date, setDate] = useState(defaultValues?.date ?? '');
   const [serviceType, setServiceType] = useState(defaultValues?.serviceType ?? 'Sunday Service');
@@ -92,32 +93,22 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {!hideChurchSelect && <ChurchSelect value={churchId} onValueChange={setChurchId} />}
+      {!hideChurchSelect && !linkedService && <ChurchSelect value={churchId} onValueChange={setChurchId} />}
 
       {summaryLocked && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          This attendance was recorded through QR/digital check-in. Summary counts are calculated from checked-in attendees, so only church, date, and service type can be edited here.
+          Summary counts are calculated from checked-in attendees. Attendance notes can still be updated here.
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Date *</Label>
-          <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
+          <Input type="date" value={date} onChange={e => setDate(e.target.value)} required disabled={!!linkedService} />
         </div>
         <div>
           <Label>Service Type *</Label>
-          <Select value={serviceType} onValueChange={setServiceType}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Sunday Service">Sunday Service</SelectItem>
-              <SelectItem value="Midweek Service">Midweek Service</SelectItem>
-              <SelectItem value="Communion Service">Communion Service</SelectItem>
-              <SelectItem value="Prayer Meeting">Prayer Meeting</SelectItem>
-              <SelectItem value="Youth Service">Youth Service</SelectItem>
-              <SelectItem value="Special Service">Special Service</SelectItem>
-            </SelectContent>
-          </Select>
+          <Input value={linkedService?.title || serviceType} onChange={e => setServiceType(e.target.value)} disabled={!!linkedService} />
         </div>
       </div>
 
@@ -146,10 +137,10 @@ export function RegularServiceForm({ onSubmit, isPending, defaultValues, default
         {ageGroupMismatch && <p className="text-xs text-destructive mt-2">Age groups total ({ageGroupTotal}) must equal total attendees ({totalAttendees})</p>}
       </div>}
 
-      {!summaryLocked && <div>
+      <div>
         <Label>Notes <span className="text-muted-foreground text-xs sm:text-sm">(optional)</span></Label>
         <Input value={notes} onChange={e => setNotes(e.target.value)} />
-      </div>}
+      </div>
 
       {/* Visitor Details */}
       {!summaryLocked && <div className="border rounded-lg p-4 space-y-3">

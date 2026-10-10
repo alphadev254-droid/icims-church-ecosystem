@@ -36,6 +36,8 @@ export interface AttendanceRecord {
   serviceType: string;
   notes?: string;
   eventId?: string;
+  serviceId?: string | null;
+  service?: { id: string; title: string; type?: string | null; startsAt: string } | null;
   createdAt?: string;
   digitalCheckInEnabled?: boolean;
   qrToken?: string | null;
@@ -137,6 +139,7 @@ export interface CreateAttendanceDto {
   serviceType?: string;
   notes?: string;
   eventId?: string;
+  serviceId?: string;
   churchId?: string;
   visitors?: AttendanceVisitor[];
 }
@@ -152,7 +155,7 @@ export const attendanceService = {
     const { data } = await apiClient.post('/attendance', dto);
     return data.data;
   },
-  startQr: async (dto: { churchId?: string; date: string; serviceType: string; eventId?: string; notes?: string; qrActiveFrom?: string | null; qrActiveUntil?: string | null }): Promise<AttendanceRecord> => {
+  startQr: async (dto: { churchId?: string; date: string; serviceType: string; eventId?: string; serviceId?: string; notes?: string; qrActiveFrom?: string | null; qrActiveUntil?: string | null }): Promise<AttendanceRecord> => {
     const { data } = await apiClient.post('/attendance/start-qr', dto);
     return data.data;
   },

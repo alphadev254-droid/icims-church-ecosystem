@@ -41,6 +41,7 @@ export function EditAttendanceForm({ record, onSubmit, isPending }: Props) {
       isPending={isPending}
       submitLabel="Update Record"
       summaryLocked={summaryLocked}
+      linkedService={record.service || null}
     />
   );
 }

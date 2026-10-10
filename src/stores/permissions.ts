@@ -63,6 +63,7 @@ const PERMISSION_TO_ROUTE: Array<{ permission: string; route: string }> = [
   { permission: 'donations:read', route: '/dashboard/donations' },
   { permission: 'tickets:read', route: '/dashboard/my-tickets' },
   { permission: 'attendance:read', route: '/dashboard/event-attendance' },
+  { permission: 'attendance:read', route: '/dashboard/attendance/services' },
   { permission: 'subaccounts:view', route: '/dashboard/subaccount' },
   { permission: 'registration_requests:read', route: '/dashboard/users/registration-requests' },
 ];

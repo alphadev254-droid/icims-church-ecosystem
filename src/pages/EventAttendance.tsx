@@ -59,7 +59,7 @@ export default function EventAttendancePage() {
     createAttendanceMutation.mutate({
       churchId: selectedEvent.churchId,
       eventId: selectedEventId,
-      date: new Date().toISOString().split('T')[0],
+      date: selectedEvent.date,
       totalAttendees: attendedCount,
       serviceType: 'Event',
     });

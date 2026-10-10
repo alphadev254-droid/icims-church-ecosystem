@@ -70,7 +70,9 @@ function activityDate(activity: CalendarActivity) {
 }
 
 function getActivityRoute(activity: CalendarActivity) {
-  if (activity.type === 'attendance') return `/dashboard/attendance/${activity.sourceId}`;
+  if (activity.type === 'attendance') return typeof activity.meta?.serviceId === 'string'
+    ? '/dashboard/attendance/services'
+    : `/dashboard/attendance/${activity.sourceId}`;
   if (activity.type === 'cell_meeting' && typeof activity.meta?.cellId === 'string') return `/dashboard/cells/${activity.meta.cellId}`;
   if (activity.type === 'pledge_due') return `/dashboard/pledges/${activity.sourceId}`;
   if (activity.type === 'giving_deadline') return '/dashboard/giving';

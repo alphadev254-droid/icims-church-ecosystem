@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import imageCompression from 'browser-image-compression';
 import { eventsService, type ChurchEvent } from '@/services/events';
+import { ProgramDialog } from '@/components/programs/ProgramDialog';
 import { paymentService } from '@/services/payments';
 import { useRole } from '@/hooks/useRole';
 import { useHasFeature, useCheckLimit } from '@/hooks/usePackageFeatures';
@@ -35,7 +36,7 @@ import {
   Plus, Calendar, MapPin, Clock, Pencil, Trash2, Ticket,
   Upload, X, Eye, Wallet, Lock, Copy, Check, MoreHorizontal,
   Share2, QrCode, Download, ImageIcon, FileText, ChevronDown,
-  CalendarClock,
+  CalendarClock, ClipboardList,
 } from 'lucide-react';
 import { ExportImportButtons } from '@/components/ExportImportButtons';
 import { toast } from 'sonner';
@@ -991,6 +992,7 @@ export default function EventsPage() {
   const [deleteEvent, setDeleteEvent] = useState<ChurchEvent | null>(null);
   const [expandImage, setExpandImage] = useState<string | null>(null);
   const [viewEvent, setViewEvent] = useState<ChurchEvent | null>(null);
+  const [programEvent, setProgramEvent] = useState<ChurchEvent | null>(null);
   const [shareEvent, setShareEvent] = useState<ChurchEvent | null>(null);
   const [selectedShareChurchIds, setSelectedShareChurchIds] = useState<string[]>([]);
   const [paymentConfirm, setPaymentConfirm] = useState<{ event: ChurchEvent; details: any } | null>(null);
@@ -1010,6 +1012,8 @@ export default function EventsPage() {
   const hasEventTicketingFeature = useHasFeature(PACKAGE_FEATURES.EVENT_TICKETING);
   const hasEventOnlinePaymentsFeature = useHasFeature(PACKAGE_FEATURES.EVENT_ONLINE_PAYMENTS);
   const hasEventReportsFeature = useHasFeature(PACKAGE_FEATURES.EVENT_REPORTS);
+  const hasAttendanceFeature = useHasFeature('attendance_tracking');
+  const hasEventAttendanceFeature = useHasFeature(PACKAGE_FEATURES.EVENT_ATTENDANCE);
   const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
   const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
   const user = useAuthStore((state) => state.user);
@@ -1570,6 +1574,14 @@ export default function EventsPage() {
                         <Eye className="h-4 w-4" />
                         View Details
                       </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2" onClick={() => setProgramEvent(event)}>
+                        <ClipboardList className="h-4 w-4" /> Program
+                      </DropdownMenuItem>
+                      {hasPermission('attendance:create') && (event.requiresTicket ? hasEventAttendanceFeature : hasAttendanceFeature) && (
+                        <DropdownMenuItem className="gap-2" onClick={() => navigate(event.requiresTicket ? `/dashboard/event-attendance?eventId=${event.id}` : `/dashboard/attendance?eventId=${event.id}`)}>
+                          <QrCode className="h-4 w-4" /> Add attendance
+                        </DropdownMenuItem>
+                      )}
                       {event.publicationStatus !== 'draft' && event.requiresTicket && canViewAllTickets && (
                         <DropdownMenuItem className="gap-2" onClick={() => navigate(`/dashboard/events/${event.id}/tickets`)}>
                           <Ticket className="h-4 w-4" />
@@ -1991,6 +2003,7 @@ export default function EventsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {programEvent && <ProgramDialog open={!!programEvent} onOpenChange={open => { if (!open) setProgramEvent(null); }} target="events" targetId={programEvent.id} targetTitle={programEvent.title} startsAt={programEvent.date} canEdit={canUpdate} />}
     </div>
   );
 }
