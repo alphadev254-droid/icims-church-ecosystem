@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -74,19 +74,19 @@ export function ResourceBookingDialog({ open, onOpenChange, activity }: {
   });
   const active = resources.filter(resource => resource.status === 'active');
   return <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-      <DialogHeader><DialogTitle>Book resources{activity?.title ? ` · ${activity.title}` : ''}</DialogTitle></DialogHeader>
+    <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-3xl overflow-y-auto sm:max-w-3xl lg:max-w-4xl">
+      <DialogHeader><DialogTitle>Book resources{activity?.title ? ` · ${activity.title}` : ''}</DialogTitle><DialogDescription>Choose the rooms or equipment needed for this activity. You can check availability before submitting.</DialogDescription></DialogHeader>
       <div className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-2">
-          {activity?.type === 'manual' && <div className="sm:col-span-2"><Label htmlFor="booking-title">Activity</Label><Input id="booking-title" value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. Youth rehearsal" /></div>}
-          <div><Label htmlFor="booking-start">Starts</Label><Input id="booking-start" type="datetime-local" value={startsAt} onChange={event => { setStartsAt(event.target.value); setAvailability({}); }} disabled={activity?.type !== 'manual'} /></div>
-          <div><Label htmlFor="booking-end">Ends</Label><Input id="booking-end" type="datetime-local" value={endsAt} onChange={event => { setEndsAt(event.target.value); setAvailability({}); }} disabled={activity?.type !== 'manual'} /></div>
+          {activity?.type === 'manual' && <div className="sm:col-span-2"><Label htmlFor="booking-title">What activity is this for?</Label><Input id="booking-title" value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. Youth rehearsal" /></div>}
+          <div><Label htmlFor="booking-start">Booking starts</Label><Input id="booking-start" type="datetime-local" value={startsAt} onChange={event => { setStartsAt(event.target.value); setAvailability({}); }} disabled={activity?.type !== 'manual'} /></div>
+          <div><Label htmlFor="booking-end">Booking ends</Label><Input id="booking-end" type="datetime-local" value={endsAt} onChange={event => { setEndsAt(event.target.value); setAvailability({}); }} disabled={activity?.type !== 'manual'} /></div>
         </div>
         {activityError && <p className="text-sm text-amber-700">{(activityError as any).response?.data?.message || 'This activity cannot be booked yet.'}</p>}
-        <div><Label htmlFor="booking-purpose">Purpose or notes</Label><Textarea id="booking-purpose" value={purpose} onChange={event => setPurpose(event.target.value)} placeholder="What will the resources be used for?" /></div>
+        <div><Label htmlFor="booking-purpose">How will these resources be used? (optional)</Label><Textarea id="booking-purpose" value={purpose} onChange={event => setPurpose(event.target.value)} placeholder="Add any setup needs or notes for the approver" /></div>
         <div>
-          <div className="mb-2 flex items-center justify-between"><Label>Choose resources</Label><span className="text-xs text-muted-foreground">{selected.length} selected</span></div>
-          {isLoading ? <p className="text-sm text-muted-foreground">Loading resources…</p> : active.length ? <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border p-3">
+          <div className="mb-2 flex items-center justify-between"><Label>Select rooms or equipment</Label><span className="text-xs text-muted-foreground">{selected.length} selected</span></div>
+          {isLoading ? <p className="text-sm text-muted-foreground">Loading resources…</p> : active.length ? <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-3">
             {active.map(resource => <label key={resource.id} className="flex cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-muted">
               <input type="checkbox" className="mt-1" checked={selected.includes(resource.id)} onChange={event => { setSelected(current => event.target.checked ? [...current, resource.id] : current.filter(id => id !== resource.id)); setAvailability({}); }} />
               {resource.images?.[0] && <img src={resourceImageUrl(resource.images[0])} alt={resource.name} className="h-12 w-12 shrink-0 rounded-md object-cover" />}

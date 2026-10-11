@@ -33,8 +33,8 @@ export function ResourceImagesField({ images, files, onFilesChange, onRemoveImag
     if (chosen.some(file => file.size > 5 * 1024 * 1024)) { toast.error('Each image must be 5 MB or smaller'); return; }
     onFilesChange([...files, ...chosen]);
   };
-  return <div className="space-y-2 sm:col-span-2">
-    <div className="flex items-center justify-between"><Label>Images (optional)</Label><span className="text-xs text-muted-foreground">{count}/3 · up to 5 MB each</span></div>
+  return <div className="space-y-2 md:col-span-2">
+    <div className="flex items-center justify-between"><Label>Photos of the room or item (optional)</Label><span className="text-xs text-muted-foreground">{count}/3 · up to 5 MB each</span></div>
     <div className="grid grid-cols-3 gap-2">
       {images.map((url, index) => <div key={url} className="group relative aspect-square overflow-hidden rounded-md border bg-muted">
         <img src={resourceImageUrl(url)} alt={`Resource image ${index + 1}`} className="h-full w-full object-cover" />
