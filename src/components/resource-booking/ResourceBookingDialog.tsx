@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { dateTimeLocalToIso, toDateTimeLocalInputValue } from '@/lib/date-time';
 import { resourceBookingService } from '@/services/resourceBooking';
+import { resourceImageUrl } from './ResourceImagesField';
 
 export type BookingActivity = {
   type: 'manual' | 'service' | 'event'; id?: string; churchId: string;
@@ -88,6 +89,7 @@ export function ResourceBookingDialog({ open, onOpenChange, activity }: {
           {isLoading ? <p className="text-sm text-muted-foreground">Loading resources…</p> : active.length ? <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border p-3">
             {active.map(resource => <label key={resource.id} className="flex cursor-pointer items-start gap-3 rounded-md p-2 hover:bg-muted">
               <input type="checkbox" className="mt-1" checked={selected.includes(resource.id)} onChange={event => { setSelected(current => event.target.checked ? [...current, resource.id] : current.filter(id => id !== resource.id)); setAvailability({}); }} />
+              {resource.images?.[0] && <img src={resourceImageUrl(resource.images[0])} alt={resource.name} className="h-12 w-12 shrink-0 rounded-md object-cover" />}
               <span className="flex-1 text-sm"><strong>{resource.name}</strong><span className="ml-2 text-muted-foreground">{resource.category}{resource.location ? ` · ${resource.location}` : ''}</span><span className="block text-xs text-muted-foreground">{resource.approvalRequired ? 'Approval required' : 'Instant booking'}{resource.scope === 'all_ministry' ? ' · Shared across branches' : ''}</span></span>
               {availability[resource.id] && <span className={`text-xs ${availability[resource.id].available ? 'text-green-700' : 'text-destructive'}`}>{availability[resource.id].available ? 'Available' : `Unavailable${availability[resource.id].conflict ? ` · ${availability[resource.id].conflict.activityTitle}` : ''}`}</span>}
             </label>)}

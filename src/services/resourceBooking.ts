@@ -3,6 +3,7 @@ import apiClient from '@/lib/api-client';
 export type BookableResource = {
   id: string; churchId: string; name: string; code?: string | null;
   category: string; description?: string | null; location?: string | null;
+  images: string[];
   custodianName?: string | null; scope: 'own_church' | 'all_ministry';
   status: string; approvalRequired: boolean; bufferBeforeMinutes: number; bufferAfterMinutes: number;
 };
@@ -16,7 +17,7 @@ export type ResourceBooking = {
   requester: { id: string; firstName: string; lastName: string };
 };
 
-export type ResourceInput = Omit<BookableResource, 'id'>;
+export type ResourceInput = Omit<BookableResource, 'id' | 'images'>;
 export type BookingInput = {
   churchId: string; resourceIds: string[]; activityType: 'manual' | 'service' | 'event';
   activityId?: string; activityTitle?: string; purpose?: string;
@@ -31,6 +32,13 @@ export const resourceBookingService = {
     (await apiClient.post(`${root}/resources`, input)).data.data,
   updateResource: async (id: string, input: Partial<ResourceInput>): Promise<BookableResource> =>
     (await apiClient.put(`${root}/resources/${id}`, input)).data.data,
+  uploadResourceImage: async (id: string, file: File): Promise<BookableResource> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return (await apiClient.post(`${root}/resources/${id}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })).data.data;
+  },
+  removeResourceImage: async (id: string, url: string): Promise<BookableResource> =>
+    (await apiClient.delete(`${root}/resources/${id}/images`, { data: { url } })).data.data,
   bookings: async (params?: Record<string, string | number>): Promise<{ data: ResourceBooking[]; pagination: { page: number; totalPages: number; total: number } }> =>
     (await apiClient.get(`${root}/bookings`, { params })).data,
   availability: async (input: { churchId: string; resourceIds: string[]; startsAt: string; endsAt: string }): Promise<Array<{ resourceId: string; available: boolean; conflict?: { activityTitle: string; startsAt: string; endsAt: string } }>> =>
