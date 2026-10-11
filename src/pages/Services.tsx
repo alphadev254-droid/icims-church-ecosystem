@@ -6,6 +6,7 @@ import {
   ClipboardList,
   MoreHorizontal,
   Plus,
+  QrCode,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRole } from '@/hooks/useRole';
@@ -94,6 +95,8 @@ export default function ServicesPage() {
   const [deleteService, setDeleteService] = useState<ChurchService | null>(
     null,
   );
+  const [attendanceService, setAttendanceService] =
+    useState<ChurchService | null>(null);
   const { data: churches = [] } = useQuery({
     queryKey: ['churches-select'],
     queryFn: churchesService.getSelectable,
@@ -307,11 +310,7 @@ export default function ServicesPage() {
                         !service.attendance &&
                         service.status !== 'cancelled' && (
                           <DropdownMenuItem
-                            onClick={() =>
-                              navigate(
-                                `/dashboard/attendance?serviceId=${service.id}`,
-                              )
-                            }
+                            onClick={() => setAttendanceService(service)}
                           >
                             Start attendance
                           </DropdownMenuItem>
@@ -506,6 +505,45 @@ export default function ServicesPage() {
                 {save.isPending ? 'Saving...' : 'Save service'}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!attendanceService}
+        onOpenChange={(open) => {
+          if (!open) setAttendanceService(null);
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Start attendance</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {attendanceService?.title}
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              variant="outline"
+              onClick={() =>
+                attendanceService &&
+                navigate(
+                  `/dashboard/attendance?serviceId=${encodeURIComponent(attendanceService.id)}&mode=manual`,
+                )
+              }
+            >
+              <ClipboardList className="mr-2 h-4 w-4" /> Manual
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                attendanceService &&
+                navigate(
+                  `/dashboard/attendance?serviceId=${encodeURIComponent(attendanceService.id)}&mode=qr`,
+                )
+              }
+            >
+              <QrCode className="mr-2 h-4 w-4" /> QR
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

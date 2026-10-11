@@ -71,6 +71,7 @@ export default function AttendancePage() {
   const [searchParams] = useSearchParams();
   const linkedEventId = searchParams.get('eventId');
   const linkedServiceId = searchParams.get('serviceId');
+  const linkedAttendanceMode = searchParams.get('mode');
 
   const { data: allRecords = [], isLoading } = useQuery({
     queryKey: ['attendance', appliedFilters.church, appliedFilters.serviceType, appliedFilters.startDate, appliedFilters.endDate],
@@ -111,8 +112,9 @@ export default function AttendancePage() {
     if (!linkedServiceId) return;
     setSelectedServiceId(linkedServiceId);
     setStartQrServiceType('Sunday Service');
-    setDialogOpen(true);
-  }, [linkedServiceId]);
+    setDialogOpen(linkedAttendanceMode !== 'qr');
+    setStartQrOpen(linkedAttendanceMode === 'qr');
+  }, [linkedServiceId, linkedAttendanceMode]);
 
   const records = allRecords;
   const serviceTypes = Array.from(new Set([
