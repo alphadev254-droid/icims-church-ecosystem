@@ -42,6 +42,8 @@ export const systemCampaignApi = {
     apiClient.post<{ success: boolean; data: { count: number; sample: Array<{ id: string; name: string; email: string; ministryName?: string; country?: string }> } }>('/admin/campaigns/audience-preview', data),
   create: (data: Omit<SystemCampaign, 'id' | 'status' | 'sentAt' | 'createdAt' | '_count' | 'createdBy' | 'recipients'>) =>
     apiClient.post<{ success: boolean; data: SystemCampaign }>('/admin/campaigns', data),
+  update: (id: string, data: Omit<SystemCampaign, 'id' | 'status' | 'sentAt' | 'createdAt' | '_count' | 'createdBy' | 'recipients'>) =>
+    apiClient.put<{ success: boolean; data: SystemCampaign }>(`/admin/campaigns/${id}`, data),
   send: (id: string) => apiClient.post<{ success: boolean; data: SystemCampaign; message: string }>(`/admin/campaigns/${id}/send`),
   remove: (id: string) => apiClient.delete(`/admin/campaigns/${id}`),
 };
