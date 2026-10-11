@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { dateTimeLocalToIso, toDateTimeLocalInputValue } from '@/lib/date-time';
+import { apiErrorMessage, isForbiddenError } from '@/lib/api-error';
 import {
   programsService,
   type ProgramItem,
@@ -242,6 +243,7 @@ export function ProgramDialog({
     data: program,
     isLoading,
     isError,
+    error,
     refetch,
   } = useQuery({
     queryKey: ['program', target, targetId],
@@ -390,11 +392,14 @@ export function ProgramDialog({
           ) : isError ? (
             <div className="space-y-3 py-8 text-center">
               <p className="text-sm text-destructive">
-                Could not load this program.
+                {apiErrorMessage(error, 'Could not load this program.')}
               </p>
-              <Button variant="outline" onClick={() => refetch()}>
-                Retry
-              </Button>
+              {isForbiddenError(error) && (
+                <p className="text-xs text-muted-foreground">
+                  If this permission was just granted, sign out and sign back in to refresh your session.
+                </p>
+              )}
+              {!isForbiddenError(error) && <Button variant="outline" onClick={() => refetch()}>Retry</Button>}
             </div>
           ) : (
             <div className="space-y-5">

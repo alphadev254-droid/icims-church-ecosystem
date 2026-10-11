@@ -31,6 +31,7 @@ import { AttendanceQrDialog } from '@/components/attendance/AttendanceQrDialog';
 import { AddAttendeesDialog } from '@/components/attendance/AddAttendeesDialog';
 import { digitsInputProps, digitsOnly, sanitizeDigitsInput } from '@/lib/numeric-input';
 import { ViewAttendanceDialog } from '@/components/attendance/ViewAttendanceDialog';
+import { apiErrorMessage, isForbiddenError } from '@/lib/api-error';
 
 export default function AttendancePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -93,7 +94,7 @@ export default function AttendancePage() {
     queryKey: ['events-select'],
     queryFn: eventsService.getSimple,
   });
-  const { data: services = [], isLoading: servicesLoading, isError: servicesError, refetch: refetchServices } = useQuery({
+  const { data: services = [], isLoading: servicesLoading, isError: servicesError, error: servicesQueryError, refetch: refetchServices } = useQuery({
     queryKey: ['services'],
     queryFn: () => servicesService.list(),
     enabled: hasAttendanceFeature,
@@ -219,9 +220,11 @@ export default function AttendancePage() {
   const servicePickerStatus = servicesLoading ? (
     <p className="text-xs text-muted-foreground">Loading services...</p>
   ) : servicesError ? (
-    <div className="flex items-center gap-2 text-xs text-destructive">
-      <span>Could not load services.</span>
-      <Button type="button" size="sm" variant="outline" onClick={() => refetchServices()}>Retry</Button>
+    <div className="space-y-1 text-xs text-destructive">
+      <p>{apiErrorMessage(servicesQueryError, 'Could not load services.')}</p>
+      {isForbiddenError(servicesQueryError) ? (
+        <p className="text-muted-foreground">If access was just granted, sign out and sign back in to refresh your session.</p>
+      ) : <Button type="button" size="sm" variant="outline" onClick={() => refetchServices()}>Retry</Button>}
     </div>
   ) : !availableServices.length ? (
     <p className="text-xs text-muted-foreground">

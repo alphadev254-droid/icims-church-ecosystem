@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { dateTimeLocalToIso, toDateTimeLocalInputValue } from '@/lib/date-time';
+import { apiErrorMessage, isForbiddenError } from '@/lib/api-error';
 
 const emptyForm = {
   churchId: '',
@@ -101,6 +102,7 @@ export default function ServicesPage() {
     data: servicesPage,
     isLoading,
     isError,
+    error,
     refetch,
   } = useQuery({
     queryKey: ['services-page', appliedFilters, page],
@@ -267,10 +269,9 @@ export default function ServicesPage() {
         </p>
       ) : isError ? (
         <div className="space-y-3 py-12 text-center">
-          <p className="text-sm text-destructive">Could not load services.</p>
-          <Button variant="outline" onClick={() => refetch()}>
-            Retry
-          </Button>
+          <p className="text-sm text-destructive">{apiErrorMessage(error, 'Could not load services.')}</p>
+          {isForbiddenError(error) && <p className="text-xs text-muted-foreground">If access was just granted, sign out and sign back in to refresh your session.</p>}
+          {!isForbiddenError(error) && <Button variant="outline" onClick={() => refetch()}>Retry</Button>}
         </div>
       ) : services.length ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
