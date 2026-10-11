@@ -53,7 +53,7 @@ export const resourceBookingService = {
     (await apiClient.post(`${root}/bookings`, input)).data.data,
   decide: async (id: string, decision: 'approved' | 'rejected', note?: string) =>
     (await apiClient.post(`${root}/bookings/${id}/decision`, { decision, note })).data.data,
-  cancel: async (id: string) => { await apiClient.post(`${root}/bookings/${id}/cancel`); },
+  cancel: async (id: string, note?: string) => { await apiClient.post(`${root}/bookings/${id}/cancel`, { note }); },
   deleteResource: async (id: string): Promise<{ cancelled: number; keptForHistory: boolean }> =>
     (await apiClient.delete(`${root}/resources/${id}`)).data.data,
   block: async (id: string, input: { startsAt: string; endsAt: string; reason: string }) =>
