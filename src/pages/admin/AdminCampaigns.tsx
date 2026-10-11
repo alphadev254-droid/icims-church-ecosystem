@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const emptyForm = {
   title: '', summary: '', message: '', category: 'general', priority: 'normal', visibilityPolicy: 'standard',
@@ -23,6 +24,7 @@ export default function AdminCampaigns() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [sendConfirmation, setSendConfirmation] = useState<{ type: 'form'; recipientCount: number } | { type: 'draft'; campaign: SystemCampaign } | null>(null);
   const { data: campaigns = [], isLoading } = useQuery({ queryKey: ['system-campaigns'], queryFn: () => systemCampaignApi.list().then(r => r.data.data) });
   const { data: ministries = [] } = useQuery({ queryKey: ['admin-ministries'], queryFn: () => adminApi.getMinistries().then(r => r.data.data) });
   const selectedNames = useMemo(() => ministries.filter(m => form.audienceFilters.ministryIds.includes(m.id)).map(m => m.label), [ministries, form.audienceFilters.ministryIds]);
@@ -87,9 +89,34 @@ export default function AdminCampaigns() {
         <div className="flex flex-wrap items-center gap-5 rounded-md border p-3 text-sm"><span className="font-medium">Channels</span><label className="flex items-center gap-2"><Checkbox checked disabled />In-app</label><label className="flex items-center gap-2"><Checkbox checked={form.channels.email} onCheckedChange={email => setForm({ ...form, channels: { ...form.channels, email: email === true } })} />Email</label></div>
         <div className="grid gap-3 sm:grid-cols-2"><Input placeholder="Action label (optional)" value={form.actionLabel} onChange={e => setForm({ ...form, actionLabel: e.target.value })} /><Input placeholder="Internal link, e.g. /dashboard/packages" value={form.actionUrl} onChange={e => setForm({ ...form, actionUrl: e.target.value })} /></div>
         <div className="rounded-md bg-muted p-3 text-sm">Audience: <strong>{previewCount === null ? 'Preview required before sending' : `${previewCount} ministry account${previewCount === 1 ? '' : 's'}`}</strong>{selectedNames.length > 0 && <span className="block truncate text-xs text-muted-foreground">{selectedNames.join(', ')}</span>}</div>
-        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!valid || preview.isPending} onClick={() => preview.mutate()}>Preview audience</Button><Button variant="outline" disabled={!valid || saveCampaign.isPending} onClick={() => saveCampaign.mutate(false)}>{editingId ? 'Update draft' : 'Save draft'}</Button><Button disabled={!valid || previewCount === null || previewCount < 1 || saveCampaign.isPending} onClick={() => { if (confirm(`Save and send this campaign to ${previewCount} ministry account(s)?`)) saveCampaign.mutate(true); }}><Send className="mr-2 h-4 w-4" />{editingId ? 'Update & send' : 'Send now'}</Button>{editingId && <Button variant="ghost" onClick={cancelEditing}><X className="mr-2 h-4 w-4" />Cancel editing</Button>}</div>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!valid || preview.isPending} onClick={() => preview.mutate()}>Preview audience</Button><Button variant="outline" disabled={!valid || saveCampaign.isPending} onClick={() => saveCampaign.mutate(false)}>{editingId ? 'Update draft' : 'Save draft'}</Button><Button disabled={!valid || previewCount === null || previewCount < 1 || saveCampaign.isPending} onClick={() => previewCount !== null && setSendConfirmation({ type: 'form', recipientCount: previewCount })}><Send className="mr-2 h-4 w-4" />{editingId ? 'Update & send' : 'Send now'}</Button>{editingId && <Button variant="ghost" onClick={cancelEditing}><X className="mr-2 h-4 w-4" />Cancel editing</Button>}</div>
       </CardContent></Card>
-      <Card><CardHeader><CardTitle className="text-base">Campaign history</CardTitle></CardHeader><CardContent className="space-y-3">{isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : campaigns.length === 0 ? <p className="text-sm text-muted-foreground">No campaigns yet.</p> : campaigns.map(c => <div key={c.id} className={`rounded-md border p-3 ${editingId === c.id ? 'border-accent bg-accent/5' : ''}`}><div className="flex items-start justify-between gap-2"><div><p className="font-medium">{c.title}</p><p className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleString()} · {c._count?.recipients || 0} recipients</p></div><Badge variant={c.status === 'sent' ? 'default' : 'secondary'}>{c.status}</Badge></div><p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{c.summary || c.message}</p>{c.status === 'draft' && <div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={() => editDraft(c)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button><Button size="sm" onClick={() => { if (confirm('Send this draft now?')) sendExisting.mutate(c.id); }}><Mail className="mr-1 h-3.5 w-3.5" />Send</Button><Button size="sm" variant="ghost" onClick={() => remove.mutate(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button></div>}</div>)}</CardContent></Card>
+      <Card><CardHeader><CardTitle className="text-base">Campaign history</CardTitle></CardHeader><CardContent className="space-y-3">{isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : campaigns.length === 0 ? <p className="text-sm text-muted-foreground">No campaigns yet.</p> : campaigns.map(c => <div key={c.id} className={`rounded-md border p-3 ${editingId === c.id ? 'border-accent bg-accent/5' : ''}`}><div className="flex items-start justify-between gap-2"><div><p className="font-medium">{c.title}</p><p className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleString()} · {c._count?.recipients || 0} recipients</p></div><Badge variant={c.status === 'sent' ? 'default' : 'secondary'}>{c.status}</Badge></div><p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{c.summary || c.message}</p>{c.status === 'draft' && <div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={() => editDraft(c)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button><Button size="sm" onClick={() => setSendConfirmation({ type: 'draft', campaign: c })}><Mail className="mr-1 h-3.5 w-3.5" />Send</Button><Button size="sm" variant="ghost" onClick={() => remove.mutate(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button></div>}</div>)}</CardContent></Card>
     </div>
+    <AlertDialog open={sendConfirmation !== null} onOpenChange={open => !open && setSendConfirmation(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Send campaign now?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {sendConfirmation?.type === 'form'
+              ? `This campaign will be sent to ${sendConfirmation.recipientCount} ministry account${sendConfirmation.recipientCount === 1 ? '' : 's'}. Once sending begins, it can no longer be edited.`
+              : `Send “${sendConfirmation?.campaign.title || ''}” now? The final eligible audience will be calculated before delivery, and the campaign can no longer be edited once sending begins.`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={saveCampaign.isPending || sendExisting.isPending}
+            onClick={() => {
+              if (sendConfirmation?.type === 'form') saveCampaign.mutate(true);
+              if (sendConfirmation?.type === 'draft') sendExisting.mutate(sendConfirmation.campaign.id);
+              setSendConfirmation(null);
+            }}
+          >
+            <Send className="mr-2 h-4 w-4" />Send campaign
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>;
 }
