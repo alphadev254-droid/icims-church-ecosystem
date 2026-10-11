@@ -28,6 +28,10 @@ export const servicesService = {
         params: churchId ? { churchId } : undefined,
       })
     ).data.data,
+  listPage: async (params: { churchId?: string; startDate?: string; endDate?: string; search?: string; page: number }): Promise<{ items: ChurchService[]; total: number; hasMore: boolean }> => {
+    const response = (await apiClient.get('/services', { params })).data;
+    return { items: response.data, total: response.total, hasMore: response.hasMore };
+  },
   create: async (input: ServiceInput): Promise<ChurchService> =>
     (await apiClient.post('/services', input)).data.data,
   update: async (id: string, input: ServiceInput): Promise<ChurchService> =>

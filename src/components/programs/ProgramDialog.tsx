@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Mail, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +22,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -215,6 +217,7 @@ export function ProgramDialog({
   targetTitle,
   startsAt,
   canEdit,
+  canSend,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -223,12 +226,18 @@ export function ProgramDialog({
   targetTitle: string;
   startsAt: string;
   canEdit: boolean;
+  canSend: boolean;
 }) {
   const qc = useQueryClient();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [items, setItems] = useState<DraftItem[]>([]);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmChanges, setConfirmChanges] = useState(false);
+  const [notifyPrevious, setNotifyPrevious] = useState(true);
+  const [sendItem, setSendItem] = useState<DraftItem | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const {
     data: program,
     isLoading,
@@ -246,26 +255,39 @@ export function ProgramDialog({
     setTitle(program?.title || `${targetTitle} Program`);
     setDescription(program?.description || '');
     setItems((program?.items || []).map(itemDraft));
+    setDirty(false);
   }, [open, isLoading, isError, program, targetTitle]);
   const save = useMutation({
-    mutationFn: () =>
+    mutationFn: (notifyPrevious: boolean) =>
       programsService.save(target, targetId, {
         title: title.trim(),
         description: description.trim(),
-        items: items.map(({ key, id, user, ...item }) => ({
+        notifyPrevious,
+        items: items.map(({ key, user, emailStatus, lastEmailAt, ...item }) => ({
           ...item,
           startsAt: dateTimeLocalToIso(item.startsAt)!,
           endsAt: dateTimeLocalToIso(item.endsAt)!,
         })),
       }),
-    onSuccess: () => {
-      toast.success('Program saved');
+    onSuccess: ({ notificationWarnings }) => {
+      toast.success(notificationWarnings ? `Program saved; ${notificationWarnings} removal email(s) could not be queued` : 'Program saved');
       qc.invalidateQueries({ queryKey: ['program', target, targetId] });
       qc.invalidateQueries({ queryKey: [target] });
+      if (target === 'services') qc.invalidateQueries({ queryKey: ['services-page'] });
+      setConfirmChanges(false);
       onOpenChange(false);
     },
     onError: (error: any) =>
       toast.error(error.response?.data?.message || 'Could not save program'),
+  });
+  const send = useMutation({
+    mutationFn: (itemId: string) => programsService.sendAssignment(target, targetId, itemId),
+    onSuccess: () => {
+      toast.success('Assignment email queued');
+      qc.invalidateQueries({ queryKey: ['program', target, targetId] });
+      setSendItem(null);
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Could not queue assignment email'),
   });
   const remove = useMutation({
     mutationFn: () => programsService.remove(target, targetId),
@@ -273,17 +295,21 @@ export function ProgramDialog({
       toast.success('Program removed');
       qc.invalidateQueries({ queryKey: ['program', target, targetId] });
       qc.invalidateQueries({ queryKey: [target] });
+      if (target === 'services') qc.invalidateQueries({ queryKey: ['services-page'] });
       setConfirmRemove(false);
       onOpenChange(false);
     },
     onError: (error: any) =>
       toast.error(error.response?.data?.message || 'Could not remove program'),
   });
-  const updateItem = (key: string, patch: Partial<DraftItem>) =>
+  const updateItem = (key: string, patch: Partial<DraftItem>) => {
+    setDirty(true);
     setItems((current) =>
       current.map((item) => (item.key === key ? { ...item, ...patch } : item)),
     );
-  const moveItem = (index: number, direction: number) =>
+  };
+  const moveItem = (index: number, direction: number) => {
+    setDirty(true);
     setItems((current) => {
       const next = [...current];
       const other = index + direction;
@@ -291,7 +317,9 @@ export function ProgramDialog({
       [next[index], next[other]] = [next[other], next[index]];
       return next;
     });
+  };
   const addItem = () => {
+    setDirty(true);
     const base = items.at(-1)?.endsAt || toDateTimeLocalInputValue(startsAt);
     const end = new Date(new Date(base).getTime() + 10 * 60_000);
     setItems((current) => [
@@ -323,7 +351,27 @@ export function ProgramDialog({
       )
         return toast.error(`Check the guest email for item ${index + 1}`);
     }
-    save.mutate();
+    const previouslyNotified = (program?.items || []).some((oldItem) => {
+      const next = items.find((item) => item.id === oldItem.id);
+      const changedRecipient = !next || (next.userId || null) !== (oldItem.userId || null)
+        || (next.guestEmail?.trim().toLowerCase() || null) !== (oldItem.guestEmail?.trim().toLowerCase() || null);
+      return changedRecipient && oldItem.endsAt > new Date().toISOString()
+        && (oldItem.emailStatus === 'sent' || oldItem.emailStatus === 'queued' || oldItem.emailStatus === 'changed');
+    });
+    if (previouslyNotified) {
+      setNotifyPrevious(true);
+      setConfirmChanges(true);
+    } else save.mutate(false);
+  };
+  const currentEmailStatus = (item: DraftItem) => {
+    const original = program?.items.find((entry) => entry.id === item.id);
+    const email = item.userId ? item.user?.email : item.guestEmail;
+    if (!email) return 'No email';
+    if (!original || original.userId !== item.userId || (original.guestEmail || '') !== (item.guestEmail || '')) return 'Not sent';
+    if (original.title !== item.title || (original.description || '') !== (item.description || '')
+      || toDateTimeLocalInputValue(original.startsAt) !== item.startsAt
+      || toDateTimeLocalInputValue(original.endsAt) !== item.endsAt) return 'Changed since last email';
+    return ({ no_email: 'No email', not_sent: 'Not sent', queued: 'Queued', sent: 'Sent', failed: 'Failed', changed: 'Changed since last email' } as const)[item.emailStatus || 'not_sent'];
   };
 
   return (
@@ -355,7 +403,7 @@ export function ProgramDialog({
                   <Label>Title</Label>
                   <Input
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) => { setTitle(e.target.value); setDirty(true); }}
                     disabled={!canEdit}
                   />
                 </div>
@@ -364,13 +412,15 @@ export function ProgramDialog({
                   <Textarea
                     className="min-h-10"
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={(e) => { setDescription(e.target.value); setDirty(true); }}
                     disabled={!canEdit}
                   />
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Running order</h3>
+                <div className="flex items-center gap-2">
+                {program?.notifications?.length ? <Button type="button" size="sm" variant="ghost" onClick={() => setHistoryOpen(true)}>Email history</Button> : null}
                 {canEdit && (
                   <Button
                     type="button"
@@ -381,6 +431,7 @@ export function ProgramDialog({
                     <Plus className="mr-1 h-4 w-4" /> Add item
                   </Button>
                 )}
+                </div>
               </div>
               {items.map((item, index) => (
                 <section
@@ -419,9 +470,7 @@ export function ProgramDialog({
                           variant="ghost"
                           title="Remove item"
                           onClick={() =>
-                            setItems((current) =>
-                              current.filter((row) => row.key !== item.key),
-                            )
+                            { setDirty(true); setItems((current) => current.filter((row) => row.key !== item.key)); }
                           }
                         >
                           <Trash2 className="h-4 w-4" />
@@ -483,6 +532,17 @@ export function ProgramDialog({
                     onChange={(patch) => updateItem(item.key, patch)}
                     disabled={!canEdit}
                   />
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{currentEmailStatus(item)}</Badge>
+                      {item.lastEmailAt && currentEmailStatus(item) === 'Sent' && <span className="text-xs text-muted-foreground">{new Date(item.lastEmailAt).toLocaleString()}</span>}
+                    </div>
+                    {canSend && item.id && (item.userId ? item.user?.email : item.guestEmail) && (
+                      <Button type="button" size="sm" variant="outline" disabled={dirty || currentEmailStatus(item) === 'Queued'} onClick={() => setSendItem(item)}>
+                        <Mail className="mr-1 h-4 w-4" /> {currentEmailStatus(item) === 'Sent' ? 'Resend email' : 'Send email'}
+                      </Button>
+                    )}
+                  </div>
                 </section>
               ))}
               {!items.length && (
@@ -542,6 +602,55 @@ export function ProgramDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog open={confirmChanges} onOpenChange={setConfirmChanges}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change notified assignments?</AlertDialogTitle>
+            <AlertDialogDescription>People previously emailed about an upcoming assignment may still expect to participate.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={notifyPrevious} onCheckedChange={(checked) => setNotifyPrevious(checked === true)} />
+            Email the previous person that their assignment was removed
+          </label>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={save.isPending} onClick={() => save.mutate(notifyPrevious)}>Save changes</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={!!sendItem} onOpenChange={(value) => { if (!value) setSendItem(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send assignment email?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Send {sendItem?.title} for {targetTitle} to {sendItem?.userId ? sendItem.user?.email : sendItem?.guestEmail}.
+              {sendItem?.emailStatus === 'sent' ? ' This will be another email to the same person.' : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={send.isPending} onClick={() => { if (sendItem?.id) send.mutate(sendItem.id); }}>Send email</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-h-[80vh] max-w-xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Email history</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            {(program?.notifications || []).map((notification) => (
+              <div key={notification.id} className="border-b py-2 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <strong>{notification.itemTitle}</strong>
+                  <Badge variant="outline" className="capitalize">{notification.status}</Badge>
+                </div>
+                <p className="text-muted-foreground">{notification.kind === 'removal' ? 'Removal notice' : 'Assignment'} to {notification.name} ({notification.recipient})</p>
+                <p className="text-xs text-muted-foreground">{new Date(notification.sentAt || notification.createdAt).toLocaleString()}</p>
+                {notification.error && <p className="text-xs text-destructive">{notification.error}</p>}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

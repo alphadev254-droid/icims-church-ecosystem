@@ -64,6 +64,10 @@ const emptyForm = {
   status: 'scheduled' as const,
 };
 
+function localDate(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+}
+
 export default function ServicesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -71,8 +75,15 @@ export default function ServicesPage() {
   const hasFeature = useHasFeature('attendance_tracking');
   const canCreate = hasFeature && hasPermission('attendance:create');
   const canEdit = hasFeature && hasPermission('attendance:update');
+  const canReadProgram = hasPermission('programs:read');
+  const canManageProgram = hasPermission('programs:manage');
+  const canSendProgram = hasPermission('programs:send');
   const [churchFilter, setChurchFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [page, setPage] = useState(1);
+  const [appliedFilters, setAppliedFilters] = useState({ church: 'all', search: '', startDate: '', endDate: '' });
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ChurchService | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -87,15 +98,22 @@ export default function ServicesPage() {
     queryFn: churchesService.getSelectable,
   });
   const {
-    data: services = [],
+    data: servicesPage,
     isLoading,
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['services'],
-    queryFn: () => servicesService.list(),
+    queryKey: ['services-page', appliedFilters, page],
+    queryFn: () => servicesService.listPage({
+      churchId: appliedFilters.church === 'all' ? undefined : appliedFilters.church,
+      search: appliedFilters.search || undefined,
+      startDate: appliedFilters.startDate || undefined,
+      endDate: appliedFilters.endDate || undefined,
+      page,
+    }),
     enabled: hasFeature,
   });
+  const services = servicesPage?.items || [];
   const save = useMutation({
     mutationFn: (input: ServiceInput) =>
       editing
@@ -104,6 +122,7 @@ export default function ServicesPage() {
     onSuccess: () => {
       toast.success(editing ? 'Service updated' : 'Service created');
       qc.invalidateQueries({ queryKey: ['services'] });
+      qc.invalidateQueries({ queryKey: ['services-page'] });
       setFormOpen(false);
     },
     onError: (error: any) =>
@@ -114,6 +133,7 @@ export default function ServicesPage() {
     onSuccess: () => {
       toast.success('Service deleted');
       qc.invalidateQueries({ queryKey: ['services'] });
+      qc.invalidateQueries({ queryKey: ['services-page'] });
       setDeleteService(null);
     },
     onError: (error: any) =>
@@ -162,14 +182,25 @@ export default function ServicesPage() {
       endsAt,
     });
   };
-  const filtered = services.filter(
-    (service) =>
-      (churchFilter === 'all' || service.churchId === churchFilter) &&
-      (!search ||
-        `${service.title} ${service.type || ''} ${service.church?.name || ''}`
-          .toLowerCase()
-          .includes(search.toLowerCase())),
-  );
+  const applyFilters = () => {
+    if (startDate && endDate && startDate > endDate) return toast.error('Start date must be before end date');
+    setPage(1);
+    setAppliedFilters({ church: churchFilter, search: search.trim(), startDate, endDate });
+  };
+  const setDatePreset = (preset: string) => {
+    const now = new Date();
+    if (preset === 'all') { setStartDate(''); setEndDate(''); return; }
+    if (preset === 'thisMonth') {
+      setStartDate(localDate(new Date(now.getFullYear(), now.getMonth(), 1)));
+      setEndDate(localDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
+    } else if (preset === 'next30') {
+      setStartDate(localDate(now));
+      setEndDate(localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30)));
+    } else if (preset === 'last6') {
+      setStartDate(localDate(new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())));
+      setEndDate(localDate(now));
+    }
+  };
 
   if (!hasFeature) {
     return (
@@ -188,7 +219,7 @@ export default function ServicesPage() {
         <div>
           <h1 className="font-heading text-2xl font-bold">Services</h1>
           <p className="text-sm text-muted-foreground">
-            {services.length} scheduled and past services
+            {servicesPage?.total ?? 0} scheduled and past services
           </p>
         </div>
         {canCreate && (
@@ -217,6 +248,18 @@ export default function ServicesPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select onValueChange={setDatePreset}>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Date range" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All dates</SelectItem>
+            <SelectItem value="thisMonth">This month</SelectItem>
+            <SelectItem value="next30">Next 30 days</SelectItem>
+            <SelectItem value="last6">Last 6 months</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input aria-label="From date" type="date" className="w-full sm:w-40" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+        <Input aria-label="To date" type="date" className="w-full sm:w-40" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+        <Button variant="outline" onClick={applyFilters}>Apply</Button>
       </div>
       {isLoading ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
@@ -229,9 +272,9 @@ export default function ServicesPage() {
             Retry
           </Button>
         </div>
-      ) : filtered.length ? (
+      ) : services.length ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((service) => (
+          {services.map((service) => (
             <Card key={service.id}>
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -252,7 +295,7 @@ export default function ServicesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {(service.program || canEdit) && (
+                      {canReadProgram && (service.program || canManageProgram) && (
                         <DropdownMenuItem
                           onClick={() => setProgramService(service)}
                         >
@@ -318,6 +361,13 @@ export default function ServicesPage() {
         <p className="py-12 text-center text-sm text-muted-foreground">
           No services found
         </p>
+      )}
+      {!isLoading && !isError && (page > 1 || servicesPage?.hasMore) && (
+        <div className="flex items-center justify-end gap-3 text-sm text-muted-foreground">
+          <span>Page {page}</span>
+          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Previous</Button>
+          <Button variant="outline" size="sm" disabled={!servicesPage?.hasMore} onClick={() => setPage((current) => current + 1)}>Next</Button>
+        </div>
       )}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
@@ -468,7 +518,8 @@ export default function ServicesPage() {
           targetId={programService.id}
           targetTitle={programService.title}
           startsAt={programService.startsAt}
-          canEdit={canEdit}
+          canEdit={canManageProgram}
+          canSend={canSendProgram}
         />
       )}
       <AlertDialog

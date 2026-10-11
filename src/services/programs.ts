@@ -21,6 +21,21 @@ export interface ProgramItem {
   guestEmail?: string | null;
   guestPhone?: string | null;
   user?: ProgramPerson | null;
+  emailStatus?: 'no_email' | 'not_sent' | 'queued' | 'sent' | 'failed' | 'changed';
+  lastEmailAt?: string | null;
+}
+
+export interface ProgramNotification {
+  id: string;
+  itemId: string;
+  kind: 'assignment' | 'removal';
+  recipient: string;
+  name: string;
+  itemTitle: string;
+  status: 'queued' | 'sent' | 'failed';
+  error?: string | null;
+  sentAt?: string | null;
+  createdAt: string;
 }
 
 export interface Program {
@@ -28,6 +43,7 @@ export interface Program {
   title: string;
   description?: string | null;
   items: ProgramItem[];
+  notifications: ProgramNotification[];
 }
 
 export const programsService = {
@@ -36,9 +52,14 @@ export const programsService = {
   save: async (
     target: ProgramTarget,
     id: string,
-    input: Pick<Program, 'title' | 'description' | 'items'>,
-  ): Promise<Program> =>
-    (await apiClient.put(`/${target}/${id}/program`, input)).data.data,
+    input: Pick<Program, 'title' | 'description' | 'items'> & { notifyPrevious?: boolean },
+  ): Promise<{ program: Program; notificationWarnings: number }> => {
+    const response = (await apiClient.put(`/${target}/${id}/program`, input)).data;
+    return { program: response.data, notificationWarnings: response.notificationWarnings || 0 };
+  },
+  sendAssignment: async (target: ProgramTarget, id: string, itemId: string): Promise<void> => {
+    await apiClient.post(`/${target}/${id}/program/items/${itemId}/email`);
+  },
   remove: async (target: ProgramTarget, id: string): Promise<void> => {
     await apiClient.delete(`/${target}/${id}/program`);
   },

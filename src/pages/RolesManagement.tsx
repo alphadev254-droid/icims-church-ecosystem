@@ -35,6 +35,7 @@ const RESOURCE_LABEL: Record<string, string> = {
   members: 'Members',
   children: 'Children',
   events: 'Events',
+  programs: 'Programs',
   giving: 'Giving',
   campaigns: 'Campaigns',
   donations: 'Donations',

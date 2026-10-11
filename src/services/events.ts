@@ -37,6 +37,7 @@ export interface ChurchEvent {
   churchId: string;
   church?: { id?: string; name: string };
   churchName?: string;
+  program?: { id: string } | null;
   scopeType?: 'one_church' | 'selected_churches' | 'all_churches';
   linkedChurches?: Array<{ churchId: string; church?: { id: string; name: string } }>;
   availableChurchIds?: string[];

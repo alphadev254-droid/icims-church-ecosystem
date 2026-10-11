@@ -1136,6 +1136,9 @@ export default function EventsPage() {
   // Permissions
   const canCreate = hasPermission('events:create') && hasEventsFeature;
   const canUpdate = hasPermission('events:update') && hasEventsFeature;
+  const canReadProgram = hasPermission('programs:read') && hasEventsFeature;
+  const canManageProgram = hasPermission('programs:manage') && hasEventsFeature;
+  const canSendProgram = hasPermission('programs:send') && hasEventsFeature;
   const canDelete = hasPermission('events:delete') && hasEventsFeature;
   const canViewTickets = hasPermission('tickets:read') && hasEventReportsFeature;
   const canViewAllTickets = hasPermission('tickets:create') && hasEventReportsFeature;
@@ -1574,9 +1577,11 @@ export default function EventsPage() {
                         <Eye className="h-4 w-4" />
                         View Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2" onClick={() => setProgramEvent(event)}>
-                        <ClipboardList className="h-4 w-4" /> Program
-                      </DropdownMenuItem>
+                      {canReadProgram && (event.program || canManageProgram) && (
+                        <DropdownMenuItem className="gap-2" onClick={() => setProgramEvent(event)}>
+                          <ClipboardList className="h-4 w-4" /> {event.program ? 'View program' : 'Add program'}
+                        </DropdownMenuItem>
+                      )}
                       {hasPermission('attendance:create') && (event.requiresTicket ? hasEventAttendanceFeature : hasAttendanceFeature) && (
                         <DropdownMenuItem className="gap-2" onClick={() => navigate(event.requiresTicket ? `/dashboard/event-attendance?eventId=${event.id}` : `/dashboard/attendance?eventId=${event.id}`)}>
                           <QrCode className="h-4 w-4" /> Add attendance
@@ -2003,7 +2008,7 @@ export default function EventsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {programEvent && <ProgramDialog open={!!programEvent} onOpenChange={open => { if (!open) setProgramEvent(null); }} target="events" targetId={programEvent.id} targetTitle={programEvent.title} startsAt={programEvent.date} canEdit={canUpdate} />}
+      {programEvent && <ProgramDialog open={!!programEvent} onOpenChange={open => { if (!open) setProgramEvent(null); }} target="events" targetId={programEvent.id} targetTitle={programEvent.title} startsAt={programEvent.date} canEdit={canManageProgram} canSend={canSendProgram} />}
     </div>
   );
 }
