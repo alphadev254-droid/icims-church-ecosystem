@@ -12,9 +12,10 @@ export type ResourceBooking = {
   id: string; groupId: string; resourceId: string; churchId: string;
   activityType: string; activityId?: string | null; activityTitle: string;
   purpose?: string | null; startsAt: string; endsAt: string; status: string;
-  decisionNote?: string | null;
+  decisionNote?: string | null; decidedAt?: string | null; createdAt: string;
   resource: Pick<BookableResource, 'id' | 'name' | 'category' | 'churchId' | 'location'>;
   requester: { id: string; firstName: string; lastName: string };
+  decidedBy?: { id: string; firstName: string; lastName: string } | null;
 };
 
 export type ResourceInput = Omit<BookableResource, 'id' | 'images'>;
@@ -23,6 +24,7 @@ export type BookingInput = {
   activityId?: string; activityTitle?: string; purpose?: string;
   startsAt?: string; endsAt?: string;
 };
+export type BookableActivityOption = { id: string; churchId: string; churchName: string; title: string; startsAt: string; endsAt?: string | null };
 
 const root = '/resource-booking';
 export const resourceBookingService = {
@@ -45,11 +47,15 @@ export const resourceBookingService = {
     (await apiClient.post(`${root}/availability`, input)).data.data,
   activityWindow: async (input: { churchId: string; activityType: 'service' | 'event'; activityId: string }): Promise<{ activityTitle: string; startsAt: string; endsAt: string }> =>
     (await apiClient.get(`${root}/activity-window`, { params: input })).data.data,
+  activities: async (churchId?: string): Promise<{ services: BookableActivityOption[]; events: BookableActivityOption[] }> =>
+    (await apiClient.get(`${root}/activities`, { params: churchId ? { churchId } : undefined })).data.data,
   request: async (input: BookingInput): Promise<ResourceBooking[]> =>
     (await apiClient.post(`${root}/bookings`, input)).data.data,
   decide: async (id: string, decision: 'approved' | 'rejected', note?: string) =>
     (await apiClient.post(`${root}/bookings/${id}/decision`, { decision, note })).data.data,
   cancel: async (id: string) => { await apiClient.post(`${root}/bookings/${id}/cancel`); },
+  deleteResource: async (id: string): Promise<{ cancelled: number; keptForHistory: boolean }> =>
+    (await apiClient.delete(`${root}/resources/${id}`)).data.data,
   block: async (id: string, input: { startsAt: string; endsAt: string; reason: string }) =>
     (await apiClient.post(`${root}/resources/${id}/block`, input)).data.data,
 };

@@ -113,7 +113,7 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
   
   return PERMISSION_TO_NAV
     .filter(({ permission, item }) => {
-      if (!permSet.has(permission) && !(item.to === '/dashboard/resource-booking' && permSet.has('resource_booking:request'))) return false;
+      if (!permSet.has(permission) && !(item.to === '/dashboard/resource-booking' && ['resource_booking:request', 'resource_booking:manage', 'resource_booking:approve'].some(key => permSet.has(key)))) return false;
       if (!isPackageRouteAvailable(item.to, currentUser)) return false;
 
       // Services is a separate page displayed beneath Registration in the sidebar.
@@ -184,7 +184,7 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
   }
   
   for (const { permission, item } of PERMISSION_TO_NAV) {
-    if ((permSet.has(permission) || (item.to === '/dashboard/resource-booking' && permSet.has('resource_booking:request'))) && !routes.includes(item.to)) {
+    if ((permSet.has(permission) || (item.to === '/dashboard/resource-booking' && ['resource_booking:request', 'resource_booking:manage', 'resource_booking:approve'].some(key => permSet.has(key)))) && !routes.includes(item.to)) {
       if (!isPackageRouteAvailable(item.to, currentUser)) {
         continue;
       }
