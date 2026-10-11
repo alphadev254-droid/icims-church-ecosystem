@@ -1,6 +1,6 @@
 import {
   Home, Calendar, CalendarDays, HandCoins, ClipboardList, MessageSquare,
-  BookOpen, Building2, TrendingUp, BarChart3, Settings, Shield, UserCog, Package2, Receipt, Wallet, Users, Bell, Handshake, Globe, Baby, Banknote, type LucideIcon,
+  BookOpen, Building2, TrendingUp, BarChart3, Settings, Shield, UserCog, Package2, Receipt, Wallet, Users, Bell, Handshake, Globe, Baby, Banknote, Warehouse, type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from './authStore';
 import { PACKAGE_FEATURES } from '@/lib/package-features';
@@ -41,7 +41,8 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   
   // Communication & Resources
   { permission: 'communication:read', item: { to: '/dashboard/communication', label: 'Communication', icon: MessageSquare } },
-  { permission: 'resources:read',     item: { to: '/dashboard/resources',     label: 'Resources',     icon: BookOpen } },
+  { permission: 'resources:read',     item: { to: '/dashboard/resources',     label: 'Content Library', icon: BookOpen } },
+  { permission: 'resource_booking:read', item: { to: '/dashboard/resource-booking', label: 'Resource Booking', icon: Warehouse } },
   
   // Finance
   { permission: 'giving:read',        item: { to: '/dashboard/giving',        label: 'Giving',        icon: HandCoins } },
@@ -84,6 +85,7 @@ function routePackageFeature(route: string): string | null {
   if (route === '/dashboard/transactions') return PACKAGE_FEATURES.TRANSACTIONS_VIEW;
   if (route === '/dashboard/withdrawals') return PACKAGE_FEATURES.GIVING_WALLETS;
   if (route === '/dashboard/calendar') return PACKAGE_FEATURES.CALENDAR;
+  if (route === '/dashboard/resource-booking') return PACKAGE_FEATURES.SCHEDULER_RESOURCE_BOOKING;
   if (route === '/dashboard/events') return PACKAGE_FEATURES.EVENTS_MANAGEMENT;
   if (route === '/dashboard/my-tickets') return PACKAGE_FEATURES.EVENT_MEMBER_BOOKING;
   return null;
@@ -111,7 +113,7 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
   
   return PERMISSION_TO_NAV
     .filter(({ permission, item }) => {
-      if (!permSet.has(permission)) return false;
+      if (!permSet.has(permission) && !(item.to === '/dashboard/resource-booking' && permSet.has('resource_booking:request'))) return false;
       if (!isPackageRouteAvailable(item.to, currentUser)) return false;
 
       // Services is a separate page displayed beneath Registration in the sidebar.
@@ -182,7 +184,7 @@ export function getAllowedRoutesFromPermissions(permissions: string[], user?: { 
   }
   
   for (const { permission, item } of PERMISSION_TO_NAV) {
-    if (permSet.has(permission) && !routes.includes(item.to)) {
+    if ((permSet.has(permission) || (item.to === '/dashboard/resource-booking' && permSet.has('resource_booking:request'))) && !routes.includes(item.to)) {
       if (!isPackageRouteAvailable(item.to, currentUser)) {
         continue;
       }

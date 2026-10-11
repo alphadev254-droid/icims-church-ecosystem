@@ -54,6 +54,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { dateTimeLocalToIso, toDateTimeLocalInputValue } from '@/lib/date-time';
 import { apiErrorMessage, isForbiddenError } from '@/lib/api-error';
+import { ResourceBookingDialog, type BookingActivity } from '@/components/resource-booking/ResourceBookingDialog';
 
 const emptyForm = {
   churchId: '',
@@ -80,6 +81,8 @@ export default function ServicesPage() {
   const canReadProgram = hasPermission('programs:read');
   const canManageProgram = hasPermission('programs:manage');
   const canSendProgram = hasPermission('programs:send');
+  const canBookResources = useHasFeature('scheduler_resource_booking') && hasPermission('resource_booking:request');
+  const [bookingActivity, setBookingActivity] = useState<BookingActivity | null>(null);
   const [churchFilter, setChurchFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -124,11 +127,12 @@ export default function ServicesPage() {
       editing
         ? servicesService.update(editing.id, input)
         : servicesService.create(input),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       toast.success(editing ? 'Service updated' : 'Service created');
       qc.invalidateQueries({ queryKey: ['services'] });
       qc.invalidateQueries({ queryKey: ['services-page'] });
       setFormOpen(false);
+      if (!editing && canBookResources) setBookingActivity({ type: 'service', id: saved.id, churchId: saved.churchId, title: saved.title, startsAt: saved.startsAt, endsAt: saved.endsAt || undefined });
     },
     onError: (error: any) =>
       toast.error(error.response?.data?.message || 'Could not save service'),
@@ -320,6 +324,7 @@ export default function ServicesPage() {
                           Edit service
                         </DropdownMenuItem>
                       )}
+                      {canBookResources && service.status !== 'cancelled' && <DropdownMenuItem onClick={() => setBookingActivity({ type: 'service', id: service.id, churchId: service.churchId, title: service.title, startsAt: service.startsAt, endsAt: service.endsAt || undefined })}>Book resources</DropdownMenuItem>}
                       {canEdit && !service.attendance && (
                         <DropdownMenuItem
                           className="text-destructive"
@@ -561,6 +566,7 @@ export default function ServicesPage() {
           canSend={canSendProgram}
         />
       )}
+      <ResourceBookingDialog open={!!bookingActivity} onOpenChange={open => { if (!open) setBookingActivity(null); }} activity={bookingActivity} />
       <AlertDialog
         open={!!deleteService}
         onOpenChange={(open) => {

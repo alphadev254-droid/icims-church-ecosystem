@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import imageCompression from 'browser-image-compression';
 import { eventsService, type ChurchEvent } from '@/services/events';
+import { ResourceBookingDialog, type BookingActivity } from '@/components/resource-booking/ResourceBookingDialog';
 import { ProgramDialog } from '@/components/programs/ProgramDialog';
 import { paymentService } from '@/services/payments';
 import { useRole } from '@/hooks/useRole';
@@ -993,6 +994,7 @@ export default function EventsPage() {
   const [expandImage, setExpandImage] = useState<string | null>(null);
   const [viewEvent, setViewEvent] = useState<ChurchEvent | null>(null);
   const [programEvent, setProgramEvent] = useState<ChurchEvent | null>(null);
+  const [bookingActivity, setBookingActivity] = useState<BookingActivity | null>(null);
   const [shareEvent, setShareEvent] = useState<ChurchEvent | null>(null);
   const [selectedShareChurchIds, setSelectedShareChurchIds] = useState<string[]>([]);
   const [paymentConfirm, setPaymentConfirm] = useState<{ event: ChurchEvent; details: any } | null>(null);
@@ -1016,6 +1018,7 @@ export default function EventsPage() {
   const hasEventAttendanceFeature = useHasFeature(PACKAGE_FEATURES.EVENT_ATTENDANCE);
   const hasSchedulerCreationFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_EVENT_CREATION);
   const hasSchedulerRecurringFeature = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RECURRING_EVENTS);
+  const canBookResources = useHasFeature(PACKAGE_FEATURES.SCHEDULER_RESOURCE_BOOKING) && hasPermission('resource_booking:request');
   const user = useAuthStore((state) => state.user);
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -1078,10 +1081,11 @@ export default function EventsPage() {
       if (!eventLimit.allowed) throw new Error(eventLimit.message);
       return eventsService.create(dto);
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       toast.success('Event created');
       qc.invalidateQueries({ queryKey: ['events'] });
       setCreateOpen(false);
+      if (canBookResources && created?.recordType !== 'scheduled_source') setBookingActivity({ type: 'event', id: created.id, churchId: created.churchId, title: created.title, startsAt: `${created.date.slice(0, 10)}T${created.time}:00`, endsAt: created.endTime ? `${created.endDate.slice(0, 10)}T${created.endTime}:00` : undefined });
     },
     onError: (err: any) => toast.error(err.response?.data?.message || err.message || 'Failed to create event'),
   });
@@ -1582,6 +1586,7 @@ export default function EventsPage() {
                           <ClipboardList className="h-4 w-4" /> {event.program ? 'View program' : 'Add program'}
                         </DropdownMenuItem>
                       )}
+                      {canBookResources && event.status !== 'cancelled' && event.recordType !== 'scheduled_source' && <DropdownMenuItem className="gap-2" onClick={() => setBookingActivity({ type: 'event', id: event.id, churchId: event.churchId, title: event.title, startsAt: `${event.date.slice(0, 10)}T${event.time}:00`, endsAt: event.endTime ? `${event.endDate.slice(0, 10)}T${event.endTime}:00` : undefined })}>Book resources</DropdownMenuItem>}
                       {hasPermission('attendance:create') && (event.requiresTicket ? hasEventAttendanceFeature : hasAttendanceFeature) && (
                         <DropdownMenuItem className="gap-2" onClick={() => navigate(event.requiresTicket ? `/dashboard/event-attendance?eventId=${event.id}` : `/dashboard/attendance?eventId=${event.id}`)}>
                           <QrCode className="h-4 w-4" /> Add attendance
@@ -2009,6 +2014,7 @@ export default function EventsPage() {
         </AlertDialogContent>
       </AlertDialog>
       {programEvent && <ProgramDialog open={!!programEvent} onOpenChange={open => { if (!open) setProgramEvent(null); }} target="events" targetId={programEvent.id} targetTitle={programEvent.title} startsAt={programEvent.date} canEdit={canManageProgram} canSend={canSendProgram} />}
+      <ResourceBookingDialog open={!!bookingActivity} onOpenChange={open => { if (!open) setBookingActivity(null); }} activity={bookingActivity} />
     </div>
   );
 }
