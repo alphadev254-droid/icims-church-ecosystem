@@ -36,7 +36,7 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   { permission: 'calendar:read',      item: { to: '/dashboard/calendar',      label: 'Calendar',      icon: CalendarDays } },
   { permission: 'events:read',        item: { to: '/dashboard/events',        label: 'Events',        icon: Calendar } },
   { permission: 'attendance:read',    item: { to: '/dashboard/services',      label: 'Services',      icon: CalendarDays } },
-  { permission: 'attendance:read',    item: { to: '/dashboard/attendance',    label: 'Attendance',    icon: ClipboardList } },
+  { permission: 'attendance:read',    item: { to: '/dashboard/attendance',    label: 'Registration',  icon: ClipboardList } },
   { permission: 'reminders:read',     item: { to: '/dashboard/reminders',     label: 'Reminders',     icon: Bell } },
   
   // Communication & Resources
@@ -113,6 +113,9 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
     .filter(({ permission, item }) => {
       if (!permSet.has(permission)) return false;
       if (!isPackageRouteAvailable(item.to, currentUser)) return false;
+
+      // Services is a separate page displayed beneath Registration in the sidebar.
+      if (item.to === '/dashboard/services') return false;
       
       // Hide users from members
       if (item.to === '/dashboard/users') {
