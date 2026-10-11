@@ -92,6 +92,8 @@ const AdminWithdrawals = lazy(() => import("./pages/admin/AdminWithdrawals"));
 const AdminTreasury = lazy(() => import("./pages/admin/AdminTreasury"));
 const AdminPackages = lazy(() => import("./pages/admin/AdminPackages"));
 const AdminPendingTransactions = lazy(() => import("./pages/admin/AdminPendingTransactions"));
+const AdminCampaigns = lazy(() => import("./pages/admin/AdminCampaigns"));
+const SystemNotifications = lazy(() => import("./pages/SystemNotifications"));
 
 function PageLoader() {
   return (
@@ -168,6 +170,7 @@ const App = () => {
                 <Route path="events/:id/tickets" element={<EventTickets />} />
                 <Route path="my-tickets" element={<MyTickets />} />
                 <Route path="reminders" element={<Reminders />} />
+                <Route path="notifications" element={<SystemNotifications />} />
                 <Route path="giving" element={<Giving />} />
                 <Route path="donations" element={<Donations />} />
                 <Route path="pledges" element={<Pledges />} />
@@ -205,6 +208,7 @@ const App = () => {
               <Route path="/admin" element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsers />} />
+                <Route path="campaigns" element={<AdminCampaigns />} />
                 <Route path="users/:id" element={<AdminUserDetail />} />
                 <Route path="marketers" element={<AdminMarketers />} />
                 <Route path="marketers/:id" element={<AdminMarketerDetail />} />

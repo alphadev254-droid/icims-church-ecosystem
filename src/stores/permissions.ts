@@ -61,6 +61,7 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
 ];
 
 const PERMISSION_TO_ROUTE: Array<{ permission: string; route: string }> = [
+  { permission: 'system_notifications:read', route: '/dashboard/notifications' },
   { permission: 'donations:read', route: '/dashboard/donations' },
   { permission: 'tickets:read', route: '/dashboard/my-tickets' },
   { permission: 'attendance:read', route: '/dashboard/event-attendance' },

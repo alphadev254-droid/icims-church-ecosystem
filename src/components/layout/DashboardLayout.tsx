@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Church, LogOut, Sun, Moon, Menu, User, Settings } from 'lucide-react';
 import { Suspense, useState } from 'react';
+import { SystemNotificationBell } from './SystemNotificationBell';
 
 function DashboardPageLoader() {
   return (
@@ -165,6 +166,8 @@ export default function DashboardLayout() {
             </h2>
           </div>
           
+          <div className="flex items-center gap-1">
+          {user?.permissions?.includes('system_notifications:read') && <SystemNotificationBell />}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 rounded-full hover:opacity-80 transition-opacity">
@@ -198,6 +201,7 @@ export default function DashboardLayout() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
