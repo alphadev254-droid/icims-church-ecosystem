@@ -92,6 +92,8 @@ function groupActivitiesByType(activities: CalendarActivity[]) {
 
 function ActivityItem({ activity }: { activity: CalendarActivity }) {
   const route = getActivityRoute(activity);
+  const cellName = typeof activity.meta?.cellName === 'string' ? activity.meta.cellName : null;
+  const cellLeader = typeof activity.meta?.cellLeader === 'string' ? activity.meta.cellLeader : null;
 
   return (
     <div className="rounded-md border p-3">
@@ -102,12 +104,30 @@ function ActivityItem({ activity }: { activity: CalendarActivity }) {
             <Badge variant="secondary" className="text-[11px]">{activityLabel(activity.type)}</Badge>
           </div>
           <h3 className="mt-2 truncate text-sm font-semibold">{activity.title}</h3>
-          <p className="text-xs text-muted-foreground">{activity.churchName || 'Church'}</p>
+          {activity.type !== 'cell_meeting' && (
+            <p className="text-xs text-muted-foreground">{activity.churchName || 'Church'}</p>
+          )}
         </div>
         {activity.status && <Badge variant="outline" className="text-[11px] capitalize">{activity.status}</Badge>}
       </div>
       {activity.description && (
         <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{activity.description}</p>
+      )}
+      {activity.type === 'cell_meeting' && (
+        <dl className="mt-3 grid gap-2 border-t pt-3 text-xs">
+          <div className="flex items-start justify-between gap-3">
+            <dt className="text-muted-foreground">Cell</dt>
+            <dd className="text-right font-medium">{cellName || 'Not available'}</dd>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <dt className="text-muted-foreground">Cell leader</dt>
+            <dd className="text-right font-medium">{cellLeader || 'Not assigned'}</dd>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <dt className="text-muted-foreground">Church</dt>
+            <dd className="text-right font-medium">{activity.churchName || 'Not available'}</dd>
+          </div>
+        </dl>
       )}
       <div className="mt-2 flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">{format(activityDate(activity), 'p')}</p>
