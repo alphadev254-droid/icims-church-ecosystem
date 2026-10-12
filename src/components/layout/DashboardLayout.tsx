@@ -43,6 +43,8 @@ export default function DashboardLayout() {
     '/dashboard/referrals/my-referrals': 'Partnered Ministries',
     '/dashboard/referrals/wallet': 'Wallet',
     '/dashboard/referrals/payout-settings': 'Payout Settings',
+    '/dashboard/attendance': 'Check-in',
+    '/dashboard/resource-booking': 'Asset and Facility Booking',
   };
 
   const currentPageTitle = pageTitles[location.pathname] || (location.pathname === '/dashboard'
@@ -76,8 +78,8 @@ export default function DashboardLayout() {
         {navItems.filter(item => item.to !== '/dashboard/services').map(item => {
           const showUserSubnav = item.to === '/dashboard/users' && user?.permissions?.includes('registration_requests:read');
           const usersSectionActive = location.pathname === '/dashboard/users' || location.pathname.startsWith('/dashboard/users/');
-          const showRegistrationSubnav = item.to === '/dashboard/attendance';
-          const registrationSectionActive =
+          const showCheckInSubnav = item.to === '/dashboard/attendance';
+          const checkInSectionActive =
             location.pathname === '/dashboard/services' ||
             location.pathname === '/dashboard/attendance' ||
             location.pathname.startsWith('/dashboard/attendance/');
@@ -94,7 +96,7 @@ export default function DashboardLayout() {
                 }`}
               >
                 <item.icon className="h-4 w-4 flex-shrink-0" />
-                {item.to === '/dashboard/attendance' ? 'Registration' : item.label}
+                {item.to === '/dashboard/attendance' ? 'Check-in' : item.label}
               </Link>
               {showUserSubnav && usersSectionActive && (
                 <div className="ml-7 mt-1 space-y-1 border-l border-sidebar-border pl-2">
@@ -122,7 +124,7 @@ export default function DashboardLayout() {
                   </Link>
                 </div>
               )}
-              {showRegistrationSubnav && registrationSectionActive && (
+              {showCheckInSubnav && checkInSectionActive && (
                 <div className="ml-7 mt-1 space-y-1 border-l border-sidebar-border pl-2">
                   <Link
                     to="/dashboard/attendance"

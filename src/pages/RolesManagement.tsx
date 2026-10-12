@@ -45,7 +45,7 @@ const RESOURCE_LABEL: Record<string, string> = {
   churches: 'Churches',
   communication: 'Communication',
   resources: 'Content Library',
-  resource_booking: 'Resource Booking',
+  resource_booking: 'Asset and Facility Booking',
   teams: 'Teams',
   cells: 'Cells',
   reminders: 'Reminders',

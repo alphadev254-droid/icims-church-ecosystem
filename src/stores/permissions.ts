@@ -36,13 +36,13 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   { permission: 'calendar:read',      item: { to: '/dashboard/calendar',      label: 'Calendar',      icon: CalendarDays } },
   { permission: 'events:read',        item: { to: '/dashboard/events',        label: 'Events',        icon: Calendar } },
   { permission: 'attendance:read',    item: { to: '/dashboard/services',      label: 'Services',      icon: CalendarDays } },
-  { permission: 'attendance:read',    item: { to: '/dashboard/attendance',    label: 'Registration',  icon: ClipboardList } },
+  { permission: 'attendance:read',    item: { to: '/dashboard/attendance',    label: 'Check-in',      icon: ClipboardList } },
   { permission: 'reminders:read',     item: { to: '/dashboard/reminders',     label: 'Reminders',     icon: Bell } },
   
   // Communication & Resources
   { permission: 'communication:read', item: { to: '/dashboard/communication', label: 'Communication', icon: MessageSquare } },
   { permission: 'resources:read',     item: { to: '/dashboard/resources',     label: 'Content Library', icon: BookOpen } },
-  { permission: 'resource_booking:read', item: { to: '/dashboard/resource-booking', label: 'Resource Booking', icon: Warehouse } },
+  { permission: 'resource_booking:read', item: { to: '/dashboard/resource-booking', label: 'Asset and Facility Booking', icon: Warehouse } },
   
   // Finance
   { permission: 'giving:read',        item: { to: '/dashboard/giving',        label: 'Giving',        icon: HandCoins } },
@@ -116,7 +116,7 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
       if (!permSet.has(permission) && !(item.to === '/dashboard/resource-booking' && ['resource_booking:request', 'resource_booking:manage', 'resource_booking:approve'].some(key => permSet.has(key)))) return false;
       if (!isPackageRouteAvailable(item.to, currentUser)) return false;
 
-      // Services is a separate page displayed beneath Registration in the sidebar.
+      // Services is a separate page displayed beneath Check-in in the sidebar.
       if (item.to === '/dashboard/services') return false;
       
       // Hide users from members
