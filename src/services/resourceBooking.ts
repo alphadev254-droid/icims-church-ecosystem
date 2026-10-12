@@ -30,6 +30,8 @@ const root = '/resource-booking';
 export const resourceBookingService = {
   resources: async (churchId?: string): Promise<BookableResource[]> =>
     (await apiClient.get(`${root}/resources`, { params: churchId ? { churchId } : undefined })).data.data,
+  resourcePage: async (params: { churchId?: string; category?: string; page: number; limit: number }): Promise<{ data: BookableResource[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> =>
+    (await apiClient.get(`${root}/resources`, { params })).data,
   createResource: async (input: ResourceInput): Promise<BookableResource> =>
     (await apiClient.post(`${root}/resources`, input)).data.data,
   updateResource: async (id: string, input: Partial<ResourceInput>): Promise<BookableResource> =>

@@ -24,6 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 
 const categories = ['room', 'hall', 'vehicle', 'instrument', 'media', 'projector', 'equipment', 'other'];
+const resourcePageSize = 12;
 const blank: ResourceInput = { churchId: '', name: '', code: '', category: 'room', description: '', location: '', custodianName: '', scope: 'own_church', status: 'active', approvalRequired: false, bufferBeforeMinutes: 0, bufferAfterMinutes: 0 };
 
 export default function ResourceBookingPage() {
@@ -36,7 +37,11 @@ export default function ResourceBookingPage() {
   const userId = useAuthStore(state => state.user?.id);
   const [churchId, setChurchId] = useState('all');
   const [activeTab, setActiveTab] = useState('resources');
+  const [resourceType, setResourceType] = useState('all');
+  const [resourcePage, setResourcePage] = useState(1);
   const [status, setStatus] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<BookableResource | null>(null);
   const [resourceFormOpen, setResourceFormOpen] = useState(false);
@@ -50,8 +55,11 @@ export default function ResourceBookingPage() {
   const [viewBooking, setViewBooking] = useState<ResourceBooking | null>(null);
   const [blockForm, setBlockForm] = useState({ startsAt: '', endsAt: '', reason: '' });
   const { data: churches = [] } = useQuery({ queryKey: ['churches-select'], queryFn: churchesService.getSelectable, enabled });
-  const { data: resources = [], isLoading: loadingResources } = useQuery({ queryKey: ['bookable-resources', churchId], queryFn: () => resourceBookingService.resources(churchId === 'all' ? undefined : churchId), enabled });
-  const { data: bookings, isLoading: loadingBookings } = useQuery({ queryKey: ['resource-bookings', churchId, status, page], queryFn: () => resourceBookingService.bookings({ ...(churchId !== 'all' ? { churchId } : {}), ...(status !== 'all' ? { status } : {}), page }), enabled });
+  const { data: resourceListing, isLoading: loadingResources } = useQuery({ queryKey: ['bookable-resources', 'catalogue', churchId, resourceType, resourcePage], queryFn: () => resourceBookingService.resourcePage({ ...(churchId !== 'all' ? { churchId } : {}), ...(resourceType !== 'all' ? { category: resourceType } : {}), page: resourcePage, limit: resourcePageSize }), enabled });
+  const { data: bookings, isLoading: loadingBookings } = useQuery({ queryKey: ['resource-bookings', churchId, status, dateFrom, dateTo, page], queryFn: () => resourceBookingService.bookings({ ...(churchId !== 'all' ? { churchId } : {}), ...(status !== 'all' ? { status } : {}), ...(dateFrom ? { dateFrom: new Date(`${dateFrom}T00:00:00`).toISOString() } : {}), ...(dateTo ? { dateTo: new Date(`${dateTo}T23:59:59.999`).toISOString() } : {}), page, limit: 20 }), enabled });
+  const resources = resourceListing?.data || [];
+  const resourcePagination = resourceListing?.pagination;
+  const resourceTotalPages = Math.max(1, resourcePagination?.totalPages || 1);
   const saveResource = useMutation({
     mutationFn: async () => {
       const saved = editing ? await resourceBookingService.updateResource(editing.id, form) : await resourceBookingService.createResource(form);
@@ -62,7 +70,7 @@ export default function ResourceBookingPage() {
       }
       return { failed };
     },
-    onSuccess: ({ failed }) => { if (failed) toast.warning(`Resource saved, but ${failed} image${failed === 1 ? '' : 's'} failed to upload. Edit it to retry.`); else toast.success(editing ? 'Resource updated' : 'Resource added'); setResourceFormOpen(false); setPendingImages([]); qc.invalidateQueries({ queryKey: ['bookable-resources'] }); },
+    onSuccess: ({ failed }) => { if (failed) toast.warning(`Resource saved, but ${failed} image${failed === 1 ? '' : 's'} failed to upload. Edit it to retry.`); else toast.success(editing ? 'Resource updated' : 'Resource added'); setResourceFormOpen(false); setPendingImages([]); setResourcePage(1); qc.invalidateQueries({ queryKey: ['bookable-resources'] }); },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Could not save resource'),
   });
   const removeImage = useMutation({
@@ -74,7 +82,7 @@ export default function ResourceBookingPage() {
     mutationFn: () => resourceBookingService.deleteResource(resourceToDelete!.id),
     onSuccess: result => {
       toast.success(result.cancelled ? `Resource removed; ${result.cancelled} future booking${result.cancelled === 1 ? '' : 's'} cancelled with a note.` : 'Resource removed');
-      setResourceToDelete(null);
+      setResourceToDelete(null); setResourcePage(1);
       qc.invalidateQueries({ queryKey: ['bookable-resources'] });
       qc.invalidateQueries({ queryKey: ['resource-bookings'] });
     },
@@ -82,7 +90,7 @@ export default function ResourceBookingPage() {
   });
   const decide = useMutation({
     mutationFn: () => decision!.action === 'cancelled' ? resourceBookingService.cancel(decision!.booking.id, decisionNote) : resourceBookingService.decide(decision!.booking.id, decision!.action, decisionNote),
-    onSuccess: () => { toast.success('Booking updated'); setDecision(null); setDecisionNote(''); qc.invalidateQueries({ queryKey: ['resource-bookings'] }); },
+    onSuccess: () => { toast.success('Booking updated'); setDecision(null); setDecisionNote(''); setPage(1); qc.invalidateQueries({ queryKey: ['resource-bookings'] }); },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Could not update booking'),
   });
   const block = useMutation({
@@ -97,11 +105,11 @@ export default function ResourceBookingPage() {
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full"><TabsList className="grid w-full grid-cols-2 sm:w-[420px]"><TabsTrigger value="resources">Resource catalogue</TabsTrigger><TabsTrigger value="bookings">Bookings &amp; requests</TabsTrigger></TabsList></Tabs>
     <div className="space-y-4">
     <div hidden={activeTab !== 'resources'} className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div><h2 className="text-lg font-semibold">Resource catalogue</h2><p className="text-sm text-muted-foreground">Rooms, vehicles and equipment available for reservation.</p></div>
-        <Select value={churchId} onValueChange={value => { setChurchId(value); setPage(1); }}><SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Branch" /></SelectTrigger><SelectContent><SelectItem value="all">All accessible branches</SelectItem>{churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent></Select>
+        <div className="flex flex-col gap-2 sm:flex-row"><Select value={churchId} onValueChange={value => { setChurchId(value); setResourcePage(1); setPage(1); }}><SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Branch" /></SelectTrigger><SelectContent><SelectItem value="all">All accessible branches</SelectItem>{churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent></Select><Select value={resourceType} onValueChange={value => { setResourceType(value); setResourcePage(1); }}><SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Resource type" /></SelectTrigger><SelectContent><SelectItem value="all">All resource types</SelectItem>{categories.map(category => <SelectItem key={category} value={category}>{category === 'media' ? 'Media equipment' : category === 'equipment' ? 'Other equipment' : category[0].toUpperCase() + category.slice(1)}</SelectItem>)}</SelectContent></Select></div>
       </div>
-      {loadingResources ? <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">Loading resources…</CardContent></Card> : resources.length ? <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {loadingResources ? <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">Loading resources…</CardContent></Card> : resources.length ? <><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {resources.map(resource => <Card key={resource.id} className="overflow-hidden transition-shadow hover:shadow-sm"><CardContent className="p-4">
           <div className="flex items-start gap-3">
             {resource.images?.[0] ? <img src={resourceImageUrl(resource.images[0])} alt={resource.name} className="h-16 w-16 shrink-0 rounded-lg border object-cover" /> : <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border bg-muted text-xs font-medium uppercase text-muted-foreground">{resource.category.slice(0, 3)}</div>}
@@ -112,11 +120,11 @@ export default function ResourceBookingPage() {
           {resource.description && <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{resource.description}</p>}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground"><span>{resource.approvalRequired ? 'Approval required' : 'Instant booking'}</span><span>{resource.scope === 'all_ministry' ? 'All branches' : 'This branch'}</span></div>
         </CardContent></Card>)}
-      </div> : <Card><CardContent className="py-10 text-center"><p className="font-medium">No resources yet</p><p className="mt-1 text-sm text-muted-foreground">Add the first room, vehicle or item for this branch.</p></CardContent></Card>}
+      </div><div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">Showing {(resourcePage - 1) * resourcePageSize + 1}–{Math.min(resourcePage * resourcePageSize, resourcePagination?.total || resources.length)} of {resourcePagination?.total || resources.length}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={resourcePage <= 1} onClick={() => setResourcePage(current => current - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={resourcePage >= resourceTotalPages} onClick={() => setResourcePage(current => current + 1)}>Next</Button></div></div></> : <Card><CardContent className="py-10 text-center"><p className="font-medium">No resources found</p><p className="mt-1 text-sm text-muted-foreground">Try another branch or resource type, or add a new resource.</p></CardContent></Card>}
     </div>
     <div hidden={activeTab !== 'bookings'}>
       <Card className="overflow-hidden">
-        <CardHeader className="border-b px-4 py-4 sm:px-5"><div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><CardTitle className="text-lg">Bookings and requests</CardTitle><p className="mt-1 text-sm text-muted-foreground">Review reservations, approvals and resource usage.</p></div><div className="flex flex-col gap-2 sm:flex-row"><Select value={churchId} onValueChange={value => { setChurchId(value); setPage(1); }}><SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Branch" /></SelectTrigger><SelectContent><SelectItem value="all">All accessible branches</SelectItem>{churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent></Select><Select value={status} onValueChange={value => { setStatus(value); setPage(1); }}><SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Booking status" /></SelectTrigger><SelectContent>{["all", "pending", "approved", "rejected", "cancelled", "blocked"].map(value => <SelectItem key={value} value={value}>{value === "all" ? "All statuses" : value[0].toUpperCase() + value.slice(1)}</SelectItem>)}</SelectContent></Select></div></div></CardHeader>
+        <CardHeader className="border-b px-4 py-4 sm:px-5"><div className="space-y-4"><div><CardTitle className="text-lg">Bookings and requests</CardTitle><p className="mt-1 text-sm text-muted-foreground">Review reservations, approvals and resource usage.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1.2fr)_minmax(10rem,.8fr)_minmax(9rem,.7fr)_minmax(9rem,.7fr)_auto] xl:items-end"><div className="space-y-1"><Label className="text-xs">Branch</Label><Select value={churchId} onValueChange={value => { setChurchId(value); setResourcePage(1); setPage(1); }}><SelectTrigger className="w-full"><SelectValue placeholder="Branch" /></SelectTrigger><SelectContent><SelectItem value="all">All accessible branches</SelectItem>{churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1"><Label className="text-xs">Status</Label><Select value={status} onValueChange={value => { setStatus(value); setPage(1); }}><SelectTrigger className="w-full"><SelectValue placeholder="Booking status" /></SelectTrigger><SelectContent>{["all", "pending", "approved", "rejected", "cancelled", "blocked"].map(value => <SelectItem key={value} value={value}>{value === "all" ? "All statuses" : value[0].toUpperCase() + value.slice(1)}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1"><Label htmlFor="booking-date-from" className="text-xs">From date</Label><Input id="booking-date-from" type="date" value={dateFrom} max={dateTo || undefined} onChange={event => { setDateFrom(event.target.value); setPage(1); }} /></div><div className="space-y-1"><Label htmlFor="booking-date-to" className="text-xs">To date</Label><Input id="booking-date-to" type="date" value={dateTo} min={dateFrom || undefined} onChange={event => { setDateTo(event.target.value); setPage(1); }} /></div><Button variant="outline" disabled={!dateFrom && !dateTo} onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}>Clear dates</Button></div></div></CardHeader>
         <CardContent className="p-0">
           {loadingBookings ? <p className="text-sm text-muted-foreground">Loading bookings…</p> : bookings?.data.length ? <div className="w-full overflow-x-auto">
             <Table className="min-w-[620px]">
@@ -130,7 +138,7 @@ export default function ResourceBookingPage() {
               </TableRow>)}</TableBody>
             </Table>
           </div> : <p className="py-10 text-center text-sm text-muted-foreground">No bookings match the selected filters.</p>}
-          {(bookings?.pagination.totalPages || 0) > 1 && <div className="flex items-center justify-between border-t px-4 py-3 sm:px-5"><span className="text-xs text-muted-foreground">Page {page} of {bookings?.pagination.totalPages}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={page >= (bookings?.pagination.totalPages || 1)} onClick={() => setPage(page + 1)}>Next</Button></div></div>}
+          {!!bookings?.pagination.total && <div className="flex items-center justify-between border-t px-4 py-3 sm:px-5"><span className="text-xs text-muted-foreground">Page {page} of {Math.max(1, bookings.pagination.totalPages)} · {bookings.pagination.total} booking{bookings.pagination.total === 1 ? '' : 's'}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(current => current - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={page >= Math.max(1, bookings.pagination.totalPages)} onClick={() => setPage(current => current + 1)}>Next</Button></div></div>}
         </CardContent>
       </Card>
     </div>
