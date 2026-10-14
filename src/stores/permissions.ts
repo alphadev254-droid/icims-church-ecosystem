@@ -41,7 +41,7 @@ const PERMISSION_TO_NAV: Array<{ permission: string; item: NavItem }> = [
   
   // Communication & Resources
   { permission: 'communication:read', item: { to: '/dashboard/communication', label: 'Communication', icon: MessageSquare } },
-  { permission: 'resources:read',     item: { to: '/dashboard/resources',     label: 'Content Library', icon: BookOpen } },
+  { permission: 'resources:read',     item: { to: '/dashboard/resources',     label: 'Ministry Library', icon: BookOpen } },
   { permission: 'resource_booking:read', item: { to: '/dashboard/resource-booking', label: 'Asset and Facility Booking', icon: Warehouse } },
   
   // Finance
@@ -116,9 +116,6 @@ export function getNavForPermissions(permissions: string[], user?: { accountCoun
       if (!permSet.has(permission) && !(item.to === '/dashboard/resource-booking' && ['resource_booking:request', 'resource_booking:manage', 'resource_booking:approve'].some(key => permSet.has(key)))) return false;
       if (!isPackageRouteAvailable(item.to, currentUser)) return false;
 
-      // Services is a separate page displayed beneath Check-in in the sidebar.
-      if (item.to === '/dashboard/services') return false;
-      
       // Hide users from members
       if (item.to === '/dashboard/users') {
         return currentUser?.roleName !== 'member';

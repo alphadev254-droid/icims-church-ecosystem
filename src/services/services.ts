@@ -11,6 +11,7 @@ export interface ChurchService {
   description?: string | null;
   status: 'scheduled' | 'completed' | 'cancelled';
   church?: { id: string; name: string };
+  linkedChurches?: Array<{ churchId: string; church?: { id: string; name: string } | null }>;
   attendance?: { id: string } | null;
   program?: { id: string } | null;
 }
@@ -19,7 +20,9 @@ export type ServiceInput = Pick<
   ChurchService,
   'churchId' | 'title' | 'startsAt' | 'status'
 > &
-  Partial<Pick<ChurchService, 'type' | 'endsAt' | 'location' | 'description'>>;
+  Partial<Pick<ChurchService, 'type' | 'endsAt' | 'location' | 'description'>> & {
+    churchIds?: string[];
+  };
 
 export const servicesService = {
   list: async (churchId?: string): Promise<ChurchService[]> =>

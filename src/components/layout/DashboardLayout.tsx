@@ -44,6 +44,7 @@ export default function DashboardLayout() {
     '/dashboard/referrals/wallet': 'Wallet',
     '/dashboard/referrals/payout-settings': 'Payout Settings',
     '/dashboard/attendance': 'Check-in',
+    '/dashboard/services': 'Services',
     '/dashboard/resource-booking': 'Asset and Facility Booking',
   };
 
@@ -52,12 +53,6 @@ export default function DashboardLayout() {
     : location.pathname.split('/').pop()?.replace(/-/g, ' '));
 
   const isActive = (path: string) => {
-    if (
-      path === '/dashboard/attendance' &&
-      location.pathname === '/dashboard/services'
-    ) {
-      return true;
-    }
     const matchingItems = navItems.filter(item =>
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
     );
@@ -75,14 +70,9 @@ export default function DashboardLayout() {
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navItems.filter(item => item.to !== '/dashboard/services').map(item => {
+        {navItems.map(item => {
           const showUserSubnav = item.to === '/dashboard/users' && user?.permissions?.includes('registration_requests:read');
           const usersSectionActive = location.pathname === '/dashboard/users' || location.pathname.startsWith('/dashboard/users/');
-          const showCheckInSubnav = item.to === '/dashboard/attendance';
-          const checkInSectionActive =
-            location.pathname === '/dashboard/services' ||
-            location.pathname === '/dashboard/attendance' ||
-            location.pathname.startsWith('/dashboard/attendance/');
 
           return (
             <div key={item.to}>
@@ -96,7 +86,7 @@ export default function DashboardLayout() {
                 }`}
               >
                 <item.icon className="h-4 w-4 flex-shrink-0" />
-                {item.to === '/dashboard/attendance' ? 'Check-in' : item.label}
+                {item.label}
               </Link>
               {showUserSubnav && usersSectionActive && (
                 <div className="ml-7 mt-1 space-y-1 border-l border-sidebar-border pl-2">
@@ -121,33 +111,6 @@ export default function DashboardLayout() {
                     }`}
                   >
                     Registration Requests
-                  </Link>
-                </div>
-              )}
-              {showCheckInSubnav && checkInSectionActive && (
-                <div className="ml-7 mt-1 space-y-1 border-l border-sidebar-border pl-2">
-                  <Link
-                    to="/dashboard/attendance"
-                    onClick={() => setSidebarOpen(false)}
-                    className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${
-                      location.pathname === '/dashboard/attendance' ||
-                      location.pathname.startsWith('/dashboard/attendance/')
-                        ? 'bg-sidebar-accent text-sidebar-primary'
-                        : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                    }`}
-                  >
-                    Attendance
-                  </Link>
-                  <Link
-                    to="/dashboard/services"
-                    onClick={() => setSidebarOpen(false)}
-                    className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${
-                      location.pathname === '/dashboard/services'
-                        ? 'bg-sidebar-accent text-sidebar-primary'
-                        : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                    }`}
-                  >
-                    Services
                   </Link>
                 </div>
               )}

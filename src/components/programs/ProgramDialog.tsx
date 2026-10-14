@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Mail, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download, Mail, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -239,6 +239,7 @@ export function ProgramDialog({
   const [sendItem, setSendItem] = useState<DraftItem | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [sendAssignmentEmails, setSendAssignmentEmails] = useState(false);
   const {
     data: program,
     isLoading,
@@ -257,6 +258,7 @@ export function ProgramDialog({
     setTitle(program?.title || `${targetTitle} Program`);
     setDescription(program?.description || '');
     setItems((program?.items || []).map(itemDraft));
+    setSendAssignmentEmails(false);
     setDirty(false);
   }, [open, isLoading, isError, program, targetTitle]);
   const save = useMutation({
@@ -265,14 +267,23 @@ export function ProgramDialog({
         title: title.trim(),
         description: description.trim(),
         notifyPrevious,
+        sendAssignmentEmails: !program && sendAssignmentEmails,
         items: items.map(({ key, user, emailStatus, lastEmailAt, ...item }) => ({
           ...item,
           startsAt: dateTimeLocalToIso(item.startsAt)!,
           endsAt: dateTimeLocalToIso(item.endsAt)!,
         })),
       }),
-    onSuccess: ({ notificationWarnings }) => {
-      toast.success(notificationWarnings ? `Program saved; ${notificationWarnings} removal email(s) could not be queued` : 'Program saved');
+    onSuccess: ({ notificationWarnings, assignmentEmailsQueued, assignmentEmailsSkipped }) => {
+      if (assignmentEmailsQueued) {
+        toast.success(
+          `Program saved and ${assignmentEmailsQueued} assignment email${assignmentEmailsQueued === 1 ? '' : 's'} queued${notificationWarnings ? `; ${notificationWarnings} could not be queued` : ''}`,
+        );
+      } else if (sendAssignmentEmails && assignmentEmailsSkipped) {
+        toast.success('Program saved; no assignment emails were queued because the assignees had no email address or the assignments had ended');
+      } else {
+        toast.success(notificationWarnings ? `Program saved; ${notificationWarnings} email(s) could not be queued` : 'Program saved');
+      }
       qc.invalidateQueries({ queryKey: ['program', target, targetId] });
       qc.invalidateQueries({ queryKey: [target] });
       if (target === 'services') qc.invalidateQueries({ queryKey: ['services-page'] });
@@ -303,6 +314,24 @@ export function ProgramDialog({
     },
     onError: (error: any) =>
       toast.error(error.response?.data?.message || 'Could not remove program'),
+  });
+  const download = useMutation({
+    mutationFn: () => programsService.download(target, targetId),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const filename = `${title || targetTitle}-program.pdf`
+        .replace(/[^a-z0-9.]+/gi, '-')
+        .replace(/^-|-$/g, '')
+        .toLowerCase();
+      link.href = url;
+      link.download = filename || 'program.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Could not download program'),
   });
   const updateItem = (key: string, patch: Partial<DraftItem>) => {
     setDirty(true);
@@ -425,6 +454,11 @@ export function ProgramDialog({
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Running order</h3>
                 <div className="flex items-center gap-2">
+                {program && (
+                  <Button type="button" size="sm" variant="outline" disabled={download.isPending} onClick={() => download.mutate()}>
+                    <Download className="mr-1 h-4 w-4" /> {download.isPending ? 'Preparing...' : 'Download program'}
+                  </Button>
+                )}
                 {program?.notifications?.length ? <Button type="button" size="sm" variant="ghost" onClick={() => setHistoryOpen(true)}>Email history</Button> : null}
                 {canEdit && (
                   <Button
@@ -554,6 +588,21 @@ export function ProgramDialog({
                 <p className="py-6 text-center text-sm text-muted-foreground">
                   No items yet
                 </p>
+              )}
+              {!program && canEdit && canSend && (
+                <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3">
+                  <Checkbox
+                    checked={sendAssignmentEmails}
+                    onCheckedChange={(checked) => setSendAssignmentEmails(checked === true)}
+                    disabled={save.isPending}
+                  />
+                  <span className="text-sm font-medium">
+                    Send assignment emails when saving
+                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                      Each assigned person with an email address will receive their program item.
+                    </span>
+                  </span>
+                </label>
               )}
               {canEdit && (
                 <div className="flex flex-wrap justify-end gap-2">

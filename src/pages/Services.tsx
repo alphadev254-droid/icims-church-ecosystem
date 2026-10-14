@@ -19,6 +19,7 @@ import {
 } from '@/services/services';
 import { ProgramDialog } from '@/components/programs/ProgramDialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +59,7 @@ import { ResourceBookingDialog, type BookingActivity } from '@/components/resour
 
 const emptyForm = {
   churchId: '',
+  churchIds: [] as string[],
   title: '',
   type: '',
   startsAt: '',
@@ -66,6 +68,15 @@ const emptyForm = {
   description: '',
   status: 'scheduled' as const,
 };
+
+function serviceChurchNames(service: ChurchService) {
+  const churches = [
+    service.church,
+    ...(service.linkedChurches || []).map(link => link.church),
+  ].filter(Boolean) as Array<{ id: string; name: string }>;
+  const unique = churches.filter((church, index, all) => all.findIndex(item => item.id === church.id) === index);
+  return unique.map(church => church.name).join(', ');
+}
 
 function localDate(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
@@ -153,6 +164,7 @@ export default function ServicesPage() {
     setForm({
       ...emptyForm,
       churchId: churchFilter !== 'all' ? churchFilter : churches[0]?.id || '',
+      churchIds: churchFilter !== 'all' ? [churchFilter] : churches[0]?.id ? [churches[0].id] : [],
       startsAt: toDateTimeLocalInputValue(new Date()),
     });
     setFormOpen(true);
@@ -161,6 +173,10 @@ export default function ServicesPage() {
     setEditing(service);
     setForm({
       churchId: service.churchId,
+      churchIds: [
+        service.churchId,
+        ...(service.linkedChurches || []).map(link => link.churchId),
+      ].filter((id, index, all) => all.indexOf(id) === index),
       title: service.title,
       type: service.type || '',
       startsAt: toDateTimeLocalInputValue(service.startsAt),
@@ -176,6 +192,7 @@ export default function ServicesPage() {
     const endsAt = form.endsAt ? dateTimeLocalToIso(form.endsAt) : null;
     if (
       !form.churchId ||
+      !form.churchIds.length ||
       !form.title.trim() ||
       !startsAt ||
       (form.endsAt && !endsAt)
@@ -185,6 +202,8 @@ export default function ServicesPage() {
       return toast.error('End time must be after start time');
     save.mutate({
       ...form,
+      churchId: form.churchIds[0] || form.churchId,
+      churchIds: form.churchIds,
       title: form.title.trim(),
       type: form.type.trim() || null,
       startsAt,
@@ -289,7 +308,7 @@ export default function ServicesPage() {
                   <div className="min-w-0">
                     <h2 className="truncate font-semibold">{service.title}</h2>
                     <p className="text-sm text-muted-foreground">
-                      {service.church?.name}
+                      {serviceChurchNames(service) || service.church?.name}
                     </p>
                   </div>
                   <DropdownMenu>
@@ -382,25 +401,31 @@ export default function ServicesPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Branch</Label>
-              <Select
-                value={form.churchId}
-                onValueChange={(churchId) =>
-                  setForm((current) => ({ ...current, churchId }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {churches.map((church: any) => (
-                    <SelectItem key={church.id} value={church.id}>
-                      {church.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-2">
+              <Label>Branches</Label>
+              <div className="max-h-44 space-y-2 overflow-y-auto rounded-md border p-3">
+                {churches.map((church: any) => {
+                  const checked = form.churchIds.includes(church.id);
+                  return (
+                    <label key={church.id} className="flex cursor-pointer items-start gap-3 rounded-sm px-1 py-1.5 text-sm hover:bg-muted">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(value) => {
+                          setForm((current) => {
+                            const nextIds = value === true
+                              ? [...new Set([...current.churchIds, church.id])]
+                              : current.churchIds.filter(id => id !== church.id);
+                            return { ...current, churchIds: nextIds, churchId: nextIds[0] || '' };
+                          });
+                        }}
+                      />
+                      <span>{church.name}</span>
+                    </label>
+                  );
+                })}
+                {!churches.length && <p className="text-sm text-muted-foreground">No branches available</p>}
+              </div>
+              <p className="text-xs text-muted-foreground">The first selected branch is used as the owner branch for attendance records and bookings.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">

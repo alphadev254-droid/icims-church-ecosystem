@@ -562,7 +562,7 @@ export default function ResourcesPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Content Library</h1>
+          <h1 className="font-heading text-2xl font-bold">Ministry Library</h1>
           <p className="text-sm text-muted-foreground">Devotionals, study plans, sermons, and worship materials</p>
         </div>
         <Alert className="border-amber-200 bg-amber-50">
@@ -618,7 +618,7 @@ export default function ResourcesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Content Library</h1>
+          <h1 className="font-heading text-2xl font-bold">Ministry Library</h1>
           <p className="text-sm text-muted-foreground">Devotionals, study plans, sermons, and worship materials</p>
         </div>
         {canCreate && (

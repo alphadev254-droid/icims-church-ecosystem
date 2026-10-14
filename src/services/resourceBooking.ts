@@ -4,7 +4,8 @@ export type BookableResource = {
   id: string; churchId: string; name: string; code?: string | null;
   category: string; description?: string | null; location?: string | null;
   images: string[];
-  custodianName?: string | null; scope: 'own_church' | 'all_ministry';
+  custodianName?: string | null; scope: 'own_church' | 'selected_churches' | 'all_ministry';
+  churchIds: string[];
   status: string; approvalRequired: boolean; bufferBeforeMinutes: number; bufferAfterMinutes: number;
 };
 

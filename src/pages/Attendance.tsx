@@ -102,6 +102,16 @@ export default function AttendancePage() {
   });
   const selectedService = services.find(service => service.id === selectedServiceId);
   const availableServices = services.filter(service => service.status !== 'cancelled' && !service.attendance);
+  const serviceChurchNames = (service: typeof services[number]) => {
+    const churches = [
+      service.church,
+      ...(service.linkedChurches || []).map((link: any) => link.church),
+    ].filter(Boolean) as Array<{ id: string; name: string }>;
+    return churches
+      .filter((church, index, all) => all.findIndex(item => item.id === church.id) === index)
+      .map(church => church.name)
+      .join(', ');
+  };
   useEffect(() => {
     if (!linkedEventId) return;
     setStartQrServiceType('Event');
@@ -786,7 +796,7 @@ export default function AttendancePage() {
                   <SelectTrigger><SelectValue placeholder="Select a scheduled service" /></SelectTrigger>
                   <SelectContent>
                     {availableServices.map(service => (
-                      <SelectItem key={service.id} value={service.id}>{service.title} · {service.church?.name} · {new Date(service.startsAt).toLocaleString()}</SelectItem>
+                      <SelectItem key={service.id} value={service.id}>{service.title} · {serviceChurchNames(service) || service.church?.name} · {new Date(service.startsAt).toLocaleString()}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -854,7 +864,7 @@ export default function AttendancePage() {
                   <SelectTrigger><SelectValue placeholder="Select a scheduled service" /></SelectTrigger>
                   <SelectContent>
                     {availableServices.map(service => (
-                      <SelectItem key={service.id} value={service.id}>{service.title} · {service.church?.name} · {new Date(service.startsAt).toLocaleString()}</SelectItem>
+                      <SelectItem key={service.id} value={service.id}>{service.title} · {serviceChurchNames(service) || service.church?.name} · {new Date(service.startsAt).toLocaleString()}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -865,7 +875,7 @@ export default function AttendancePage() {
               {startQrServiceType === 'Event' ? <div className="space-y-1.5">
                 <Label>Date / Time</Label>
                 <DateTimePicker value={startQrDate} onChange={setStartQrDate} disabled={startQrMutation.isPending} placeholder="Pick attendance date and time" />
-              </div> : <p className="self-end text-sm text-muted-foreground">{selectedService ? `${selectedService.church?.name} · ${new Date(selectedService.startsAt).toLocaleString()}` : 'Select a service'}</p>}
+              </div> : <p className="self-end text-sm text-muted-foreground">{selectedService ? `${serviceChurchNames(selectedService) || selectedService.church?.name} · ${new Date(selectedService.startsAt).toLocaleString()}` : 'Select a service'}</p>}
               <div className="space-y-1.5">
                 <Label>Active until</Label>
                 <DateTimePicker value={startQrUntil} onChange={setStartQrUntil} disabled={startQrMutation.isPending} placeholder="Pick active until" />

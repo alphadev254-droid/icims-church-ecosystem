@@ -52,10 +52,23 @@ export const programsService = {
   save: async (
     target: ProgramTarget,
     id: string,
-    input: Pick<Program, 'title' | 'description' | 'items'> & { notifyPrevious?: boolean },
-  ): Promise<{ program: Program; notificationWarnings: number }> => {
+    input: Pick<Program, 'title' | 'description' | 'items'> & {
+      notifyPrevious?: boolean;
+      sendAssignmentEmails?: boolean;
+    },
+  ): Promise<{
+    program: Program;
+    notificationWarnings: number;
+    assignmentEmailsQueued: number;
+    assignmentEmailsSkipped: number;
+  }> => {
     const response = (await apiClient.put(`/${target}/${id}/program`, input)).data;
-    return { program: response.data, notificationWarnings: response.notificationWarnings || 0 };
+    return {
+      program: response.data,
+      notificationWarnings: response.notificationWarnings || 0,
+      assignmentEmailsQueued: response.assignmentEmailsQueued || 0,
+      assignmentEmailsSkipped: response.assignmentEmailsSkipped || 0,
+    };
   },
   sendAssignment: async (target: ProgramTarget, id: string, itemId: string): Promise<void> => {
     await apiClient.post(`/${target}/${id}/program/items/${itemId}/email`);
@@ -63,6 +76,12 @@ export const programsService = {
   remove: async (target: ProgramTarget, id: string): Promise<void> => {
     await apiClient.delete(`/${target}/${id}/program`);
   },
+  download: async (target: ProgramTarget, id: string): Promise<Blob> =>
+    (
+      await apiClient.get(`/${target}/${id}/program/download`, {
+        responseType: 'blob',
+      })
+    ).data,
   searchPeople: async (
     target: ProgramTarget,
     id: string,
