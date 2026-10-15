@@ -63,6 +63,7 @@ export interface AuthUser {
 interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
+  authCheckError: { message: string; retryable: boolean } | null;
   // Persisted — rebuilt from permissions on login; controls nav & route guards
   allowedRoutes: string[];
   navItems: NavItem[];
@@ -155,6 +156,7 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isLoading: true,
+      authCheckError: null,
       allowedRoutes: ['/dashboard'],
       navItems: [],
 
@@ -170,6 +172,7 @@ export const useAuthStore = create<AuthState>()(
             set({
               user: { ...data.user, isSystemAdmin },
               ...applied,
+              authCheckError: null,
               isLoading: false,
             });
             return { success: true, redirectTo: getDefaultRedirect(data.user, applied.navItems, applied.allowedRoutes) };
@@ -204,6 +207,7 @@ export const useAuthStore = create<AuthState>()(
             set({
               user: data.user,
               ...applyPermissions(permissions, data.user),
+              authCheckError: null,
               isLoading: false,
             });
             return {
@@ -233,6 +237,7 @@ export const useAuthStore = create<AuthState>()(
             set({
               user: data.user,
               ...applyPermissions(permissions, data.user),
+              authCheckError: null,
               isLoading: false,
             });
             return { success: true, message: data.message };
@@ -254,6 +259,7 @@ export const useAuthStore = create<AuthState>()(
             set({
               user: data.user,
               ...applyPermissions(permissions, data.user),
+              authCheckError: null,
               isLoading: false,
             });
             return { success: true };
@@ -265,30 +271,47 @@ export const useAuthStore = create<AuthState>()(
       },
       logout: async () => {
         try { await apiClient.post('/auth/logout'); } catch { /* ignore */ }
-        set({ user: null, allowedRoutes: ['/dashboard'], navItems: [], isLoading: false });
+        set({ user: null, allowedRoutes: ['/dashboard'], navItems: [], authCheckError: null, isLoading: false });
         clearClientStoredData();
       },
 
       fetchMe: async () => {
+        set({ isLoading: true });
         try {
           const { data } = await apiClient.get('/auth/me');
-          if (data.success) {
-            const permissions: string[] = data.user.permissions ?? [];
+          if (data.success && data.user && Array.isArray(data.user.permissions)) {
+            const permissions: string[] = data.user.permissions;
             set({
               user: data.user,
               ...applyPermissions(permissions, data.user),
+              authCheckError: null,
               isLoading: false,
             });
           } else {
-            set({ user: null, isLoading: false });
+            set({
+              authCheckError: { message: 'We could not verify your access information. Please try again.', retryable: true },
+              isLoading: false,
+            });
           }
         } catch (err: any) {
-          // 403 = suspended/inactive — clear session
-          if (err.response?.status === 403) {
-            set({ user: null, allowedRoutes: ['/dashboard'], navItems: [], isLoading: false });
+          const status = err.response?.status;
+          if (status === 401 || status === 404) {
+            set({ user: null, allowedRoutes: ['/dashboard'], navItems: [], authCheckError: null, isLoading: false });
+            clearClientStoredData();
+          } else if (status === 403) {
+            set({
+              user: null,
+              allowedRoutes: [],
+              navItems: [],
+              authCheckError: { message: err.response?.data?.message || 'This account cannot access the system. Please contact your administrator.', retryable: false },
+              isLoading: false,
+            });
             clearClientStoredData();
           } else {
-            set({ user: null, isLoading: false });
+            set({
+              authCheckError: { message: 'We could not verify your session because the server is temporarily unavailable. Check your connection and try again.', retryable: true },
+              isLoading: false,
+            });
           }
         }
       },
@@ -307,7 +330,7 @@ export const useAuthStore = create<AuthState>()(
 // Listen for 401 events from the API client interceptor
 if (typeof window !== 'undefined') {
   window.addEventListener('auth:unauthorized', () => {
-    useAuthStore.setState({ user: null, allowedRoutes: ['/dashboard'], navItems: [] });
+    useAuthStore.setState({ user: null, allowedRoutes: ['/dashboard'], navItems: [], authCheckError: null, isLoading: false });
     clearClientStoredData();
   });
 }

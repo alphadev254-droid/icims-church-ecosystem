@@ -9,6 +9,7 @@ import { useAuthStore, type RegisterData, type MemberRegisterData, type AuthUser
 interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
+  authCheckError: { message: string; retryable: boolean } | null;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; redirectTo?: string; code?: string; email?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; message?: string; requiresEmailVerification?: boolean; redirectTo?: string; isNewRegistration?: boolean; subdomain?: string | null }>;
   registerMember: (data: MemberRegisterData) => Promise<{ success: boolean; message?: string; requiresEmailVerification?: boolean; redirectTo?: string }>;
@@ -18,7 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { user, isLoading, login, register, registerMember, logout: storeLogout, fetchMe } = useAuthStore();
+  const { user, isLoading, authCheckError, login, register, registerMember, logout: storeLogout, fetchMe } = useAuthStore();
 
   // On every app load, re-validate the httpOnly cookie and refresh user data
   useEffect(() => {
@@ -30,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, registerMember, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, authCheckError, login, register, registerMember, logout }}>
       {children}
     </AuthContext.Provider>
   );

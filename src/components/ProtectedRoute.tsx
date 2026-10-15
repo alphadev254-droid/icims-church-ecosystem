@@ -1,9 +1,10 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, authCheckError } = useAuth();
+  const fetchMe = useAuthStore(s => s.fetchMe);
   const allowedRoutes = useAuthStore(s => s.allowedRoutes);
   const navItems = useAuthStore(s => s.navItems);
   const location = useLocation();
@@ -12,6 +13,30 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (authCheckError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="max-w-md text-center">
+          <h1 className="text-lg font-semibold">{authCheckError.retryable ? 'Unable to verify your session' : 'Account access unavailable'}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{authCheckError.message}</p>
+          {authCheckError.retryable ? (
+            <button
+              type="button"
+              onClick={() => void fetchMe()}
+              className="mt-5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+            >
+              Retry
+            </button>
+          ) : (
+            <Link to="/login" className="mt-5 inline-block text-sm font-medium text-primary hover:underline">
+              Return to sign in
+            </Link>
+          )}
+        </div>
       </div>
     );
   }
