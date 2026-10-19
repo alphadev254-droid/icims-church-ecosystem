@@ -5,9 +5,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { SubscriptionCheck } from '@/components/SubscriptionCheck';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Church, LogOut, Sun, Moon, Menu, User, Settings } from 'lucide-react';
+import { Church, LogOut, Sun, Moon, Menu, User, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { SystemNotificationBell } from './SystemNotificationBell';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 function DashboardPageLoader() {
   return (
@@ -24,6 +25,15 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('dashboard-sidebar-collapsed') === 'true');
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed(collapsed => {
+      const next = !collapsed;
+      localStorage.setItem('dashboard-sidebar-collapsed', String(next));
+      return next;
+    });
+  };
 
   const STATIC_BASE = (import.meta.env.VITE_STATIC_URL || 'http://localhost:5000').replace(/['"]|\/$|^\/api$/g, '');
   const avatarUrl = user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${STATIC_BASE}${user.avatar}`) : null;
@@ -60,35 +70,69 @@ export default function DashboardLayout() {
     return closestMatch?.to === path;
   };
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ collapsed = false }: { collapsed?: boolean }) => (
     <>
-      <div className="p-4 border-b border-sidebar-border">
-        <Link to="/" className="flex items-center gap-2">
-          <Church className="h-6 w-6 text-sidebar-primary" />
-          <span className="font-heading text-lg font-bold text-sidebar-foreground">ICIMS</span>
-        </Link>
+      <div className={`flex h-14 items-center border-b border-sidebar-border ${collapsed ? 'justify-center px-2' : 'justify-between px-4'}`}>
+        {!collapsed && (
+          <Link to="/" className="flex min-w-0 items-center gap-2" aria-label="ICIMS home">
+            <Church className="h-6 w-6 text-sidebar-primary" />
+            <span className="font-heading text-lg font-bold text-sidebar-foreground">ICIMS</span>
+          </Link>
+        )}
+        {!collapsed && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={toggleSidebarCollapsed}
+                className="hidden h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground lg:flex"
+                aria-label="Collapse sidebar"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Collapse sidebar</TooltipContent>
+          </Tooltip>
+        )}
+        {collapsed && (
+          <button
+            type="button"
+            onClick={toggleSidebarCollapsed}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className={`flex-1 space-y-1 overflow-y-auto ${collapsed ? 'p-2' : 'p-3'}`}>
         {navItems.map(item => {
           const showUserSubnav = item.to === '/dashboard/users' && user?.permissions?.includes('registration_requests:read');
           const usersSectionActive = location.pathname === '/dashboard/users' || location.pathname.startsWith('/dashboard/users/');
 
           return (
             <div key={item.to}>
-              <Link
-                to={item.to}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive(item.to)
-                    ? 'bg-sidebar-accent text-sidebar-primary'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                }`}
-              >
-                <item.icon className="h-4 w-4 flex-shrink-0" />
-                {item.label}
-              </Link>
-              {showUserSubnav && usersSectionActive && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={item.to}
+                    onClick={() => setSidebarOpen(false)}
+                    aria-label={collapsed ? item.label : undefined}
+                    className={`flex items-center rounded-md py-2.5 text-sm font-medium transition-colors ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'} ${
+                      isActive(item.to)
+                        ? 'bg-sidebar-accent text-sidebar-primary'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4 flex-shrink-0" />
+                    {!collapsed && <span>{item.label}</span>}
+                  </Link>
+                </TooltipTrigger>
+                {collapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+              </Tooltip>
+              {!collapsed && showUserSubnav && usersSectionActive && (
                 <div className="ml-7 mt-1 space-y-1 border-l border-sidebar-border pl-2">
                   <Link
                     to="/dashboard/users"
@@ -120,22 +164,28 @@ export default function DashboardLayout() {
       </nav>
 
       {/* Pinned footer — always visible, never scrolls away */}
-      <div className="p-3 border-t border-sidebar-border space-y-1">
-        <div className="px-3 py-2 text-sm text-sidebar-foreground/70 min-w-0">
+      <div className={`border-t border-sidebar-border ${collapsed ? 'p-2' : 'space-y-1 p-3'}`}>
+        {!collapsed && <div className="px-3 py-2 text-sm text-sidebar-foreground/70 min-w-0">
           <div className="font-medium text-sidebar-foreground truncate">{user?.firstName} {user?.lastName}</div>
           <div className="text-xs truncate">{user?.email}</div>
           <div className="text-xs text-sidebar-primary mt-0.5 truncate">{roleLabel}</div>
           {user?.church && (
             <div className="text-xs text-sidebar-foreground/50 mt-0.5 truncate">{user.church.name}</div>
           )}
-        </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors"
-        >
-          <LogOut className="h-4 w-4" />
-          Sign Out
-        </button>
+        </div>}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleLogout}
+              className={`flex w-full items-center rounded-md py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'}`}
+              aria-label={collapsed ? 'Sign out' : undefined}
+            >
+              <LogOut className="h-4 w-4" />
+              {!collapsed && <span>Sign Out</span>}
+            </button>
+          </TooltipTrigger>
+          {collapsed && <TooltipContent side="right">Sign out</TooltipContent>}
+        </Tooltip>
       </div>
     </>
   );
@@ -143,8 +193,8 @@ export default function DashboardLayout() {
   return (
     <div className="fixed inset-0 flex min-h-0 overflow-hidden bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden min-h-0 lg:flex w-60 flex-col bg-sidebar border-r border-sidebar-border">
-        <SidebarContent />
+      <aside className={`relative hidden min-h-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 lg:flex ${sidebarCollapsed ? 'w-16' : 'w-60'}`}>
+        <SidebarContent collapsed={sidebarCollapsed} />
       </aside>
 
       {/* Mobile sidebar overlay */}

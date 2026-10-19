@@ -467,11 +467,11 @@ export default function CellsPage() {
           </Card>
 
           {/* Ranking lists */}
-          <div className="grid sm:grid-cols-2 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4">
             {rankingSections.map(section => (
-              <Card key={section.key}>
-                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-                  <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">{section.title}</CardTitle>
+              <Card key={section.key} className="min-w-0">
+                <CardHeader className="flex flex-row items-start justify-between gap-1 p-3 pb-2 sm:gap-2 sm:p-4 sm:pb-2">
+                  <CardTitle className="min-w-0 text-[11px] uppercase leading-4 tracking-wide text-muted-foreground sm:text-xs">{section.title}</CardTitle>
                   <Button
                     type="button"
                     size="icon"
@@ -483,7 +483,7 @@ export default function CellsPage() {
                     <Maximize2 className="h-3.5 w-3.5" />
                   </Button>
                 </CardHeader>
-                <CardContent className="space-y-1.5">
+                <CardContent className="space-y-1.5 p-3 pt-0 sm:p-4 sm:pt-0">
                   {renderRankingRows(section)}
                 </CardContent>
               </Card>
