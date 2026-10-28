@@ -31,7 +31,12 @@ import { Switch } from '@/components/ui/switch';
 
 type ReportCellValue = string | number | boolean | null | undefined;
 
-async function downloadReportWorkbook(filename: string, rows: ReportCellValue[][], headers: string[]) {
+async function downloadReportWorkbook(
+  filename: string,
+  rows: ReportCellValue[][],
+  headers: string[],
+  extraSheets: Array<{ name: string; headers: string[]; rows: ReportCellValue[][] }> = [],
+) {
   const XLSX = await import('xlsx-js-style');
   const workbook = XLSX.utils.book_new();
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -83,6 +88,25 @@ async function downloadReportWorkbook(filename: string, rows: ReportCellValue[][
     .replace(/[:\\/?*\[\]]/g, ' ')
     .slice(0, 31) || 'Report';
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  for (const sheet of extraSheets) {
+    const extraWorksheet = XLSX.utils.aoa_to_sheet([sheet.headers, ...sheet.rows]);
+    const extraRef = extraWorksheet['!ref'];
+    const extraRange = extraRef ? XLSX.utils.decode_range(extraRef) : { s: { r: 0, c: 0 }, e: { r: 0, c: sheet.headers.length - 1 } };
+    for (let rowIndex = extraRange.s.r; rowIndex <= extraRange.e.r; rowIndex += 1) {
+      for (let colIndex = extraRange.s.c; colIndex <= extraRange.e.c; colIndex += 1) {
+        const cellRef = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
+        if (!extraWorksheet[cellRef]) extraWorksheet[cellRef] = { t: 's', v: '' };
+        extraWorksheet[cellRef].s = rowIndex === 0 ? blueStyle : bodyStyle;
+      }
+    }
+    extraWorksheet['!cols'] = sheet.headers.map((header, colIndex) => {
+      const maxLength = [header, ...sheet.rows.map(row => String(row[colIndex] ?? ''))]
+        .reduce((max, value) => Math.max(max, value.length), 0);
+      return { wch: Math.min(Math.max(maxLength + 2, 12), 34) };
+    });
+    extraWorksheet['!rows'] = [{ hpt: 24 }, ...sheet.rows.map(() => ({ hpt: 22 }))];
+    XLSX.utils.book_append_sheet(workbook, extraWorksheet, sheet.name.slice(0, 31));
+  }
   XLSX.writeFile(workbook, filename);
 }
 
@@ -527,7 +551,7 @@ export default function ReportsPage() {
               break;
             }
             case 'Cell Groups Report': {
-              const p: any = { limit, page, export: true };
+              const p: any = { limit, page, export: true, includeTopInviters: true };
               if (cellChurchFilter !== 'all') p.churchId = cellChurchFilter;
               if (cellGroupCellFilter !== 'all') p.cellId = cellGroupCellFilter;
               if (cellGroupStartDate) p.startDate = cellGroupStartDate;
@@ -1152,7 +1176,7 @@ export default function ReportsPage() {
 
   const handleExportCellGroups = async () => {
     const batchParams = getBatchParams('Cell Groups Report');
-    const params: any = { ...batchParams };
+    const params: any = { ...batchParams, includeTopInviters: true };
     if (cellChurchFilter !== 'all') params.churchId = cellChurchFilter;
     if (cellGroupCellFilter !== 'all') params.cellId = cellGroupCellFilter;
     if (cellGroupStartDate) params.startDate = cellGroupStartDate;
@@ -1161,6 +1185,16 @@ export default function ReportsPage() {
     handleBatchResponse('Cell Groups Report', response);
     const cells: any[] = (response as any)?.data ?? [];
     const hasDates = !!(cellGroupStartDate || cellGroupEndDate);
+    const topInviterRows = cells.flatMap((cell: any) =>
+      (cell.topInviters ?? []).map((inviter: any, index: number) => [
+        cell.name,
+        cell.zone || cell.neighbourhood || '',
+        cell.church?.name || '',
+        index + 1,
+        inviter.name,
+        inviter.count,
+      ]),
+    );
     const cellRows = cells.map((c: any) => [
       c.name,
       c.zone || c.neighbourhood || '',
@@ -1208,6 +1242,11 @@ export default function ReportsPage() {
         hasDates ? 'Meetings (Period)' : 'Total Meetings',
         'Total Visitors', 'Total Offering', 'Attendance Rate', 'Conversion Rate',
         'Last Meeting', 'Status', 'Meeting Day', 'Meeting Time', 'Established'],
+      [{
+        name: 'Top Inviters',
+        headers: ['Cell Name', 'Location / Neighbourhood', 'Church', 'Rank', 'Inviter', 'Guests Invited'],
+        rows: topInviterRows.length ? topInviterRows : [['No inviters recorded for the selected filters', '', '', '', '', '']],
+      }],
     );
   };
 
@@ -1643,7 +1682,7 @@ export default function ReportsPage() {
     },
     {
       title: 'Cell Groups Report',
-      description: 'Cell/fellowship summary with leaders, meetings, visitors, offerings, rates, and totals.',
+      description: 'Cell/fellowship summary with leaders, meetings, visitors, top inviters, offerings, rates, and totals.',
       icon: Group,
       onExport: handleExportCellGroups,
       filterComponent: (

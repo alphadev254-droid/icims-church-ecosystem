@@ -30,6 +30,7 @@ export interface Cell {
   lastMeetingDate?: string | null;
   attendanceRate?: number | null;
   conversionRate?: number | null;
+  topInviters?: Array<{ id: string; name: string; count: number }>;
   // injected for member view
   isLeader?: boolean;
   isAssistant?: boolean;
@@ -135,7 +136,7 @@ export interface CellStats {
 const BASE = '/cells';
 
 export const cellsService = {
-  getAll: async (params?: { churchId?: string; cellId?: string; search?: string; status?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean }): Promise<{ data: Cell[]; pagination?: { total: number; page: number; limit: number; pages: number } }> => {
+  getAll: async (params?: { churchId?: string; cellId?: string; search?: string; status?: string; startDate?: string; endDate?: string; page?: number; limit?: number; export?: boolean; includeTopInviters?: boolean }): Promise<{ data: Cell[]; pagination?: { total: number; page: number; limit: number; pages: number } }> => {
     const { data } = await apiClient.get(BASE, { params });
     // Members get plain array, admins get { data, pagination }
     if (params?.export) return data;
