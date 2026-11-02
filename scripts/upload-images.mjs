@@ -1,5 +1,5 @@
 /**
- * Upload all public-facing images to the media server (media.aircnc.co.ke)
+ * Upload all public-facing images to the media server (media.chepetsaride.com)
  * Then output the replacement map so we can update source code references.
  *
  * Usage:
@@ -16,7 +16,7 @@ import { fileURLToPath } from 'url';
 const __dirname = resolve(fileURLToPath(import.meta.url), '..', '..');
 
 // ── Config ────────────────────────────────────────────────────────────────
-const MEDIA_SERVER = 'https://media.aircnc.co.ke';
+const MEDIA_SERVER = 'https://media.chepetsaride.com';
 const API_KEY = process.env.MEDIA_API_KEY;
 const CLIENT_ID = 'icims';
 const MEDIA_BASE_URL = MEDIA_SERVER;  // Our media server URL

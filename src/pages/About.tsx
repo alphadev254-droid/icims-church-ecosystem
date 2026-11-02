@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Target, Eye, Heart, Users, Church, Globe, ShieldCheck, CheckCircle2, Lightbulb, HandHeart, BookOpen, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-const churchCommunity = 'https://media.aircnc.co.ke/media-images/394d3b53-1bdc-49f7-8358-1fbe6dd3fd96.webp';
+const churchCommunity = 'https://media.chepetsaride.com/media-images/394d3b53-1bdc-49f7-8358-1fbe6dd3fd96.webp';
 import { usePageMeta } from '@/hooks/usePageMeta';
 
 const values = [
@@ -69,7 +69,7 @@ export default function AboutPage() {
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <img src="https://media.aircnc.co.ke/media-images/420984ab-7d48-40fc-b653-a09eb1428d14.webp" alt="About ICIMS" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
+          <img src="https://media.chepetsaride.com/media-images/420984ab-7d48-40fc-b653-a09eb1428d14.webp" alt="About ICIMS" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/68" />
         </div>
         <div className="container relative z-10 py-28 md:py-36">

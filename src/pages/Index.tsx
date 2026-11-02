@@ -9,7 +9,7 @@ import {
   ArrowRight, Baby, CheckCircle2, ChevronRight,
   Bell, QrCode, Receipt, ShieldCheck, Download,
 } from 'lucide-react';
-const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
+const heroImage = 'https://media.chepetsaride.com/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
 import { toast } from 'sonner';
 

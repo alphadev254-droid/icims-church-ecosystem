@@ -19,7 +19,7 @@ import apiClient from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { FALLBACK_COUNTRIES, phonePlaceholderForCountry, type CountryOption } from '@/lib/countries';
 import { digitsInputProps, phoneInputProps, sanitizeDigitsInput, sanitizePhoneInput } from '@/lib/numeric-input';
-const heroImage = 'https://media.aircnc.co.ke/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
+const heroImage = 'https://media.chepetsaride.com/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 
 const TITLES = ['Rev', 'Dr', 'Prof', 'Pastor', 'Prophet', 'Seer', 'Sister', 'Brother', 'Father', 'Deacon', 'Apostle', 'Evangelist', 'Other'] as const;
 
@@ -229,7 +229,7 @@ export default function RegisterPage() {
         </div>
 
         <Link to="/" className="relative z-10 flex items-center gap-2.5">
-          <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 object-contain rounded-full bg-white p-1" />
+          <img src="https://media.chepetsaride.com/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 object-contain rounded-full bg-white p-1" />
         </Link>
 
         <div className="relative z-10">
@@ -266,7 +266,7 @@ export default function RegisterPage() {
           {/* Mobile logo */}
           <div className="lg:hidden flex flex-col items-center mb-8">
             <Link to="/" className="flex flex-col items-center gap-2">
-              <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 object-contain rounded-full bg-white p-1" />
+              <img src="https://media.chepetsaride.com/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 object-contain rounded-full bg-white p-1" />
               <span className="font-heading text-sm font-bold text-foreground tracking-wide">ICIMS</span>
             </Link>
           </div>
@@ -274,7 +274,7 @@ export default function RegisterPage() {
           {/* Desktop logo — centered at top of form panel */}
           <div className="hidden lg:flex flex-col items-center mb-8">
             <Link to="/" className="flex flex-col items-center gap-2">
-              <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 object-contain rounded-full bg-white p-1" />
+              <img src="https://media.chepetsaride.com/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 object-contain rounded-full bg-white p-1" />
               <span className="font-heading text-sm font-bold text-foreground tracking-wide">ICIMS</span>
             </Link>
           </div>

@@ -161,7 +161,7 @@ export default function ReferrerRegister() {
         </div>
 
         <Link to="/" className="relative z-10 flex items-center gap-2.5 self-start">
-          <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 rounded-full bg-white object-contain p-1" />
+          <img src="https://media.chepetsaride.com/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 rounded-full bg-white object-contain p-1" />
         </Link>
       </div>
 
@@ -169,7 +169,7 @@ export default function ReferrerRegister() {
         <div className="mx-auto w-full max-w-2xl">
           <div className="mb-8 flex flex-col items-center lg:hidden">
             <Link to="/" className="flex flex-col items-center gap-2">
-              <img src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 rounded-full bg-white object-contain p-1" />
+              <img src="https://media.chepetsaride.com/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 rounded-full bg-white object-contain p-1" />
               <span className="font-heading text-sm font-bold tracking-wide text-foreground">ICIMS</span>
             </Link>
           </div>

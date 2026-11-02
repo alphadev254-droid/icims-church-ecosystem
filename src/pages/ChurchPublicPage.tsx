@@ -25,7 +25,7 @@ import { Calendar, Check, Clock, Loader2, MapPin } from 'lucide-react';
 import { eventsService } from '@/services/events';
 import { toast } from 'sonner';
 
-const defaultHero = 'https://media.aircnc.co.ke/media-images/fa70812b-0345-4d35-b45b-3488def7c3e3.webp';
+const defaultHero = 'https://media.chepetsaride.com/media-images/fa70812b-0345-4d35-b45b-3488def7c3e3.webp';
 const defaultGold = '#d89b12';
 const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
 

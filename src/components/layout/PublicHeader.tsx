@@ -55,7 +55,7 @@ export default function PublicHeader() {
         {/* Brand — logo + wordmark + descriptor */}
         <Link to="/" className="flex items-center gap-3 shrink-0 group">
                     <img
-            src="https://media.aircnc.co.ke/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp"
+            src="https://media.chepetsaride.com/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp"
             alt="ICIMS"
             width="56" height="56"
             className="h-14 w-auto object-contain rounded-2xl transition-transform group-hover:scale-105"
