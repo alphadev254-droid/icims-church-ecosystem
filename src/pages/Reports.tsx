@@ -28,6 +28,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '@/services/events';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
+import { ReportAutomationsDialog } from '@/components/reports/ReportAutomationsDialog';
+import type { ReportType } from '@/services/reportAutomations';
 
 type ReportCellValue = string | number | boolean | null | undefined;
 
@@ -429,6 +431,9 @@ export default function ReportsPage() {
   const [batchSizeMap, setBatchSizeMap] = useState<Record<string, number>>({});
   const [batchPageMap, setBatchPageMap] = useState<Record<string, number>>({});
   const [batchTotalPagesMap, setBatchTotalPagesMap] = useState<Record<string, number>>({});
+  const [automationDialogOpen, setAutomationDialogOpen] = useState(false);
+  const [automationReportType, setAutomationReportType] = useState<ReportType | null>(null);
+  const [automationCurrentFilters, setAutomationCurrentFilters] = useState<Record<string, string | string[]> | undefined>();
 
   // ── Batch-export helpers ─────────────────────────────────────────────────────
   const getBatchParams = (title: string) => {
@@ -1882,11 +1887,35 @@ export default function ReportsPage() {
     },
   ];
 
+  const automationByTitle: Record<string, { type: ReportType; filters: Record<string, string> }> = {
+    'Membership Report': { type: 'membership', filters: { churchId: memberChurchFilter, status: memberStatusFilter, cellId: memberCellFilter, teamId: memberTeamFilter } },
+    'Giving Report': { type: 'giving', filters: { churchId: givingChurchFilter, category: givingCategoryFilter, campaignId: givingCampaignFilter, cellId: givingCellFilter } },
+    'Giving by Member': { type: 'giving_by_member', filters: { churchId: givingByMemberChurchFilter, category: givingByMemberCategoryFilter, campaignId: givingByMemberCampaignFilter } },
+    'Pledge Report': { type: 'pledges', filters: { churchId: pledgeChurchFilter, status: pledgeStatusFilter, category: pledgeCategoryFilter, campaignId: pledgeCampaignFilter } },
+    'Attendance Report': { type: 'attendance', filters: { churchId: attendanceChurchFilter, serviceType: attendanceServiceFilter } },
+    'Cell Groups Report': { type: 'cell_groups', filters: { churchId: cellChurchFilter, cellId: cellGroupCellFilter } },
+    'Cell Visitors Report': { type: 'cell_visitors', filters: { churchId: visitorChurchFilter, cellId: visitorCellFilter } },
+    'Church Visitors Report': { type: 'church_visitors', filters: { churchId: churchVisitorChurchFilter, serviceType: churchVisitorServiceType } },
+    'Transactions Report': { type: 'transactions', filters: { churchId: txChurchFilter, type: txTypeFilter, campaignId: txCampaignFilter } },
+  };
+
+  const openAutomationDialog = (title?: string) => {
+    const config = title ? automationByTitle[title] : undefined;
+    setAutomationReportType(config?.type ?? null);
+    setAutomationCurrentFilters(config?.filters);
+    setAutomationDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-xl sm:text-2xl font-bold">Reports</h1>
-        <p className="text-xs text-muted-foreground">Generate and export comprehensive reports across all modules</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="font-heading text-xl sm:text-2xl font-bold">Reports</h1>
+          <p className="text-xs text-muted-foreground">Generate and export comprehensive reports across all modules</p>
+        </div>
+        {hasPermission('reports:read') && <Button variant="outline" size="sm" onClick={() => openAutomationDialog()}>
+          <Calendar className="mr-2 h-4 w-4" /> Automated reports
+        </Button>}
       </div>
 
       {/* Summary banner */}
@@ -2156,6 +2185,11 @@ export default function ReportsPage() {
                         ? `Export Batch ${bPage} (rows ${fromRow.toLocaleString()}-${toRow.toLocaleString()})${bTotalPages > 0 ? ` · P${bPage} of ${bTotalPages}` : ''}`
                         : 'Export XLSX'}
                     </Button>
+                    {hasPermission('reports:create') && automationByTitle[card.title] && (
+                      <Button size="sm" variant="ghost" className="w-full gap-2" onClick={() => openAutomationDialog(card.title)}>
+                        <Calendar className="h-3.5 w-3.5" /> Schedule this report
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -2163,6 +2197,19 @@ export default function ReportsPage() {
           </div>
         </>
       )}
+      <ReportAutomationsDialog
+        open={automationDialogOpen}
+        onOpenChange={setAutomationDialogOpen}
+        initialReportType={automationReportType}
+        currentFilters={automationCurrentFilters}
+        churches={(churches as any[]).map(c => ({ id: c.id, name: c.name }))}
+        cells={(simpleCells as any[]).map(c => ({ id: c.id, name: c.name, churchId: c.churchId }))}
+        teams={(teams as any[]).map(t => ({ id: t.id, name: t.name, churchId: t.churchId }))}
+        campaigns={(flatCampaigns as any[]).map(c => ({ id: c.id, name: c.name || c.title }))}
+        canCreate={hasPermission('reports:create')}
+        canUpdate={hasPermission('reports:update')}
+        canDelete={hasPermission('reports:delete')}
+      />
     </div>
   );
 }
