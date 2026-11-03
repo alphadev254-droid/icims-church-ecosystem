@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ChurchSelect } from '@/components/ChurchSelect';
+import { ChurchMultiSelect } from '@/components/ChurchMultiSelect';
 import TeamCommunicationTab from '@/components/TeamCommunicationTab';
 import { ScheduledTimesPicker } from '@/components/scheduling/ScheduledTimesPicker';
 import { MediaAttachments } from '@/components/communication/MediaAttachments';
@@ -34,7 +34,7 @@ const schema = z.object({
   content: z.string().min(1, 'Content required'),
   type: z.enum(['announcement', 'prayer_request', 'newsletter']),
   priority: z.enum(['normal', 'urgent']).default('normal'),
-  churchId: z.string().min(1, 'Church selection required'),
+  churchIds: z.array(z.string()).min(1, 'Select at least one church').max(100),
   deliveryMode: z.enum(['now', 'scheduled']).default('now'),
   scheduledDate: z.string().optional(),
   scheduledTime: z.string().optional(),
@@ -113,7 +113,7 @@ function toTimeInputValue(value?: string | null) {
 }
 
 function buildAnnouncementPayload(values: FormValues) {
-  const { scheduledDate, scheduledTime, recurrenceRule, occurrenceTimes, ...payload } = values;
+  const { scheduledDate, scheduledTime, recurrenceRule, occurrenceTimes, churchIds, ...payload } = values;
   const scheduledAt = values.deliveryMode === 'scheduled' && values.schedulePattern === 'repeat' ? buildScheduledAt(scheduledDate, scheduledTime) : null;
   const normalizedRecurrence: RecurrenceRulePayload | null = values.deliveryMode === 'scheduled' && values.schedulePattern === 'repeat'
     ? { ...defaultRecurrenceRule(), ...recurrenceRule, startsAt: scheduledAt }
@@ -121,6 +121,8 @@ function buildAnnouncementPayload(values: FormValues) {
 
   return {
     ...payload,
+    churchId: churchIds[0],
+    churchIds,
     scheduledAt,
     recurrenceRule: normalizedRecurrence,
     occurrenceTimes: values.deliveryMode === 'scheduled' && values.schedulePattern === 'custom_dates'
@@ -163,12 +165,14 @@ export default function CommunicationPage() {
     queryFn: churchesService.getAll,
     enabled: !isMember,
   });
+  const accessibleChurchIdSet = new Set(churches.map(church => church.id));
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       type: 'announcement',
       priority: 'normal',
+      churchIds: [],
       deliveryMode: 'now',
       schedulePattern: 'repeat', occurrenceTimes: [],
       recurrenceRule: defaultRecurrenceRule(),
@@ -178,13 +182,14 @@ export default function CommunicationPage() {
   const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, setValue: setValueEdit, watch: watchEdit, formState: { errors: errorsEdit } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      churchIds: [],
       deliveryMode: 'now',
       schedulePattern: 'repeat', occurrenceTimes: [],
       recurrenceRule: defaultRecurrenceRule(),
     },
   });
 
-  const churchId = watch('churchId');
+  const churchIds = watch('churchIds') || [];
   const deliveryMode = watch('deliveryMode') || 'now';
   const recurrenceRule = watch('recurrenceRule') ?? defaultRecurrenceRule();
   const recurrenceFrequency = recurrenceRule.frequency ?? 'none';
@@ -192,6 +197,7 @@ export default function CommunicationPage() {
   const schedulePattern = watch('schedulePattern') || 'repeat';
   const occurrenceTimes = watch('occurrenceTimes') || [];
   const editDeliveryMode = watchEdit('deliveryMode') || 'now';
+  const editChurchIds = watchEdit('churchIds') || [];
   const editRecurrenceRule = watchEdit('recurrenceRule') ?? defaultRecurrenceRule();
   const editSchedulePattern = watchEdit('schedulePattern') || 'repeat';
   const editOccurrenceTimes = watchEdit('occurrenceTimes') || [];
@@ -220,7 +226,7 @@ export default function CommunicationPage() {
       qc.invalidateQueries({ queryKey: ['announcements'] });
       setDialogOpen(false);
       setSelectedFiles([]);
-      reset({ type: 'announcement', priority: 'normal', deliveryMode: 'now', schedulePattern: 'repeat', occurrenceTimes: [], recurrenceRule: defaultRecurrenceRule() });
+      reset({ type: 'announcement', priority: 'normal', churchIds: [], deliveryMode: 'now', schedulePattern: 'repeat', occurrenceTimes: [], recurrenceRule: defaultRecurrenceRule() });
       setFormType('announcement');
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to post'),
@@ -570,9 +576,16 @@ export default function CommunicationPage() {
     );
   }
 
-  const ItemCard = ({ item }: { item: any }) => {
+  const ItemCard = ({ item }: { item: Announcement }) => {
     const Icon = TYPE_ICON[item.type] ?? Bell;
     const attachments = item.attachments ? JSON.parse(item.attachments) : [];
+    const targetChurches = item.targetChurches?.length
+      ? item.targetChurches.map(link => link.church)
+      : item.church ? [item.church] : [];
+    const targetChurchIds = item.targetChurches?.length
+      ? item.targetChurches.map(link => link.churchId)
+      : [item.churchId];
+    const canManageItem = targetChurchIds.every(churchId => accessibleChurchIdSet.has(churchId));
     return (
       <Card className="hover:shadow-md transition-shadow">
         <CardContent className="p-5">
@@ -592,9 +605,10 @@ export default function CommunicationPage() {
                 </div>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-2">{item.content}</p>
                 <div className="flex items-center gap-3 mt-2 flex-wrap">
-                  {!isMember && item.church && (
+                  {!isMember && targetChurches.length > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      {item.church.name}
+                      {targetChurches.slice(0, 2).map((church: Church) => church.name).join(', ')}
+                      {targetChurches.length > 2 ? ` +${targetChurches.length - 2} more` : ''}
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
@@ -617,7 +631,7 @@ export default function CommunicationPage() {
                 </div>
               </div>
             </div>
-            {(canUpdate || canDelete) && (
+            {(canUpdate || canDelete) && canManageItem && (
               <div className="flex items-center gap-1 flex-shrink-0">
                 {canUpdate && (
                   <button
@@ -626,7 +640,9 @@ export default function CommunicationPage() {
                       setExistingFiles(item.attachments ? JSON.parse(item.attachments) : []);
                       setSelectedFiles([]);
                       resetEdit({
-                        churchId: item.churchId,
+                        churchIds: item.targetChurches?.length
+                          ? item.targetChurches.map(link => link.churchId)
+                          : [item.churchId],
                         title: item.title,
                         content: item.content,
                         type: item.type,
@@ -725,12 +741,11 @@ export default function CommunicationPage() {
                     console.log('Form errors:', errors);
                     createMutation.mutate(v);
                   })} className="space-y-3">
-                    <ChurchSelect 
-                      value={churchId} 
-                      onValueChange={value => setValue('churchId', value)}
+                    <ChurchMultiSelect
+                      value={churchIds}
+                      onValueChange={value => setValue('churchIds', value, { shouldValidate: true })}
                     />
-                    {errors.churchId && <p className="text-xs text-destructive mt-1">{errors.churchId.message}</p>}
-                    {!churchId && <p className="text-xs text-amber-600 mt-1">Please select a church</p>}
+                    {errors.churchIds && <p className="text-xs text-destructive mt-1">{errors.churchIds.message}</p>}
                     
                     <div>
                       <Label className="text-xs sm:text-sm">Type</Label>
@@ -869,12 +884,25 @@ export default function CommunicationPage() {
           </DialogHeader>
           {viewItem && (() => {
             const attachments = viewItem.attachments ? JSON.parse(viewItem.attachments) : [];
+            const targetChurches = viewItem.targetChurches?.length
+              ? viewItem.targetChurches.map(link => link.church)
+              : viewItem.church ? [viewItem.church] : [];
             return (
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="capitalize">{TYPE_LABEL[viewItem.type]}</Badge>
                   {viewItem.priority === 'urgent' && <Badge variant="destructive">Urgent</Badge>}
                 </div>
+                {!isMember && targetChurches.length > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Shared with</Label>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {targetChurches.map(church => (
+                        <Badge key={church.id} variant="secondary">{church.name}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="bg-muted/50 rounded-lg p-4">
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">{viewItem.content}</p>
                 </div>
@@ -975,10 +1003,11 @@ export default function CommunicationPage() {
           </DialogHeader>
           {editItem && (
             <form onSubmit={handleSubmitEdit(v => updateMutation.mutate({ id: editItem.id, dto: v }))} className="space-y-3">
-              <ChurchSelect 
-                value={editItem.churchId} 
-                onValueChange={value => setValueEdit('churchId', value)}
+              <ChurchMultiSelect
+                value={editChurchIds}
+                onValueChange={value => setValueEdit('churchIds', value, { shouldValidate: true })}
               />
+              {errorsEdit.churchIds && <p className="text-xs text-destructive mt-1">{errorsEdit.churchIds.message}</p>}
               
               <div>
                 <Label className="text-xs sm:text-sm">Type</Label>

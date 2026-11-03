@@ -15,6 +15,7 @@ export interface Announcement {
   content: string;
   type: 'announcement' | 'prayer_request' | 'newsletter';
   priority: 'normal' | 'urgent';
+  attachments?: string | null;
   churchId: string;
   createdById: string;
   createdAt: string;
@@ -25,6 +26,13 @@ export interface Announcement {
     id: string;
     name: string;
   };
+  targetChurches?: Array<{
+    churchId: string;
+    church: {
+      id: string;
+      name: string;
+    };
+  }>;
   scheduledEvent?: {
     startAt: string;
     endAt: string;
@@ -53,6 +61,7 @@ export interface CreateAnnouncementDto {
   type: Announcement['type'];
   priority?: Announcement['priority'];
   churchId: string;
+  churchIds: string[];
   attachments?: string;
   deliveryMode?: 'now' | 'scheduled';
   scheduledAt?: string | null;
