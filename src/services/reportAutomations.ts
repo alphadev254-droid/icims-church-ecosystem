@@ -46,8 +46,8 @@ export const reportAutomationService = {
     const { data } = await apiClient.get('/report-automations', { params: reportType ? { reportType } : undefined });
     return data.data;
   },
-  async recipients(): Promise<ReportRecipientUser[]> {
-    const { data } = await apiClient.get('/report-automations/recipients');
+  async recipients(search?: string): Promise<ReportRecipientUser[]> {
+    const { data } = await apiClient.get('/report-automations/recipients', { params: search ? { search } : undefined });
     return data.data;
   },
   async create(input: ReportAutomationInput): Promise<ReportAutomation> {
