@@ -42,6 +42,10 @@ export interface ReportRecipientUser {
 }
 
 export const reportAutomationService = {
+  async context(): Promise<{ timezone: string }> {
+    const { data } = await apiClient.get('/report-automations/context');
+    return data.data;
+  },
   async list(reportType?: ReportType): Promise<ReportAutomation[]> {
     const { data } = await apiClient.get('/report-automations', { params: reportType ? { reportType } : undefined });
     return data.data;
