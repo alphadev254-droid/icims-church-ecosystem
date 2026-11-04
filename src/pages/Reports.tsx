@@ -39,7 +39,8 @@ async function downloadReportWorkbook(
   headers: string[],
   extraSheets: Array<{ name: string; headers: string[]; rows: ReportCellValue[][] }> = [],
 ) {
-  const XLSX = await import('xlsx-js-style');
+  const xlsxModule = await import('xlsx-js-style');
+  const XLSX = (xlsxModule.default ?? xlsxModule) as typeof import('xlsx-js-style');
   const workbook = XLSX.utils.book_new();
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   const ref = worksheet['!ref'];
@@ -2178,7 +2179,12 @@ export default function ReportsPage() {
                       size="sm"
                       variant="outline"
                       className="w-full gap-2"
-                      onClick={card.onExport}
+                      onClick={() => {
+                        void Promise.resolve(card.onExport()).catch((error) => {
+                          console.error('Report export failed:', error);
+                          toast.error('The Excel report could not be downloaded. Please try again.');
+                        });
+                      }}
                     >
                       <Download className="h-3.5 w-3.5" />
                       {bSize > 0
