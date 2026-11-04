@@ -38,6 +38,7 @@ export interface ReportRecipientUser {
   firstName: string;
   lastName: string;
   email: string;
+  role?: { name: string; displayName?: string | null } | null;
   church?: { id: string; name: string } | null;
 }
 
