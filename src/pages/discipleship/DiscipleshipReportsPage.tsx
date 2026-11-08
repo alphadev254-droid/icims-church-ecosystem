@@ -2,11 +2,15 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Download,
+  CalendarDays,
+  ClockAlert,
+  MapPinned,
   Printer,
   TrendingUp,
   UserCheck,
   UserMinus,
   Users,
+  UserRoundX,
 } from "lucide-react";
 import { discipleshipService } from "@/services/discipleship";
 import { Button } from "@/components/ui/button";
@@ -87,22 +91,30 @@ export default function DiscipleshipReportsPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric icon={Users} label="Intake" value={data.totals.intake} />
+            <Metric icon={Users} label="People entered" value={data.totals.intake} note={`${data.totals.active} currently active`} />
             <Metric
               icon={UserCheck}
               label="Completion rate"
               value={`${data.totals.completionRate}%`}
+              note={`${data.totals.completed} completed journeys`}
             />
             <Metric
               icon={UserMinus}
               label="Dropout rate"
               value={`${data.totals.dropoutRate}%`}
+              note={`${data.totals.withdrawn} withdrawn journeys`}
             />
             <Metric
               icon={TrendingUp}
               label="Avg. completion"
               value={`${data.totals.averageCompletionDays} days`}
+              note="Average journey duration"
             />
+            <Metric icon={UserCheck} label="Class attendance" value={`${data.totals.attendanceRate}%`} note="Present and late check-ins" />
+            <Metric icon={UserRoundX} label="Need a mentor" value={data.totals.unassignedMentors} note="Active candidates unassigned" />
+            <Metric icon={ClockAlert} label="Overdue follow-ups" value={data.totals.overdueFollowUps} note="Mentor action required" />
+            <Metric icon={CalendarDays} label="Sessions this week" value={data.totals.upcomingSessions} note="Scheduled in the next 7 days" />
+            <Metric icon={MapPinned} label="Awaiting placement" value={data.totals.pendingPlacements} note="Team or cell placement planned" />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
@@ -148,7 +160,7 @@ export default function DiscipleshipReportsPage() {
     </div>
   );
 }
-function Metric({ icon: Icon, label, value }: any) {
+function Metric({ icon: Icon, label, value, note }: any) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-5">
@@ -156,6 +168,7 @@ function Metric({ icon: Icon, label, value }: any) {
         <div>
           <p className="text-2xl font-semibold">{value}</p>
           <p className="text-xs text-muted-foreground">{label}</p>
+          {note && <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>}
         </div>
       </CardContent>
     </Card>
