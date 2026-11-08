@@ -42,6 +42,7 @@ export default function JourneyDetailPage() {
     useState<DiscipleshipRequirement | null>(null);
   const [completionNote, setCompletionNote] = useState("");
   const [milestoneDate, setMilestoneDate] = useState("");
+  const [assessmentScore, setAssessmentScore] = useState("");
 
   const {
     data: journey,
@@ -69,6 +70,7 @@ export default function JourneyDetailPage() {
           ...(selectedRequirement?.type === "milestone" && milestoneDate
             ? { milestoneDate: new Date(`${milestoneDate}T12:00:00`).toISOString() }
             : {}),
+          ...(selectedRequirement?.type === "assessment" ? { score: Number(assessmentScore) } : {}),
         },
       ),
     onSuccess: () => {
@@ -76,6 +78,7 @@ export default function JourneyDetailPage() {
       setSelectedRequirement(null);
       setCompletionNote("");
       setMilestoneDate("");
+      setAssessmentScore("");
       refresh();
     },
     onError: (error: any) => {
@@ -418,6 +421,7 @@ export default function JourneyDetailPage() {
             setSelectedRequirement(null);
             setCompletionNote("");
             setMilestoneDate("");
+            setAssessmentScore("");
           }
         }}
       >
@@ -433,6 +437,7 @@ export default function JourneyDetailPage() {
               </p>
             </div>
             {selectedRequirement?.type === "milestone" && <div className="grid gap-2"><Label>Milestone date</Label><Input type="date" value={milestoneDate} onChange={(event) => setMilestoneDate(event.target.value)} /></div>}
+            {selectedRequirement?.type === "assessment" && <div className="grid gap-2"><Label>Assessment score</Label><Input type="number" min="0" value={assessmentScore} onChange={(event) => setAssessmentScore(event.target.value)} placeholder="Enter the candidate's score" /></div>}
             <div className="grid gap-2">
               <Label>Completion note</Label>
               <Textarea
@@ -443,7 +448,7 @@ export default function JourneyDetailPage() {
             </div>
             <Button
               className="w-full"
-              disabled={completeRequirement.isPending || (selectedRequirement?.type === "milestone" && !milestoneDate)}
+              disabled={completeRequirement.isPending || (selectedRequirement?.type === "milestone" && !milestoneDate) || (selectedRequirement?.type === "assessment" && assessmentScore === "")}
               onClick={() => completeRequirement.mutate()}
             >
               {completeRequirement.isPending ? "Saving…" : "Mark complete"}

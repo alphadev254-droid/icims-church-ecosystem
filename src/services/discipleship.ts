@@ -5,6 +5,7 @@ export interface DiscipleshipRequirement {
   name: string;
   description?: string | null;
   type: "checklist" | "approval" | "course" | "milestone" | "assessment";
+  definitionId?: string | null;
   courseId?: string | null;
   classId?: string | null;
   course?: { id: string; title: string; status: string } | null;
@@ -88,12 +89,26 @@ export interface JourneyDetail extends JourneyListItem {
 export interface DiscipleshipCourse {
   id: string;
   churchId: string;
+  churchIds: string[];
   title: string;
   description?: string;
   status: string;
   materials: Array<{ id: string; title: string; kind: string; url?: string }>;
   classes: any[];
   assessments: any[];
+  personsInCharge?: Array<{ churchId: string; userId: string }>;
+}
+
+export interface DiscipleshipRequirementDefinition {
+  id: string;
+  churchIds: string[];
+  type: "checklist" | "approval" | "milestone" | "assessment";
+  title: string;
+  description?: string | null;
+  status: "draft" | "published" | "archived";
+  passScore?: number | null;
+  maxScore?: number | null;
+  personsInCharge?: Array<{ churchId: string; userId: string }>;
 }
 
 export const discipleshipService = {
@@ -152,6 +167,14 @@ export const discipleshipService = {
       `/discipleship/courses/${courseId}/classes`,
       payload,
     );
+    return data.data;
+  },
+  listRequirementDefinitions: async (includeDrafts = true): Promise<DiscipleshipRequirementDefinition[]> => {
+    const { data } = await apiClient.get("/discipleship/requirement-definitions", { params: { includeDrafts } });
+    return data.data;
+  },
+  createRequirementDefinition: async (payload: any): Promise<DiscipleshipRequirementDefinition> => {
+    const { data } = await apiClient.post("/discipleship/requirement-definitions", payload);
     return data.data;
   },
   assignMentor: async (

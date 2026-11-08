@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
   CalendarDays,
@@ -34,6 +34,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { ChurchMultiSelect } from "@/components/ChurchMultiSelect";
+import { usersService } from "@/services/users";
+
+type CatalogType = "course" | "checklist" | "approval" | "milestone" | "assessment";
 
 export default function ProgramsPage() {
   const qc = useQueryClient();
@@ -41,30 +45,55 @@ export default function ProgramsPage() {
   const [materialFile, setMaterialFile] = useState<File | null>(null);
   const [classCourseId, setClassCourseId] = useState<string | null>(null);
   const [classForm, setClassForm] = useState({
+    churchId: "",
     title: "",
     location: "",
     startsAt: "",
     endsAt: "",
   });
   const [form, setForm] = useState({
-    churchId: "",
+    churchIds: [] as string[],
+    type: "course" as CatalogType,
     title: "",
     description: "",
     status: "published",
     materialTitle: "",
     materialKind: "video",
     materialUrl: "",
+    passScore: "70",
+    maxScore: "100",
+    personsInCharge: {} as Record<string, string>,
   });
   const { data: courses = [], isLoading } = useQuery({
     queryKey: ["discipleship-courses"],
     queryFn: () => discipleshipService.listCourses(true),
   });
+  const { data: definitions = [] } = useQuery({
+    queryKey: ["discipleship-requirement-definitions"],
+    queryFn: () => discipleshipService.listRequirementDefinitions(true),
+  });
   const { data: churches = [] } = useQuery({
     queryKey: ["churches-select"],
     queryFn: churchesService.getSelectable,
   });
+  const churchUserQueries = useQueries({
+    queries: form.churchIds.map(churchId => ({
+      queryKey: ["discipleship-person-in-charge", churchId],
+      queryFn: () => usersService.getAll({ churchId, status: "active", limit: 100 }),
+      staleTime: 60_000,
+    })),
+  });
+  const usersByChurch = new Map(form.churchIds.map((churchId, index) => [churchId, churchUserQueries[index]?.data?.data || []]));
   const create = useMutation({
     mutationFn: async () => {
+      if (form.type !== "course") {
+        return discipleshipService.createRequirementDefinition({
+          churchIds: form.churchIds, type: form.type, title: form.title,
+          description: form.description || undefined, status: form.status,
+          personsInCharge: form.churchIds.map(churchId => ({ churchId, userId: form.personsInCharge[churchId] })),
+          ...(form.type === "assessment" ? { passScore: Number(form.passScore), maxScore: Number(form.maxScore) } : {}),
+        });
+      }
       let uploadedUrl: string | undefined;
       let materialKind = form.materialKind;
       let materialTitle = form.materialTitle;
@@ -76,7 +105,8 @@ export default function ProgramsPage() {
           materialKind = uploaded.mimeType.startsWith("video/") ? "video" : uploaded.mimeType.startsWith("audio/") ? "audio" : "document";
         }
         return await discipleshipService.createCourse({
-        churchId: form.churchId,
+        churchIds: form.churchIds,
+        personsInCharge: form.churchIds.map(churchId => ({ churchId, userId: form.personsInCharge[churchId] })),
         title: form.title,
         description: form.description || undefined,
         status: form.status,
@@ -98,10 +128,11 @@ export default function ProgramsPage() {
       }
     },
     onSuccess: () => {
-      toast.success("Course created");
+      toast.success(form.type === "course" ? "Course created" : "Requirement created");
       setOpen(false);
       setMaterialFile(null);
       qc.invalidateQueries({ queryKey: ["discipleship-courses"] });
+      qc.invalidateQueries({ queryKey: ["discipleship-requirement-definitions"] });
     },
     onError: (error: any) =>
       toast.error(error.response?.data?.message || "Could not create course"),
@@ -109,6 +140,7 @@ export default function ProgramsPage() {
   const createClass = useMutation({
     mutationFn: () =>
       discipleshipService.createClass(classCourseId!, {
+        churchId: classForm.churchId,
         title: classForm.title,
         location: classForm.location || undefined,
         startsAt: new Date(classForm.startsAt).toISOString(),
@@ -130,7 +162,7 @@ export default function ProgramsPage() {
     onSuccess: () => {
       toast.success("Class scheduled");
       setClassCourseId(null);
-      setClassForm({ title: "", location: "", startsAt: "", endsAt: "" });
+      setClassForm({ churchId: "", title: "", location: "", startsAt: "", endsAt: "" });
       qc.invalidateQueries({ queryKey: ["discipleship-courses"] });
     },
     onError: (error: any) =>
@@ -147,14 +179,14 @@ export default function ProgramsPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-primary">Discipleship</p>
-          <h1 className="font-heading text-2xl font-bold">Courses & classes</h1>
+          <h1 className="font-heading text-2xl font-bold">Learning & requirements</h1>
           <p className="text-sm text-muted-foreground">
-            Publish curriculum, schedule cohorts and manage session attendance.
+            Create reusable workflow requirements, publish courses and schedule church-specific classes.
           </p>
         </div>
         <Button onClick={() => setOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          New course
+          New catalogue item
         </Button>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -164,6 +196,14 @@ export default function ProgramsPage() {
         <ProgramMetric icon={Users} value={enrollmentCount} label="Enrollments" note="Across all current classes" />
         <ProgramMetric icon={LibraryBig} value={materialCount} label="Learning materials" note="Documents, audio and video" />
       </div>
+      <div>
+        <div className="mb-3"><h2 className="font-semibold">Reusable workflow requirements</h2><p className="text-sm text-muted-foreground">Create these once, assign them to churches, then select them in workflow stages.</p></div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {definitions.map((item) => <Card key={item.id}><CardContent className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.title}</p><p className="mt-1 text-xs text-muted-foreground">{item.description || "No description"}</p></div><Badge variant="secondary">{item.type === "checklist" ? "Manual task" : item.type === "approval" ? "Leader approval" : item.type === "milestone" ? "Dated milestone" : "Assessment"}</Badge></div><p className="mt-3 text-xs text-muted-foreground">Available in {item.churchIds.length} {item.churchIds.length === 1 ? "church" : "churches"}</p></CardContent></Card>)}
+          {definitions.length === 0 && <p className="text-sm text-muted-foreground">No reusable requirements created yet.</p>}
+        </div>
+      </div>
+      <div><h2 className="font-semibold">Courses and church classes</h2><p className="text-sm text-muted-foreground">Courses can be shared across churches; each scheduled class remains attached to one church.</p></div>
       {isLoading ? (
         <p className="text-muted-foreground">Loading courses…</p>
       ) : (
@@ -182,6 +222,7 @@ export default function ProgramsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                <p className="text-xs text-muted-foreground">Available in {course.churchIds?.length || 1} {(course.churchIds?.length || 1) === 1 ? "church" : "churches"}</p>
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                     Curriculum
@@ -253,29 +294,14 @@ export default function ProgramsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create course</DialogTitle>
+            <DialogTitle>Create learning or requirement item</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="grid gap-2"><Label>Item type</Label><Select value={form.type} onValueChange={(type: CatalogType) => setForm({ ...form, type })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="course">Course completion</SelectItem><SelectItem value="checklist">Manual task</SelectItem><SelectItem value="approval">Leader approval</SelectItem><SelectItem value="milestone">Dated milestone</SelectItem><SelectItem value="assessment">Scored assessment</SelectItem></SelectContent></Select></div>
+            <ChurchMultiSelect value={form.churchIds} onValueChange={(churchIds) => setForm({ ...form, churchIds, personsInCharge: Object.fromEntries(Object.entries(form.personsInCharge).filter(([churchId]) => churchIds.includes(churchId))) })} helpText="This item will be available when building workflows for every selected church." />
+            {form.churchIds.length > 0 && <div className="space-y-3 rounded-md border p-3"><div><p className="text-sm font-medium">Person in charge</p><p className="text-xs text-muted-foreground">Select one active user from each church. This person owns this item for that church.</p></div>{form.churchIds.map(churchId => { const church = churches.find(item => item.id === churchId); const users = usersByChurch.get(churchId) || []; return <div key={churchId} className="grid gap-2 sm:grid-cols-[180px_1fr] sm:items-center"><Label>{church?.name || "Selected church"}</Label><Select value={form.personsInCharge[churchId]} onValueChange={(userId) => setForm(current => ({ ...current, personsInCharge: { ...current.personsInCharge, [churchId]: userId } }))}><SelectTrigger><SelectValue placeholder={churchUserQueries[form.churchIds.indexOf(churchId)]?.isLoading ? "Loading users…" : "Select person in charge"} /></SelectTrigger><SelectContent>{users.map(user => <SelectItem key={user.id} value={user.id}>{user.firstName} {user.lastName} · {user.role?.displayName || user.roleName}</SelectItem>)}</SelectContent></Select></div>; })}</div>}
             <div className="grid gap-2">
-              <Label>Church</Label>
-              <Select
-                value={form.churchId}
-                onValueChange={(v) => setForm({ ...form, churchId: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select church" />
-                </SelectTrigger>
-                <SelectContent>
-                  {churches.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>Course title</Label>
+              <Label>{form.type === "course" ? "Course title" : "Requirement title"}</Label>
               <Input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -290,7 +316,8 @@ export default function ProgramsPage() {
                 }
               />
             </div>
-            <div className="rounded-md border p-3 space-y-3">
+            {form.type === "assessment" && <div className="grid grid-cols-2 gap-3"><div className="grid gap-2"><Label>Pass score</Label><Input type="number" min="0" value={form.passScore} onChange={(e) => setForm({ ...form, passScore: e.target.value })} /></div><div className="grid gap-2"><Label>Maximum score</Label><Input type="number" min="1" value={form.maxScore} onChange={(e) => setForm({ ...form, maxScore: e.target.value })} /></div></div>}
+            {form.type === "course" && <div className="rounded-md border p-3 space-y-3">
               <p className="text-sm font-medium">
                 First curriculum item (optional)
               </p>
@@ -341,13 +368,13 @@ export default function ProgramsPage() {
                   }
                 />
               </div>
-            </div>
+            </div>}
             <Button
               className="w-full"
-              disabled={!form.churchId || !form.title || create.isPending}
+              disabled={!form.churchIds.length || !form.title || form.churchIds.some(churchId => !form.personsInCharge[churchId]) || create.isPending || (form.type === "assessment" && Number(form.passScore) > Number(form.maxScore))}
               onClick={() => create.mutate()}
             >
-              {create.isPending ? (materialFile ? "Uploading and creating…" : "Creating…") : "Create course"}
+              {create.isPending ? (materialFile ? "Uploading and creating…" : "Creating…") : `Create ${form.type === "course" ? "course" : "requirement"}`}
             </Button>
           </div>
         </DialogContent>
@@ -361,6 +388,7 @@ export default function ProgramsPage() {
             <DialogTitle>Schedule class</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {(courses.find(course => course.id === classCourseId)?.churchIds?.length || 1) > 1 && <div className="grid gap-2"><Label>Church hosting this class</Label><Select value={classForm.churchId} onValueChange={(churchId) => setClassForm({ ...classForm, churchId })}><SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger><SelectContent>{churches.filter(church => courses.find(course => course.id === classCourseId)?.churchIds?.includes(church.id)).map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent></Select></div>}
             <div className="grid gap-2">
               <Label>Class / cohort name</Label>
               <Input
@@ -408,7 +436,7 @@ export default function ProgramsPage() {
             <Button
               className="w-full"
               disabled={
-                !classForm.title || !classForm.startsAt || createClass.isPending
+                !classForm.title || !classForm.startsAt || createClass.isPending || ((courses.find(course => course.id === classCourseId)?.churchIds?.length || 1) > 1 && !classForm.churchId)
               }
               onClick={() => createClass.mutate()}
             >

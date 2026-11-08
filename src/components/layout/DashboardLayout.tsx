@@ -58,7 +58,7 @@ export default function DashboardLayout() {
     '/dashboard/resource-booking': 'Asset and Facility Booking',
     '/dashboard/discipleship/journeys': 'Discipleship Journeys',
     '/dashboard/discipleship/workflows': 'Discipleship Workflows',
-    '/dashboard/discipleship/programs': 'Discipleship Courses & Classes',
+    '/dashboard/discipleship/programs': 'Discipleship Learning & Requirements',
     '/dashboard/discipleship/reports': 'Discipleship Reports',
   };
 
@@ -193,7 +193,7 @@ export default function DashboardLayout() {
                       Workflows
                     </Link>
                   )}
-                  {canReadDiscipleshipCourses && <Link to="/dashboard/discipleship/programs" onClick={() => setSidebarOpen(false)} className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${location.pathname === '/dashboard/discipleship/programs' ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`}>Courses & classes</Link>}
+                  {canReadDiscipleshipCourses && <Link to="/dashboard/discipleship/programs" onClick={() => setSidebarOpen(false)} className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${location.pathname === '/dashboard/discipleship/programs' ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`}>Learning & requirements</Link>}
                   {canReadDiscipleshipReports && <Link to="/dashboard/discipleship/reports" onClick={() => setSidebarOpen(false)} className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${location.pathname === '/dashboard/discipleship/reports' ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`}>Reports</Link>}
                 </div>
               )}

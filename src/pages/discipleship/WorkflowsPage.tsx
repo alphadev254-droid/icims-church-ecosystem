@@ -36,6 +36,7 @@ type WorkflowStageForm = {
   requirements: Array<{
     name: string;
     type: DiscipleshipRequirement["type"];
+    definitionId?: string;
     courseId?: string;
     classId?: string;
     isRequired: boolean;
@@ -84,6 +85,11 @@ export default function WorkflowsPage() {
   const { data: courses = [] } = useQuery({
     queryKey: ["discipleship-courses", "workflow-editor"],
     queryFn: () => discipleshipService.listCourses(false),
+    enabled: canManageWorkflows,
+  });
+  const { data: requirementDefinitions = [] } = useQuery({
+    queryKey: ["discipleship-requirement-definitions", "workflow-editor"],
+    queryFn: () => discipleshipService.listRequirementDefinitions(false),
     enabled: canManageWorkflows,
   });
 
@@ -136,6 +142,7 @@ export default function WorkflowsPage() {
         requirements: stage.requirements.map((item) => ({
           name: item.name,
           type: item.type,
+          definitionId: item.definitionId || undefined,
           courseId: item.courseId || undefined,
           classId: item.classId || undefined,
           isRequired: item.isRequired,
@@ -387,15 +394,6 @@ export default function WorkflowsPage() {
                       key={requirementIndex}
                       className="grid gap-2 rounded-md border p-3 sm:grid-cols-[1fr_150px_auto]"
                     >
-                      <Input
-                        placeholder="Requirement"
-                        value={requirement.name}
-                        onChange={(event) =>
-                          updateRequirement(stageIndex, requirementIndex, {
-                            name: event.target.value,
-                          })
-                        }
-                      />
                       <Select
                         value={requirement.type}
                         onValueChange={(
@@ -403,6 +401,8 @@ export default function WorkflowsPage() {
                         ) =>
                           updateRequirement(stageIndex, requirementIndex, {
                             type: value,
+                            name: "",
+                            definitionId: undefined,
                             courseId: undefined,
                             classId: undefined,
                           })
@@ -419,6 +419,17 @@ export default function WorkflowsPage() {
                           <SelectItem value="assessment">Scored assessment</SelectItem>
                         </SelectContent>
                       </Select>
+                      {requirement.type === "course" ? (
+                        <Select value={requirement.courseId} onValueChange={(value) => { const selected = courses.find(item => item.id === value); updateRequirement(stageIndex, requirementIndex, { courseId: value, classId: undefined, definitionId: undefined, name: selected?.title || "" }); }}>
+                          <SelectTrigger><SelectValue placeholder="Select a saved course" /></SelectTrigger>
+                          <SelectContent>{courses.filter(course => form.churchIds.length > 0 && form.churchIds.every(churchId => (course.churchIds || [course.churchId]).includes(churchId))).map(course => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}</SelectContent>
+                        </Select>
+                      ) : (
+                        <Select value={requirement.definitionId} onValueChange={(value) => { const selected = requirementDefinitions.find(item => item.id === value); updateRequirement(stageIndex, requirementIndex, { definitionId: value, courseId: undefined, classId: undefined, name: selected?.title || "" }); }}>
+                          <SelectTrigger><SelectValue placeholder="Select a saved requirement" /></SelectTrigger>
+                          <SelectContent>{requirementDefinitions.filter(item => item.type === requirement.type && form.churchIds.length > 0 && form.churchIds.every(churchId => item.churchIds.includes(churchId))).map(item => <SelectItem key={item.id} value={item.id}>{item.title}</SelectItem>)}</SelectContent>
+                        </Select>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -433,11 +444,10 @@ export default function WorkflowsPage() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                       <div className="flex items-start gap-2 sm:col-span-3"><Checkbox id={`required-${stageIndex}-${requirementIndex}`} checked={requirement.isRequired} onCheckedChange={(checked) => updateRequirement(stageIndex, requirementIndex, { isRequired: checked === true })} /><div><Label htmlFor={`required-${stageIndex}-${requirementIndex}`}>Required before moving to the next stage</Label><p className="mt-1 text-xs text-muted-foreground">{requirementHelp[requirement.type]}</p></div></div>
-                      {requirement.type === "course" && (
+                      {requirement.type === "course" && requirement.courseId && (
                         <div className="grid gap-2 sm:col-span-3 sm:grid-cols-2">
-                          <div className="grid gap-1.5"><Label>Linked course</Label><Select value={requirement.courseId} disabled={form.churchIds.length !== 1} onValueChange={(value) => updateRequirement(stageIndex, requirementIndex, { courseId: value, classId: undefined })}><SelectTrigger><SelectValue placeholder={form.churchIds.length === 1 ? "Select published course" : "Select exactly one church first"} /></SelectTrigger><SelectContent>{courses.filter(course => course.churchId === form.churchIds[0]).map(course => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}</SelectContent></Select></div>
-                          <div className="grid gap-1.5"><Label>Specific class (optional)</Label><Select value={requirement.classId || "any"} disabled={!requirement.courseId} onValueChange={(value) => updateRequirement(stageIndex, requirementIndex, { classId: value === "any" ? undefined : value })}><SelectTrigger><SelectValue placeholder="Any class in this course" /></SelectTrigger><SelectContent><SelectItem value="any">Any current or future class</SelectItem>{courses.find(course => course.id === requirement.courseId)?.classes.filter((item: any) => item.status !== "cancelled").map((item: any) => <SelectItem key={item.id} value={item.id}>{item.title} · {new Date(item.startsAt).toLocaleDateString()}</SelectItem>)}</SelectContent></Select></div>
-                          <p className="text-xs text-muted-foreground sm:col-span-2">Course and class links belong to one church, so a course requirement can only be used when exactly one church is selected. Selecting a class assigns that exact cohort; “Any class” allows enrollment later.</p>
+                          <div className="grid gap-1.5 sm:col-span-2"><Label>Specific class (optional)</Label><Select value={requirement.classId || "any"} disabled={form.churchIds.length !== 1} onValueChange={(value) => updateRequirement(stageIndex, requirementIndex, { classId: value === "any" ? undefined : value })}><SelectTrigger><SelectValue placeholder="Any class in this course" /></SelectTrigger><SelectContent><SelectItem value="any">Any current or future class</SelectItem>{courses.find(course => course.id === requirement.courseId)?.classes.filter((item: any) => item.status !== "cancelled" && item.churchId === form.churchIds[0]).map((item: any) => <SelectItem key={item.id} value={item.id}>{item.title} · {new Date(item.startsAt).toLocaleDateString()}</SelectItem>)}</SelectContent></Select></div>
+                          <p className="text-xs text-muted-foreground sm:col-span-2">The selected course is shared by every church in this workflow. A specific local class can only be chosen for a one-church workflow.</p>
                         </div>
                       )}
                     </div>
@@ -496,7 +506,7 @@ export default function WorkflowsPage() {
                 form.churchIds.length === 0 ||
                 !form.name ||
                 form.stages.some((stage) => !stage.name) ||
-                form.stages.some((stage) => stage.requirements.some((requirement) => requirement.type === "course" && (!requirement.courseId || form.churchIds.length !== 1))) ||
+                form.stages.some((stage) => stage.requirements.some((requirement) => requirement.type === "course" ? !requirement.courseId : !requirement.definitionId)) ||
                 saveWorkflow.isPending
               }
               onClick={() => saveWorkflow.mutate()}
