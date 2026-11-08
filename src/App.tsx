@@ -95,6 +95,8 @@ const AdminPackages = lazy(() => import("./pages/admin/AdminPackages"));
 const AdminPendingTransactions = lazy(() => import("./pages/admin/AdminPendingTransactions"));
 const AdminCampaigns = lazy(() => import("./pages/admin/AdminCampaigns"));
 const SystemNotifications = lazy(() => import("./pages/SystemNotifications"));
+const Discipleship = lazy(() => import("./pages/discipleship/DiscipleshipPage"));
+const DiscipleshipJourneyDetail = lazy(() => import("./pages/discipleship/JourneyDetailPage"));
 
 function PageLoader() {
   return (
@@ -200,6 +202,8 @@ const App = () => {
                 <Route path="cells" element={<Cells />} />
                 <Route path="cells/:id" element={<CellDetail />} />
                 <Route path="cells/:id/meetings/:meetingId/attendance" element={<CellAttendancePage />} />
+                <Route path="discipleship" element={<Discipleship />} />
+                <Route path="discipleship/journeys/:journeyId" element={<DiscipleshipJourneyDetail />} />
                 <Route path="packages" element={<Packages />} />
                 <Route path="transactions" element={<Transactions />} />
                 <Route path="withdrawals" element={<Withdrawals />} />

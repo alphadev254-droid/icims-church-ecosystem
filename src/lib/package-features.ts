@@ -32,4 +32,5 @@ export const PACKAGE_FEATURES = {
   SCHEDULER_APPROVAL_WORKFLOW: 'scheduler_approval_workflow',
   SCHEDULER_NOTIFICATIONS: 'scheduler_notifications',
   SCHEDULER_REPORTS: 'scheduler_reports',
+  DISCIPLESHIP_MANAGEMENT: 'discipleship_management',
 } as const;
