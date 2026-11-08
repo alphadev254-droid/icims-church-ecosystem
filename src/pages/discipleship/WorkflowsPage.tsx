@@ -35,6 +35,8 @@ type WorkflowStageForm = {
   requirements: Array<{
     name: string;
     type: DiscipleshipRequirement["type"];
+    courseId?: string;
+    classId?: string;
     isRequired: boolean;
   }>;
 };
@@ -53,6 +55,14 @@ const emptyWorkflow = () => ({
   stages: [emptyStage()],
 });
 
+const requirementHelp: Record<DiscipleshipRequirement["type"], string> = {
+  checklist: "A leader manually confirms a task was done, such as an orientation or welcome call.",
+  approval: "An authorised leader reviews the candidate and records an approval decision.",
+  course: "The candidate must complete a linked course or a specific scheduled class.",
+  milestone: "Records a dated event such as baptism, membership reception or commissioning.",
+  assessment: "Requires a scored assessment that must meet its configured pass mark.",
+};
+
 export default function WorkflowsPage() {
   const queryClient = useQueryClient();
   const { hasPermission } = useRole();
@@ -68,6 +78,11 @@ export default function WorkflowsPage() {
   const { data: churches = [] } = useQuery({
     queryKey: ["churches-select"],
     queryFn: churchesService.getSelectable,
+    enabled: canManageWorkflows,
+  });
+  const { data: courses = [] } = useQuery({
+    queryKey: ["discipleship-courses", "workflow-editor"],
+    queryFn: () => discipleshipService.listCourses(false),
     enabled: canManageWorkflows,
   });
 
@@ -119,6 +134,8 @@ export default function WorkflowsPage() {
         requirements: stage.requirements.map((item) => ({
           name: item.name,
           type: item.type,
+          courseId: item.courseId || undefined,
+          classId: item.classId || undefined,
           isRequired: item.isRequired,
         })),
       })),
@@ -267,6 +284,7 @@ export default function WorkflowsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="rounded-md border bg-muted/40 p-3 text-sm"><p className="font-medium">How a workflow works</p><p className="mt-1 text-muted-foreground">Candidates move through stages in order. Required items block advancement; optional items can remain incomplete without stopping the journey.</p></div>
             <div className="grid gap-2">
               <Label>Church</Label>
               <Select
@@ -393,6 +411,8 @@ export default function WorkflowsPage() {
                         ) =>
                           updateRequirement(stageIndex, requirementIndex, {
                             type: value,
+                            courseId: undefined,
+                            classId: undefined,
                           })
                         }
                       >
@@ -400,11 +420,11 @@ export default function WorkflowsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="checklist">Checklist</SelectItem>
-                          <SelectItem value="approval">Approval</SelectItem>
-                          <SelectItem value="course">Course</SelectItem>
-                          <SelectItem value="milestone">Milestone</SelectItem>
-                          <SelectItem value="assessment">Assessment</SelectItem>
+                          <SelectItem value="checklist">Manual task</SelectItem>
+                          <SelectItem value="approval">Leader approval</SelectItem>
+                          <SelectItem value="course">Course completion</SelectItem>
+                          <SelectItem value="milestone">Dated milestone</SelectItem>
+                          <SelectItem value="assessment">Scored assessment</SelectItem>
                         </SelectContent>
                       </Select>
                       <Button
@@ -420,6 +440,14 @@ export default function WorkflowsPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                      <div className="flex items-start gap-2 sm:col-span-3"><Checkbox id={`required-${stageIndex}-${requirementIndex}`} checked={requirement.isRequired} onCheckedChange={(checked) => updateRequirement(stageIndex, requirementIndex, { isRequired: checked === true })} /><div><Label htmlFor={`required-${stageIndex}-${requirementIndex}`}>Required before moving to the next stage</Label><p className="mt-1 text-xs text-muted-foreground">{requirementHelp[requirement.type]}</p></div></div>
+                      {requirement.type === "course" && (
+                        <div className="grid gap-2 sm:col-span-3 sm:grid-cols-2">
+                          <div className="grid gap-1.5"><Label>Linked course</Label><Select value={requirement.courseId} onValueChange={(value) => updateRequirement(stageIndex, requirementIndex, { courseId: value, classId: undefined })}><SelectTrigger><SelectValue placeholder="Select published course" /></SelectTrigger><SelectContent>{courses.filter(course => !form.churchId || course.churchId === form.churchId).map(course => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}</SelectContent></Select></div>
+                          <div className="grid gap-1.5"><Label>Specific class (optional)</Label><Select value={requirement.classId || "any"} disabled={!requirement.courseId} onValueChange={(value) => updateRequirement(stageIndex, requirementIndex, { classId: value === "any" ? undefined : value })}><SelectTrigger><SelectValue placeholder="Any class in this course" /></SelectTrigger><SelectContent><SelectItem value="any">Any current or future class</SelectItem>{courses.find(course => course.id === requirement.courseId)?.classes.filter((item: any) => item.status !== "cancelled").map((item: any) => <SelectItem key={item.id} value={item.id}>{item.title} · {new Date(item.startsAt).toLocaleDateString()}</SelectItem>)}</SelectContent></Select></div>
+                          <p className="text-xs text-muted-foreground sm:col-span-2">Selecting a class assigns this exact cohort. Leaving it as “Any class” allows enrollment into an appropriate class later.</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                   <Button
@@ -476,6 +504,7 @@ export default function WorkflowsPage() {
                 !form.churchId ||
                 !form.name ||
                 form.stages.some((stage) => !stage.name) ||
+                form.stages.some((stage) => stage.requirements.some((requirement) => requirement.type === "course" && !requirement.courseId)) ||
                 saveWorkflow.isPending
               }
               onClick={() => saveWorkflow.mutate()}

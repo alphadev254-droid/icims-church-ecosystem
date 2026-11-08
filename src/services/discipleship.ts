@@ -5,6 +5,10 @@ export interface DiscipleshipRequirement {
   name: string;
   description?: string | null;
   type: "checklist" | "approval" | "course" | "milestone" | "assessment";
+  courseId?: string | null;
+  classId?: string | null;
+  course?: { id: string; title: string; status: string } | null;
+  class?: { id: string; title: string; startsAt: string; status: string } | null;
   isRequired: boolean;
   position: number;
   status?: "pending" | "completed" | "waived";
@@ -113,6 +117,8 @@ export const discipleshipService = {
         name: string;
         description?: string;
         type: DiscipleshipRequirement["type"];
+        courseId?: string;
+        classId?: string;
         isRequired: boolean;
       }>;
     }>;

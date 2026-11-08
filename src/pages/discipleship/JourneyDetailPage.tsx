@@ -292,6 +292,7 @@ export default function JourneyDetailPage() {
                               {requirement.description}
                             </p>
                           )}
+                            {requirement.type === "course" && requirement.course && <div className="mt-2 rounded-md bg-muted/60 px-3 py-2 text-xs"><p className="font-medium">Course: {requirement.course.title}</p><p className="text-muted-foreground">{requirement.class ? `Assigned class: ${requirement.class.title} · ${new Date(requirement.class.startsAt).toLocaleDateString()}` : "Class will be assigned during enrollment"}</p></div>}
                           {requirement.completedAt && (
                             <p className="mt-1 text-xs text-muted-foreground">
                               Completed{" "}
