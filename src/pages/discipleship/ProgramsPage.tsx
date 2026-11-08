@@ -3,14 +3,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookOpen,
   CalendarDays,
+  Clock3,
   FileAudio,
   FileVideo,
   Link2,
+  LibraryBig,
   Plus,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { discipleshipService } from "@/services/discipleship";
+import { uploadService } from "@/services/upload";
 import { churchesService } from "@/services/churches";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +38,7 @@ import { Badge } from "@/components/ui/badge";
 export default function ProgramsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [materialFile, setMaterialFile] = useState<File | null>(null);
   const [classCourseId, setClassCourseId] = useState<string | null>(null);
   const [classForm, setClassForm] = useState({
     title: "",
@@ -60,27 +64,43 @@ export default function ProgramsPage() {
     queryFn: churchesService.getSelectable,
   });
   const create = useMutation({
-    mutationFn: () =>
-      discipleshipService.createCourse({
+    mutationFn: async () => {
+      let uploadedUrl: string | undefined;
+      let materialKind = form.materialKind;
+      let materialTitle = form.materialTitle;
+      try {
+        if (materialFile) {
+          const uploaded = await uploadService.uploadDiscipleshipFile(materialFile);
+          uploadedUrl = uploaded.url;
+          materialTitle = materialTitle || uploaded.name;
+          materialKind = uploaded.mimeType.startsWith("video/") ? "video" : uploaded.mimeType.startsWith("audio/") ? "audio" : "document";
+        }
+        return await discipleshipService.createCourse({
         churchId: form.churchId,
         title: form.title,
         description: form.description || undefined,
         status: form.status,
         materials:
-          form.materialTitle && form.materialUrl
+          materialTitle && (uploadedUrl || form.materialUrl)
             ? [
                 {
-                  title: form.materialTitle,
-                  kind: form.materialKind,
-                  url: form.materialUrl,
-                  downloadable: form.materialKind === "document",
+                  title: materialTitle,
+                  kind: materialKind,
+                  url: uploadedUrl || form.materialUrl,
+                  downloadable: materialKind === "document",
                 },
               ]
             : [],
-      }),
+        });
+      } catch (error) {
+        if (uploadedUrl) await uploadService.deleteFile(uploadedUrl).catch(() => undefined);
+        throw error;
+      }
+    },
     onSuccess: () => {
       toast.success("Course created");
       setOpen(false);
+      setMaterialFile(null);
       qc.invalidateQueries({ queryKey: ["discipleship-courses"] });
     },
     onError: (error: any) =>
@@ -116,6 +136,12 @@ export default function ProgramsPage() {
     onError: (error: any) =>
       toast.error(error.response?.data?.message || "Could not schedule class"),
   });
+  const now = Date.now(); const sevenDays = now + 7 * 86400000;
+  const allClasses = courses.flatMap((course) => course.classes);
+  const upcomingClasses = allClasses.filter((item: any) => new Date(item.startsAt).getTime() >= now && ['scheduled', 'active'].includes(item.status));
+  const sessionsThisWeek = allClasses.flatMap((item: any) => item.sessions).filter((item: any) => { const time = new Date(item.startsAt).getTime(); return time >= now && time <= sevenDays; }).length;
+  const enrollmentCount = allClasses.reduce((sum: number, item: any) => sum + (item._count?.enrollments || 0), 0);
+  const materialCount = courses.reduce((sum, course) => sum + course.materials.length, 0);
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -131,40 +157,12 @@ export default function ProgramsPage() {
           New course
         </Button>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="p-5">
-            <BookOpen className="mb-2 h-5 w-5 text-primary" />
-            <p className="text-2xl font-semibold">{courses.length}</p>
-            <p className="text-xs text-muted-foreground">Courses</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <CalendarDays className="mb-2 h-5 w-5 text-primary" />
-            <p className="text-2xl font-semibold">
-              {courses.reduce((n, c) => n + c.classes.length, 0)}
-            </p>
-            <p className="text-xs text-muted-foreground">Classes</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <Users className="mb-2 h-5 w-5 text-primary" />
-            <p className="text-2xl font-semibold">
-              {courses.reduce(
-                (n, c) =>
-                  n +
-                  c.classes.reduce(
-                    (x: any, k: any) => x + (k._count?.enrollments || 0),
-                    0,
-                  ),
-                0,
-              )}
-            </p>
-            <p className="text-xs text-muted-foreground">Enrollments</p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <ProgramMetric icon={BookOpen} value={courses.filter(course => course.status === 'published').length} label="Published courses" note={`${courses.filter(course => course.status === 'draft').length} drafts`} />
+        <ProgramMetric icon={CalendarDays} value={upcomingClasses.length} label="Upcoming classes" note={`${allClasses.length} classes in total`} />
+        <ProgramMetric icon={Clock3} value={sessionsThisWeek} label="Sessions this week" note="Scheduled in the next 7 days" />
+        <ProgramMetric icon={Users} value={enrollmentCount} label="Enrollments" note="Across all current classes" />
+        <ProgramMetric icon={LibraryBig} value={materialCount} label="Learning materials" note="Documents, audio and video" />
       </div>
       {isLoading ? (
         <p className="text-muted-foreground">Loading courses…</p>
@@ -296,17 +294,32 @@ export default function ProgramsPage() {
               <p className="text-sm font-medium">
                 First curriculum item (optional)
               </p>
+              <p className="text-xs text-muted-foreground">
+                Upload the actual file to ICIMS or provide an external link.
+              </p>
               <Input
-                placeholder="Material title"
+                placeholder="Material title (defaults to file name)"
                 value={form.materialTitle}
                 onChange={(e) =>
                   setForm({ ...form, materialTitle: e.target.value })
                 }
               />
+              <div className="grid gap-2">
+                <Label htmlFor="curriculum-file">Document, audio or video file</Label>
+                <Input
+                  id="curriculum-file"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/*,audio/*,video/mp4,video/webm,video/quicktime"
+                  onChange={(event) => setMaterialFile(event.target.files?.[0] || null)}
+                />
+                {materialFile && <p className="text-xs text-muted-foreground">{materialFile.name} · {(materialFile.size / 1024 / 1024).toFixed(1)} MB</p>}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or use an external link<span className="h-px flex-1 bg-border" /></div>
               <div className="grid grid-cols-3 gap-2">
                 <Select
                   value={form.materialKind}
                   onValueChange={(v) => setForm({ ...form, materialKind: v })}
+                  disabled={!!materialFile}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -320,6 +333,7 @@ export default function ProgramsPage() {
                 </Select>
                 <Input
                   className="col-span-2"
+                  disabled={!!materialFile}
                   placeholder="https://…"
                   value={form.materialUrl}
                   onChange={(e) =>
@@ -333,7 +347,7 @@ export default function ProgramsPage() {
               disabled={!form.churchId || !form.title || create.isPending}
               onClick={() => create.mutate()}
             >
-              {create.isPending ? "Creating…" : "Create course"}
+              {create.isPending ? (materialFile ? "Uploading and creating…" : "Creating…") : "Create course"}
             </Button>
           </div>
         </DialogContent>
@@ -405,4 +419,8 @@ export default function ProgramsPage() {
       </Dialog>
     </div>
   );
+}
+
+function ProgramMetric({ icon: Icon, value, label, note }: any) {
+  return <Card><CardContent className="flex items-start gap-3 p-5"><div className="rounded-md bg-primary/10 p-2.5"><Icon className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-semibold tabular-nums">{value}</p><p className="text-xs font-medium">{label}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div></CardContent></Card>;
 }

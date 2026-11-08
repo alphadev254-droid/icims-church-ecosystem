@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpenCheck, ChevronRight, Plus, Search, Users } from 'lucide-react';
+import { Activity, BookOpenCheck, CheckCircle2, ChevronRight, PauseCircle, Plus, Search, TrendingUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { discipleshipService } from '@/services/discipleship';
 import { churchesService } from '@/services/churches';
@@ -61,8 +61,7 @@ export default function JourneysPage() {
   });
 
   const journeys = journeysResponse?.data ?? [];
-  const activeCount = journeys.filter(item => item.status === 'active').length;
-  const completedCount = journeys.filter(item => item.status === 'completed').length;
+  const summary = journeysResponse?.summary;
 
   return (
     <div className="space-y-6">
@@ -75,10 +74,12 @@ export default function JourneysPage() {
         {canCreateJourney && <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />New candidate</Button>}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card><CardContent className="flex items-center gap-3 p-5"><div className="rounded-md bg-primary/10 p-2.5"><Users className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-semibold tabular-nums">{journeysResponse?.pagination.total ?? 0}</p><p className="text-xs text-muted-foreground">Total journeys</p></div></CardContent></Card>
-        <Card><CardContent className="flex items-center gap-3 p-5"><div className="rounded-md bg-success/10 p-2.5"><BookOpenCheck className="h-5 w-5 text-success" /></div><div><p className="text-2xl font-semibold tabular-nums">{activeCount}</p><p className="text-xs text-muted-foreground">Active on this page</p></div></CardContent></Card>
-        <Card><CardContent className="flex items-center gap-3 p-5"><div className="rounded-md bg-info/10 p-2.5"><BookOpenCheck className="h-5 w-5 text-info" /></div><div><p className="text-2xl font-semibold tabular-nums">{completedCount}</p><p className="text-xs text-muted-foreground">Completed on this page</p></div></CardContent></Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <SummaryCard icon={Users} value={summary?.total ?? 0} label="All candidates" note="Across your accessible churches" />
+        <SummaryCard icon={Activity} value={summary?.active ?? 0} label="Active journeys" note="Currently progressing" />
+        <SummaryCard icon={CheckCircle2} value={summary?.completed ?? 0} label="Completed" note="Graduated candidates" />
+        <SummaryCard icon={PauseCircle} value={summary?.paused ?? 0} label="Needs attention" note={`${summary?.paused ?? 0} paused · ${summary?.withdrawn ?? 0} withdrawn`} />
+        <SummaryCard icon={TrendingUp} value={`${summary?.averageActiveProgress ?? 0}%`} label="Average progress" note="Across active journeys" />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -118,4 +119,8 @@ export default function JourneysPage() {
       </Dialog>
     </div>
   );
+}
+
+function SummaryCard({ icon: Icon, value, label, note }: any) {
+  return <Card><CardContent className="flex items-start gap-3 p-5"><div className="rounded-md bg-primary/10 p-2.5"><Icon className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-semibold tabular-nums">{value}</p><p className="text-xs font-medium">{label}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div></CardContent></Card>;
 }

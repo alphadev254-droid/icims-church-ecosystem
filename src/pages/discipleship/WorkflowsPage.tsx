@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Pencil, Plus, Route, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Church, Layers3, ListChecks, Pencil, Plus, Route, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   discipleshipService,
@@ -159,6 +159,10 @@ export default function WorkflowsPage() {
     (item) => item.status === "published",
   ).length;
   const draftCount = workflows.filter((item) => item.status === "draft").length;
+  const publishedWorkflows = workflows.filter((item) => item.status === "published");
+  const stageCount = publishedWorkflows.reduce((sum, item) => sum + item.stages.length, 0);
+  const requirementCount = publishedWorkflows.reduce((sum, item) => sum + item.stages.reduce((stageSum, stage) => stageSum + stage.requirements.length, 0), 0);
+  const defaultChurches = new Set(publishedWorkflows.filter((item) => item.isDefault).map((item) => item.churchId)).size;
 
   return (
     <div className="space-y-6">
@@ -178,34 +182,12 @@ export default function WorkflowsPage() {
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-5">
-            <div className="rounded-md bg-primary/10 p-2.5">
-              <Route className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold tabular-nums">
-                {workflows.length}
-              </p>
-              <p className="text-xs text-muted-foreground">Total workflows</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-2xl font-semibold tabular-nums">
-              {publishedCount}
-            </p>
-            <p className="text-xs text-muted-foreground">Published</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-2xl font-semibold tabular-nums">{draftCount}</p>
-            <p className="text-xs text-muted-foreground">Drafts</p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <WorkflowMetric icon={Route} value={publishedCount} label="Published pathways" note={`${draftCount} drafts awaiting publication`} />
+        <WorkflowMetric icon={Layers3} value={stageCount} label="Active stages" note="Across published pathways" />
+        <WorkflowMetric icon={ListChecks} value={requirementCount} label="Requirements" note="Completion checks configured" />
+        <WorkflowMetric icon={Church} value={defaultChurches} label="Churches covered" note="With a default pathway" />
+        <WorkflowMetric icon={Route} value={workflows.length} label="All versions" note="Includes archived history" />
       </div>
 
       {isLoading ? (
@@ -509,4 +491,8 @@ export default function WorkflowsPage() {
       </Dialog>
     </div>
   );
+}
+
+function WorkflowMetric({ icon: Icon, value, label, note }: any) {
+  return <Card><CardContent className="flex items-start gap-3 p-5"><div className="rounded-md bg-primary/10 p-2.5"><Icon className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-semibold tabular-nums">{value}</p><p className="text-xs font-medium">{label}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div></CardContent></Card>;
 }

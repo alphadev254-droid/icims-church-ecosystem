@@ -198,6 +198,7 @@ export const discipleshipService = {
       total: number;
       totalPages: number;
     };
+    summary: { total: number; active: number; paused: number; completed: number; withdrawn: number; averageActiveProgress: number };
   }> => {
     const { data } = await apiClient.get("/discipleship/journeys", { params });
     return data;
