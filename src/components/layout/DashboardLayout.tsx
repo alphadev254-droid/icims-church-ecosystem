@@ -56,6 +56,10 @@ export default function DashboardLayout() {
     '/dashboard/attendance': 'Check-in',
     '/dashboard/services': 'Services',
     '/dashboard/resource-booking': 'Asset and Facility Booking',
+    '/dashboard/discipleship/journeys': 'Discipleship Journeys',
+    '/dashboard/discipleship/workflows': 'Discipleship Workflows',
+    '/dashboard/discipleship/programs': 'Discipleship Courses & Classes',
+    '/dashboard/discipleship/reports': 'Discipleship Reports',
   };
 
   const currentPageTitle = pageTitles[location.pathname] || (location.pathname === '/dashboard'
@@ -111,6 +115,11 @@ export default function DashboardLayout() {
         {navItems.map(item => {
           const showUserSubnav = item.to === '/dashboard/users' && user?.permissions?.includes('registration_requests:read');
           const usersSectionActive = location.pathname === '/dashboard/users' || location.pathname.startsWith('/dashboard/users/');
+          const showDiscipleshipSubnav = item.to === '/dashboard/discipleship';
+          const discipleshipSectionActive = location.pathname === '/dashboard/discipleship' || location.pathname.startsWith('/dashboard/discipleship/');
+          const canReadDiscipleshipWorkflows = user?.permissions?.includes('discipleship_workflows:read');
+          const canReadDiscipleshipCourses = user?.permissions?.includes('discipleship_courses:read');
+          const canReadDiscipleshipReports = user?.permissions?.includes('discipleship_reports:read');
 
           return (
             <div key={item.to}>
@@ -156,6 +165,36 @@ export default function DashboardLayout() {
                   >
                     Registration Requests
                   </Link>
+                </div>
+              )}
+              {!collapsed && showDiscipleshipSubnav && discipleshipSectionActive && (
+                <div className="ml-7 mt-1 space-y-1 border-l border-sidebar-border pl-2">
+                  <Link
+                    to="/dashboard/discipleship/journeys"
+                    onClick={() => setSidebarOpen(false)}
+                    className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${
+                      location.pathname.startsWith('/dashboard/discipleship/journeys')
+                        ? 'bg-sidebar-accent text-sidebar-primary'
+                        : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    }`}
+                  >
+                    Journeys
+                  </Link>
+                  {canReadDiscipleshipWorkflows && (
+                    <Link
+                      to="/dashboard/discipleship/workflows"
+                      onClick={() => setSidebarOpen(false)}
+                      className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${
+                        location.pathname === '/dashboard/discipleship/workflows'
+                          ? 'bg-sidebar-accent text-sidebar-primary'
+                          : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                      }`}
+                    >
+                      Workflows
+                    </Link>
+                  )}
+                  {canReadDiscipleshipCourses && <Link to="/dashboard/discipleship/programs" onClick={() => setSidebarOpen(false)} className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${location.pathname === '/dashboard/discipleship/programs' ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`}>Courses & classes</Link>}
+                  {canReadDiscipleshipReports && <Link to="/dashboard/discipleship/reports" onClick={() => setSidebarOpen(false)} className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${location.pathname === '/dashboard/discipleship/reports' ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`}>Reports</Link>}
                 </div>
               )}
             </div>
