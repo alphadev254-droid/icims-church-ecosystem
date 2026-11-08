@@ -105,7 +105,8 @@ export const discipleshipService = {
     return data.data;
   },
   createWorkflow: async (payload: {
-    churchId: string;
+    churchId?: string;
+    churchIds?: string[];
     name: string;
     description?: string;
     isDefault?: boolean;

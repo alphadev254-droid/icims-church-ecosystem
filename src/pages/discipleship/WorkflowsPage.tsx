@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChurchMultiSelect } from "@/components/ChurchMultiSelect";
 
 type WorkflowStageForm = {
   name: string;
@@ -47,7 +48,7 @@ const emptyStage = (): WorkflowStageForm => ({
   requirements: [{ name: "", type: "checklist", isRequired: true }],
 });
 const emptyWorkflow = () => ({
-  churchId: "",
+  churchIds: [] as string[],
   name: "",
   description: "",
   isDefault: false,
@@ -91,6 +92,7 @@ export default function WorkflowsPage() {
       editingId
         ? discipleshipService.updateWorkflow(editingId, {
             ...form,
+            churchId: form.churchIds[0],
             stages: form.stages.map((stage) => ({
               ...stage,
               requirements: stage.requirements.filter((item) =>
@@ -123,7 +125,7 @@ export default function WorkflowsPage() {
   const editWorkflow = (workflow: (typeof workflows)[number]) => {
     setEditingId(workflow.id);
     setForm({
-      churchId: workflow.churchId,
+      churchIds: [workflow.churchId],
       name: workflow.name,
       description: workflow.description || "",
       isDefault: workflow.isDefault,
@@ -285,26 +287,16 @@ export default function WorkflowsPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="rounded-md border bg-muted/40 p-3 text-sm"><p className="font-medium">How a workflow works</p><p className="mt-1 text-muted-foreground">Candidates move through stages in order. Required items block advancement; optional items can remain incomplete without stopping the journey.</p></div>
-            <div className="grid gap-2">
-              <Label>Church</Label>
-              <Select
-                value={form.churchId}
-                onValueChange={(value) =>
-                  setForm((current) => ({ ...current, churchId: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select church" />
-                </SelectTrigger>
-                <SelectContent>
-                  {churches.map((church) => (
-                    <SelectItem key={church.id} value={church.id}>
-                      {church.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <ChurchMultiSelect
+              value={form.churchIds}
+              onValueChange={(churchIds) => setForm((current) => ({ ...current, churchIds }))}
+              disabled={!!editingId}
+              label={editingId ? "Church" : "Churches"}
+              placeholder="Select one or more churches"
+              helpText={editingId
+                ? "A published workflow version remains assigned to its original church."
+                : "A separate, independently editable workflow will be created for every selected church."}
+            />
             <div className="grid gap-2">
               <Label>Name</Label>
               <Input
@@ -443,9 +435,9 @@ export default function WorkflowsPage() {
                       <div className="flex items-start gap-2 sm:col-span-3"><Checkbox id={`required-${stageIndex}-${requirementIndex}`} checked={requirement.isRequired} onCheckedChange={(checked) => updateRequirement(stageIndex, requirementIndex, { isRequired: checked === true })} /><div><Label htmlFor={`required-${stageIndex}-${requirementIndex}`}>Required before moving to the next stage</Label><p className="mt-1 text-xs text-muted-foreground">{requirementHelp[requirement.type]}</p></div></div>
                       {requirement.type === "course" && (
                         <div className="grid gap-2 sm:col-span-3 sm:grid-cols-2">
-                          <div className="grid gap-1.5"><Label>Linked course</Label><Select value={requirement.courseId} onValueChange={(value) => updateRequirement(stageIndex, requirementIndex, { courseId: value, classId: undefined })}><SelectTrigger><SelectValue placeholder="Select published course" /></SelectTrigger><SelectContent>{courses.filter(course => !form.churchId || course.churchId === form.churchId).map(course => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}</SelectContent></Select></div>
+                          <div className="grid gap-1.5"><Label>Linked course</Label><Select value={requirement.courseId} disabled={form.churchIds.length !== 1} onValueChange={(value) => updateRequirement(stageIndex, requirementIndex, { courseId: value, classId: undefined })}><SelectTrigger><SelectValue placeholder={form.churchIds.length === 1 ? "Select published course" : "Select exactly one church first"} /></SelectTrigger><SelectContent>{courses.filter(course => course.churchId === form.churchIds[0]).map(course => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}</SelectContent></Select></div>
                           <div className="grid gap-1.5"><Label>Specific class (optional)</Label><Select value={requirement.classId || "any"} disabled={!requirement.courseId} onValueChange={(value) => updateRequirement(stageIndex, requirementIndex, { classId: value === "any" ? undefined : value })}><SelectTrigger><SelectValue placeholder="Any class in this course" /></SelectTrigger><SelectContent><SelectItem value="any">Any current or future class</SelectItem>{courses.find(course => course.id === requirement.courseId)?.classes.filter((item: any) => item.status !== "cancelled").map((item: any) => <SelectItem key={item.id} value={item.id}>{item.title} · {new Date(item.startsAt).toLocaleDateString()}</SelectItem>)}</SelectContent></Select></div>
-                          <p className="text-xs text-muted-foreground sm:col-span-2">Selecting a class assigns this exact cohort. Leaving it as “Any class” allows enrollment into an appropriate class later.</p>
+                          <p className="text-xs text-muted-foreground sm:col-span-2">Course and class links belong to one church, so a course requirement can only be used when exactly one church is selected. Selecting a class assigns that exact cohort; “Any class” allows enrollment later.</p>
                         </div>
                       )}
                     </div>
@@ -501,10 +493,10 @@ export default function WorkflowsPage() {
             <Button
               className="w-full"
               disabled={
-                !form.churchId ||
+                form.churchIds.length === 0 ||
                 !form.name ||
                 form.stages.some((stage) => !stage.name) ||
-                form.stages.some((stage) => stage.requirements.some((requirement) => requirement.type === "course" && !requirement.courseId)) ||
+                form.stages.some((stage) => stage.requirements.some((requirement) => requirement.type === "course" && (!requirement.courseId || form.churchIds.length !== 1))) ||
                 saveWorkflow.isPending
               }
               onClick={() => saveWorkflow.mutate()}

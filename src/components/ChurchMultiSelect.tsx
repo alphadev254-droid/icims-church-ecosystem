@@ -22,6 +22,8 @@ interface ChurchMultiSelectProps {
   required?: boolean;
   label?: string;
   placeholder?: string;
+  disabled?: boolean;
+  helpText?: string;
 }
 
 export function ChurchMultiSelect({
@@ -30,6 +32,8 @@ export function ChurchMultiSelect({
   required = true,
   label = 'Churches',
   placeholder = 'Select churches',
+  disabled = false,
+  helpText = 'Members in every selected church will receive this post.',
 }: ChurchMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const { data: churches = [], isLoading } = useQuery({
@@ -58,7 +62,7 @@ export function ChurchMultiSelect({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            disabled={isLoading}
+            disabled={isLoading || disabled}
             className="h-auto min-h-10 w-full justify-between px-3 py-2 font-normal"
           >
             <span className={cn('truncate', value.length === 0 && 'text-muted-foreground')}>
@@ -103,6 +107,7 @@ export function ChurchMultiSelect({
               <button
                 type="button"
                 onClick={() => toggleChurch(church.id)}
+                disabled={disabled}
                 className="rounded-sm p-0.5 hover:bg-background/70"
                 aria-label={`Remove ${church.name}`}
               >
@@ -112,9 +117,7 @@ export function ChurchMultiSelect({
           ))}
         </div>
       )}
-      <p className="text-xs text-muted-foreground">
-        Members in every selected church will receive this post.
-      </p>
+      {helpText && <p className="text-xs text-muted-foreground">{helpText}</p>}
     </div>
   );
 }
