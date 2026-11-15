@@ -131,10 +131,16 @@ export interface DiscipleshipClassRoster extends DiscipleshipClass {
 }
 
 export interface DiscipleshipReport {
-  totals: Record<string, number> & { intake: number; active: number; completed: number; withdrawn: number; completionRate: number; dropoutRate: number; averageCompletionDays: number; attendanceRate: number; unassignedMentors: number; overdueFollowUps: number; upcomingSessions: number; pendingPlacements: number };
+  range: { from: string; to: string; mode: "cohort" | "activity" };
+  totals: Record<string, number> & { inScope: number; intake: number; active: number; completed: number; withdrawn: number; completionRate: number; dropoutRate: number; averageCompletionDays: number; attendanceRate: number; unassignedMentors: number; overdueFollowUps: number; upcomingSessions: number; pendingPlacements: number };
   intakeTrend: Array<{ period: string; count: number }>;
   candidatesByStage: Array<{ stage: string; count: number }>;
   dropoutsByStage: Array<{ stage: string; count: number }>;
+  timeToMilestone: Array<{ milestone: string; completed: number; averageDays: number; medianDays: number }>;
+  byRegion: Array<{ region: string; count: number }>;
+  byWorkflow: Array<{ workflow: string; count: number }>;
+  bySource: Array<{ source: string; count: number }>;
+  filterOptions: { regions: string[]; workflows: Array<{ id: string; name: string; church: { id: string; name: string } }>; sources: string[] };
 }
 
 export interface DiscipleshipCourse {
@@ -335,6 +341,10 @@ export const discipleshipService = {
   },
   getReport: async (params?: {
     churchId?: string;
+    region?: string;
+    workflowId?: string;
+    sourceType?: string;
+    mode?: "cohort" | "activity";
     from?: string;
     to?: string;
   }): Promise<DiscipleshipReport> => {

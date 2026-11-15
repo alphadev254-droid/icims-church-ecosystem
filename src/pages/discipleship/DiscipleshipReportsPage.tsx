@@ -22,11 +22,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExportImportButtons } from "@/components/ExportImportButtons";
 
-type ReportType = "overview" | "intake" | "stages" | "dropouts" | "outcomes";
+type ReportType = "overview" | "intake" | "stages" | "dropouts" | "milestones" | "regions" | "workflows" | "sources" | "outcomes";
 type ReportRow = Record<string, string | number>;
 type GeneratedReport = { title: string; headers: Array<{ label: string; key: string }>; rows: ReportRow[] };
 
-const initialConfig = { churchId: "all", from: "", to: "", reportType: "overview" as ReportType };
+const initialConfig = { mode: "cohort" as "cohort" | "activity", region: "all", churchId: "all", workflowId: "all", sourceType: "all", from: "", to: "", reportType: "overview" as ReportType };
 
 export default function DiscipleshipReportsPage() {
   const [config, setConfig] = useState(initialConfig);
@@ -36,10 +36,14 @@ export default function DiscipleshipReportsPage() {
     queryFn: churchesService.getSelectable,
   });
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["discipleship-report", applied.churchId, applied.from, applied.to],
+    queryKey: ["discipleship-report", applied.mode, applied.region, applied.churchId, applied.workflowId, applied.sourceType, applied.from, applied.to],
     queryFn: () =>
       discipleshipService.getReport({
         churchId: applied.churchId === "all" ? undefined : applied.churchId,
+        region: applied.region === "all" ? undefined : applied.region,
+        workflowId: applied.workflowId === "all" ? undefined : applied.workflowId,
+        sourceType: applied.sourceType === "all" ? undefined : applied.sourceType,
+        mode: applied.mode,
         from: applied.from || undefined,
         to: applied.to || undefined,
       }),
@@ -61,6 +65,26 @@ export default function DiscipleshipReportsPage() {
       title: "Discipleship dropout points",
       headers: [{ label: "Stage at withdrawal", key: "stage" }, { label: "Withdrawn candidates", key: "count" }],
       rows: data.dropoutsByStage,
+    };
+    if (applied.reportType === "milestones") return {
+      title: "Time to discipleship milestones",
+      headers: [{ label: "Milestone", key: "milestone" }, { label: "Completed", key: "completed" }, { label: "Average days", key: "averageDays" }, { label: "Median days", key: "medianDays" }],
+      rows: data.timeToMilestone,
+    };
+    if (applied.reportType === "regions") return {
+      title: "Discipleship journeys by region",
+      headers: [{ label: "Region", key: "region" }, { label: "Journeys", key: "count" }],
+      rows: data.byRegion,
+    };
+    if (applied.reportType === "workflows") return {
+      title: "Discipleship journeys by workflow",
+      headers: [{ label: "Workflow", key: "workflow" }, { label: "Journeys", key: "count" }],
+      rows: data.byWorkflow,
+    };
+    if (applied.reportType === "sources") return {
+      title: "Discipleship journeys by intake source",
+      headers: [{ label: "Intake source", key: "source" }, { label: "Journeys", key: "count" }],
+      rows: data.bySource.map(item => ({ ...item, source: item.source.replaceAll("_", " ") })),
     };
     if (applied.reportType === "outcomes") return {
       title: "Discipleship outcomes and follow-up",
@@ -92,6 +116,9 @@ export default function DiscipleshipReportsPage() {
     };
   }, [data, applied.reportType]);
 
+  const visibleChurches = useMemo(() => churches.filter(church => config.region === "all" || church.region === config.region), [churches, config.region]);
+  const visibleWorkflows = useMemo(() => (data?.filterOptions.workflows || []).filter(workflow => config.churchId === "all" || workflow.church.id === config.churchId), [data?.filterOptions.workflows, config.churchId]);
+
   const generate = () => {
     if (JSON.stringify(config) === JSON.stringify(applied)) void refetch();
     else setApplied({ ...config });
@@ -112,7 +139,7 @@ export default function DiscipleshipReportsPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric icon={Users} label="People entered" value={data.totals.intake} note={`${data.totals.active} currently active`} />
+            <Metric icon={Users} label={applied.mode === "cohort" ? "People entered" : "Journeys with activity"} value={applied.mode === "cohort" ? data.totals.intake : data.totals.inScope} note={applied.mode === "cohort" ? `${data.totals.active} currently active` : `${data.totals.intake} new journeys in the period`} />
             <Metric
               icon={UserCheck}
               label="Completion rate"
@@ -187,6 +214,10 @@ export default function DiscipleshipReportsPage() {
               </CardContent>
             </Card>
           </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card><CardContent className="p-5"><h2 className="mb-4 font-semibold">Time to milestone</h2>{data.timeToMilestone.length ? data.timeToMilestone.slice(0, 8).map(item => <div key={item.milestone} className="grid grid-cols-[1fr_auto] gap-3 border-b py-3 text-sm"><div><p className="font-medium">{item.milestone}</p><p className="text-xs text-muted-foreground">{item.completed} completed · median {item.medianDays} days</p></div><b className="tabular-nums">{item.averageDays} days avg.</b></div>) : <p className="text-sm text-muted-foreground">No milestone completions in this scope.</p>}</CardContent></Card>
+            <Card><CardContent className="p-5"><h2 className="mb-4 font-semibold">Regional distribution</h2>{data.byRegion.length ? data.byRegion.map(item => <div key={item.region} className="flex justify-between border-b py-3 text-sm"><span>{item.region}</span><b>{item.count}</b></div>) : <p className="text-sm text-muted-foreground">No regional data in this scope.</p>}</CardContent></Card>
+          </div>
 
           <Card className="print:hidden">
             <CardContent className="space-y-5 p-5">
@@ -198,8 +229,12 @@ export default function DiscipleshipReportsPage() {
                 <p className="mt-1 text-sm text-muted-foreground">Configure the scope and output, then generate a report separate from the live summary above.</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="space-y-2"><Label>Report</Label><Select value={config.reportType} onValueChange={(reportType: ReportType) => setConfig(current => ({ ...current, reportType }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="overview">Performance overview</SelectItem><SelectItem value="intake">Intake trend</SelectItem><SelectItem value="stages">Candidates by stage</SelectItem><SelectItem value="dropouts">Dropout points</SelectItem><SelectItem value="outcomes">Outcomes and follow-up</SelectItem></SelectContent></Select></div>
-                <div className="space-y-2"><Label>Church</Label><Select value={config.churchId} onValueChange={(churchId) => setConfig(current => ({ ...current, churchId }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All accessible churches</SelectItem>{churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Report</Label><Select value={config.reportType} onValueChange={(reportType: ReportType) => setConfig(current => ({ ...current, reportType }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="overview">Performance overview</SelectItem><SelectItem value="intake">Intake trend</SelectItem><SelectItem value="stages">Candidates by stage</SelectItem><SelectItem value="dropouts">Dropout points</SelectItem><SelectItem value="milestones">Time to milestone</SelectItem><SelectItem value="regions">Journeys by region</SelectItem><SelectItem value="workflows">Journeys by workflow</SelectItem><SelectItem value="sources">Journeys by source</SelectItem><SelectItem value="outcomes">Outcomes and follow-up</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2"><Label>Date basis</Label><Select value={config.mode} onValueChange={(mode: "cohort" | "activity") => setConfig(current => ({ ...current, mode }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cohort">Cohort started in period</SelectItem><SelectItem value="activity">Any activity in period</SelectItem></SelectContent></Select><p className="text-xs text-muted-foreground">{config.mode === "cohort" ? "Tracks the eventual outcomes of people who started during the dates." : "Includes journeys with starts, updates, attendance, milestones or status changes during the dates."}</p></div>
+                <div className="space-y-2"><Label>Region</Label><Select value={config.region} onValueChange={(region) => setConfig(current => ({ ...current, region, churchId: "all", workflowId: "all" }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All accessible regions</SelectItem>{data.filterOptions.regions.map(region => <SelectItem key={region} value={region}>{region}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Church</Label><Select value={config.churchId} onValueChange={(churchId) => setConfig(current => ({ ...current, churchId, workflowId: "all" }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All accessible churches</SelectItem>{visibleChurches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Workflow</Label><Select value={config.workflowId} onValueChange={(workflowId) => setConfig(current => ({ ...current, workflowId }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All workflows</SelectItem>{visibleWorkflows.map(workflow => <SelectItem key={workflow.id} value={workflow.id}>{workflow.name} · {workflow.church.name}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Intake source</Label><Select value={config.sourceType} onValueChange={(sourceType) => setConfig(current => ({ ...current, sourceType }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All intake sources</SelectItem>{data.filterOptions.sources.map(source => <SelectItem key={source} value={source}>{source.replaceAll("_", " ")}</SelectItem>)}</SelectContent></Select></div>
                 <div className="space-y-2"><Label>From</Label><Input type="date" value={config.from} onChange={(event) => setConfig(current => ({ ...current, from: event.target.value }))} /></div>
                 <div className="space-y-2"><Label>To</Label><Input type="date" min={config.from || undefined} value={config.to} onChange={(event) => setConfig(current => ({ ...current, to: event.target.value }))} /></div>
               </div>
@@ -213,8 +248,8 @@ export default function DiscipleshipReportsPage() {
           <Card>
             <CardContent className="p-5">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div><h2 className="font-semibold">{generatedReport.title}</h2><p className="text-xs text-muted-foreground">{applied.churchId === "all" ? "All accessible churches" : churches.find(church => church.id === applied.churchId)?.name || "Selected church"} · {applied.from || "Last 90 days"} to {applied.to || "today"}</p></div>
-                <ExportImportButtons data={generatedReport.rows} filename={`discipleship-${applied.reportType}-report`} headers={generatedReport.headers} pdfTitle={generatedReport.title} summary={[{ label: "Church scope", value: applied.churchId === "all" ? "All accessible churches" : churches.find(church => church.id === applied.churchId)?.name || "Selected church" }, { label: "From", value: applied.from || "Last 90 days" }, { label: "To", value: applied.to || "Today" }]} />
+                <div><h2 className="font-semibold">{generatedReport.title}</h2><p className="text-xs text-muted-foreground">{applied.mode === "cohort" ? "Cohort" : "Activity"} · {applied.region === "all" ? "All accessible regions" : applied.region} · {applied.churchId === "all" ? "All accessible churches" : churches.find(church => church.id === applied.churchId)?.name || "Selected church"} · {applied.from || "Last 90 days"} to {applied.to || "today"}</p></div>
+                <ExportImportButtons data={generatedReport.rows} filename={`discipleship-${applied.reportType}-report`} headers={generatedReport.headers} pdfTitle={generatedReport.title} summary={[{ label: "Date basis", value: applied.mode === "cohort" ? "Cohort started in period" : "Any activity in period" }, { label: "Region", value: applied.region === "all" ? "All accessible regions" : applied.region }, { label: "Church scope", value: applied.churchId === "all" ? "All accessible churches" : churches.find(church => church.id === applied.churchId)?.name || "Selected church" }, { label: "From", value: applied.from || "Last 90 days" }, { label: "To", value: applied.to || "Today" }]} />
               </div>
               <div className="overflow-x-auto rounded-md border"><table className="w-full text-sm"><thead className="bg-muted/60"><tr>{generatedReport.headers.map(header => <th key={header.key} className="px-4 py-3 text-left font-medium">{header.label}</th>)}</tr></thead><tbody>{generatedReport.rows.map((row, index) => <tr key={`${index}-${Object.values(row).join("-")}`} className="border-t">{generatedReport.headers.map(header => <td key={header.key} className="px-4 py-3">{String(row[header.key] ?? "—")}</td>)}</tr>)}{generatedReport.rows.length === 0 && <tr><td colSpan={Math.max(1, generatedReport.headers.length)} className="px-4 py-8 text-center text-muted-foreground">No records matched this report configuration.</td></tr>}</tbody></table></div>
             </CardContent>
