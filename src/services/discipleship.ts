@@ -15,6 +15,7 @@ export interface DiscipleshipRequirement {
   status?: "pending" | "completed" | "waived";
   completedAt?: string | null;
   completionNote?: string | null;
+  assessmentQuestionCount?: number;
 }
 
 export interface DiscipleshipStage {
@@ -53,6 +54,7 @@ export interface JourneyListItem {
     email: string;
     phone?: string | null;
     membershipType?: string;
+    loginEnabled?: boolean;
   };
   church: { id: string; name: string };
   workflow: { id: string; name: string; version: number };
@@ -158,6 +160,30 @@ export interface DiscipleshipRequirementDefinition {
   passScore?: number | null;
   maxScore?: number | null;
   personsInCharge?: Array<{ churchId: string; userId: string }>;
+  _count?: { questions: number };
+}
+
+export type AssessmentQuestionType = "single_choice" | "multiple_choice" | "true_false";
+export interface AssessmentOption { id: string; text: string }
+export interface AssessmentQuestion {
+  id: string;
+  prompt: string;
+  type: AssessmentQuestionType;
+  options: AssessmentOption[];
+  correctAnswerIds?: string[];
+  points: number;
+  explanation?: string | null;
+  position: number;
+}
+export interface AssessmentDefinitionQuestions {
+  definitionId: string;
+  title: string;
+  description?: string | null;
+  passScore: number;
+  maxScore: number;
+  status?: string;
+  attempts?: Array<{ id: string; score: number; passed: boolean; submittedAt: string }>;
+  questions: AssessmentQuestion[];
 }
 
 export interface DiscipleshipIntakeCandidate {
@@ -246,6 +272,14 @@ export const discipleshipService = {
   },
   createRequirementDefinition: async (payload: Record<string, unknown>): Promise<DiscipleshipRequirementDefinition> => {
     const { data } = await apiClient.post("/discipleship/requirement-definitions", payload);
+    return data.data;
+  },
+  getAssessmentQuestions: async (definitionId: string): Promise<AssessmentDefinitionQuestions> => {
+    const { data } = await apiClient.get(`/discipleship/requirement-definitions/${definitionId}/questions`);
+    return data.data;
+  },
+  replaceAssessmentQuestions: async (definitionId: string, questions: Array<Omit<AssessmentQuestion, "id" | "position"> & { correctAnswerIds: string[] }>) => {
+    const { data } = await apiClient.put(`/discipleship/requirement-definitions/${definitionId}/questions`, { questions });
     return data.data;
   },
   assignMentor: async (
@@ -351,6 +385,14 @@ export const discipleshipService = {
     const { data } = await apiClient.get(`/discipleship/journeys/${id}`);
     return data.data;
   },
+  getJourneyAssessment: async (journeyId: string, requirementId: string): Promise<AssessmentDefinitionQuestions> => {
+    const { data } = await apiClient.get(`/discipleship/journeys/${journeyId}/requirements/${requirementId}/assessment`);
+    return data.data;
+  },
+  submitJourneyAssessment: async (journeyId: string, requirementId: string, answers: Array<{ questionId: string; selectedOptionIds: string[] }>): Promise<{ score: number; maxScore: number; passScore: number; passed: boolean; pointsEarned: number; pointsAvailable: number; answers: Array<{ questionId: string; correctAnswerIds: string[]; isCorrect: boolean; explanation?: string | null }>; journeyVersion: number }> => {
+    const { data } = await apiClient.post(`/discipleship/journeys/${journeyId}/requirements/${requirementId}/assessment/submit`, { answers });
+    return data.data;
+  },
   completeRequirement: async (
     journeyId: string,
     requirementId: string,
@@ -372,6 +414,10 @@ export const discipleshipService = {
   },
   updateJourneyStatus: async (journeyId: string, payload: { status: "active" | "paused" | "withdrawn"; reason: string; version: number }) => {
     const { data } = await apiClient.patch(`/discipleship/journeys/${journeyId}/status`, payload);
+    return data.data;
+  },
+  inviteCandidateToPortal: async (journeyId: string): Promise<{ email: string; expiresAt: string }> => {
+    const { data } = await apiClient.post(`/discipleship/journeys/${journeyId}/portal-invitation`);
     return data.data;
   },
   listIntakeCandidates: async (status?: string): Promise<DiscipleshipIntakeCandidate[]> => {

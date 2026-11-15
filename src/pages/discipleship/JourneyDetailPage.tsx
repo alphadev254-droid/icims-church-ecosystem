@@ -9,6 +9,7 @@ import {
   Clock3,
   Mail,
   Phone,
+  Send,
   Route,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -34,13 +35,14 @@ import { Input } from "@/components/ui/input";
 import { CourseEnrollmentDialog, IntegrationPlacementCard, MentorSupportCard } from "@/components/discipleship/JourneyOperations";
 import { JourneyStatusActions } from "@/components/discipleship/JourneyStatusActions";
 import { CandidateClassCheckIn } from "@/components/discipleship/CandidateClassCheckIn";
+import { AssessmentTakingDialog } from "@/components/discipleship/AssessmentTakingDialog";
 import { apiErrorMessage } from "@/lib/api-error";
 
 export default function JourneyDetailPage() {
   const { journeyId } = useParams<{ journeyId: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { hasPermission } = useRole();
+  const { hasPermission, roleName } = useRole();
   const canUpdate = hasPermission("discipleship_journeys:update");
   const canAdvance = hasPermission("discipleship_journeys:advance");
   const canManageMentors = hasPermission("discipleship_mentors:manage");
@@ -55,6 +57,7 @@ export default function JourneyDetailPage() {
   const [milestoneEvidenceUrl, setMilestoneEvidenceUrl] = useState("");
   const [assessmentScore, setAssessmentScore] = useState("");
   const [enrollmentRequirement, setEnrollmentRequirement] = useState<DiscipleshipRequirement | null>(null);
+  const [assessmentRequirement, setAssessmentRequirement] = useState<DiscipleshipRequirement | null>(null);
 
   const {
     data: journey,
@@ -125,6 +128,11 @@ export default function JourneyDetailPage() {
     mutationFn: ({ status, reason }: { status: "active" | "paused" | "withdrawn"; reason: string }) => discipleshipService.updateJourneyStatus(journeyId!, { status, reason, version: journey!.version }),
     onSuccess: result => { toast.success(result.status === "active" ? "Journey resumed" : result.status === "paused" ? "Journey paused" : "Candidate withdrawn"); refresh(); },
     onError: (error: unknown) => { toast.error(apiErrorMessage(error, "Could not change journey status")); if (isAxiosError(error) && error.response?.status === 409) refresh(); },
+  });
+  const inviteCandidate = useMutation({
+    mutationFn: () => discipleshipService.inviteCandidateToPortal(journeyId!),
+    onSuccess: result => toast.success(`Portal invitation sent to ${result.email}`),
+    onError: (error: unknown) => toast.error(apiErrorMessage(error, "Could not send the portal invitation")),
   });
 
   if (isLoading)
@@ -334,7 +342,7 @@ export default function JourneyDetailPage() {
                         {canUpdate &&
                           stage.status === "active" &&
                           requirement.status === "pending" &&
-                          ["checklist", "approval", "milestone", "assessment"].includes(requirement.type) && (
+                          ["checklist", "approval", "milestone"].includes(requirement.type) && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -346,6 +354,9 @@ export default function JourneyDetailPage() {
                               {requirement.type === "approval" ? "Review" : requirement.type === "milestone" ? "Record" : "Complete"}
                             </Button>
                           )}
+                        {canUpdate && stage.status === "active" && requirement.status === "pending" && requirement.type === "assessment" && !requirement.assessmentQuestionCount && <Button size="sm" variant="outline" onClick={() => setSelectedRequirement(requirement)}><Check className="mr-1 h-4 w-4" />Record score</Button>}
+                        {roleName === "discipleship_candidate" && stage.status === "active" && requirement.status === "pending" && requirement.type === "assessment" && (requirement.assessmentQuestionCount || 0) > 0 && <Button size="sm" onClick={() => setAssessmentRequirement(requirement)}>Take assessment</Button>}
+                        {roleName !== "discipleship_candidate" && requirement.type === "assessment" && (requirement.assessmentQuestionCount || 0) > 0 && <Badge variant="secondary">Automatically graded</Badge>}
                         {canManageCourses && stage.status === "active" && requirement.status === "pending" && requirement.type === "course" && (
                           <Button size="sm" variant="outline" onClick={() => setEnrollmentRequirement(requirement)}>Enroll</Button>
                         )}
@@ -438,6 +449,7 @@ export default function JourneyDetailPage() {
                     : "Not invited"}
                 </p>
               </div>
+              {canUpdate && !journey.candidateUser.loginEnabled && <Button size="sm" variant="outline" className="w-full" disabled={inviteCandidate.isPending} onClick={() => inviteCandidate.mutate()}><Send className="mr-2 h-4 w-4" />{inviteCandidate.isPending ? "Sending invitation…" : "Send portal invitation"}</Button>}
             </CardContent>
           </Card>
           {canCheckIn && journey.status === "active" && <CandidateClassCheckIn journeyId={journeyId!} onCheckedIn={refresh} />}
@@ -492,6 +504,7 @@ export default function JourneyDetailPage() {
         </DialogContent>
       </Dialog>
       <CourseEnrollmentDialog journeyId={journeyId!} candidateName={candidateName} requirement={enrollmentRequirement} options={operations} onOpenChange={open => !open && setEnrollmentRequirement(null)} onSaved={refresh} />
+      <AssessmentTakingDialog journeyId={journeyId!} requirement={assessmentRequirement} onOpenChange={open => !open && setAssessmentRequirement(null)} onCompleted={refresh} />
     </div>
   );
 }

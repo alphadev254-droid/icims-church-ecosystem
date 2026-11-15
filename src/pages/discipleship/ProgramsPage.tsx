@@ -9,6 +9,7 @@ import {
   Link2,
   LibraryBig,
   Plus,
+  ListChecks,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -41,6 +42,7 @@ import { usersService } from "@/services/users";
 import { useRole } from "@/hooks/useRole";
 import { ClassRosterDialog } from "@/components/discipleship/ClassRosterDialog";
 import { ScheduleClassDialog } from "@/components/discipleship/ScheduleClassDialog";
+import { AssessmentQuestionEditorDialog } from "@/components/discipleship/AssessmentQuestionEditorDialog";
 
 type CatalogType = "course" | "checklist" | "approval" | "milestone" | "assessment";
 
@@ -53,6 +55,7 @@ export default function ProgramsPage() {
   const [materialFile, setMaterialFile] = useState<File | null>(null);
   const [classCourseId, setClassCourseId] = useState<string | null>(null);
   const [managedClassId, setManagedClassId] = useState<string | null>(null);
+  const [questionDefinition, setQuestionDefinition] = useState<{ id: string; title: string } | null>(null);
   const [form, setForm] = useState({
     churchIds: [] as string[],
     type: "course" as CatalogType,
@@ -129,8 +132,9 @@ export default function ProgramsPage() {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       toast.success(form.type === "course" ? "Course created" : "Requirement created");
+      if (form.type === "assessment") setQuestionDefinition({ id: created.id, title: created.title });
       setOpen(false);
       setMaterialFile(null);
       qc.invalidateQueries({ queryKey: ["discipleship-courses"] });
@@ -170,7 +174,7 @@ export default function ProgramsPage() {
       <div>
         <div className="mb-3"><h2 className="font-semibold">Reusable workflow requirements</h2><p className="text-sm text-muted-foreground">Create these once, assign them to churches, then select them in workflow stages.</p></div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {definitions.map((item) => <Card key={item.id}><CardContent className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.title}</p><p className="mt-1 text-xs text-muted-foreground">{item.description || "No description"}</p></div><Badge variant="secondary">{item.type === "checklist" ? "Manual task" : item.type === "approval" ? "Leader approval" : item.type === "milestone" ? "Dated milestone" : "Assessment"}</Badge></div><p className="mt-3 text-xs text-muted-foreground">Available in {item.churchIds.length} {item.churchIds.length === 1 ? "church" : "churches"}</p></CardContent></Card>)}
+          {definitions.map((item) => <Card key={item.id}><CardContent className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.title}</p><p className="mt-1 text-xs text-muted-foreground">{item.description || "No description"}</p></div><Badge variant="secondary">{item.type === "checklist" ? "Manual task" : item.type === "approval" ? "Leader approval" : item.type === "milestone" ? "Dated milestone" : "Assessment"}</Badge></div><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted-foreground">Available in {item.churchIds.length} {item.churchIds.length === 1 ? "church" : "churches"}{item.type === "assessment" ? ` · ${item._count?.questions || 0} questions` : ""}</p>{item.type === "assessment" && canManageCourses && <Button size="sm" variant="outline" onClick={() => setQuestionDefinition({ id: item.id, title: item.title })}><ListChecks className="mr-1 h-4 w-4" />Manage questions</Button>}</div></CardContent></Card>)}
           {definitions.length === 0 && <p className="text-sm text-muted-foreground">No reusable requirements created yet.</p>}
         </div>
       </div>
@@ -353,6 +357,7 @@ export default function ProgramsPage() {
       </Dialog>
       <ScheduleClassDialog course={courses.find(course => course.id === classCourseId) || null} churches={churches} onOpenChange={open => !open && setClassCourseId(null)} onSaved={() => qc.invalidateQueries({ queryKey: ["discipleship-courses"] })} />
       <ClassRosterDialog classId={managedClassId} canManageAttendance={canManageAttendance} onOpenChange={open => !open && setManagedClassId(null)} />
+      <AssessmentQuestionEditorDialog definition={questionDefinition} onOpenChange={open => !open && setQuestionDefinition(null)} />
     </div>
   );
 }
