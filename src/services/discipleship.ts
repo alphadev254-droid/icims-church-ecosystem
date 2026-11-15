@@ -80,10 +80,59 @@ export interface JourneyDetail extends JourneyListItem {
     createdAt: string;
     actor: { firstName: string; lastName: string };
   }>;
-  mentorAssignment?: any;
-  placement?: any;
-  enrollments?: any[];
-  assessments?: any[];
+  mentorAssignment?: DiscipleshipMentorAssignment | null;
+  placement?: DiscipleshipPlacement | null;
+  enrollments?: DiscipleshipClassEnrollment[];
+  assessments?: Array<{ id: string; score: number; passed: boolean; gradedAt: string; assessment: { id: string; title: string } }>;
+}
+
+export interface DiscipleshipMentorAssignment {
+  id: string;
+  mentorUserId: string;
+  status: string;
+  assignedAt: string;
+  nextFollowUpAt?: string | null;
+  interactions?: Array<{ id: string; occurredAt: string; notes: string; concernFlag: boolean }>;
+}
+
+export interface DiscipleshipPlacement { id: string; teamId?: string | null; cellId?: string | null; status: string; placedAt?: string | null }
+export interface DiscipleshipClassSession { id: string; title: string; startsAt: string; endsAt?: string | null; location?: string | null; checkInCode: string; status: string }
+export interface DiscipleshipSessionAttendance { id: string; sessionId: string; enrollmentId: string; status: string; method: string; checkedInAt?: string | null }
+export interface DiscipleshipClassEnrollment {
+  id: string;
+  journeyId: string;
+  status: string;
+  attendance: DiscipleshipSessionAttendance[];
+  class?: DiscipleshipClass;
+  journey?: { journeyCode: string; candidateUser: { firstName: string; lastName: string; email: string } };
+}
+export interface DiscipleshipClass {
+  id: string;
+  courseId: string;
+  churchId?: string;
+  title: string;
+  startsAt: string;
+  endsAt?: string | null;
+  capacity?: number | null;
+  status: string;
+  reminderMinutes?: number;
+  location?: string | null;
+  course: { id: string; title: string };
+  sessions?: DiscipleshipClassSession[];
+  enrollments?: DiscipleshipClassEnrollment[];
+  _count: { enrollments: number };
+}
+
+export interface DiscipleshipClassRoster extends DiscipleshipClass {
+  sessions: DiscipleshipClassSession[];
+  enrollments: DiscipleshipClassEnrollment[];
+}
+
+export interface DiscipleshipReport {
+  totals: Record<string, number> & { intake: number; active: number; completed: number; withdrawn: number; completionRate: number; dropoutRate: number; averageCompletionDays: number; attendanceRate: number; unassignedMentors: number; overdueFollowUps: number; upcomingSessions: number; pendingPlacements: number };
+  intakeTrend: Array<{ period: string; count: number }>;
+  candidatesByStage: Array<{ stage: string; count: number }>;
+  dropoutsByStage: Array<{ stage: string; count: number }>;
 }
 
 export interface DiscipleshipCourse {
@@ -94,8 +143,8 @@ export interface DiscipleshipCourse {
   description?: string;
   status: string;
   materials: Array<{ id: string; title: string; kind: string; url?: string }>;
-  classes: any[];
-  assessments: any[];
+  classes: DiscipleshipClass[];
+  assessments: Array<{ id: string; title: string; passScore: number; maxScore: number }>;
   personsInCharge?: Array<{ churchId: string; userId: string }>;
 }
 
@@ -109,6 +158,28 @@ export interface DiscipleshipRequirementDefinition {
   passScore?: number | null;
   maxScore?: number | null;
   personsInCharge?: Array<{ churchId: string; userId: string }>;
+}
+
+export interface DiscipleshipIntakeCandidate {
+  id: string;
+  churchId: string;
+  sourceType: "attendance" | "evangelism";
+  sourceRecordId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  status: "pending" | "contacted" | "consented" | "declined" | "converted";
+  promptedAt: string;
+  respondedAt?: string | null;
+  assignedToId?: string | null;
+  notes?: string | null;
+}
+
+export interface JourneyOperationsOptions {
+  mentors: Array<{ id: string; firstName: string; lastName: string; email: string; role?: { name: string; displayName?: string | null } | null }>;
+  teams: Array<{ id: string; name: string }>;
+  cells: Array<{ id: string; name: string }>;
+  classes: Array<{ id: string; courseId: string; title: string; startsAt: string; endsAt?: string | null; capacity?: number | null; status: string; course: { id: string; title: string }; _count: { enrollments: number } }>;
 }
 
 export const discipleshipService = {
@@ -144,7 +215,7 @@ export const discipleshipService = {
   },
   updateWorkflow: async (
     id: string,
-    payload: any,
+    payload: Record<string, unknown>,
   ): Promise<DiscipleshipWorkflow> => {
     const { data } = await apiClient.put(
       `/discipleship/workflows/${id}`,
@@ -158,11 +229,11 @@ export const discipleshipService = {
     });
     return data.data;
   },
-  createCourse: async (payload: any): Promise<DiscipleshipCourse> => {
+  createCourse: async (payload: Record<string, unknown>): Promise<DiscipleshipCourse> => {
     const { data } = await apiClient.post("/discipleship/courses", payload);
     return data.data;
   },
-  createClass: async (courseId: string, payload: any) => {
+  createClass: async (courseId: string, payload: Record<string, unknown>) => {
     const { data } = await apiClient.post(
       `/discipleship/courses/${courseId}/classes`,
       payload,
@@ -173,7 +244,7 @@ export const discipleshipService = {
     const { data } = await apiClient.get("/discipleship/requirement-definitions", { params: { includeDrafts } });
     return data.data;
   },
-  createRequirementDefinition: async (payload: any): Promise<DiscipleshipRequirementDefinition> => {
+  createRequirementDefinition: async (payload: Record<string, unknown>): Promise<DiscipleshipRequirementDefinition> => {
     const { data } = await apiClient.post("/discipleship/requirement-definitions", payload);
     return data.data;
   },
@@ -187,7 +258,7 @@ export const discipleshipService = {
     );
     return data.data;
   },
-  addMentorFollowUp: async (journeyId: string, payload: any) => {
+  addMentorFollowUp: async (journeyId: string, payload: { notes: string; concernFlag?: boolean; nextFollowUpAt?: string }) => {
     const { data } = await apiClient.post(
       `/discipleship/journeys/${journeyId}/mentor/follow-ups`,
       payload,
@@ -204,11 +275,35 @@ export const discipleshipService = {
     );
     return data.data;
   },
+  getJourneyOperationsOptions: async (journeyId: string): Promise<JourneyOperationsOptions> => {
+    const { data } = await apiClient.get(`/discipleship/journeys/${journeyId}/operations-options`);
+    return data.data;
+  },
+  enrollCandidate: async (classId: string, payload: { journeyId: string; requirementId?: string }) => {
+    const { data } = await apiClient.post(`/discipleship/classes/${classId}/enrollments`, payload);
+    return data.data;
+  },
+  getClassRoster: async (classId: string): Promise<DiscipleshipClassRoster> => {
+    const { data } = await apiClient.get(`/discipleship/classes/${classId}/roster`);
+    return data.data;
+  },
+  recordSessionAttendance: async (sessionId: string, payload: { enrollmentId: string; status: "present" | "late" | "absent" | "excused"; method?: "manual" | "qr" | "sms_code" }) => {
+    const { data } = await apiClient.post(`/discipleship/sessions/${sessionId}/attendance`, payload);
+    return data;
+  },
+  checkInByCode: async (journeyId: string, code: string): Promise<{ courseCompleted: boolean }> => {
+    const { data } = await apiClient.post("/discipleship/attendance/check-in", { journeyId, code });
+    return data;
+  },
+  updateClassSessionStatus: async (sessionId: string, status: "scheduled" | "open" | "completed" | "cancelled") => {
+    const { data } = await apiClient.patch(`/discipleship/sessions/${sessionId}/status`, { status });
+    return data.data;
+  },
   getReport: async (params?: {
     churchId?: string;
     from?: string;
     to?: string;
-  }) => {
+  }): Promise<DiscipleshipReport> => {
     const { data } = await apiClient.get("/discipleship/reports/summary", {
       params,
     });
@@ -237,7 +332,8 @@ export const discipleshipService = {
     churchId: string;
     workflowId: string;
     consentStatus: "yes";
-    sourceType: "direct";
+    sourceType: "direct" | "attendance" | "evangelism" | "transfer";
+    sourceRecordId?: string;
     candidate: {
       firstName: string;
       lastName: string;
@@ -273,5 +369,21 @@ export const discipleshipService = {
       { version },
     );
     return data.data;
+  },
+  updateJourneyStatus: async (journeyId: string, payload: { status: "active" | "paused" | "withdrawn"; reason: string; version: number }) => {
+    const { data } = await apiClient.patch(`/discipleship/journeys/${journeyId}/status`, payload);
+    return data.data;
+  },
+  listIntakeCandidates: async (status?: string): Promise<DiscipleshipIntakeCandidate[]> => {
+    const { data } = await apiClient.get("/discipleship/intake/prompts", { params: status && status !== "all" ? { status } : undefined });
+    return data.data;
+  },
+  syncFirstTimers: async (): Promise<{ scanned: number; created: number }> => {
+    const { data } = await apiClient.post("/discipleship/intake/sync-attendance");
+    return data.data;
+  },
+  updateIntakeCandidate: async (id: string, payload: { status: DiscipleshipIntakeCandidate["status"]; notes?: string; assignedToId?: string }) => {
+    const { data } = await apiClient.patch(`/discipleship/intake/prompts/${id}`, payload);
+    return data.data as DiscipleshipIntakeCandidate;
   },
 };

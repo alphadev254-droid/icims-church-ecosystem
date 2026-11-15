@@ -57,6 +57,7 @@ export default function DashboardLayout() {
     '/dashboard/services': 'Services',
     '/dashboard/resource-booking': 'Asset and Facility Booking',
     '/dashboard/discipleship/journeys': 'Discipleship Journeys',
+    '/dashboard/discipleship/intake': 'First Timer Intake',
     '/dashboard/discipleship/workflows': 'Discipleship Workflows',
     '/dashboard/discipleship/programs': 'Discipleship Learning & Requirements',
     '/dashboard/discipleship/reports': 'Discipleship Reports',
@@ -120,6 +121,7 @@ export default function DashboardLayout() {
           const canReadDiscipleshipWorkflows = user?.permissions?.includes('discipleship_workflows:read');
           const canReadDiscipleshipCourses = user?.permissions?.includes('discipleship_courses:read');
           const canReadDiscipleshipReports = user?.permissions?.includes('discipleship_reports:read');
+          const canManageDiscipleshipIntake = user?.permissions?.includes('discipleship_journeys:create');
 
           return (
             <div key={item.to}>
@@ -169,6 +171,7 @@ export default function DashboardLayout() {
               )}
               {!collapsed && showDiscipleshipSubnav && discipleshipSectionActive && (
                 <div className="ml-7 mt-1 space-y-1 border-l border-sidebar-border pl-2">
+                  {canManageDiscipleshipIntake && <Link to="/dashboard/discipleship/intake" onClick={() => setSidebarOpen(false)} className={`block rounded-md px-3 py-1.5 text-xs transition-colors ${location.pathname === '/dashboard/discipleship/intake' ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`}>First Timer intake</Link>}
                   <Link
                     to="/dashboard/discipleship/journeys"
                     onClick={() => setSidebarOpen(false)}

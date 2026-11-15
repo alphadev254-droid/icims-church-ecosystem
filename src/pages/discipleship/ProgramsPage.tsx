@@ -11,10 +11,12 @@ import {
   Plus,
   Users,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { discipleshipService } from "@/services/discipleship";
 import { uploadService } from "@/services/upload";
 import { churchesService } from "@/services/churches";
+import { apiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -36,21 +38,21 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ChurchMultiSelect } from "@/components/ChurchMultiSelect";
 import { usersService } from "@/services/users";
+import { useRole } from "@/hooks/useRole";
+import { ClassRosterDialog } from "@/components/discipleship/ClassRosterDialog";
+import { ScheduleClassDialog } from "@/components/discipleship/ScheduleClassDialog";
 
 type CatalogType = "course" | "checklist" | "approval" | "milestone" | "assessment";
 
 export default function ProgramsPage() {
   const qc = useQueryClient();
+  const { hasPermission } = useRole();
+  const canManageCourses = hasPermission("discipleship_courses:manage");
+  const canManageAttendance = hasPermission("discipleship_attendance:manage");
   const [open, setOpen] = useState(false);
   const [materialFile, setMaterialFile] = useState<File | null>(null);
   const [classCourseId, setClassCourseId] = useState<string | null>(null);
-  const [classForm, setClassForm] = useState({
-    churchId: "",
-    title: "",
-    location: "",
-    startsAt: "",
-    endsAt: "",
-  });
+  const [managedClassId, setManagedClassId] = useState<string | null>(null);
   const [form, setForm] = useState({
     churchIds: [] as string[],
     type: "course" as CatalogType,
@@ -134,45 +136,14 @@ export default function ProgramsPage() {
       qc.invalidateQueries({ queryKey: ["discipleship-courses"] });
       qc.invalidateQueries({ queryKey: ["discipleship-requirement-definitions"] });
     },
-    onError: (error: any) =>
-      toast.error(error.response?.data?.message || "Could not create course"),
-  });
-  const createClass = useMutation({
-    mutationFn: () =>
-      discipleshipService.createClass(classCourseId!, {
-        churchId: classForm.churchId,
-        title: classForm.title,
-        location: classForm.location || undefined,
-        startsAt: new Date(classForm.startsAt).toISOString(),
-        endsAt: classForm.endsAt
-          ? new Date(classForm.endsAt).toISOString()
-          : undefined,
-        reminderMinutes: 1440,
-        sessions: [
-          {
-            title: classForm.title,
-            startsAt: new Date(classForm.startsAt).toISOString(),
-            endsAt: classForm.endsAt
-              ? new Date(classForm.endsAt).toISOString()
-              : undefined,
-            location: classForm.location || undefined,
-          },
-        ],
-      }),
-    onSuccess: () => {
-      toast.success("Class scheduled");
-      setClassCourseId(null);
-      setClassForm({ churchId: "", title: "", location: "", startsAt: "", endsAt: "" });
-      qc.invalidateQueries({ queryKey: ["discipleship-courses"] });
-    },
-    onError: (error: any) =>
-      toast.error(error.response?.data?.message || "Could not schedule class"),
+    onError: (error: unknown) =>
+      toast.error(apiErrorMessage(error, "Could not create course")),
   });
   const now = Date.now(); const sevenDays = now + 7 * 86400000;
   const allClasses = courses.flatMap((course) => course.classes);
-  const upcomingClasses = allClasses.filter((item: any) => new Date(item.startsAt).getTime() >= now && ['scheduled', 'active'].includes(item.status));
-  const sessionsThisWeek = allClasses.flatMap((item: any) => item.sessions).filter((item: any) => { const time = new Date(item.startsAt).getTime(); return time >= now && time <= sevenDays; }).length;
-  const enrollmentCount = allClasses.reduce((sum: number, item: any) => sum + (item._count?.enrollments || 0), 0);
+  const upcomingClasses = allClasses.filter(item => new Date(item.startsAt).getTime() >= now && ['scheduled', 'active'].includes(item.status));
+  const sessionsThisWeek = allClasses.flatMap(item => item.sessions || []).filter(item => { const time = new Date(item.startsAt).getTime(); return time >= now && time <= sevenDays; }).length;
+  const enrollmentCount = allClasses.reduce((sum, item) => sum + (item._count?.enrollments || 0), 0);
   const materialCount = courses.reduce((sum, course) => sum + course.materials.length, 0);
   return (
     <div className="space-y-6">
@@ -184,10 +155,10 @@ export default function ProgramsPage() {
             Create reusable workflow requirements, publish courses and schedule church-specific classes.
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}>
+        {canManageCourses && <Button onClick={() => setOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           New catalogue item
-        </Button>
+        </Button>}
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <ProgramMetric icon={BookOpen} value={courses.filter(course => course.status === 'published').length} label="Published courses" note={`${courses.filter(course => course.status === 'draft').length} drafts`} />
@@ -257,17 +228,17 @@ export default function ProgramsPage() {
                     <p className="text-xs font-semibold uppercase text-muted-foreground">
                       Classes
                     </p>
-                    <Button
+                    {canManageCourses && <Button
                       size="sm"
                       variant="outline"
                       onClick={() => setClassCourseId(course.id)}
                     >
                       <CalendarDays className="mr-1 h-3.5 w-3.5" />
                       Schedule
-                    </Button>
+                    </Button>}
                   </div>
                   {course.classes.length ? (
-                    course.classes.map((k: any) => (
+                    course.classes.map(k => (
                       <div key={k.id} className="rounded border p-3 text-sm">
                         <div className="flex justify-between">
                           <span className="font-medium">{k.title}</span>
@@ -278,6 +249,7 @@ export default function ProgramsPage() {
                           {k._count.enrollments} enrolled · {k.sessions.length}{" "}
                           sessions
                         </p>
+                        {(canManageCourses || canManageAttendance) && <Button className="mt-2" size="sm" variant="outline" onClick={() => setManagedClassId(k.id)}>Manage class</Button>}
                       </div>
                     ))
                   ) : (
@@ -379,76 +351,12 @@ export default function ProgramsPage() {
           </div>
         </DialogContent>
       </Dialog>
-      <Dialog
-        open={!!classCourseId}
-        onOpenChange={(v) => !v && setClassCourseId(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Schedule class</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {(courses.find(course => course.id === classCourseId)?.churchIds?.length || 1) > 1 && <div className="grid gap-2"><Label>Church hosting this class</Label><Select value={classForm.churchId} onValueChange={(churchId) => setClassForm({ ...classForm, churchId })}><SelectTrigger><SelectValue placeholder="Select church" /></SelectTrigger><SelectContent>{churches.filter(church => courses.find(course => course.id === classCourseId)?.churchIds?.includes(church.id)).map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent></Select></div>}
-            <div className="grid gap-2">
-              <Label>Class / cohort name</Label>
-              <Input
-                value={classForm.title}
-                onChange={(e) =>
-                  setClassForm({ ...classForm, title: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Location</Label>
-              <Input
-                value={classForm.location}
-                onChange={(e) =>
-                  setClassForm({ ...classForm, location: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-2 text-sm">
-                Starts
-                <Input
-                  type="datetime-local"
-                  value={classForm.startsAt}
-                  onChange={(e) =>
-                    setClassForm({ ...classForm, startsAt: e.target.value })
-                  }
-                />
-              </label>
-              <label className="grid gap-2 text-sm">
-                Ends
-                <Input
-                  type="datetime-local"
-                  value={classForm.endsAt}
-                  onChange={(e) =>
-                    setClassForm({ ...classForm, endsAt: e.target.value })
-                  }
-                />
-              </label>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              A check-in code is generated automatically. The default reminder
-              is sent 24 hours before class.
-            </p>
-            <Button
-              className="w-full"
-              disabled={
-                !classForm.title || !classForm.startsAt || createClass.isPending || ((courses.find(course => course.id === classCourseId)?.churchIds?.length || 1) > 1 && !classForm.churchId)
-              }
-              onClick={() => createClass.mutate()}
-            >
-              {createClass.isPending ? "Scheduling…" : "Schedule class"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ScheduleClassDialog course={courses.find(course => course.id === classCourseId) || null} churches={churches} onOpenChange={open => !open && setClassCourseId(null)} onSaved={() => qc.invalidateQueries({ queryKey: ["discipleship-courses"] })} />
+      <ClassRosterDialog classId={managedClassId} canManageAttendance={canManageAttendance} onOpenChange={open => !open && setManagedClassId(null)} />
     </div>
   );
 }
 
-function ProgramMetric({ icon: Icon, value, label, note }: any) {
+function ProgramMetric({ icon: Icon, value, label, note }: { icon: LucideIcon; value: string | number; label: string; note: string }) {
   return <Card><CardContent className="flex items-start gap-3 p-5"><div className="rounded-md bg-primary/10 p-2.5"><Icon className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-semibold tabular-nums">{value}</p><p className="text-xs font-medium">{label}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div></CardContent></Card>;
 }

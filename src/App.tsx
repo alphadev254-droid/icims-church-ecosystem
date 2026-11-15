@@ -100,6 +100,7 @@ const DiscipleshipWorkflows = lazy(() => import("./pages/discipleship/WorkflowsP
 const DiscipleshipJourneyDetail = lazy(() => import("./pages/discipleship/JourneyDetailPage"));
 const DiscipleshipPrograms = lazy(() => import("./pages/discipleship/ProgramsPage"));
 const DiscipleshipReports = lazy(() => import("./pages/discipleship/DiscipleshipReportsPage"));
+const DiscipleshipIntake = lazy(() => import("./pages/discipleship/IntakePage"));
 
 function PageLoader() {
   return (
@@ -207,6 +208,7 @@ const App = () => {
                 <Route path="cells/:id/meetings/:meetingId/attendance" element={<CellAttendancePage />} />
                 <Route path="discipleship" element={<Navigate to="/dashboard/discipleship/journeys" replace />} />
                 <Route path="discipleship/journeys" element={<DiscipleshipJourneys />} />
+                <Route path="discipleship/intake" element={<DiscipleshipIntake />} />
                 <Route path="discipleship/workflows" element={<DiscipleshipWorkflows />} />
                 <Route path="discipleship/programs" element={<DiscipleshipPrograms />} />
                 <Route path="discipleship/reports" element={<DiscipleshipReports />} />

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Church, Layers3, ListChecks, Pencil, Plus, Route, Trash2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   discipleshipService,
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChurchMultiSelect } from "@/components/ChurchMultiSelect";
+import { apiErrorMessage } from "@/lib/api-error";
 
 type WorkflowStageForm = {
   name: string;
@@ -42,6 +44,15 @@ type WorkflowStageForm = {
     isRequired: boolean;
   }>;
 };
+
+type WorkflowForm = ReturnType<typeof emptyWorkflow>;
+type SavedWorkflowDraft = {
+  editingId: string | null;
+  form: WorkflowForm;
+  savedAt: string;
+};
+
+const WORKFLOW_DRAFT_KEY = "icims:discipleship-workflow-builder:v1";
 
 const emptyStage = (): WorkflowStageForm => ({
   name: "",
@@ -64,6 +75,13 @@ const requirementHelp: Record<DiscipleshipRequirement["type"], string> = {
   milestone: "Records a dated event such as baptism, membership reception or commissioning.",
   assessment: "Requires a scored assessment that must meet its configured pass mark.",
 };
+const requirementTypeLabels: Record<DiscipleshipRequirement["type"], string> = {
+  checklist: "manual task",
+  approval: "leader approval",
+  course: "course",
+  milestone: "milestone",
+  assessment: "assessment",
+};
 
 export default function WorkflowsPage() {
   const queryClient = useQueryClient();
@@ -72,6 +90,7 @@ export default function WorkflowsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyWorkflow);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   const { data: workflows = [], isLoading } = useQuery({
     queryKey: ["discipleship-workflows", true],
@@ -122,15 +141,61 @@ export default function WorkflowsPage() {
       setDialogOpen(false);
       setEditingId(null);
       setForm(emptyWorkflow());
+      localStorage.removeItem(WORKFLOW_DRAFT_KEY);
+      setLastSavedAt(null);
       queryClient.invalidateQueries({ queryKey: ["discipleship-workflows"] });
     },
-    onError: (error: any) =>
-      toast.error(error.response?.data?.message || "Failed to create workflow"),
+    onError: (error: unknown) =>
+      toast.error(apiErrorMessage(error, "Failed to create workflow")),
   });
 
+  const saveProgress = (showConfirmation = true) => {
+    const savedAt = new Date().toISOString();
+    const draft: SavedWorkflowDraft = { editingId, form, savedAt };
+    localStorage.setItem(WORKFLOW_DRAFT_KEY, JSON.stringify(draft));
+    setLastSavedAt(savedAt);
+    if (showConfirmation) toast.success("Workflow progress saved on this device");
+  };
+
+  const restoreSavedDraft = (): SavedWorkflowDraft | null => {
+    try {
+      const raw = localStorage.getItem(WORKFLOW_DRAFT_KEY);
+      if (!raw) return null;
+      const saved = JSON.parse(raw) as SavedWorkflowDraft;
+      return saved?.form?.stages?.length ? saved : null;
+    } catch {
+      localStorage.removeItem(WORKFLOW_DRAFT_KEY);
+      return null;
+    }
+  };
+
+  const openNewWorkflow = () => {
+    const saved = restoreSavedDraft();
+    if (saved && saved.editingId === null) {
+      setForm(saved.form);
+      setLastSavedAt(saved.savedAt);
+      toast.info("Your saved workflow progress was restored");
+    } else {
+      setForm(emptyWorkflow());
+      setLastSavedAt(null);
+    }
+    setEditingId(null);
+    setDialogOpen(true);
+  };
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+    const timer = window.setTimeout(() => {
+      const savedAt = new Date().toISOString();
+      const draft: SavedWorkflowDraft = { editingId, form, savedAt };
+      localStorage.setItem(WORKFLOW_DRAFT_KEY, JSON.stringify(draft));
+      setLastSavedAt(savedAt);
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [dialogOpen, editingId, form]);
+
   const editWorkflow = (workflow: (typeof workflows)[number]) => {
-    setEditingId(workflow.id);
-    setForm({
+    const existingForm: WorkflowForm = {
       churchIds: [workflow.churchId],
       name: workflow.name,
       description: workflow.description || "",
@@ -148,7 +213,17 @@ export default function WorkflowsPage() {
           isRequired: item.isRequired,
         })),
       })),
-    });
+    };
+    const saved = restoreSavedDraft();
+    if (saved?.editingId === workflow.id) {
+      setForm(saved.form);
+      setLastSavedAt(saved.savedAt);
+      toast.info("Your saved changes were restored");
+    } else {
+      setForm(existingForm);
+      setLastSavedAt(null);
+    }
+    setEditingId(workflow.id);
     setDialogOpen(true);
   };
   const moveStage = (index: number, direction: -1 | 1) =>
@@ -189,6 +264,19 @@ export default function WorkflowsPage() {
   const stageCount = publishedWorkflows.reduce((sum, item) => sum + item.stages.length, 0);
   const requirementCount = publishedWorkflows.reduce((sum, item) => sum + item.stages.reduce((stageSum, stage) => stageSum + stage.requirements.length, 0), 0);
   const defaultChurches = new Set(publishedWorkflows.filter((item) => item.isDefault).map((item) => item.churchId)).size;
+  const validationIssues = useMemo(() => {
+    const issues: string[] = [];
+    if (form.churchIds.length === 0) issues.push("Select at least one church");
+    if (!form.name.trim()) issues.push("Enter a workflow name");
+    form.stages.forEach((stage, stageIndex) => {
+      if (!stage.name.trim()) issues.push(`Enter a name for stage ${stageIndex + 1}`);
+      stage.requirements.forEach((requirement, requirementIndex) => {
+        const missing = requirement.type === "course" ? !requirement.courseId : requirement.type === "assessment" ? !requirement.definitionId : !requirement.name.trim();
+        if (missing) issues.push(`${requirement.type === "assessment" || requirement.type === "course" ? "Select a saved" : "Name the"} ${requirementTypeLabels[requirement.type]} for stage ${stageIndex + 1}, item ${requirementIndex + 1}`);
+      });
+    });
+    return issues;
+  }, [form]);
 
   return (
     <div className="space-y-6">
@@ -201,7 +289,7 @@ export default function WorkflowsPage() {
           </p>
         </div>
         {canManageWorkflows && (
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={openNewWorkflow}>
             <Plus className="mr-2 h-4 w-4" />
             New workflow
           </Button>
@@ -284,15 +372,15 @@ export default function WorkflowsPage() {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="flex max-h-[92vh] flex-col overflow-hidden p-0 sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="px-6 pt-6">
               {editingId
                 ? "Edit discipleship workflow"
                 : "Create discipleship workflow"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 overflow-y-auto px-6 py-2">
             <div className="rounded-md border bg-muted/40 p-3 text-sm"><p className="font-medium">How a workflow works</p><p className="mt-1 text-muted-foreground">Candidates move through stages in order. Required items block advancement; optional items can remain incomplete without stopping the journey.</p></div>
             <ChurchMultiSelect
               value={form.churchIds}
@@ -444,9 +532,10 @@ export default function WorkflowsPage() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                       <div className="flex items-start gap-2 sm:col-span-3"><Checkbox id={`required-${stageIndex}-${requirementIndex}`} checked={requirement.isRequired} onCheckedChange={(checked) => updateRequirement(stageIndex, requirementIndex, { isRequired: checked === true })} /><div><Label htmlFor={`required-${stageIndex}-${requirementIndex}`}>Required before moving to the next stage</Label><p className="mt-1 text-xs text-muted-foreground">{requirementHelp[requirement.type]}</p></div></div>
+                      {!["course", "assessment"].includes(requirement.type) && <div className="grid gap-1.5 sm:col-span-3"><Label>Requirement name</Label><Input value={requirement.name} placeholder={requirement.type === "checklist" ? "For example: Welcome call completed" : requirement.type === "approval" ? "For example: Pastor approval" : "For example: Baptism"} onChange={event => updateRequirement(stageIndex, requirementIndex, { name: event.target.value, definitionId: undefined })} /><p className="text-xs text-muted-foreground">Type a one-off requirement here, or select a saved requirement above for reuse.</p></div>}
                       {requirement.type === "course" && requirement.courseId && (
                         <div className="grid gap-2 sm:col-span-3 sm:grid-cols-2">
-                          <div className="grid gap-1.5 sm:col-span-2"><Label>Specific class (optional)</Label><Select value={requirement.classId || "any"} disabled={form.churchIds.length !== 1} onValueChange={(value) => updateRequirement(stageIndex, requirementIndex, { classId: value === "any" ? undefined : value })}><SelectTrigger><SelectValue placeholder="Any class in this course" /></SelectTrigger><SelectContent><SelectItem value="any">Any current or future class</SelectItem>{courses.find(course => course.id === requirement.courseId)?.classes.filter((item: any) => item.status !== "cancelled" && item.churchId === form.churchIds[0]).map((item: any) => <SelectItem key={item.id} value={item.id}>{item.title} · {new Date(item.startsAt).toLocaleDateString()}</SelectItem>)}</SelectContent></Select></div>
+                          <div className="grid gap-1.5 sm:col-span-2"><Label>Specific class (optional)</Label><Select value={requirement.classId || "any"} disabled={form.churchIds.length !== 1} onValueChange={(value) => updateRequirement(stageIndex, requirementIndex, { classId: value === "any" ? undefined : value })}><SelectTrigger><SelectValue placeholder="Any class in this course" /></SelectTrigger><SelectContent><SelectItem value="any">Any current or future class</SelectItem>{courses.find(course => course.id === requirement.courseId)?.classes.filter(item => item.status !== "cancelled" && item.churchId === form.churchIds[0]).map(item => <SelectItem key={item.id} value={item.id}>{item.title} · {new Date(item.startsAt).toLocaleDateString()}</SelectItem>)}</SelectContent></Select></div>
                           <p className="text-xs text-muted-foreground sm:col-span-2">The selected course is shared by every church in this workflow. A specific local class can only be chosen for a one-church workflow.</p>
                         </div>
                       )}
@@ -500,23 +589,37 @@ export default function WorkflowsPage() {
                 remain on their original stage snapshot.
               </p>
             )}
-            <Button
-              className="w-full"
-              disabled={
-                form.churchIds.length === 0 ||
-                !form.name ||
-                form.stages.some((stage) => !stage.name) ||
-                form.stages.some((stage) => stage.requirements.some((requirement) => requirement.type === "course" ? !requirement.courseId : !requirement.definitionId)) ||
-                saveWorkflow.isPending
-              }
-              onClick={() => saveWorkflow.mutate()}
-            >
-              {saveWorkflow.isPending
-                ? "Saving…"
-                : editingId
-                  ? "Publish new version"
-                  : "Publish workflow"}
-            </Button>
+          </div>
+          <div className="border-t bg-background px-6 py-4">
+            {validationIssues.length > 0 && (
+              <div className="mb-3 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                <p className="font-medium">Complete these items before publishing</p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
+                  {validationIssues.slice(0, 5).map((issue) => <li key={issue}>{issue}</li>)}
+                  {validationIssues.length > 5 && <li>{validationIssues.length - 5} more items need attention</li>}
+                </ul>
+              </div>
+            )}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs text-muted-foreground">
+                {lastSavedAt ? `Progress saved ${new Date(lastSavedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Progress saves automatically on this device"}
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => saveProgress(true)}>Save progress</Button>
+                <Button
+                  disabled={saveWorkflow.isPending}
+                  onClick={() => {
+                    if (validationIssues.length) {
+                      toast.error(validationIssues[0]);
+                      return;
+                    }
+                    saveWorkflow.mutate();
+                  }}
+                >
+                  {saveWorkflow.isPending ? "Publishing…" : editingId ? "Publish new version" : "Publish workflow"}
+                </Button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -524,6 +627,6 @@ export default function WorkflowsPage() {
   );
 }
 
-function WorkflowMetric({ icon: Icon, value, label, note }: any) {
+function WorkflowMetric({ icon: Icon, value, label, note }: { icon: LucideIcon; value: string | number; label: string; note: string }) {
   return <Card><CardContent className="flex items-start gap-3 p-5"><div className="rounded-md bg-primary/10 p-2.5"><Icon className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-semibold tabular-nums">{value}</p><p className="text-xs font-medium">{label}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div></CardContent></Card>;
 }

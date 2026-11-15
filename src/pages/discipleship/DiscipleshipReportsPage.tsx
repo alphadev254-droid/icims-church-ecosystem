@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
@@ -21,7 +22,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExportImportButtons } from "@/components/ExportImportButtons";
 
-type ReportType = "overview" | "intake" | "stages" | "outcomes";
+type ReportType = "overview" | "intake" | "stages" | "dropouts" | "outcomes";
+type ReportRow = Record<string, string | number>;
+type GeneratedReport = { title: string; headers: Array<{ label: string; key: string }>; rows: ReportRow[] };
 
 const initialConfig = { churchId: "all", from: "", to: "", reportType: "overview" as ReportType };
 
@@ -42,7 +45,7 @@ export default function DiscipleshipReportsPage() {
       }),
   });
 
-  const generatedReport = useMemo(() => {
+  const generatedReport = useMemo<GeneratedReport>(() => {
     if (!data) return { title: "Discipleship report", headers: [], rows: [] };
     if (applied.reportType === "intake") return {
       title: "Discipleship intake trend",
@@ -53,6 +56,11 @@ export default function DiscipleshipReportsPage() {
       title: "Candidates by discipleship stage",
       headers: [{ label: "Current stage", key: "stage" }, { label: "Candidates", key: "count" }],
       rows: data.candidatesByStage,
+    };
+    if (applied.reportType === "dropouts") return {
+      title: "Discipleship dropout points",
+      headers: [{ label: "Stage at withdrawal", key: "stage" }, { label: "Withdrawn candidates", key: "count" }],
+      rows: data.dropoutsByStage,
     };
     if (applied.reportType === "outcomes") return {
       title: "Discipleship outcomes and follow-up",
@@ -129,11 +137,11 @@ export default function DiscipleshipReportsPage() {
             <Metric icon={CalendarDays} label="Sessions this week" value={data.totals.upcomingSessions} note="Scheduled in the next 7 days" />
             <Metric icon={MapPinned} label="Awaiting placement" value={data.totals.pendingPlacements} note="Team or cell placement planned" />
           </div>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-3">
             <Card>
               <CardContent className="p-5">
                 <h2 className="mb-4 font-semibold">Intake trend</h2>
-                {data.intakeTrend.map((x: any) => (
+                {data.intakeTrend.map(x => (
                   <div key={x.period} className="mb-3">
                     <div className="flex justify-between text-sm">
                       <span>{x.period}</span>
@@ -143,7 +151,7 @@ export default function DiscipleshipReportsPage() {
                       <div
                         className="h-2 rounded bg-primary"
                         style={{
-                          width: `${Math.min(100, (x.count / Math.max(...data.intakeTrend.map((i: any) => i.count))) * 100)}%`,
+                          width: `${Math.min(100, (x.count / Math.max(...data.intakeTrend.map(i => i.count))) * 100)}%`,
                         }}
                       />
                     </div>
@@ -153,10 +161,21 @@ export default function DiscipleshipReportsPage() {
             </Card>
             <Card>
               <CardContent className="p-5">
+                <h2 className="mb-4 font-semibold">Dropout points</h2>
+                {data.dropoutsByStage.length ? data.dropoutsByStage.map(x => (
+                  <div key={x.stage} className="flex justify-between border-b py-3 text-sm">
+                    <span>{x.stage}</span>
+                    <b>{x.count}</b>
+                  </div>
+                )) : <p className="text-sm text-muted-foreground">No withdrawals in this reporting period.</p>}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-5">
                 <h2 className="mb-4 font-semibold">
                   Candidates by current stage
                 </h2>
-                {data.candidatesByStage.map((x: any) => (
+                {data.candidatesByStage.map(x => (
                   <div
                     key={x.stage}
                     className="flex justify-between border-b py-3 text-sm"
@@ -179,7 +198,7 @@ export default function DiscipleshipReportsPage() {
                 <p className="mt-1 text-sm text-muted-foreground">Configure the scope and output, then generate a report separate from the live summary above.</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="space-y-2"><Label>Report</Label><Select value={config.reportType} onValueChange={(reportType: ReportType) => setConfig(current => ({ ...current, reportType }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="overview">Performance overview</SelectItem><SelectItem value="intake">Intake trend</SelectItem><SelectItem value="stages">Candidates by stage</SelectItem><SelectItem value="outcomes">Outcomes and follow-up</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2"><Label>Report</Label><Select value={config.reportType} onValueChange={(reportType: ReportType) => setConfig(current => ({ ...current, reportType }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="overview">Performance overview</SelectItem><SelectItem value="intake">Intake trend</SelectItem><SelectItem value="stages">Candidates by stage</SelectItem><SelectItem value="dropouts">Dropout points</SelectItem><SelectItem value="outcomes">Outcomes and follow-up</SelectItem></SelectContent></Select></div>
                 <div className="space-y-2"><Label>Church</Label><Select value={config.churchId} onValueChange={(churchId) => setConfig(current => ({ ...current, churchId }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All accessible churches</SelectItem>{churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent></Select></div>
                 <div className="space-y-2"><Label>From</Label><Input type="date" value={config.from} onChange={(event) => setConfig(current => ({ ...current, from: event.target.value }))} /></div>
                 <div className="space-y-2"><Label>To</Label><Input type="date" min={config.from || undefined} value={config.to} onChange={(event) => setConfig(current => ({ ...current, to: event.target.value }))} /></div>
@@ -197,7 +216,7 @@ export default function DiscipleshipReportsPage() {
                 <div><h2 className="font-semibold">{generatedReport.title}</h2><p className="text-xs text-muted-foreground">{applied.churchId === "all" ? "All accessible churches" : churches.find(church => church.id === applied.churchId)?.name || "Selected church"} · {applied.from || "Last 90 days"} to {applied.to || "today"}</p></div>
                 <ExportImportButtons data={generatedReport.rows} filename={`discipleship-${applied.reportType}-report`} headers={generatedReport.headers} pdfTitle={generatedReport.title} summary={[{ label: "Church scope", value: applied.churchId === "all" ? "All accessible churches" : churches.find(church => church.id === applied.churchId)?.name || "Selected church" }, { label: "From", value: applied.from || "Last 90 days" }, { label: "To", value: applied.to || "Today" }]} />
               </div>
-              <div className="overflow-x-auto rounded-md border"><table className="w-full text-sm"><thead className="bg-muted/60"><tr>{generatedReport.headers.map(header => <th key={header.key} className="px-4 py-3 text-left font-medium">{header.label}</th>)}</tr></thead><tbody>{generatedReport.rows.map((row: any, index: number) => <tr key={`${index}-${Object.values(row).join("-")}`} className="border-t">{generatedReport.headers.map(header => <td key={header.key} className="px-4 py-3">{String(row[header.key] ?? "—")}</td>)}</tr>)}{generatedReport.rows.length === 0 && <tr><td colSpan={Math.max(1, generatedReport.headers.length)} className="px-4 py-8 text-center text-muted-foreground">No records matched this report configuration.</td></tr>}</tbody></table></div>
+              <div className="overflow-x-auto rounded-md border"><table className="w-full text-sm"><thead className="bg-muted/60"><tr>{generatedReport.headers.map(header => <th key={header.key} className="px-4 py-3 text-left font-medium">{header.label}</th>)}</tr></thead><tbody>{generatedReport.rows.map((row, index) => <tr key={`${index}-${Object.values(row).join("-")}`} className="border-t">{generatedReport.headers.map(header => <td key={header.key} className="px-4 py-3">{String(row[header.key] ?? "—")}</td>)}</tr>)}{generatedReport.rows.length === 0 && <tr><td colSpan={Math.max(1, generatedReport.headers.length)} className="px-4 py-8 text-center text-muted-foreground">No records matched this report configuration.</td></tr>}</tbody></table></div>
             </CardContent>
           </Card>
         </>
@@ -205,7 +224,7 @@ export default function DiscipleshipReportsPage() {
     </div>
   );
 }
-function Metric({ icon: Icon, label, value, note }: any) {
+function Metric({ icon: Icon, label, value, note }: { icon: LucideIcon; label: string; value: string | number; note?: string }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-5">

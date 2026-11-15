@@ -12,6 +12,7 @@ import {
   Route,
 } from "lucide-react";
 import { toast } from "sonner";
+import { isAxiosError } from "axios";
 import {
   discipleshipService,
   type DiscipleshipRequirement,
@@ -30,6 +31,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { CourseEnrollmentDialog, IntegrationPlacementCard, MentorSupportCard } from "@/components/discipleship/JourneyOperations";
+import { JourneyStatusActions } from "@/components/discipleship/JourneyStatusActions";
+import { CandidateClassCheckIn } from "@/components/discipleship/CandidateClassCheckIn";
+import { apiErrorMessage } from "@/lib/api-error";
 
 export default function JourneyDetailPage() {
   const { journeyId } = useParams<{ journeyId: string }>();
@@ -38,11 +43,18 @@ export default function JourneyDetailPage() {
   const { hasPermission } = useRole();
   const canUpdate = hasPermission("discipleship_journeys:update");
   const canAdvance = hasPermission("discipleship_journeys:advance");
+  const canManageMentors = hasPermission("discipleship_mentors:manage");
+  const canManageCourses = hasPermission("discipleship_courses:manage");
+  const canCheckIn = hasPermission("discipleship_attendance:checkin");
   const [selectedRequirement, setSelectedRequirement] =
     useState<DiscipleshipRequirement | null>(null);
   const [completionNote, setCompletionNote] = useState("");
   const [milestoneDate, setMilestoneDate] = useState("");
+  const [milestoneLocation, setMilestoneLocation] = useState("");
+  const [milestoneOfficiant, setMilestoneOfficiant] = useState("");
+  const [milestoneEvidenceUrl, setMilestoneEvidenceUrl] = useState("");
   const [assessmentScore, setAssessmentScore] = useState("");
+  const [enrollmentRequirement, setEnrollmentRequirement] = useState<DiscipleshipRequirement | null>(null);
 
   const {
     data: journey,
@@ -52,6 +64,11 @@ export default function JourneyDetailPage() {
     queryKey: ["discipleship-journey", journeyId],
     queryFn: () => discipleshipService.getJourney(journeyId!),
     enabled: !!journeyId,
+  });
+  const { data: operations } = useQuery({
+    queryKey: ["discipleship-journey-options", journeyId],
+    queryFn: () => discipleshipService.getJourneyOperationsOptions(journeyId!),
+    enabled: !!journeyId && (canManageMentors || canUpdate || canManageCourses),
   });
 
   const refresh = () =>
@@ -68,7 +85,7 @@ export default function JourneyDetailPage() {
             ? { approved: true }
             : {}),
           ...(selectedRequirement?.type === "milestone" && milestoneDate
-            ? { milestoneDate: new Date(`${milestoneDate}T12:00:00`).toISOString() }
+            ? { milestoneDate: new Date(`${milestoneDate}T12:00:00`).toISOString(), location: milestoneLocation || undefined, officiant: milestoneOfficiant || undefined, evidenceUrl: milestoneEvidenceUrl || undefined }
             : {}),
           ...(selectedRequirement?.type === "assessment" ? { score: Number(assessmentScore) } : {}),
         },
@@ -78,14 +95,15 @@ export default function JourneyDetailPage() {
       setSelectedRequirement(null);
       setCompletionNote("");
       setMilestoneDate("");
+      setMilestoneLocation("");
+      setMilestoneOfficiant("");
+      setMilestoneEvidenceUrl("");
       setAssessmentScore("");
       refresh();
     },
-    onError: (error: any) => {
-      toast.error(
-        error.response?.data?.message || "Could not complete requirement",
-      );
-      if (error.response?.status === 409) refresh();
+    onError: (error: unknown) => {
+      toast.error(apiErrorMessage(error, "Could not complete requirement"));
+      if (isAxiosError(error) && error.response?.status === 409) refresh();
     },
   });
   const advance = useMutation({
@@ -98,10 +116,15 @@ export default function JourneyDetailPage() {
       );
       refresh();
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Could not advance journey");
-      if (error.response?.status === 409) refresh();
+    onError: (error: unknown) => {
+      toast.error(apiErrorMessage(error, "Could not advance journey"));
+      if (isAxiosError(error) && error.response?.status === 409) refresh();
     },
+  });
+  const updateStatus = useMutation({
+    mutationFn: ({ status, reason }: { status: "active" | "paused" | "withdrawn"; reason: string }) => discipleshipService.updateJourneyStatus(journeyId!, { status, reason, version: journey!.version }),
+    onSuccess: result => { toast.success(result.status === "active" ? "Journey resumed" : result.status === "paused" ? "Journey paused" : "Candidate withdrawn"); refresh(); },
+    onError: (error: unknown) => { toast.error(apiErrorMessage(error, "Could not change journey status")); if (isAxiosError(error) && error.response?.status === 409) refresh(); },
   });
 
   if (isLoading)
@@ -160,6 +183,8 @@ export default function JourneyDetailPage() {
               {journey.workflow.version} · {journey.church.name}
             </p>
           </div>
+          <div className="flex items-center gap-2">
+          {canUpdate && ["active", "paused"].includes(journey.status) && <JourneyStatusActions status={journey.status} isSaving={updateStatus.isPending} onConfirm={(status, reason) => updateStatus.mutateAsync({ status, reason }).then(() => undefined)} />}
           {canAdvance && journey.status === "active" && (
             <Button
               disabled={
@@ -174,6 +199,7 @@ export default function JourneyDetailPage() {
                   : "Advance stage"}
             </Button>
           )}
+          </div>
         </div>
       </div>
 
@@ -308,7 +334,7 @@ export default function JourneyDetailPage() {
                         {canUpdate &&
                           stage.status === "active" &&
                           requirement.status === "pending" &&
-                          ["checklist", "approval", "milestone"].includes(requirement.type) && (
+                          ["checklist", "approval", "milestone", "assessment"].includes(requirement.type) && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -320,6 +346,9 @@ export default function JourneyDetailPage() {
                               {requirement.type === "approval" ? "Review" : requirement.type === "milestone" ? "Record" : "Complete"}
                             </Button>
                           )}
+                        {canManageCourses && stage.status === "active" && requirement.status === "pending" && requirement.type === "course" && (
+                          <Button size="sm" variant="outline" onClick={() => setEnrollmentRequirement(requirement)}>Enroll</Button>
+                        )}
                       </div>
                     ))
                   )}
@@ -411,6 +440,9 @@ export default function JourneyDetailPage() {
               </div>
             </CardContent>
           </Card>
+          {canCheckIn && journey.status === "active" && <CandidateClassCheckIn journeyId={journeyId!} onCheckedIn={refresh} />}
+          {canManageMentors && <MentorSupportCard journeyId={journeyId!} assignment={journey.mentorAssignment} options={operations} onSaved={refresh} />}
+          {canUpdate && <IntegrationPlacementCard journeyId={journeyId!} placement={journey.placement} options={operations} onSaved={refresh} />}
         </div>
       </div>
 
@@ -421,6 +453,9 @@ export default function JourneyDetailPage() {
             setSelectedRequirement(null);
             setCompletionNote("");
             setMilestoneDate("");
+            setMilestoneLocation("");
+            setMilestoneOfficiant("");
+            setMilestoneEvidenceUrl("");
             setAssessmentScore("");
           }
         }}
@@ -436,7 +471,7 @@ export default function JourneyDetailPage() {
                 Confirm that this requirement has been fulfilled.
               </p>
             </div>
-            {selectedRequirement?.type === "milestone" && <div className="grid gap-2"><Label>Milestone date</Label><Input type="date" value={milestoneDate} onChange={(event) => setMilestoneDate(event.target.value)} /></div>}
+            {selectedRequirement?.type === "milestone" && <div className="grid gap-3"><div className="grid gap-2"><Label>Milestone date</Label><Input type="date" value={milestoneDate} onChange={(event) => setMilestoneDate(event.target.value)} /></div><div className="grid gap-3 sm:grid-cols-2"><div className="grid gap-2"><Label>Officiant</Label><Input value={milestoneOfficiant} onChange={event => setMilestoneOfficiant(event.target.value)} placeholder="Pastor, priest or leader" /></div><div className="grid gap-2"><Label>Location</Label><Input value={milestoneLocation} onChange={event => setMilestoneLocation(event.target.value)} placeholder="Church or venue" /></div></div><div className="grid gap-2"><Label>Evidence link</Label><Input type="url" value={milestoneEvidenceUrl} onChange={event => setMilestoneEvidenceUrl(event.target.value)} placeholder="Optional secure document or certificate link" /></div></div>}
             {selectedRequirement?.type === "assessment" && <div className="grid gap-2"><Label>Assessment score</Label><Input type="number" min="0" value={assessmentScore} onChange={(event) => setAssessmentScore(event.target.value)} placeholder="Enter the candidate's score" /></div>}
             <div className="grid gap-2">
               <Label>Completion note</Label>
@@ -456,6 +491,7 @@ export default function JourneyDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <CourseEnrollmentDialog journeyId={journeyId!} candidateName={candidateName} requirement={enrollmentRequirement} options={operations} onOpenChange={open => !open && setEnrollmentRequirement(null)} onSaved={refresh} />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Activity, BookOpenCheck, CheckCircle2, ChevronRight, PauseCircle, Plus, Search, TrendingUp, Users } from 'lucide-react';
+import { Activity, BookOpenCheck, CheckCircle2, ChevronLeft, ChevronRight, PauseCircle, Plus, Search, TrendingUp, Users } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { discipleshipService } from '@/services/discipleship';
 import { churchesService } from '@/services/churches';
@@ -13,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { apiErrorMessage } from '@/lib/api-error';
 
 export default function JourneysPage() {
   const navigate = useNavigate();
@@ -21,14 +23,16 @@ export default function JourneysPage() {
   const canCreateJourney = hasPermission('discipleship_journeys:create');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [churchFilter, setChurchFilter] = useState('all');
+  const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ churchId: '', workflowId: '', firstName: '', lastName: '', email: '', phone: '', preferredLanguage: '', referralSource: '', notes: '' });
 
   const { data: journeysResponse, isLoading } = useQuery({
-    queryKey: ['discipleship-journeys', search, status],
-    queryFn: () => discipleshipService.listJourneys({ search: search || undefined, status: status === 'all' ? undefined : status }),
+    queryKey: ['discipleship-journeys', search, status, churchFilter, page],
+    queryFn: () => discipleshipService.listJourneys({ search: search || undefined, status: status === 'all' ? undefined : status, churchId: churchFilter === 'all' ? undefined : churchFilter, page, limit: 25 }),
   });
-  const { data: churches = [] } = useQuery({ queryKey: ['churches-select'], queryFn: churchesService.getSelectable, enabled: canCreateJourney });
+  const { data: churches = [] } = useQuery({ queryKey: ['churches-select'], queryFn: churchesService.getSelectable });
   const { data: workflows = [] } = useQuery({ queryKey: ['discipleship-workflows', false], queryFn: () => discipleshipService.listWorkflows(), enabled: canCreateJourney });
   const publishedWorkflows = useMemo(
     () => workflows.filter(item => item.status === 'published' && (!form.churchId || item.churchId === form.churchId)),
@@ -57,7 +61,7 @@ export default function JourneysPage() {
       queryClient.invalidateQueries({ queryKey: ['discipleship-journeys'] });
       navigate(`/dashboard/discipleship/journeys/${journey.id}`);
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create journey'),
+    onError: (error: unknown) => toast.error(apiErrorMessage(error, 'Failed to create journey')),
   });
 
   const journeys = journeysResponse?.data ?? [];
@@ -83,8 +87,9 @@ export default function JourneysPage() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search name, email or phone" value={search} onChange={event => setSearch(event.target.value)} /></div>
-        <Select value={status} onValueChange={setStatus}><SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="paused">Paused</SelectItem><SelectItem value="completed">Completed</SelectItem><SelectItem value="withdrawn">Withdrawn</SelectItem></SelectContent></Select>
+        <div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search name, email or phone" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></div>
+        <Select value={churchFilter} onValueChange={value => { setChurchFilter(value); setPage(1); }}><SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All churches</SelectItem>{churches.map(church => <SelectItem key={church.id} value={church.id}>{church.name}</SelectItem>)}</SelectContent></Select>
+        <Select value={status} onValueChange={value => { setStatus(value); setPage(1); }}><SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="paused">Paused</SelectItem><SelectItem value="completed">Completed</SelectItem><SelectItem value="withdrawn">Withdrawn</SelectItem></SelectContent></Select>
       </div>
 
       <Card>
@@ -101,6 +106,7 @@ export default function JourneysPage() {
           ))}
         </CardContent>
       </Card>
+      {(journeysResponse?.pagination.totalPages || 0) > 1 && <div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">Page {journeysResponse!.pagination.page} of {journeysResponse!.pagination.totalPages} · {journeysResponse!.pagination.total} candidates</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(current => Math.max(1, current - 1))}><ChevronLeft className="mr-1 h-4 w-4" />Previous</Button><Button variant="outline" size="sm" disabled={page >= journeysResponse!.pagination.totalPages} onClick={() => setPage(current => current + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
@@ -121,6 +127,6 @@ export default function JourneysPage() {
   );
 }
 
-function SummaryCard({ icon: Icon, value, label, note }: any) {
+function SummaryCard({ icon: Icon, value, label, note }: { icon: LucideIcon; value: string | number; label: string; note: string }) {
   return <Card><CardContent className="flex items-start gap-3 p-5"><div className="rounded-md bg-primary/10 p-2.5"><Icon className="h-5 w-5 text-primary" /></div><div><p className="text-2xl font-semibold tabular-nums">{value}</p><p className="text-xs font-medium">{label}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div></CardContent></Card>;
 }
