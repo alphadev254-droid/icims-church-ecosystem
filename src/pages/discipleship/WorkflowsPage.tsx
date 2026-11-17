@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Church, Layers3, ListChecks, Pencil, Plus, Route, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Church, Eye, Layers3, ListChecks, Pencil, Plus, Route, Trash2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   discipleshipService,
   type DiscipleshipRequirement,
+  type DiscipleshipWorkflow,
 } from "@/services/discipleship";
 import { churchesService } from "@/services/churches";
 import { useRole } from "@/hooks/useRole";
@@ -29,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ChurchMultiSelect } from "@/components/ChurchMultiSelect";
 import { apiErrorMessage } from "@/lib/api-error";
 
@@ -89,6 +91,8 @@ export default function WorkflowsPage() {
   const canManageWorkflows = hasPermission("discipleship_workflows:manage");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingWorkflow, setViewingWorkflow] = useState<DiscipleshipWorkflow | null>(null);
+  const [deletingWorkflow, setDeletingWorkflow] = useState<DiscipleshipWorkflow | null>(null);
   const [form, setForm] = useState(emptyWorkflow);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
@@ -147,6 +151,15 @@ export default function WorkflowsPage() {
     },
     onError: (error: unknown) =>
       toast.error(apiErrorMessage(error, "Failed to create workflow")),
+  });
+  const deleteWorkflow = useMutation({
+    mutationFn: (id: string) => discipleshipService.deleteWorkflow(id),
+    onSuccess: result => {
+      toast.success(result.message);
+      setDeletingWorkflow(null);
+      queryClient.invalidateQueries({ queryKey: ["discipleship-workflows"] });
+    },
+    onError: (error: unknown) => toast.error(apiErrorMessage(error, "Could not remove workflow")),
   });
 
   const saveProgress = (showConfirmation = true) => {
@@ -349,17 +362,11 @@ export default function WorkflowsPage() {
                     </div>
                   ))}
                 </div>
-                {canManageWorkflows && workflow.status !== "archived" && (
-                  <Button
-                    className="mt-4"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => editWorkflow(workflow)}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit as new version
-                  </Button>
-                )}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setViewingWorkflow(workflow)}><Eye className="mr-2 h-4 w-4" />View</Button>
+                  {canManageWorkflows && workflow.status !== "archived" && <Button variant="outline" size="sm" onClick={() => editWorkflow(workflow)}><Pencil className="mr-2 h-4 w-4" />Edit as new version</Button>}
+                  {canManageWorkflows && <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeletingWorkflow(workflow)}><Trash2 className="mr-2 h-4 w-4" />Delete</Button>}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -623,6 +630,19 @@ export default function WorkflowsPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <Dialog open={!!viewingWorkflow} onOpenChange={open => !open && setViewingWorkflow(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader><DialogTitle>{viewingWorkflow?.name}</DialogTitle></DialogHeader>
+          {viewingWorkflow && <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2"><Badge>{viewingWorkflow.status}</Badge><span className="text-sm text-muted-foreground">{viewingWorkflow.church?.name} · Version {viewingWorkflow.version}{viewingWorkflow.isDefault ? " · Default workflow" : ""}</span></div>
+            <p className="text-sm text-muted-foreground">{viewingWorkflow.description || "No description"}</p>
+            {viewingWorkflow.stages.map(stage => <div key={stage.id} className="rounded-md border p-4"><p className="font-medium">{stage.position}. {stage.name}</p>{stage.description && <p className="mt-1 text-sm text-muted-foreground">{stage.description}</p>}<div className="mt-3 space-y-2">{stage.requirements.map(requirement => <div key={requirement.id} className="flex items-start justify-between gap-3 rounded-md bg-muted/50 px-3 py-2 text-sm"><div><p>{requirement.name}</p><p className="text-xs capitalize text-muted-foreground">{requirement.type.replace("_", " ")}</p></div><Badge variant={requirement.isRequired ? "default" : "secondary"}>{requirement.isRequired ? "Required" : "Optional"}</Badge></div>)}</div></div>)}
+          </div>}
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={!!deletingWorkflow} onOpenChange={open => !open && setDeletingWorkflow(null)}>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete workflow</AlertDialogTitle><AlertDialogDescription>Delete <strong>{deletingWorkflow?.name}</strong>? If a journey already uses this version, it will be archived instead so historical records remain valid.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleteWorkflow.isPending} onClick={() => deletingWorkflow && deleteWorkflow.mutate(deletingWorkflow.id)}>{deleteWorkflow.isPending ? "Removing…" : "Delete workflow"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -255,6 +255,10 @@ export const discipleshipService = {
     );
     return data.data;
   },
+  deleteWorkflow: async (id: string): Promise<{ disposition: "deleted" | "archived"; message: string }> => {
+    const { data } = await apiClient.delete(`/discipleship/workflows/${id}`);
+    return data;
+  },
   listCourses: async (includeDrafts = true): Promise<DiscipleshipCourse[]> => {
     const { data } = await apiClient.get("/discipleship/courses", {
       params: { includeDrafts },
@@ -265,12 +269,28 @@ export const discipleshipService = {
     const { data } = await apiClient.post("/discipleship/courses", payload);
     return data.data;
   },
+  updateCourse: async (courseId: string, payload: Record<string, unknown>): Promise<DiscipleshipCourse> => {
+    const { data } = await apiClient.put(`/discipleship/courses/${courseId}`, payload);
+    return data.data;
+  },
+  deleteCourse: async (courseId: string): Promise<{ disposition: "deleted" | "archived"; message: string }> => {
+    const { data } = await apiClient.delete(`/discipleship/courses/${courseId}`);
+    return data;
+  },
   createClass: async (courseId: string, payload: Record<string, unknown>) => {
     const { data } = await apiClient.post(
       `/discipleship/courses/${courseId}/classes`,
       payload,
     );
     return data.data;
+  },
+  updateClass: async (classId: string, payload: Record<string, unknown>) => {
+    const { data } = await apiClient.put(`/discipleship/classes/${classId}`, payload);
+    return data.data;
+  },
+  deleteClass: async (classId: string): Promise<{ disposition: "deleted" | "cancelled"; message: string }> => {
+    const { data } = await apiClient.delete(`/discipleship/classes/${classId}`);
+    return data;
   },
   listRequirementDefinitions: async (includeDrafts = true): Promise<DiscipleshipRequirementDefinition[]> => {
     const { data } = await apiClient.get("/discipleship/requirement-definitions", { params: { includeDrafts } });
@@ -279,6 +299,14 @@ export const discipleshipService = {
   createRequirementDefinition: async (payload: Record<string, unknown>): Promise<DiscipleshipRequirementDefinition> => {
     const { data } = await apiClient.post("/discipleship/requirement-definitions", payload);
     return data.data;
+  },
+  updateRequirementDefinition: async (definitionId: string, payload: Record<string, unknown>): Promise<DiscipleshipRequirementDefinition> => {
+    const { data } = await apiClient.put(`/discipleship/requirement-definitions/${definitionId}`, payload);
+    return data.data;
+  },
+  deleteRequirementDefinition: async (definitionId: string): Promise<{ disposition: "deleted" | "archived"; message: string }> => {
+    const { data } = await apiClient.delete(`/discipleship/requirement-definitions/${definitionId}`);
+    return data;
   },
   getAssessmentQuestions: async (definitionId: string): Promise<AssessmentDefinitionQuestions> => {
     const { data } = await apiClient.get(`/discipleship/requirement-definitions/${definitionId}/questions`);

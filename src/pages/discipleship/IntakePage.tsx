@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Clock3, RefreshCw, Search, UserPlus, UsersRound, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, Eye, RefreshCw, Search, UserPlus, UsersRound, XCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { discipleshipService, type DiscipleshipIntakeCandidate } from "@/services/discipleship";
@@ -27,6 +27,8 @@ export default function IntakePage() {
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<DiscipleshipIntakeCandidate | null>(null);
+  const [viewing, setViewing] = useState<DiscipleshipIntakeCandidate | null>(null);
+  const [intakeEdit, setIntakeEdit] = useState({ status: "pending" as DiscipleshipIntakeCandidate["status"], notes: "" });
   const [form, setForm] = useState({ workflowId: "", firstName: "", lastName: "", email: "", phone: "", preferredLanguage: "", notes: "" });
 
   const { data: candidates = [], isLoading } = useQuery({
@@ -48,8 +50,8 @@ export default function IntakePage() {
     onError: (error: unknown) => toast.error(apiErrorMessage(error, "Could not sync First Timer check-ins")),
   });
   const update = useMutation({
-    mutationFn: ({ id, nextStatus }: { id: string; nextStatus: DiscipleshipIntakeCandidate["status"] }) => discipleshipService.updateIntakeCandidate(id, { status: nextStatus }),
-    onSuccess: invalidate,
+    mutationFn: ({ id, nextStatus, notes }: { id: string; nextStatus: DiscipleshipIntakeCandidate["status"]; notes?: string }) => discipleshipService.updateIntakeCandidate(id, { status: nextStatus, notes }),
+    onSuccess: result => { invalidate(); if (viewing?.id === result.id) setViewing(result); },
     onError: (error: unknown) => toast.error(apiErrorMessage(error, "Could not update candidate")),
   });
   const createJourney = useMutation({
@@ -82,6 +84,10 @@ export default function IntakePage() {
     setSelected(candidate);
     setForm({ workflowId: "", firstName: name.firstName, lastName: name.lastName, email: candidate.email || "", phone: candidate.phone || "", preferredLanguage: "", notes: candidate.notes || "" });
   };
+  const viewCandidate = (candidate: DiscipleshipIntakeCandidate) => {
+    setViewing(candidate);
+    setIntakeEdit({ status: candidate.status, notes: candidate.notes || "" });
+  };
   const selectedChurch = churches.find(church => church.id === selected?.churchId);
   const availableWorkflows = workflows.filter(workflow => workflow.churchId === selected?.churchId && workflow.status === "published");
   const counts = candidates.reduce<Record<string, number>>((acc, item) => ({ ...acc, [item.status]: (acc[item.status] || 0) + 1 }), {});
@@ -101,9 +107,10 @@ export default function IntakePage() {
     <Card><CardContent className="p-0">
       {isLoading ? <p className="p-10 text-center text-muted-foreground">Loading First Timer intake…</p> : visible.length === 0 ? <div className="p-10 text-center"><UsersRound className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="font-medium">No First Timers in this view</p><p className="text-sm text-muted-foreground">New service check-ins will appear automatically.</p></div> : visible.map(candidate => <div key={candidate.id} className="flex flex-col gap-3 border-b p-4 last:border-0 sm:flex-row sm:items-center">
         <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{candidate.name}</p><Badge variant={candidate.status === "converted" ? "default" : "secondary"}>{candidate.status.replace("_", " ")}</Badge></div><p className="mt-1 truncate text-xs text-muted-foreground">{candidate.email || "Email not captured"} · {candidate.phone || "Phone not captured"} · {new Date(candidate.promptedAt).toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">{churches.find(church => church.id === candidate.churchId)?.name || "Church"} · {candidate.sourceType === "attendance" ? "Service First Timer" : "Evangelism"}</p></div>
-        <div className="flex flex-wrap gap-2">{candidate.status === "pending" && <Button size="sm" variant="outline" onClick={() => update.mutate({ id: candidate.id, nextStatus: "contacted" })}>Mark contacted</Button>}{candidate.status !== "declined" && candidate.status !== "converted" && <Button size="sm" onClick={() => beginJourney(candidate)}><UserPlus className="mr-2 h-4 w-4" />Start journey</Button>}{candidate.status !== "converted" && candidate.status !== "declined" && <Button size="sm" variant="ghost" onClick={() => update.mutate({ id: candidate.id, nextStatus: "declined" })}>Declined</Button>}</div>
+        <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => viewCandidate(candidate)}><Eye className="mr-1 h-4 w-4" />View</Button>{candidate.status === "pending" && <Button size="sm" variant="outline" onClick={() => update.mutate({ id: candidate.id, nextStatus: "contacted" })}>Mark contacted</Button>}{candidate.status !== "declined" && candidate.status !== "converted" && <Button size="sm" onClick={() => beginJourney(candidate)}><UserPlus className="mr-2 h-4 w-4" />Start journey</Button>}{candidate.status !== "converted" && candidate.status !== "declined" && <Button size="sm" variant="ghost" onClick={() => update.mutate({ id: candidate.id, nextStatus: "declined" })}>Declined</Button>}</div>
       </div>)}
     </CardContent></Card>
+    <Dialog open={!!viewing} onOpenChange={open => !open && setViewing(null)}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Intake candidate</DialogTitle></DialogHeader>{viewing && <div className="space-y-4"><div className="rounded-md border bg-muted/40 p-3"><p className="font-medium">{viewing.name}</p><p className="text-sm text-muted-foreground">{viewing.email || "Email not captured"} · {viewing.phone || "Phone not captured"}</p><p className="mt-1 text-xs text-muted-foreground">{churches.find(church => church.id === viewing.churchId)?.name || "Church"} · Added {new Date(viewing.promptedAt).toLocaleString()}</p></div><div className="grid gap-2"><Label>Status</Label><Select value={intakeEdit.status} disabled={viewing.status === "converted"} onValueChange={(status: DiscipleshipIntakeCandidate["status"]) => setIntakeEdit(current => ({ ...current, status }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="pending">Awaiting contact</SelectItem><SelectItem value="contacted">Contacted</SelectItem><SelectItem value="consented">Consented</SelectItem><SelectItem value="declined">Declined</SelectItem>{viewing.status === "converted" && <SelectItem value="converted">Journey started</SelectItem>}</SelectContent></Select></div><div className="grid gap-2"><Label>Follow-up notes</Label><Textarea value={intakeEdit.notes} onChange={event => setIntakeEdit(current => ({ ...current, notes: event.target.value }))} /></div><Button className="w-full" disabled={viewing.status === "converted" || update.isPending} onClick={() => update.mutate({ id: viewing.id, nextStatus: intakeEdit.status, notes: intakeEdit.notes || undefined })}>{update.isPending ? "Saving…" : "Save intake changes"}</Button>{viewing.status === "converted" && <p className="text-xs text-muted-foreground">This intake has already created a journey. Continue managing the candidate from Journeys.</p>}</div>}</DialogContent></Dialog>
     <Dialog open={!!selected} onOpenChange={open => !open && setSelected(null)}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle>Start discipleship journey</DialogTitle></DialogHeader><div className="grid gap-4 py-2">
       <div className="rounded-md border bg-muted/40 p-3 text-sm"><p className="font-medium">{selected?.name}</p><p className="text-muted-foreground">{selectedChurch?.name} · First Timer service check-in</p></div>
       <div className="grid gap-2"><Label>Published workflow</Label><Select value={form.workflowId} onValueChange={workflowId => setForm(current => ({ ...current, workflowId }))}><SelectTrigger><SelectValue placeholder="Select the pathway" /></SelectTrigger><SelectContent>{availableWorkflows.map(workflow => <SelectItem key={workflow.id} value={workflow.id}>{workflow.name}</SelectItem>)}</SelectContent></Select>{availableWorkflows.length === 0 && <p className="text-xs text-destructive">Publish a workflow for this church before starting the journey.</p>}</div>
