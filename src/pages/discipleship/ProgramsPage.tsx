@@ -21,6 +21,8 @@ import { discipleshipService, type DiscipleshipClass, type DiscipleshipCourse, t
 import { uploadService } from "@/services/upload";
 import { churchesService } from "@/services/churches";
 import { apiErrorMessage } from "@/lib/api-error";
+import { resolveMediaUrl } from "@/lib/media-url";
+import { downloadMediaFile } from "@/lib/download-media";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -182,6 +184,18 @@ export default function ProgramsPage() {
       passScore: String(item.passScore ?? 70), maxScore: String(item.maxScore ?? 100), personsInCharge: Object.fromEntries((item.personsInCharge || []).map(assignment => [assignment.churchId, assignment.userId])) });
     setOpen(true);
   };
+  const openMaterial = async (material: DiscipleshipCourse["materials"][number]) => {
+    const isUploadedFile = material.url?.startsWith("/uploads/");
+    if (material.kind !== "document" && !isUploadedFile) {
+      window.open(resolveMediaUrl(material.url), "_blank", "noopener,noreferrer");
+      return;
+    }
+    try {
+      await downloadMediaFile(material.url || "", material.title);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The curriculum file could not be downloaded");
+    }
+  };
   const now = Date.now(); const sevenDays = now + 7 * 86400000;
   const allClasses = courses.flatMap((course) => course.classes);
   const upcomingClasses = allClasses.filter(item => new Date(item.startsAt).getTime() >= now && ['scheduled', 'active'].includes(item.status));
@@ -232,8 +246,9 @@ export default function ProgramsPage() {
                       {course.description || "No description"}
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center justify-end gap-2"><Badge>{course.status}</Badge><Button size="sm" variant="outline" onClick={() => setViewingTarget({ kind: "course", item: course })}><Eye className="mr-1 h-4 w-4" />View</Button>{canManageCourses && <Button size="sm" variant="outline" onClick={() => editCourse(course)}><Pencil className="mr-1 h-4 w-4" />Edit</Button>}{canManageCourses && <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeletingTarget({ kind: "course", item: course })}><Trash2 className="h-4 w-4" /></Button>}</div>
+                  <Badge>{course.status}</Badge>
                 </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => setViewingTarget({ kind: "course", item: course })}><Eye className="mr-1 h-4 w-4" />View details</Button>{canManageCourses && <Button size="sm" variant="outline" onClick={() => editCourse(course)}><Pencil className="mr-1 h-4 w-4" />Edit course</Button>}{canManageCourses && <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setDeletingTarget({ kind: "course", item: course })}><Trash2 className="mr-1 h-4 w-4" />Delete</Button>}</div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-xs text-muted-foreground">Available in {course.churchIds?.length || 1} {(course.churchIds?.length || 1) === 1 ? "church" : "churches"}</p>
@@ -243,12 +258,11 @@ export default function ProgramsPage() {
                   </p>
                   {course.materials.length ? (
                     course.materials.map((m) => (
-                      <a
+                      <button
                         key={m.id}
-                        href={m.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-2 rounded border px-3 py-2 text-sm hover:bg-muted"
+                        type="button"
+                        onClick={() => openMaterial(m)}
+                        className="flex w-full items-center gap-2 rounded border px-3 py-2 text-left text-sm hover:bg-muted"
                       >
                         {m.kind === "video" ? (
                           <FileVideo className="h-4 w-4" />
@@ -258,7 +272,7 @@ export default function ProgramsPage() {
                           <Link2 className="h-4 w-4" />
                         )}
                         {m.title}
-                      </a>
+                      </button>
                     ))
                   ) : (
                     <p className="text-sm text-muted-foreground">
@@ -394,7 +408,7 @@ export default function ProgramsPage() {
           </div>
         </DialogContent>
       </Dialog>
-      <Dialog open={!!viewingTarget} onOpenChange={open => !open && setViewingTarget(null)}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle>{viewingTarget?.item.title}</DialogTitle></DialogHeader>{viewingTarget && <div className="space-y-4"><div className="flex flex-wrap gap-2"><Badge>{viewingTarget.item.status}</Badge><Badge variant="secondary">{viewingTarget.kind === "course" ? "Course" : viewingTarget.item.type.replace("_", " ")}</Badge></div><p className="text-sm text-muted-foreground">{viewingTarget.item.description || "No description"}</p><div><p className="text-sm font-medium">Available churches</p><p className="text-sm text-muted-foreground">{(viewingTarget.item.churchIds || []).map(id => churches.find(church => church.id === id)?.name || id).join(", ")}</p></div>{viewingTarget.kind === "course" ? <><div><p className="text-sm font-medium">Curriculum</p><div className="mt-2 space-y-2">{viewingTarget.item.materials.map(material => <a key={material.id} href={material.url} target="_blank" rel="noreferrer" className="block rounded-md border px-3 py-2 text-sm hover:bg-muted">{material.title} · <span className="capitalize text-muted-foreground">{material.kind}</span></a>)}{viewingTarget.item.materials.length === 0 && <p className="text-sm text-muted-foreground">No curriculum materials</p>}</div></div><div><p className="text-sm font-medium">Scheduled classes</p><p className="text-sm text-muted-foreground">{viewingTarget.item.classes.length} class{viewingTarget.item.classes.length === 1 ? "" : "es"}</p></div></> : viewingTarget.item.type === "assessment" && <div><p className="text-sm font-medium">Assessment settings</p><p className="text-sm text-muted-foreground">Pass score {viewingTarget.item.passScore ?? 0} out of {viewingTarget.item.maxScore ?? 0} · {viewingTarget.item._count?.questions || 0} questions</p></div>}</div>}</DialogContent></Dialog>
+      <Dialog open={!!viewingTarget} onOpenChange={open => !open && setViewingTarget(null)}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle>{viewingTarget?.item.title}</DialogTitle></DialogHeader>{viewingTarget && <div className="space-y-4"><div className="flex flex-wrap gap-2"><Badge>{viewingTarget.item.status}</Badge><Badge variant="secondary">{viewingTarget.kind === "course" ? "Course" : viewingTarget.item.type.replace("_", " ")}</Badge></div><p className="text-sm text-muted-foreground">{viewingTarget.item.description || "No description"}</p><div><p className="text-sm font-medium">Available churches</p><p className="text-sm text-muted-foreground">{(viewingTarget.item.churchIds || []).map(id => churches.find(church => church.id === id)?.name || id).join(", ")}</p></div>{viewingTarget.kind === "course" ? <><div><p className="text-sm font-medium">Curriculum</p><div className="mt-2 space-y-2">{viewingTarget.item.materials.map(material => <button key={material.id} type="button" onClick={() => openMaterial(material)} className="flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm hover:bg-muted"><span>{material.title}</span><span className="capitalize text-muted-foreground">{material.kind === "document" || material.url?.startsWith("/uploads/") ? "Download" : `Open ${material.kind}`}</span></button>)}{viewingTarget.item.materials.length === 0 && <p className="text-sm text-muted-foreground">No curriculum materials</p>}</div></div><div><p className="text-sm font-medium">Scheduled classes</p><p className="text-sm text-muted-foreground">{viewingTarget.item.classes.length} class{viewingTarget.item.classes.length === 1 ? "" : "es"}</p></div></> : viewingTarget.item.type === "assessment" && <div><p className="text-sm font-medium">Assessment settings</p><p className="text-sm text-muted-foreground">Pass score {viewingTarget.item.passScore ?? 0} out of {viewingTarget.item.maxScore ?? 0} · {viewingTarget.item._count?.questions || 0} questions</p></div>}</div>}</DialogContent></Dialog>
       <AlertDialog open={!!deletingTarget} onOpenChange={open => !open && setDeletingTarget(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete catalogue item</AlertDialogTitle><AlertDialogDescription>Delete <strong>{deletingTarget?.item.title}</strong>? Items already used by workflows, journeys, enrolments, or assessment attempts will be archived instead of permanently removed.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleteCatalogItem.isPending} onClick={() => deletingTarget && deleteCatalogItem.mutate(deletingTarget)}>{deleteCatalogItem.isPending ? "Removing…" : "Delete item"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!deletingClass} onOpenChange={open => !open && setDeletingClass(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete class</AlertDialogTitle><AlertDialogDescription>Delete <strong>{deletingClass?.title}</strong>? A class with enrolments or workflow links will be cancelled and retained for history. Active enrolments will be withdrawn.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleteClass.isPending} onClick={() => deletingClass && deleteClass.mutate(deletingClass.id)}>{deleteClass.isPending ? "Removing…" : "Delete class"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <ScheduleClassDialog course={courses.find(course => course.id === classCourseId) || null} classItem={editingClass} churches={churches} onOpenChange={open => { if (!open) { setClassCourseId(null); setEditingClass(null); } }} onSaved={() => qc.invalidateQueries({ queryKey: ["discipleship-courses"] })} />
