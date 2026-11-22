@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Check, X, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { usePageMeta } from '@/hooks/usePageMeta';
 import apiClient from '@/lib/api-client';
 const pricingHero = 'https://media.chepetsaride.com/media-images/b2da0944-f41f-4e68-a245-a9ec65f88b81.webp';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
@@ -47,13 +46,7 @@ const inView = {
 };
 
 export default function PricingPage() {
-  usePageMeta({
-    title: 'Pricing — ICIMS',
-    description: 'Simple, transparent pricing for every ministry size.',
-    canonical: 'https://churchcentral.church/pricing',
-  });
-
-  const { data: packageResponse, isLoading } = useQuery<{ packages: Package[]; pricing?: PricingMeta }>({
+  const { data: packageResponse, isLoading, isError, refetch } = useQuery<{ packages: Package[]; pricing?: PricingMeta }>({
     queryKey: ['public-packages'],
     queryFn: async () => {
       const { data } = await apiClient.get('/packages');
@@ -85,13 +78,13 @@ export default function PricingPage() {
           <div className="absolute inset-0 bg-black/65" />
         </div>
         <div className="container relative z-10 py-28 md:py-36 text-center max-w-2xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+          <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <p className="text-accent text-xs font-semibold tracking-widest uppercase mb-4">Pricing</p>
             <h1 className="font-heading text-5xl md:text-6xl font-bold text-white leading-tight mb-5">
-              Simple, honest pricing.
+              Church management software pricing
             </h1>
             <p className="text-white/65 text-lg leading-relaxed mb-8">
-              No hidden fees. No surprises. Pick the plan that fits your ministry and scale as you grow.
+              Compare ICIMS plans by church and member limits, available features and your billing market.
             </p>
             <div className="flex flex-wrap justify-center gap-5 text-sm text-white/60">
               {['Affordable prices', 'Dedicated support', 'Full feature access'].map(t => (
@@ -108,23 +101,26 @@ export default function PricingPage() {
       <section className="py-20 bg-muted/30">
         <div className="container">
 
-          <div className="flex justify-center mb-12">
-            <div className="max-w-xl rounded-xl border border-border bg-background px-5 py-4 text-center shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-accent">Pricing market</p>
-              <p className="mt-1 text-lg font-bold text-foreground">{pricing?.marketName || 'General'} Pricing</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {pricing?.market === 'malawi'
-                  ? 'Malawi accounts use MWK package pricing and PayChangu for package payments.'
-                  : pricing?.market === 'kenya'
-                    ? 'Kenya accounts use KES package pricing and Paystack for package payments.'
-                    : 'Other countries use General package pricing and Paystack for package payments.'}
-              </p>
-            </div>
+          <div className="mx-auto mb-8 max-w-3xl text-center">
+            <h2 className="font-heading text-3xl font-bold">Plans and billing by market</h2>
+            <p className="mt-3 text-muted-foreground">
+              Compare monthly and yearly plans. Kenya packages are priced in KES and use Paystack. Malawi packages are priced in MWK and use PayChangu. Other countries use general market pricing.
+            </p>
           </div>
 
+          {pricing && <div className="flex justify-center mb-12">
+            <div className="max-w-xl rounded-xl border border-border bg-background px-5 py-4 text-center shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-accent">Pricing market</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{pricing.marketName || 'General'} Pricing</p>
+            </div>
+          </div>}
+
           {isLoading ? (
-            <div className="flex justify-center py-20">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+            <div role="status" className="py-12 text-center text-sm text-muted-foreground">Loading current plans…</div>
+          ) : isError ? (
+            <div className="space-y-3 py-10 text-center">
+              <p role="status" className="text-muted-foreground">Current plans could not be loaded.</p>
+              <Button variant="outline" onClick={() => void refetch()}>Try again</Button>
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto items-stretch">
@@ -141,7 +137,7 @@ export default function PricingPage() {
                   <motion.div
                     key={pkg.id}
                     custom={i}
-                    initial="hidden"
+                    initial={false}
                     whileInView="visible"
                     viewport={{ once: true }}
                     variants={inView}

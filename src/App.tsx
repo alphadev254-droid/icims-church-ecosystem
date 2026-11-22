@@ -3,28 +3,21 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, type ComponentType, type PropsWithChildren } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import PublicLayout from "@/components/layout/PublicLayout";
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-import AdminLayout from "@/components/admin/AdminLayout";
+import PublicLayout, { PublicPageBoundary } from "@/components/layout/PublicLayout";
 import TermsAcceptanceGate from "@/components/TermsAcceptanceGate";
+import RouteMetadata from "@/marketing/RouteMetadata";
+import { publicPages } from "@/marketing/pages";
 
 // ── Lazy-loaded page components ──────────────────────────────────────
-const Index = lazy(() => import("./pages/Index"));
-const Features = lazy(() => import("./pages/Features"));
-const Pricing = lazy(() => import("./pages/Pricing"));
-const About = lazy(() => import("./pages/About"));
-const Contact = lazy(() => import("./pages/Contact"));
-const Terms = lazy(() => import("./pages/Terms"));
-const MarketerTerms = lazy(() => import("./pages/MarketerTerms"));
-const Privacy = lazy(() => import("./pages/Privacy"));
 const Login = lazy(() => import("./pages/Login"));
+const DashboardLayout = lazy(() => import("./components/layout/DashboardLayout"));
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
+const AdminProtectedRoute = lazy(() => import("./components/admin/AdminProtectedRoute"));
 const Register = lazy(() => import("./pages/Register"));
-const Referrals = lazy(() => import("./pages/Referrals"));
 const ReferrerRegister = lazy(() => import("./pages/ReferrerRegister"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const MemberRegister = lazy(() => import("./pages/MemberRegister"));
@@ -115,7 +108,12 @@ function PageLoader() {
 
 const queryClient = new QueryClient();
 
-const App = () => {
+interface AppProps {
+  Router?: ComponentType<PropsWithChildren>;
+  initialPublicPage?: { path: string; Component: ComponentType };
+}
+
+const App = ({ Router = BrowserRouter, initialPublicPage }: AppProps) => {
   useEffect(() => {
     const clearCache = () => queryClient.clear();
     window.addEventListener('auth:clear-client-cache', clearCache);
@@ -123,30 +121,28 @@ const App = () => {
   }, []);
 
   return (
+    <Suspense fallback={<PageLoader />}>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <Router>
+            <RouteMetadata />
             <TermsAcceptanceGate />
-            <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes */}
               <Route element={<PublicLayout />}>
-                <Route path="/" element={<Index />} />
-                <Route path="/features" element={<Features />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/referrals" element={<Referrals />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/terms/marketers" element={<MarketerTerms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/events/:id" element={<PublicEvent />} />
-                <Route path="/giving/:id" element={<PublicCampaign />} />
-                <Route path="/invoice/pay/:token" element={<PublicInvoicePayment />} />
+                {publicPages.map(page => {
+                  const prepared = initialPublicPage?.path === page.path;
+                  const Page = prepared ? initialPublicPage.Component : page.Component;
+                  const element = prepared ? <Page /> : <PublicPageBoundary><Page /></PublicPageBoundary>;
+                  return <Route key={page.path} path={page.path} element={element} />;
+                })}
+                <Route path="/events/:id" element={<PublicPageBoundary><PublicEvent /></PublicPageBoundary>} />
+                <Route path="/giving/:id" element={<PublicPageBoundary><PublicCampaign /></PublicPageBoundary>} />
+                <Route path="/invoice/pay/:token" element={<PublicPageBoundary><PublicInvoicePayment /></PublicPageBoundary>} />
               </Route>
 
               {/* Public attendance link (no auth) */}
@@ -240,12 +236,12 @@ const App = () => {
 
               <Route path="*" element={<NotFound />} />
             </Routes>
-            </Suspense>
-          </BrowserRouter>
+          </Router>
         </TooltipProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
+    </Suspense>
   );
 };
 

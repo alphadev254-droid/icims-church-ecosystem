@@ -4,10 +4,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Sun, Moon, Menu, X, Mail, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
+import { useHydrated } from '@/hooks/useHydrated';
 
 export default function PublicHeader() {
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const hydrated = useHydrated();
+  const user = hydrated ? auth.user : null;
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -55,7 +58,7 @@ export default function PublicHeader() {
         {/* Brand — logo + wordmark + descriptor */}
         <Link to="/" className="flex items-center gap-3 shrink-0 group">
                     <img
-            src="https://media.chepetsaride.com/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp"
+            src="/logo192.png"
             alt="ICIMS"
             width="56" height="56"
             className="h-14 w-auto object-contain rounded-2xl transition-transform group-hover:scale-105"
@@ -67,11 +70,12 @@ export default function PublicHeader() {
         </Link>
 
         {/* Desktop nav — underline style */}
-        <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
+        <nav aria-label="Main navigation" className="hidden md:flex items-center gap-1 flex-1 justify-center">
           {navLinks.map(link => (
             <Link
               key={link.to}
               to={link.to}
+              aria-current={isActive(link.to) ? 'page' : undefined}
               className={`relative px-4 py-2 text-sm font-medium transition-colors ${
                 isActive(link.to)
                   ? 'text-foreground'
@@ -92,9 +96,10 @@ export default function PublicHeader() {
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
+            aria-label="Toggle color theme"
             className="text-muted-foreground h-9 w-9"
           >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {hydrated && theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
           {user ? (

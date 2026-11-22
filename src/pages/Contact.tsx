@@ -6,7 +6,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Mail, Phone, MapPin, Clock, HeadphonesIcon, ShoppingCart, Wrench, ChevronDown, ChevronUp, ArrowRight, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
-import { usePageMeta } from '@/hooks/usePageMeta';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
 import { phoneInputProps, sanitizePhoneInput } from '@/lib/numeric-input';
 
@@ -45,12 +44,6 @@ const inView = {
 };
 
 export default function ContactPage() {
-  usePageMeta({
-    title: 'Contact Us',
-    description: 'Get in touch with the ICIMS team. Reach our sales, support or technical departments.',
-    canonical: 'https://churchcentral.church/contact',
-  });
-
   const [loading, setLoading] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
@@ -89,10 +82,10 @@ export default function ContactPage() {
           <div className="absolute inset-0 bg-black/68" />
         </div>
         <div className="container relative z-10 py-28 md:py-36">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="max-w-xl">
+          <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="max-w-xl">
             <p className="text-accent text-xs font-semibold tracking-widest uppercase mb-4">Contact us</p>
             <h1 className="font-heading text-5xl md:text-6xl font-bold text-white leading-tight mb-5">
-              Let us talk.
+              Contact ICIMS support
             </h1>
             <p className="text-white/65 text-lg leading-relaxed">
               Questions about pricing, onboarding, or the platform? We respond within one business day.
@@ -107,7 +100,7 @@ export default function ContactPage() {
           <div className="grid lg:grid-cols-5 gap-12">
 
             {/* Info panel */}
-            <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="lg:col-span-2 space-y-8">
+            <motion.div initial={false} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="lg:col-span-2 space-y-8">
               <div>
                 <p className="text-accent text-xs font-semibold tracking-widest uppercase mb-3">Reach us</p>
                 <h2 className="font-heading text-3xl font-bold text-foreground leading-tight mb-2">We are here to help.</h2>
@@ -115,8 +108,9 @@ export default function ContactPage() {
               </div>
               <div className="space-y-4">
                 {[
-                  { icon: Mail,   label: 'Email',   value: 'support@churchcentral.church' },
-                  { icon: Phone,  label: 'Phone',   value: '+254 720 874 025 / WhatsApp +265 998 951 510' },
+                  { icon: Mail, label: 'Email', value: 'support@churchcentral.church', href: 'mailto:support@churchcentral.church' },
+                  { icon: Phone, label: 'Phone', value: '+254 720 874 025', href: 'tel:+254720874025' },
+                  { icon: Phone, label: 'WhatsApp', value: '+265 998 951 510', href: 'https://wa.me/265998951510' },
                   { icon: MapPin, label: 'Address', value: 'Nairobi, Kenya' },
                 ].map(c => (
                   <div key={c.label} className="flex items-start gap-4">
@@ -125,7 +119,11 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-0.5">{c.label}</p>
-                      <p className="text-sm font-medium text-foreground">{c.value}</p>
+                      {c.href ? (
+                        <a href={c.href} className="text-sm font-medium text-foreground hover:underline">{c.value}</a>
+                      ) : (
+                        <p className="text-sm font-medium text-foreground">{c.value}</p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -160,7 +158,7 @@ export default function ContactPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Get a personalised walkthrough of all 20 modules with one of our team members. No commitment required.
+                  Get a walkthrough of the modules your team needs, from children’s records and service check-in to discipleship and event planning.
                 </p>
                 <Button
                   size="sm"
@@ -185,7 +183,7 @@ export default function ContactPage() {
             </motion.div>
 
             {/* Form */}
-            <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+            <motion.div initial={false} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
               className="lg:col-span-3 border border-border rounded-2xl p-8 bg-card">
               <h2 className="font-heading text-xl font-bold text-foreground mb-6">Send a message</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -239,7 +237,7 @@ export default function ContactPage() {
               <p className="text-background/55 dark:text-muted-foreground text-sm mb-8">Contact the department that best fits your need.</p>
               <div className="space-y-3">
                 {departments.map((d, i) => (
-                  <motion.div key={d.title} custom={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={inView}
+                  <motion.div key={d.title} custom={i} initial={false} whileInView="visible" viewport={{ once: true }} variants={inView}
                     className="flex items-center gap-4 rounded-xl border border-background/10 dark:border-border bg-background/5 dark:bg-muted/30 p-4">
                     <div className="h-10 w-10 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
                       <d.icon className="h-5 w-5 text-accent" />
@@ -261,7 +259,7 @@ export default function ContactPage() {
               <p className="text-background/55 dark:text-muted-foreground text-sm mb-8">Can not find what you are looking for? Send us a message above.</p>
               <div className="space-y-2">
                 {faqs.map((f, i) => (
-                  <motion.div key={i} custom={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={inView}
+                  <motion.div key={i} custom={i} initial={false} whileInView="visible" viewport={{ once: true }} variants={inView}
                     className="rounded-xl border border-background/10 dark:border-border bg-background/5 dark:bg-muted/20 overflow-hidden">
                     <button
                       className="w-full flex items-center justify-between p-4 text-left text-sm font-medium text-background dark:text-foreground hover:bg-background/5 dark:hover:bg-muted/40 transition-colors"

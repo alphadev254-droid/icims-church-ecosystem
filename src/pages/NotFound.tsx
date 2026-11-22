@@ -1,11 +1,13 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { applyPageMetadata } from "@/marketing/apply-head";
+import { notFoundMetadata } from "@/marketing/seo";
 
 const NotFound = () => {
   const location = useLocation();
 
   useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
+    applyPageMetadata(notFoundMetadata);
   }, [location.pathname]);
 
   return (

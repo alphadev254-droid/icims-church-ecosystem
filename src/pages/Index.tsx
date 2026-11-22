@@ -1,58 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { usePageMeta } from '@/hooks/usePageMeta';
+import ModuleCatalogue from '@/marketing/ModuleCatalogue';
 import { Button } from '@/components/ui/button';
-import {
-  Users, Church, Calendar, HandCoins, BarChart3, MessageSquare,
-  BookOpen, ClipboardList, Building2, TrendingUp, Shield, Globe,
-  ArrowRight, Baby, CheckCircle2, ChevronRight,
-  Bell, QrCode, Receipt, ShieldCheck, Download,
-} from 'lucide-react';
-const heroImage = 'https://media.chepetsaride.com/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
+import { BarChart3, Building2, Shield, Globe, ArrowRight, CheckCircle2, ChevronRight, Download } from 'lucide-react';
 import { BookDemoDialog } from '@/components/BookDemoDialog';
 import { toast } from 'sonner';
+
+const heroImage = 'https://media.chepetsaride.com/media-images/5ba1d3df-18b5-40df-8681-430b07ff2505.webp';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
-const modules = [
-  { icon: Users,        title: 'Members Management',            desc: 'This module helps you manage an online membership register of all the brethren in the church.' },
-  { icon: Baby,         title: 'Children & Dependents',         desc: 'Record children, link them to parents or guardians, and keep family relationships clear inside the church register.' },
-  { icon: Calendar,     title: 'Events Management',             desc: 'Create church events, publish them to members, and manage free or ticketed gatherings.' },
-  { icon: HandCoins,    title: 'Giving & Campaigns',            desc: "Manage tithes, offerings, pledges, partnerships, and multi-church giving campaigns online." },
-  { icon: QrCode,       title: 'QR Code Attendance',            desc: 'Let members check in by scanning a service QR code, or let ushers scan member QR codes at the door.' },
-  { icon: BookOpen,     title: 'Resources Library',             desc: 'This module gives you a platform to keep resource materials that can be accessed by all church members.' },
-  { icon: Church,       title: 'Churches Management',           desc: 'Create your church and manage how data flows from the churches under you in this module.' },
-  { icon: Receipt,      title: 'Transactions View',             desc: 'View giving, ticketing, and payment records as they happen across your ministry.' },
-  { icon: Building2,    title: 'Cell & Fellowship Management',  desc: 'Manage cells and home fellowships using this module.' },
-  { icon: Users,        title: 'Users Management',              desc: 'Manage the users using this module.' },
-  { icon: ShieldCheck,  title: 'Roles & Permissions',           desc: 'Create custom roles, assign permissions, and control which church data each user can access.' },
-  { icon: MessageSquare,title: 'Communication & Announcements', desc: 'This module helps you manage your communication within the church. You communicate directly with your targeted audience in the church/ministry.' },
-  { icon: Users,        title: 'Teams Management',              desc: "Assign your church members to teams to ensure they are engaged in the ministry's work." },
-  { icon: Bell,         title: 'Reminders Management',          desc: 'Schedule pledge, giving, birthday, anniversary, event, and ministry reminders.' },
-  { icon: TrendingUp,   title: 'Performance Dashboard',         desc: 'Track all your Key Performance Indicators using this module.' },
-  { icon: BarChart3,    title: 'Reports & Analytics',           desc: 'Access all your giving, attendance, and membership reports using this module.' },
-  { icon: Calendar,     title: 'Event Ticketing',               desc: 'Issue tickets for your events using this module.' },
-  { icon: Globe,        title: 'Public Church Website',         desc: 'Publish a branded church website with sermons, ministries, events, giving, visit forms, and contact details.' },
-  { icon: HandCoins,    title: 'Wallets & Withdrawals',         desc: 'Track ministry wallets, withdrawal requests, fees, OTP checks, and payout history.' },
-  { icon: ClipboardList,title: 'Pledges & Follow-up',           desc: 'Record pledges, track balances, filter by campaign or church, and follow up with reminders.' },
-];
-
-const stats = [
-  { value: '500+',   label: 'Churches onboarded' },
-  { value: '50k+',   label: 'Members managed' },
-  { value: '99.9%',  label: 'Platform uptime' },
-  { value: '20',    label: 'Integrated modules' },
-];
-
 const whys = [
   {
     icon: Shield,
     title: 'Secure by design',
-    desc: 'Role-based access control, encrypted data at rest, and PCI-compliant payment processing built in from day one.',
+    desc: 'Use roles and church-level permissions to control access to member, attendance and finance records.',
   },
   {
     icon: Building2,
@@ -67,7 +33,7 @@ const whys = [
   {
     icon: Globe,
     title: 'Scales with you',
-    desc: 'Cloud-hosted infrastructure that handles 5,000+ concurrent users. Start small, grow without limits.',
+    desc: 'Use ICIMS in a web browser and add church branches as your ministry grows.',
   },
 ];
 
@@ -107,12 +73,6 @@ export default function LandingPage() {
     }
   };
 
-  usePageMeta({
-    title: 'The Complete Church Management Ecosystem',
-    description: 'ICIMS is a cloud-based church management platform with integrated modules for membership, children and dependents, giving, attendance, events, communication and more.',
-    canonical: 'https://churchcentral.church/',
-  });
-
   return (
     <div className="overflow-x-hidden">
 
@@ -126,35 +86,34 @@ export default function LandingPage() {
         <div className="container relative z-10 py-24 md:py-32">
           <div className="max-w-3xl">
             <motion.p
-              initial={{ opacity: 0, x: -12 }}
+              initial={false}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
               className="text-accent text-sm font-semibold tracking-widest uppercase mb-5"
             >
-              Church Management Platform
+              ICIMS · Church Central
             </motion.p>
 
             <motion.h1
-              initial={{ opacity: 0, y: 28 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.65, delay: 0.1 }}
               className="font-heading text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] mb-6"
             >
-              Run your church.<br />
-              <span className="text-accent">Not spreadsheets.</span>
+              Church management software for <span className="text-accent">connected ministries</span>
             </motion.h1>
 
             <motion.p
-              initial={{ opacity: 0, y: 20 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.25 }}
               className="text-white/70 text-lg md:text-xl mb-10 max-w-xl leading-relaxed"
             >
-              20 integrated modules covering every aspect of ministry — from membership, children records, QR attendance, giving, events, public websites, reminders, reports, and performance tracking.
+              Manage members and families, plan services and events, oversee giving, and follow up with first-time visitors in one online system. ICIMS serves local churches and ministries with multiple branches.
             </motion.p>
 
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.38 }}
               className="flex flex-wrap gap-3"
@@ -183,12 +142,12 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6, duration: 0.5 }}
               className="flex flex-wrap gap-5 mt-10 text-white/50 text-sm"
             >
-              {['Affordable Packages', 'Full Controll', '24/7 support'].map(t => (
+              {['Branch-level access', 'Service QR check-in', 'Ministry reporting'].map(t => (
                 <span key={t} className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-accent" /> {t}
                 </span>
@@ -198,26 +157,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── STATS BAR ────────────────────────────────────────────────────── */}
-      <section className="bg-accent">
-        <div className="container py-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            {stats.map((s, i) => (
-              <motion.div
-                key={s.label}
-                custom={i}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                variants={inView}
-              >
-                <p className="text-2xl md:text-3xl font-bold text-accent-foreground">{s.value}</p>
-                <p className="text-xs text-accent-foreground/70 mt-0.5 uppercase tracking-wide">{s.label}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+
+      <ModuleCatalogue overview />
 
       {/* ── WHY ICIMS ────────────────────────────────────────────────────── */}
       <section className="py-24 bg-background">
@@ -243,7 +184,7 @@ export default function LandingPage() {
                 <motion.div
                   key={w.title}
                   custom={i}
-                  initial="hidden"
+                  initial={false}
                   whileInView="visible"
                   viewport={{ once: true }}
                   variants={inView}
@@ -261,116 +202,29 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── MODULES ──────────────────────────────────────────────────────── */}
-      <section className="py-24 bg-foreground dark:bg-card">
-        <div className="container">
-          <div className="grid md:grid-cols-2 gap-8 items-center mb-14">
-            {/* Left */}
-            <div>
-              <p className="text-accent text-xs font-semibold tracking-widest uppercase mb-3">What's included</p>
-              <h2 className="font-heading text-4xl md:text-5xl font-bold text-background dark:text-foreground leading-tight">
-                20 modules.<br />One platform.
-              </h2>
-            </div>
-            {/* Right */}
-            <div className="flex flex-col gap-5">
-              <p className="font-heading text-2xl md:text-3xl font-bold text-background/70 dark:text-foreground/60 leading-snug">
-                Join hundreds of churches already using the platform.
-              </p>
-              <div>
-                <Link to="/register">
-                  <Button className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 h-11 px-6">
-                    Join now <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-background/10 dark:bg-border rounded-xl overflow-hidden border border-background/10 dark:border-border">
-            {modules.map((m, i) => (
-              <motion.div
-                key={m.title + i}
-                custom={i}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                variants={inView}
-                className="bg-foreground dark:bg-card p-5 hover:bg-foreground/90 dark:hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="h-8 w-8 rounded-md bg-accent/15 flex items-center justify-center shrink-0">
-                    <m.icon className="h-3.5 w-3.5 text-accent" />
-                  </div>
-                  <span className="text-xs font-bold text-accent opacity-60">{String(i + 1).padStart(2, '0')}</span>
-                </div>
-                <h3 className="font-semibold text-background dark:text-foreground text-sm mb-1">{m.title}</h3>
-                <p className="text-xs text-background/50 dark:text-muted-foreground leading-relaxed">{m.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* View all */}
-          <div className="mt-8 flex justify-center">
-            <Link to="/features">
-              <Button variant="outline" className="border-background/30 dark:border-border  dark:text-foreground hover:bg-background/10 dark:hover:bg-muted gap-2">
-                View all modules <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── SOCIAL PROOF ─────────────────────────────────────────────────── */}
-      <section className="py-24 bg-background">
-        <div className="container">
-          <div className="max-w-xl mb-14">
-            <p className="text-accent text-xs font-semibold tracking-widest uppercase mb-3">Trusted by ministries</p>
-            <h2 className="font-heading text-4xl md:text-5xl font-bold text-foreground leading-tight">
-              From small branches<br />to large ministries.
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                quote: "ICIMS transformed how we track attendance and giving across all our branches. What used to take days now takes minutes.",
-                name: "Pastor James M.",
-                role: "National Director, Malawi",
-              },
-              {
-                quote: "The multi-level hierarchy was exactly what we needed. Every regional leader sees their data, nothing more.",
-                name: "Rev. Sarah K.",
-                role: "Regional Coordinator, Kenya",
-              },
-              {
-                quote: "Our giving increased 40% after members could give online. The transparency built trust in our congregation.",
-                name: "Elder David N.",
-                role: "Finance Lead, Nairobi",
-              },
-            ].map((t, i) => (
-              <motion.div
-                key={i}
-                custom={i}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                variants={inView}
-                className="border border-border rounded-xl p-6 bg-card"
-              >
-                <p className="text-foreground/80 leading-relaxed mb-5 text-sm">"{t.quote}"</p>
-                <div className="flex items-center gap-3 pt-4 border-t border-border">
-                  <div className="h-9 w-9 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-sm shrink-0">
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">{t.role}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+      <section className="bg-background py-16">
+        <div className="container max-w-5xl">
+          <h2 className="font-heading text-3xl font-bold md:text-4xl">What to look for in church management software</h2>
+          <p className="mt-4 max-w-3xl leading-relaxed text-muted-foreground">
+            Start with one workflow you already run every week, such as Sunday check-in. In a demo, follow that workflow from the first record to the report your team needs. Then check who can see the data and what changes when the same workflow runs at another branch.
+          </p>
+          <ul className="mt-6 grid gap-4 sm:grid-cols-3">
+            <li className="rounded-xl border bg-card p-5">
+              <h3 className="font-semibold">For church administrators</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Check how you’ll keep households, member details and group rosters up to date.</p>
+              <Link to="/features/membership" className="mt-3 inline-block font-medium underline">Explore member records</Link>
+            </li>
+            <li className="rounded-xl border bg-card p-5">
+              <h3 className="font-semibold">For welcome teams</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Run a test check-in and see how a first-time visitor gets into the follow-up queue.</p>
+              <Link to="/features/attendance" className="mt-3 inline-block font-medium underline">Explore service check-in</Link>
+            </li>
+            <li className="rounded-xl border bg-card p-5">
+              <h3 className="font-semibold">For ministry leaders</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Review what a branch administrator can access and what appears in ministry reporting.</p>
+              <Link to="/features/multi-branch" className="mt-3 inline-block font-medium underline">Explore multi-branch oversight</Link>
+            </li>
+          </ul>
         </div>
       </section>
 
@@ -382,7 +236,7 @@ export default function LandingPage() {
               Ready to get started?
             </h2>
             <p className="text-background/60 dark:text-accent-foreground/70 text-lg mb-10 leading-relaxed">
-              Join hundreds of churches already using ICIMS to run their ministry with clarity and confidence.
+              See what ICIMS can do for your church. Compare plans or request a walkthrough of your ministry’s workflow.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <Link to="/register">

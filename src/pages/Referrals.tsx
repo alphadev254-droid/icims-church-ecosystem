@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import { CheckCircle2, HandCoins, Link2, ShieldCheck, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { usePageMeta } from '@/hooks/usePageMeta';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useHydrated } from '@/hooks/useHydrated';
 
 const steps = [
   {
@@ -30,12 +30,8 @@ const steps = [
 
 export default function ReferralsPage() {
   const { theme } = useTheme();
-  const heroImage = theme === 'dark' ? '/marketers_dark.png' : '/marketers_light.png';
-  usePageMeta({
-    title: 'ICIMS Marketer Program',
-    description: 'Market ICIMS to churches and ministries and earn commission when they pay for packages.',
-    canonical: 'https://churchcentral.church/referrals',
-  });
+  const hydrated = useHydrated();
+  const heroImage = hydrated && theme === 'dark' ? '/marketers_dark.png' : '/marketers_light.png';
 
   return (
     <div className="overflow-x-hidden">
@@ -43,6 +39,10 @@ export default function ReferralsPage() {
         <div className="absolute inset-0">
           <img src={heroImage} alt="ICIMS marketers" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/78" />
+        </div>
+        <div className="container relative py-16">
+          <h1 className="max-w-2xl font-heading text-4xl font-bold text-white md:text-6xl">ICIMS Marketer Program</h1>
+          <p className="mt-4 max-w-xl text-lg text-white/80">Introduce churches and ministries to ICIMS and earn commission on eligible package payments.</p>
         </div>
       </section>
 

@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { Suspense } from 'react';
+import { Suspense, type PropsWithChildren } from 'react';
 import PublicHeader from './PublicHeader';
 import PublicFooter from './PublicFooter';
 
@@ -11,14 +11,16 @@ function PublicPageLoader() {
   );
 }
 
+export function PublicPageBoundary({ children }: PropsWithChildren) {
+  return <Suspense fallback={<PublicPageLoader />}>{children}</Suspense>;
+}
+
 export default function PublicLayout() {
   return (
     <div className="flex min-h-screen flex-col">
       <PublicHeader />
       <main className="flex-1">
-        <Suspense fallback={<PublicPageLoader />}>
-          <Outlet />
-        </Suspense>
+        <Outlet />
       </main>
       <PublicFooter />
     </div>

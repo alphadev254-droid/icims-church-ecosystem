@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { featurePath, featureTopics } from '@/marketing/topic-content';
 
 const IconFacebook = () => (
   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
@@ -48,7 +49,7 @@ export default function PublicFooter() {
           {/* Brand col */}
           <div className="md:col-span-4">
             <Link to="/" className="flex items-center gap-2.5 mb-5">
-              <img src="https://media.chepetsaride.com/media-images/e295d9c1-36d8-474a-a897-5d84f99e57fc.webp" alt="ICIMS" className="h-12 w-12 object-cover rounded-full" />
+              <img src="/logo192.png" width="48" height="48" loading="lazy" alt="ICIMS" className="h-12 w-12 object-cover rounded-full" />
             </Link>
             <p className="text-background/55 dark:text-foreground/50 text-sm leading-relaxed mb-6 max-w-xs">
               Integrated Church Information Management System â€” empowering ministries to grow with clarity, accountability, and confidence.
@@ -103,12 +104,13 @@ export default function PublicFooter() {
           <div className="md:col-span-2">
             <h4 className="text-xs font-semibold uppercase tracking-widest text-background/40 dark:text-foreground/40 mb-4">Modules</h4>
             <ul className="space-y-2.5 text-sm text-background/60 dark:text-foreground/55">
-              <li>Membership</li>
-              <li>Children & Dependents</li>
-              <li>Giving & Offerings</li>
-              <li>Event Management</li>
-              <li>Attendance</li>
-              <li>Performance KPIs</li>
+              {featureTopics.map(topic => (
+                <li key={topic.slug}>
+                  <Link to={featurePath(topic.slug)} className="hover:text-background dark:hover:text-foreground">
+                    {topic.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 

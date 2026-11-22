@@ -64,6 +64,16 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
+## Serve the production site with prerendered pages
+
+`npm run build` generates `dist/index.html`, one HTML file per public marketing route, and `dist/sitemap.xml`. It also generates separate SPA shells for the account routes and dynamic public pages. Upload the entire `dist` directory, including the `features/` and `terms/` subdirectories.
+
+On the VPS, use `deploy/nginx/churchcentral-public.conf` in the Nginx server block for `churchcentral.church`. It replaces the current blanket SPA fallback. Keep the existing document root, TLS, API proxy, and asset locations. Run `sudo nginx -t` before reloading Nginx.
+
+Keep the wildcard tenant server separate from the marketing routes. If it shares the same document root, use `try_files $uri /app.html;` for tenant paths and `try_files /app.html =404;` in its exact `location = /`.
+
+After deployment, confirm `/`, `/pricing` and `/features/discipleship` each return their own canonical and heading in the raw HTML. Confirm an unknown path returns HTTP 404 and `/login` sends `noindex`. Submit the generated sitemap in Google Search Console. In Cloudflare, verify Googlebot and AI search crawlers such as OAI-SearchBot can fetch the public pages. Cloudflare's edge policy is managed separately from this repository.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!

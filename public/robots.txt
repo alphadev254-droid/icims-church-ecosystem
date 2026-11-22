@@ -1,10 +1,7 @@
 User-agent: *
 Allow: /
 
-# Block dashboard and auth-only routes from indexing
-Disallow: /dashboard/
-Disallow: /payment/
-Disallow: /reset-password
-Disallow: /register/member
+# Transactional and account routes return noindex in their HTML.
+# Public content is available to search crawlers through this wildcard group.
 
 Sitemap: https://churchcentral.church/sitemap.xml
