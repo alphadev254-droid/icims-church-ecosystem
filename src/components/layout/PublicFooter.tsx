@@ -52,7 +52,7 @@ export default function PublicFooter() {
               <img src="/logo192.png" width="48" height="48" loading="lazy" alt="ICIMS" className="h-12 w-12 object-cover rounded-full" />
             </Link>
             <p className="text-background/55 dark:text-foreground/50 text-sm leading-relaxed mb-6 max-w-xs">
-              Integrated Church Information Management System â€” empowering ministries to grow with clarity, accountability, and confidence.
+              Integrated Church Information Management System helps ministries manage their people, activities, and records in one place.
             </p>
             <div className="flex items-center gap-3">
               <a href="mailto:support@churchcentral.church" className="flex items-center gap-1.5 text-xs text-background/50 dark:text-foreground/40 hover:text-background dark:hover:text-foreground transition-colors">

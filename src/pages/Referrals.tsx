@@ -40,10 +40,7 @@ export default function ReferralsPage() {
           <img src={heroImage} alt="ICIMS marketers" className="h-full w-full object-cover" fetchPriority="high" loading="eager" />
           <div className="absolute inset-0 bg-black/78" />
         </div>
-        <div className="container relative py-16">
-          <h1 className="max-w-2xl font-heading text-4xl font-bold text-white md:text-6xl">ICIMS Marketer Program</h1>
-          <p className="mt-4 max-w-xl text-lg text-white/80">Introduce churches and ministries to ICIMS and earn commission on eligible package payments.</p>
-        </div>
+        <h1 className="sr-only">ICIMS Marketer Program</h1>
       </section>
 
       <section className="border-b bg-accent py-5">

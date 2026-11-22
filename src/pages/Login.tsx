@@ -129,7 +129,7 @@ export default function LoginPage() {
           <p className="text-white/70 text-sm italic leading-relaxed">
             "ICIMS transformed how we manage our denomination. We can focus on people, not paperwork."
           </p>
-          <p className="text-white/40 text-xs mt-2">â€” Ministry Administrator, CCAP</p>
+          <p className="text-white/40 text-xs mt-2">Ministry Administrator, CCAP</p>
         </div>
       </div>
 
@@ -238,7 +238,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                  placeholder="Enter your password"
                   autoComplete="current-password"
                   {...register('password')}
                   className={errors.password ? 'border-destructive pr-10' : 'pr-10'}

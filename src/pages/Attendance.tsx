@@ -635,7 +635,7 @@ export default function AttendancePage() {
                   return (
                   <TableRow key={r.id}>
                     <TableCell className="whitespace-nowrap font-medium">{new Date(r.date).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-sm">{(r as any).church?.name || 'â€”'}</TableCell>
+                    <TableCell className="text-sm">{(r as any).church?.name || '—'}</TableCell>
                     <TableCell className="whitespace-nowrap">{r.service?.title || r.serviceType}</TableCell>
                     <TableCell className="text-right font-semibold">{r.totalAttendees}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{(r as any).maleCount ?? 0}</TableCell>
